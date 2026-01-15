@@ -19,8 +19,10 @@ export function ToastProvider({ children }) {
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
+  const showToast = addToast; // Alias for backwards compatibility
+  
   return (
-    <ToastContext.Provider value={{ addToast }}>
+    <ToastContext.Provider value={{ addToast, showToast }}>
       {children}
       <div className="fixed bottom-4 right-4 z-50 space-y-2">
         {toasts.map(toast => (

@@ -11,7 +11,6 @@ router.use(authorize('department_head', 'admin'));
 router.post('/requisitions', department.createRequisition);
 router.get('/requisitions', department.getRequisitions);
 router.put('/requisitions/:id/submit', department.submitRequisition);
-router.put('/requisitions/:id/approve', department.approveRequisition);
 
 module.exports = router;
 

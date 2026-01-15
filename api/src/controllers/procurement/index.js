@@ -10,6 +10,10 @@ const publishRFQ = require('./publishRFQ.controller');
 const getQuotations = require('./getQuotations.controller');
 const createPurchaseOrder = require('./createPurchaseOrder.controller');
 const getPurchaseOrders = require('./getPurchaseOrders.controller');
+const getPendingRequisitions = require('./getPendingRequisitions.controller');
+const acceptRequisition = require('./acceptRequisition.controller');
+const rejectRequisition = require('./rejectRequisition.controller');
+const updateRequisitionStatus = require('./updateRequisitionStatus.controller');
 
 module.exports = {
   getSuppliers,
@@ -23,6 +27,10 @@ module.exports = {
   publishRFQ,
   getQuotations,
   createPurchaseOrder,
-  getPurchaseOrders
+  getPurchaseOrders,
+  getPendingRequisitions,
+  acceptRequisition,
+  rejectRequisition,
+  updateRequisitionStatus
 };
 

@@ -41,6 +41,9 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }) {
   );
 }
 
+// Default export for backward compatibility
+export default Modal;
+
 export function ConfirmModal({ isOpen, onClose, onConfirm, title, message, confirmText = 'Confirm', confirmStyle = 'danger', loading = false }) {
   if (!isOpen) return null;
 

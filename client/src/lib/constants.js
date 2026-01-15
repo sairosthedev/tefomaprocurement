@@ -1,8 +1,9 @@
 // Currency configuration
-export const currencies = [
+export const CURRENCIES = [
   { code: 'USD', symbol: '$', name: 'US Dollar' },
   { code: 'ZWG', symbol: 'ZWG', name: 'Zimbabwean Gold' }
 ];
+export const currencies = CURRENCIES; // alias
 
 export const defaultCurrency = 'USD';
 
@@ -20,7 +21,7 @@ export const formatCurrency = (amount, currency = 'USD') => {
 };
 
 // Zimbabwe Provinces
-export const provinces = [
+export const PROVINCES = [
   'Harare',
   'Bulawayo',
   'Manicaland',
@@ -32,9 +33,10 @@ export const provinces = [
   'Matabeleland South',
   'Midlands'
 ];
+export const provinces = PROVINCES; // alias
 
 // Zimbabwe Banks
-export const banks = [
+export const BANKS = [
   'CBZ Bank',
   'FBC Bank',
   'Stanbic Bank Zimbabwe',
@@ -51,9 +53,10 @@ export const banks = [
   'AFC Holdings',
   'Metbank'
 ];
+export const banks = BANKS; // alias
 
 // Supplier Categories
-export const supplierCategories = [
+export const SUPPLIER_CATEGORIES = [
   'Construction Materials',
   'Office Supplies',
   'IT Equipment & Services',
@@ -74,6 +77,7 @@ export const supplierCategories = [
   'Hardware',
   'Other'
 ];
+export const supplierCategories = SUPPLIER_CATEGORIES; // alias
 
 // Account Types
 export const accountTypes = [
@@ -83,20 +87,56 @@ export const accountTypes = [
 ];
 
 // Units of Measurement
+export const UNITS_OF_MEASUREMENT = [
+  'Each',
+  'Pack',
+  'Box',
+  'Carton',
+  'Kg',
+  'Ton',
+  'Liter',
+  'Meter',
+  'Square Meter',
+  'Cubic Meter',
+  'Roll',
+  'Sheet',
+  'Pair',
+  'Set',
+  'Bag',
+  'Drum',
+  'Ream',
+  'Dozen'
+];
+
 export const units = [
-  { value: 'units', label: 'Units' },
-  { value: 'kg', label: 'Kilograms (kg)' },
-  { value: 'tons', label: 'Tons' },
-  { value: 'liters', label: 'Liters' },
-  { value: 'meters', label: 'Meters' },
-  { value: 'sqm', label: 'Square Meters' },
-  { value: 'boxes', label: 'Boxes' },
-  { value: 'packs', label: 'Packs' },
-  { value: 'bags', label: 'Bags' },
-  { value: 'drums', label: 'Drums' },
-  { value: 'rolls', label: 'Rolls' },
-  { value: 'sheets', label: 'Sheets' },
-  { value: 'pairs', label: 'Pairs' },
-  { value: 'sets', label: 'Sets' }
+  { value: 'Each', label: 'Each' },
+  { value: 'Pack', label: 'Pack' },
+  { value: 'Box', label: 'Box' },
+  { value: 'Carton', label: 'Carton' },
+  { value: 'Kg', label: 'Kilograms (kg)' },
+  { value: 'Ton', label: 'Tons' },
+  { value: 'Liter', label: 'Liters' },
+  { value: 'Meter', label: 'Meters' },
+  { value: 'Square Meter', label: 'Square Meters' },
+  { value: 'Cubic Meter', label: 'Cubic Meters' },
+  { value: 'Roll', label: 'Rolls' },
+  { value: 'Sheet', label: 'Sheets' },
+  { value: 'Pair', label: 'Pairs' },
+  { value: 'Set', label: 'Sets' },
+  { value: 'Bag', label: 'Bags' },
+  { value: 'Drum', label: 'Drums' },
+  { value: 'Ream', label: 'Reams' },
+  { value: 'Dozen', label: 'Dozens' }
+];
+
+// User Roles
+export const USER_ROLES = [
+  { value: 'admin', label: 'System Administrator' },
+  { value: 'procurement_officer', label: 'Procurement Officer' },
+  { value: 'department_head', label: 'Department Head' },
+  { value: 'finance', label: 'Finance Manager' },
+  { value: 'coo', label: 'Chief Operating Officer' },
+  { value: 'stores_officer', label: 'Stores Officer' },
+  { value: 'supplier', label: 'Supplier' }
 ];
 

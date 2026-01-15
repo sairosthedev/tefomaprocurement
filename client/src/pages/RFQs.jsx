@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
 import { 
   Search, 
@@ -22,6 +23,7 @@ const statusColors = {
 };
 
 export default function RFQs() {
+  const navigate = useNavigate();
   const [rfqs, setRFQs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -54,7 +56,10 @@ export default function RFQs() {
           <h1 className="text-2xl font-bold text-gray-900">RFQs (Enquiries)</h1>
           <p className="text-gray-500 mt-1">Manage requests for quotations</p>
         </div>
-        <button className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors">
+        <button 
+          onClick={() => navigate('/app/rfqs/create')}
+          className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+        >
           <Plus className="h-5 w-5" />
           Create RFQ
         </button>

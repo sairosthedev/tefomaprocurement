@@ -32,7 +32,7 @@ export default function Login() {
         finance: '/app',
         coo: '/app',
         stores_officer: '/app',
-        supplier: '/app/supplier/dashboard'
+        supplier: '/app'
       };
       
       navigate(roleRoutes[user.role] || from, { replace: true });

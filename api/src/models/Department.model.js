@@ -9,10 +9,9 @@ const DepartmentSchema = new mongoose.Schema({
   },
   code: {
     type: String,
-    required: [true, 'Department code is required'],
-    unique: true,
     uppercase: true,
-    trim: true
+    trim: true,
+    sparse: true // Allow multiple null values while keeping unique constraint for non-null
   },
   description: {
     type: String,

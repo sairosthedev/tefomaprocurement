@@ -5,22 +5,31 @@ const createDepartment = async (req, res) => {
   try {
     const { name, code, description, head } = req.body;
 
-    const existingDept = await Department.findOne({ 
-      $or: [{ name }, { code }] 
-    });
-    
-    if (existingDept) {
+    // Check if name already exists
+    const existingByName = await Department.findOne({ name });
+    if (existingByName) {
       return res.status(400).json({
         success: false,
-        message: 'Department with this name or code already exists'
+        message: 'Department with this name already exists'
       });
+    }
+
+    // Only check code uniqueness if code is provided
+    if (code && code.trim()) {
+      const existingByCode = await Department.findOne({ code: code.trim().toUpperCase() });
+      if (existingByCode) {
+        return res.status(400).json({
+          success: false,
+          message: 'Department with this code already exists'
+        });
+      }
     }
 
     const department = await Department.create({
       name,
-      code,
+      code: code?.trim() || undefined, // Don't save empty strings
       description,
-      head
+      head: head || undefined
     });
 
     await createAuditLog({

@@ -16,6 +16,8 @@ router.delete('/users/:id', admin.deleteUser);
 // Department management
 router.post('/departments', admin.createDepartment);
 router.get('/departments', admin.getDepartments);
+router.put('/departments/:id', admin.updateDepartment);
+router.delete('/departments/:id', admin.deleteDepartment);
 
 module.exports = router;
 

@@ -9,7 +9,8 @@ const RequisitionItemSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  specifications: String,
+  specification: String, // Singular - from frontend
+  specifications: String, // Plural - alternate field name
   quantity: {
     type: Number,
     required: true,
@@ -17,7 +18,7 @@ const RequisitionItemSchema = new mongoose.Schema({
   },
   unit: {
     type: String,
-    required: true
+    default: 'Each'
   },
   estimatedUnitPrice: Number,
   estimatedTotalPrice: Number,
@@ -29,10 +30,10 @@ const RequisitionItemSchema = new mongoose.Schema({
   }
 });
 
-const ApprovalHistorySchema = new mongoose.Schema({
+const StatusHistorySchema = new mongoose.Schema({
   action: {
     type: String,
-    enum: ['submitted', 'approved', 'rejected', 'returned'],
+    enum: ['submitted', 'accepted', 'rejected', 'returned', 'rfq_created', 'po_created'],
     required: true
   },
   by: {
@@ -51,13 +52,18 @@ const ApprovalHistorySchema = new mongoose.Schema({
 const PurchaseRequisitionSchema = new mongoose.Schema({
   requisitionNumber: {
     type: String,
-    unique: true,
-    required: true
+    unique: true
+    // Not required - auto-generated in pre-save
+  },
+  title: {
+    type: String,
+    required: [true, 'Title is required'],
+    trim: true
   },
   department: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Department',
-    required: true
+    ref: 'Department'
+    // Optional - some users may not have departments
   },
   requestedBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -66,8 +72,8 @@ const PurchaseRequisitionSchema = new mongoose.Schema({
   },
   items: [RequisitionItemSchema],
   justification: {
-    type: String,
-    required: [true, 'Justification is required']
+    type: String
+    // Optional - description/reason for the request
   },
   priority: {
     type: String,
@@ -81,11 +87,11 @@ const PurchaseRequisitionSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['draft', 'pending_approval', 'approved', 'rejected', 'sourcing', 'completed', 'cancelled'],
+    enum: ['draft', 'pending_acceptance', 'accepted', 'rejected', 'sourcing', 'quoted', 'ordered', 'completed', 'cancelled'],
     default: 'draft'
   },
-  approvalHistory: [ApprovalHistorySchema],
-  currentApprover: {
+  statusHistory: [StatusHistorySchema],
+  processedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
@@ -102,9 +108,9 @@ const PurchaseRequisitionSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Generate requisition number before saving
+// Generate requisition number before saving (if not already set)
 PurchaseRequisitionSchema.pre('save', async function(next) {
-  if (this.isNew) {
+  if (this.isNew && !this.requisitionNumber) {
     const count = await this.constructor.countDocuments();
     const year = new Date().getFullYear();
     this.requisitionNumber = `PR-${year}-${String(count + 1).padStart(5, '0')}`;
