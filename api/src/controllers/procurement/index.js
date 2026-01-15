@@ -2,6 +2,8 @@ const getSuppliers = require('./getSuppliers.controller');
 const getSupplierById = require('./getSupplierById.controller');
 const approveSupplier = require('./approveSupplier.controller');
 const blacklistSupplier = require('./blacklistSupplier.controller');
+const createSupplier = require('./createSupplier.controller');
+const bulkImportSuppliers = require('./bulkImportSuppliers.controller');
 const createRFQ = require('./createRFQ.controller');
 const getRFQs = require('./getRFQs.controller');
 const publishRFQ = require('./publishRFQ.controller');
@@ -14,6 +16,8 @@ module.exports = {
   getSupplierById,
   approveSupplier,
   blacklistSupplier,
+  createSupplier,
+  bulkImportSuppliers,
   createRFQ,
   getRFQs,
   publishRFQ,

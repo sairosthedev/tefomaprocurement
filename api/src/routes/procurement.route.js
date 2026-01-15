@@ -9,6 +9,8 @@ router.use(authorize('procurement_officer', 'admin'));
 
 // Suppliers
 router.get('/suppliers', procurement.getSuppliers);
+router.post('/suppliers', procurement.createSupplier);
+router.post('/suppliers/bulk-import', procurement.bulkImportSuppliers);
 router.get('/suppliers/:id', procurement.getSupplierById);
 router.put('/suppliers/:id/approve', procurement.approveSupplier);
 router.put('/suppliers/:id/blacklist', procurement.blacklistSupplier);

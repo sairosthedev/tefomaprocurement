@@ -9,6 +9,7 @@ const departmentRoutes = require('./department.route');
 const financeRoutes = require('./finance.route');
 const cooRoutes = require('./coo.route');
 const storesRoutes = require('./stores.route');
+const dashboardRoutes = require('./dashboard.route');
 
 // API Status
 router.get('/', (req, res) => {
@@ -28,5 +29,6 @@ router.use('/department', departmentRoutes);
 router.use('/finance', financeRoutes);
 router.use('/coo', cooRoutes);
 router.use('/stores', storesRoutes);
+router.use('/dashboard', dashboardRoutes);
 
 module.exports = router;

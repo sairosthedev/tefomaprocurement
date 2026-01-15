@@ -10,7 +10,7 @@ const navigation = [
   { name: "RFQs (Enquiries)", href: "/app/rfqs", icon: FileSearch, roles: ['admin', 'procurement_officer'] },
   { name: "Quotations", href: "/app/quotations", icon: FileText, roles: ['admin', 'procurement_officer'] },
   { name: "Purchase Orders", href: "/app/purchase-orders", icon: ShoppingCart, roles: ['admin', 'procurement_officer', 'finance', 'coo'] },
-  { name: "Inventory", href: "/app/inventory", icon: Package, roles: ['admin', 'stores_officer'] },
+  { name: "Inventory", href: "/app/inventory", icon: Package, roles: ['stores_officer'] },
   { name: "Staff Team", href: "/app/users", icon: UserCircle, roles: ['admin'] },
   { name: "Notifications", href: "/app/notifications", icon: Bell, roles: ['admin', 'procurement_officer', 'department_head', 'finance', 'coo', 'stores_officer'] },
 ]
