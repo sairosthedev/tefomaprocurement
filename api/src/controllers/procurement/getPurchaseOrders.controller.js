@@ -1,0 +1,48 @@
+const { PurchaseOrder } = require('../../models');
+
+const getPurchaseOrders = async (req, res) => {
+  try {
+    const { status, supplierId, search, page = 1, limit = 20 } = req.query;
+    
+    const query = { isDeleted: false };
+    
+    if (status) query.status = status;
+    if (supplierId) query.supplier = supplierId;
+    if (search) {
+      query.poNumber = { $regex: search, $options: 'i' };
+    }
+
+    const skip = (page - 1) * limit;
+    
+    const [orders, total] = await Promise.all([
+      PurchaseOrder.find(query)
+        .populate('supplier', 'companyName')
+        .populate('createdBy', 'firstName lastName')
+        .populate('quotation', 'quotationNumber')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit)),
+      PurchaseOrder.countDocuments(query)
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: orders,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Get POs error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+module.exports = getPurchaseOrders;
+

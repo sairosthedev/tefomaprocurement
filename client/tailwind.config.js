@@ -3,9 +3,17 @@ export default {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
+    "./lib/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
+      colors: {
+        primary: {
+          DEFAULT: '#1e3a5f',
+          light: '#2d4a6f',
+          dark: '#152a47',
+        },
+      },
       animation: {
         'float': 'float 3s ease-in-out infinite',
         'pulse-glow': 'pulse-glow 2s infinite',
@@ -24,4 +32,3 @@ export default {
   },
   plugins: [],
 }
-

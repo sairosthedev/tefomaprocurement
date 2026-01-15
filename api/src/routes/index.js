@@ -1,21 +1,32 @@
 const express = require('express');
 const router = express.Router();
 
-// Example route
+const authRoutes = require('./auth.route');
+const adminRoutes = require('./admin.route');
+const procurementRoutes = require('./procurement.route');
+const supplierRoutes = require('./supplier.route');
+const departmentRoutes = require('./department.route');
+const financeRoutes = require('./finance.route');
+const cooRoutes = require('./coo.route');
+const storesRoutes = require('./stores.route');
+
+// API Status
 router.get('/', (req, res) => {
-  res.json({ 
-    message: 'Welcome to FosssilProcure API',
+  res.json({
+    success: true,
+    message: 'FosssilProcure API is running',
     version: '1.0.0'
   });
 });
 
-// Example: Users routes (placeholder)
-// const usersRouter = require('./users');
-// router.use('/users', usersRouter);
-
-// Example: Products routes (placeholder)
-// const productsRouter = require('./products');
-// router.use('/products', productsRouter);
+// Mount routes
+router.use('/auth', authRoutes);
+router.use('/admin', adminRoutes);
+router.use('/procurement', procurementRoutes);
+router.use('/supplier', supplierRoutes);
+router.use('/department', departmentRoutes);
+router.use('/finance', financeRoutes);
+router.use('/coo', cooRoutes);
+router.use('/stores', storesRoutes);
 
 module.exports = router;
-
