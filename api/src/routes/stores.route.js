@@ -16,6 +16,9 @@ router.put('/deliveries/:id/accept', stores.acceptDelivery);
 // Inventory
 router.get('/inventory', stores.getInventory);
 
+// Stock Movements
+router.get('/movements', stores.getMovements);
+
 // Stock issue
 router.put('/requisitions/:id/issue', stores.issueStock);
 

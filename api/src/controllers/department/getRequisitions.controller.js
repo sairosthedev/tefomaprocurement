@@ -40,6 +40,19 @@ const getRequisitions = async (req, res) => {
       .populate('supplier', 'companyName')
       .populate('financeApprovedBy', 'firstName lastName')
       .populate('cooApprovedBy', 'firstName lastName')
+      .populate('purchaseRequisition', '_id requisitionNumber') // Populate to ensure we can match it
+      .lean();
+    
+    // Also find POs by RFQ directly (in case purchaseRequisition wasn't set)
+    const rfqPOs = await PurchaseOrder.find({
+      rfq: { $in: rfqIds },
+      isDeleted: false
+    })
+      .select('poNumber status financeApproved cooApproved financeApprovedBy cooApprovedBy financeApprovedAt cooApprovedAt purchaseRequisition rfq quotation supplier items totalAmount')
+      .populate('supplier', 'companyName')
+      .populate('financeApprovedBy', 'firstName lastName')
+      .populate('cooApprovedBy', 'firstName lastName')
+      .populate('quotation', '_id')
       .lean();
 
     // Also find POs linked via RFQ -> quotation -> PO chain (in case purchaseRequisition wasn't set)
@@ -63,13 +76,19 @@ const getRequisitions = async (req, res) => {
           .populate('supplier', 'companyName')
           .populate('financeApprovedBy', 'firstName lastName')
           .populate('cooApprovedBy', 'firstName lastName')
+          .populate('quotation', '_id') // Populate quotation to ensure we can match it
           .lean();
       }
     }
 
-    // Combine both PO lists and remove duplicates
+    // Combine all PO lists and remove duplicates
     const allPOs = [...directPOs];
     rfqLinkedPOs.forEach(po => {
+      if (!allPOs.find(p => p._id.toString() === po._id.toString())) {
+        allPOs.push(po);
+      }
+    });
+    rfqPOs.forEach(po => {
       if (!allPOs.find(p => p._id.toString() === po._id.toString())) {
         allPOs.push(po);
       }
@@ -99,17 +118,18 @@ const getRequisitions = async (req, res) => {
     // Get PO IDs to check deliveries
     const poIds = allPOs.map(po => po._id);
     
-    // Check which POs have accepted deliveries (items in stores)
-    const acceptedDeliveries = await Delivery.find({
+    // Check which POs have received or accepted deliveries (items in stores)
+    // Include 'received' status because receiveGoods auto-accepts, but also check accepted
+    const deliveries = await Delivery.find({
       purchaseOrder: { $in: poIds },
-      status: { $in: ['accepted', 'partially_accepted'] },
+      status: { $in: ['received', 'accepted', 'partially_accepted'] },
       isDeleted: false
     })
       .select('purchaseOrder status')
       .lean();
     
     const poWithDeliveries = new Set(
-      acceptedDeliveries.map(d => d.purchaseOrder.toString())
+      deliveries.map(d => d.purchaseOrder.toString())
     );
 
     // Check which requisitions have store requisitions that are issued (items collected)
@@ -140,20 +160,44 @@ const getRequisitions = async (req, res) => {
       
       // First try direct link via purchaseRequisition
       let po = allPOs.find(p => {
-        const poReqId = p.purchaseRequisition?.toString();
+        // Handle both populated and non-populated purchaseRequisition field
+        let poReqId = null;
+        if (p.purchaseRequisition) {
+          if (typeof p.purchaseRequisition === 'object' && p.purchaseRequisition._id) {
+            poReqId = p.purchaseRequisition._id.toString();
+          } else {
+            poReqId = p.purchaseRequisition.toString();
+          }
+        }
         const reqId = req._id.toString();
         return poReqId === reqId;
       });
       
-      // If not found, try via RFQ -> quotation -> PO
+      // If not found, try via RFQ directly
+      if (!po && req.rfq) {
+        const rfqId = (req.rfq._id || req.rfq).toString();
+        po = allPOs.find(p => {
+          const poRfqId = p.rfq?.toString();
+          return poRfqId === rfqId;
+        });
+      }
+      
+      // If still not found, try via RFQ -> quotation -> PO
       if (!po && req.rfq) {
         const rfqId = (req.rfq._id || req.rfq).toString();
         const quotationIds = rfqToQuotationMap[rfqId] || [];
         if (quotationIds.length > 0) {
           po = allPOs.find(p => {
             // Handle both populated and non-populated quotation field
-            const poQuotationId = p.quotation?._id ? p.quotation._id.toString() : p.quotation?.toString();
-            return quotationIds.includes(poQuotationId);
+            let poQuotationId = null;
+            if (p.quotation) {
+              if (typeof p.quotation === 'object' && p.quotation._id) {
+                poQuotationId = p.quotation._id.toString();
+              } else {
+                poQuotationId = p.quotation.toString();
+              }
+            }
+            return poQuotationId && quotationIds.includes(poQuotationId);
           });
         }
       }

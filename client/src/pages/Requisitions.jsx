@@ -55,6 +55,7 @@ export default function Requisitions() {
   const [actionType, setActionType] = useState(''); // 'accept' or 'reject'
   const [actionComment, setActionComment] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [submittingId, setSubmittingId] = useState(null);
 
   const isProcurement = user?.role === 'procurement_officer' || user?.role === 'admin';
 
@@ -83,11 +84,14 @@ export default function Requisitions() {
 
   const handleSubmit = async (id) => {
     try {
+      setSubmittingId(id);
       await api.put(`/department/requisitions/${id}/submit`);
       showToast('Requisition submitted for acceptance', 'success');
       fetchRequisitions();
     } catch (error) {
       showToast(error.response?.data?.message || 'Failed to submit', 'error');
+    } finally {
+      setSubmittingId(null);
     }
   };
 
@@ -398,10 +402,15 @@ export default function Requisitions() {
                             </button>
                             <button
                               onClick={() => handleSubmit(req._id)}
-                              className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                              disabled={submittingId === req._id}
+                              className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               title="Submit for Acceptance"
                             >
-                              <Send className="h-4 w-4" />
+                              {submittingId === req._id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Send className="h-4 w-4" />
+                              )}
                             </button>
                           </>
                         )}

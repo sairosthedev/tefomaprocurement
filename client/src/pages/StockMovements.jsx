@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../lib/api';
+import { useToast } from '../components/Toast';
 import { 
   Search, ArrowUpRight, ArrowDownLeft, Package, 
   Loader2, Calendar, Filter
@@ -14,6 +15,7 @@ const movementTypes = {
 };
 
 export default function StockMovements() {
+  const { showToast } = useToast();
   const [movements, setMovements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -35,42 +37,8 @@ export default function StockMovements() {
       }
     } catch (error) {
       console.error('Failed to fetch movements:', error);
-      // Mock data for demonstration
-      setMovements([
-        {
-          _id: '1',
-          type: 'stock-in',
-          item: { name: 'A4 Paper', itemCode: 'ITM-001' },
-          quantity: 100,
-          unit: 'Reams',
-          reference: 'GRV-001234',
-          performedBy: { firstName: 'John', lastName: 'Doe' },
-          createdAt: new Date().toISOString(),
-          notes: 'Delivery from ABC Suppliers'
-        },
-        {
-          _id: '2',
-          type: 'stock-out',
-          item: { name: 'Printer Toner', itemCode: 'ITM-002' },
-          quantity: 5,
-          unit: 'Units',
-          reference: 'SR-005678',
-          performedBy: { firstName: 'Jane', lastName: 'Smith' },
-          createdAt: new Date(Date.now() - 86400000).toISOString(),
-          notes: 'Issued to Finance Department'
-        },
-        {
-          _id: '3',
-          type: 'adjustment',
-          item: { name: 'Stapler', itemCode: 'ITM-003' },
-          quantity: -3,
-          unit: 'Units',
-          reference: 'ADJ-000123',
-          performedBy: { firstName: 'Admin', lastName: 'User' },
-          createdAt: new Date(Date.now() - 172800000).toISOString(),
-          notes: 'Stock count adjustment'
-        }
-      ]);
+      showToast('Failed to load stock movements', 'error');
+      setMovements([]);
     } finally {
       setLoading(false);
     }
