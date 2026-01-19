@@ -67,10 +67,11 @@ export default function CreateRFQ() {
 
   const fetchSuppliers = async () => {
     try {
-      const response = await procurementAPI.getSuppliers({ status: 'approved' });
+      const response = await procurementAPI.getSuppliers({ status: 'active' });
       setSuppliers(response.data.data || []);
     } catch (error) {
       console.error('Error fetching suppliers:', error);
+      showToast('Failed to load suppliers', 'error');
     }
   };
 
@@ -446,6 +447,7 @@ export default function CreateRFQ() {
     </div>
   );
 }
+
 
 
 

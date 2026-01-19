@@ -130,9 +130,35 @@ export default function RFQs() {
                   <Calendar className="h-4 w-4" />
                   <span>Deadline: {new Date(rfq.submissionDeadline).toLocaleDateString('en-ZA')}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  <span>{rfq.invitedSuppliers?.length || 0} suppliers invited</span>
+                <div className="flex items-start gap-2">
+                  <Users className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-gray-700 mb-1">
+                      {rfq.invitedSuppliers?.length || 0} supplier{rfq.invitedSuppliers?.length !== 1 ? 's' : ''} invited
+                    </div>
+                    {rfq.invitedSuppliers && rfq.invitedSuppliers.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        {rfq.invitedSuppliers.slice(0, 3).map((invited, idx) => {
+                          const supplierName = invited.supplier?.companyName || 
+                                             (typeof invited.supplier === 'string' ? 'Loading...' : 'Unknown Supplier');
+                          return (
+                            <span 
+                              key={invited.supplier?._id || invited.supplier || idx} 
+                              className="inline-block px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-md truncate max-w-[120px]"
+                              title={supplierName}
+                            >
+                              {supplierName}
+                            </span>
+                          );
+                        })}
+                        {rfq.invitedSuppliers.length > 3 && (
+                          <span className="inline-block px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded-md font-medium">
+                            +{rfq.invitedSuppliers.length - 3} more
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 

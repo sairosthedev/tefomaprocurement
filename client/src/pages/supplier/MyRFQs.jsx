@@ -74,7 +74,7 @@ export default function MyRFQs() {
             <div>
               <p className="text-sm text-green-600">Open RFQs</p>
               <p className="text-2xl font-bold text-green-700">
-                {rfqs.filter(r => r.status === 'published' && !r.hasSubmitted).length}
+                {rfqs.filter(r => r.status === 'open' && !r.hasSubmitted).length}
               </p>
             </div>
           </div>
@@ -104,7 +104,7 @@ export default function MyRFQs() {
               <p className="text-2xl font-bold text-amber-700">
                 {rfqs.filter(r => {
                   const remaining = getRemainingTime(r.submissionDeadline);
-                  return remaining.urgent && r.status === 'published';
+                  return remaining.urgent && r.status === 'open';
                 }).length}
               </p>
             </div>
@@ -140,7 +140,7 @@ export default function MyRFQs() {
               <tbody className="divide-y divide-gray-100">
                 {rfqs.map((rfq) => {
                   const remaining = getRemainingTime(rfq.submissionDeadline);
-                  const canSubmit = rfq.status === 'published' && !rfq.hasSubmitted && remaining.text !== 'Closed';
+                  const canSubmit = rfq.status === 'open' && !rfq.hasSubmitted && remaining.text !== 'Closed';
                   
                   return (
                     <tr key={rfq._id} className="hover:bg-gray-50">
@@ -174,7 +174,7 @@ export default function MyRFQs() {
                           </span>
                         ) : (
                           <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[rfq.status] || statusColors.open}`}>
-                            {rfq.status === 'published' ? 'Open' : rfq.status}
+                            {rfq.status === 'open' ? 'Open' : rfq.status}
                           </span>
                         )}
                       </td>

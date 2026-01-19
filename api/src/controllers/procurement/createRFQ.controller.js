@@ -8,21 +8,33 @@ const createRFQ = async (req, res) => {
       description, 
       purchaseRequisitionId, 
       items, 
-      supplierIds, 
+      supplierIds,
+      invitedSuppliers: invitedSuppliersFromBody, 
       submissionDeadline,
       deliveryRequirements,
       paymentTerms,
-      termsAndConditions
+      termsAndConditions,
+      status: requestedStatus
     } = req.body;
+
+    // Support both supplierIds and invitedSuppliers for backward compatibility
+    const supplierIdArray = supplierIds || invitedSuppliersFromBody || [];
+    
+    if (!Array.isArray(supplierIdArray) || supplierIdArray.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'At least one supplier must be selected'
+      });
+    }
 
     // Validate suppliers are active
     const suppliers = await SupplierProfile.find({
-      _id: { $in: supplierIds },
+      _id: { $in: supplierIdArray },
       status: 'active',
       isDeleted: false
     });
 
-    if (suppliers.length !== supplierIds.length) {
+    if (suppliers.length !== supplierIdArray.length) {
       return res.status(400).json({
         success: false,
         message: 'Some suppliers are not active or do not exist'
@@ -35,7 +47,18 @@ const createRFQ = async (req, res) => {
       invitedAt: new Date()
     }));
 
-    const rfq = await RFQ.create({
+    // Generate RFQ number
+    const count = await RFQ.countDocuments();
+    const year = new Date().getFullYear();
+    const rfqNumber = `RFQ-${year}-${String(count + 1).padStart(5, '0')}`;
+
+    // Determine status: use requested status if valid, otherwise default to 'draft'
+    const rfqStatus = (requestedStatus === 'open' && invitedSuppliers.length > 0) 
+      ? 'open' 
+      : 'draft';
+    
+    const rfqData = {
+      rfqNumber,
       title,
       description,
       purchaseRequisition: purchaseRequisitionId,
@@ -46,8 +69,15 @@ const createRFQ = async (req, res) => {
       deliveryRequirements,
       paymentTerms,
       termsAndConditions,
-      status: 'draft'
-    });
+      status: rfqStatus
+    };
+
+    // Set publishedAt if status is 'open'
+    if (rfqStatus === 'open') {
+      rfqData.publishedAt = new Date();
+    }
+
+    const rfq = await RFQ.create(rfqData);
 
     // Update purchase requisition if linked
     if (purchaseRequisitionId) {

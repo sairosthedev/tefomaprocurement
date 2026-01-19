@@ -34,11 +34,12 @@ const acceptRequisition = async (req, res) => {
     await requisition.save();
 
     await createAuditLog({
-      action: 'accept',
+      action: 'status_change',
       entity: 'PurchaseRequisition',
       entityId: requisition._id,
       user: req.user,
       description: `Procurement accepted requisition: ${requisition.requisitionNumber}`,
+      previousData: { status: 'pending_acceptance' },
       newData: { status: 'accepted' },
       req
     });
@@ -58,6 +59,7 @@ const acceptRequisition = async (req, res) => {
 };
 
 module.exports = acceptRequisition;
+
 
 
 

@@ -25,8 +25,9 @@ const getMyRFQs = async (req, res) => {
     
     const [rfqs, total] = await Promise.all([
       RFQ.find(query)
-        .select('rfqNumber title description items submissionDeadline status publishedAt')
-        .sort({ publishedAt: -1 })
+        .populate('invitedSuppliers.supplier', '_id')
+        .select('rfqNumber title description items submissionDeadline status publishedAt invitedSuppliers')
+        .sort({ publishedAt: -1, createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit)),
       RFQ.countDocuments(query)
@@ -35,11 +36,15 @@ const getMyRFQs = async (req, res) => {
     // Add responded status for each RFQ
     const rfqsWithStatus = rfqs.map(rfq => {
       const invitation = rfq.invitedSuppliers?.find(
-        inv => inv.supplier.toString() === profile._id.toString()
+        inv => {
+          const supplierId = inv.supplier?._id || inv.supplier;
+          return supplierId.toString() === profile._id.toString();
+        }
       );
       return {
         ...rfq.toObject(),
-        hasResponded: invitation?.responded || false
+        hasResponded: invitation?.responded || false,
+        hasSubmitted: invitation?.responded || false
       };
     });
 
