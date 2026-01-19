@@ -89,7 +89,9 @@ export const departmentAPI = {
   createRequisition: (data) => api.post('/department/requisitions', data),
   getRequisitions: (params) => api.get('/department/requisitions', { params }),
   submitRequisition: (id) => api.put(`/department/requisitions/${id}/submit`),
-  approveRequisition: (id, data) => api.put(`/department/requisitions/${id}/approve`, data)
+  approveRequisition: (id, data) => api.put(`/department/requisitions/${id}/approve`, data),
+  createStoreRequisition: (data) => api.post('/department/store-requisitions', data),
+  getStoreRequisitions: (params) => api.get('/department/store-requisitions', { params })
 };
 
 // Finance API

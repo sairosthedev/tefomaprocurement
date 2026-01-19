@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
-import api from '../lib/api';
+import api, { departmentAPI } from '../lib/api';
 import { 
   Plus, Search, Filter, Eye, Edit, Trash2, Send, 
   Clock, CheckCircle, XCircle, Package, Loader2, AlertCircle,
@@ -92,6 +92,39 @@ export default function Requisitions() {
       showToast(error.response?.data?.message || 'Failed to submit', 'error');
     } finally {
       setSubmittingId(null);
+    }
+  };
+
+  const handleRequestFromStores = async (requisition) => {
+    if (!requisition || !requisition.purchaseOrder) {
+      showToast('Purchase order information not available', 'error');
+      return;
+    }
+
+    try {
+      // Create a store requisition for the items from the purchase order
+      const items = requisition.purchaseOrder.items.map(poItem => ({
+        description: poItem.description,
+        quantityRequested: poItem.quantity - (poItem.quantityReceived || 0),
+        unit: poItem.unit || 'Each'
+      })).filter(item => item.quantityRequested > 0);
+
+      if (items.length === 0) {
+        showToast('All items have already been received', 'info');
+        return;
+      }
+
+      await departmentAPI.createStoreRequisition({
+        purpose: `Request items from Purchase Order ${requisition.purchaseOrder.poNumber} for Requisition ${requisition.requisitionNumber}`,
+        items: items,
+        priority: requisition.priority || 'medium'
+      });
+
+      showToast('Store requisition created successfully', 'success');
+      fetchRequisitions();
+    } catch (error) {
+      console.error('Error creating store requisition:', error);
+      showToast(error.response?.data?.message || 'Failed to create store requisition', 'error');
     }
   };
 
