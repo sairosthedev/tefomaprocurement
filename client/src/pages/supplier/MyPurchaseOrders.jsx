@@ -222,15 +222,23 @@ export default function MyPurchaseOrders() {
         {selectedPO && (
           <div className="space-y-6">
             {/* Acknowledgment Info */}
-            {selectedPO.isAcknowledged && selectedPO.status === 'issued' && (
+            {selectedPO.isAcknowledged && (selectedPO.status === 'issued' || selectedPO.status === 'approved') && (
               <div className="bg-green-50 border border-green-200 rounded-xl p-4">
                 <div className="flex items-start gap-3">
                   <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
                   <div className="flex-1">
-                    <p className="font-medium text-green-800">Purchase Order Acknowledged & Issued</p>
-                    <p className="text-sm text-green-700 mt-1">
-                      You can now prepare and deliver the goods. Once delivered, Stores will receive the goods and create a GRV (Goods Received Voucher). 
-                      You can track your deliveries in the <strong>"My Deliveries"</strong> section.
+                    <p className="font-medium text-green-800">Purchase Order Acknowledged</p>
+                    <p className="text-sm text-green-700 mt-2">
+                      <strong>Next Steps:</strong>
+                    </p>
+                    <ol className="text-sm text-green-700 mt-1 space-y-1 list-decimal list-inside ml-2">
+                      <li>Prepare and deliver the goods to the delivery address specified below</li>
+                      <li>Stores will receive the goods and validate them against this PO</li>
+                      <li>Stores will create a GRV (Goods Received Voucher) in the system</li>
+                      <li>Your delivery will appear in <strong>"My Deliveries"</strong> once Stores has received and processed the goods</li>
+                    </ol>
+                    <p className="text-xs text-green-600 mt-2 italic">
+                      Note: Deliveries are only created by Stores when they physically receive the goods. Acknowledging a PO does not create a delivery record.
                     </p>
                   </div>
                 </div>

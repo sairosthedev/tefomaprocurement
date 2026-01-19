@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../../components/Toast';
 import api from '../../lib/api';
-import { Truck, Eye, Loader2, CheckCircle, XCircle, Clock, Package } from 'lucide-react';
+import { Truck, Eye, Loader2, CheckCircle, XCircle, Clock, Package, AlertCircle } from 'lucide-react';
 import Modal from '../../components/Modal';
 import { formatCurrency } from '../../lib/constants';
 
 const statusColors = {
+  pending: 'bg-yellow-100 text-yellow-700',
   received: 'bg-blue-100 text-blue-700',
   inspected: 'bg-purple-100 text-purple-700',
   accepted: 'bg-green-100 text-green-700',
@@ -41,6 +42,10 @@ export default function MyDeliveries() {
     }
   };
 
+  const formatStatus = (status) => {
+    return status?.replace('_', ' ').charAt(0).toUpperCase() + status?.replace('_', ' ').slice(1);
+  };
+
   return (
     <div className="p-8">
       {/* Header */}
@@ -50,7 +55,7 @@ export default function MyDeliveries() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-blue-50 rounded-2xl p-5 border border-blue-100">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-blue-100 rounded-xl">
@@ -59,6 +64,20 @@ export default function MyDeliveries() {
             <div>
               <p className="text-sm text-blue-600">Total Deliveries</p>
               <p className="text-2xl font-bold text-blue-700">{deliveries.length}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-yellow-50 rounded-2xl p-5 border border-yellow-100">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-yellow-100 rounded-xl">
+              <Clock className="h-6 w-6 text-yellow-600" />
+            </div>
+            <div>
+              <p className="text-sm text-yellow-600">Pending</p>
+              <p className="text-2xl font-bold text-yellow-700">
+                {deliveries.filter(d => d.status === 'pending').length}
+              </p>
             </div>
           </div>
         </div>
@@ -80,7 +99,7 @@ export default function MyDeliveries() {
         <div className="bg-purple-50 rounded-2xl p-5 border border-purple-100">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-purple-100 rounded-xl">
-              <Clock className="h-6 w-6 text-purple-600" />
+              <Package className="h-6 w-6 text-purple-600" />
             </div>
             <div>
               <p className="text-sm text-purple-600">Under Inspection</p>
@@ -94,12 +113,12 @@ export default function MyDeliveries() {
         <div className="bg-amber-50 rounded-2xl p-5 border border-amber-100">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-amber-100 rounded-xl">
-              <Package className="h-6 w-6 text-amber-600" />
+              <AlertCircle className="h-6 w-6 text-amber-600" />
             </div>
             <div>
-              <p className="text-sm text-amber-600">Partial</p>
+              <p className="text-sm text-amber-600">Partial/Rejected</p>
               <p className="text-2xl font-bold text-amber-700">
-                {deliveries.filter(d => d.isPartialDelivery).length}
+                {deliveries.filter(d => d.isPartialDelivery || d.status === 'rejected').length}
               </p>
             </div>
           </div>
@@ -113,10 +132,21 @@ export default function MyDeliveries() {
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
           </div>
         ) : deliveries.length === 0 ? (
-          <div className="text-center py-12">
+          <div className="text-center py-12 px-6">
             <Truck className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">No deliveries recorded yet</p>
-            <p className="text-sm text-gray-400 mt-1">Deliveries will appear here after goods are received by Stores</p>
+            <p className="text-gray-700 font-medium text-lg mb-2">No deliveries recorded yet</p>
+            <div className="max-w-md mx-auto bg-blue-50 border border-blue-200 rounded-xl p-4 mt-4">
+              <p className="text-sm text-blue-800 font-medium mb-2">How deliveries work:</p>
+              <ol className="text-sm text-blue-700 text-left space-y-1 list-decimal list-inside">
+                <li>After acknowledging a Purchase Order, prepare and deliver the goods to the delivery address specified in the PO</li>
+                <li>Stores department will receive the goods and validate them against the PO</li>
+                <li>Stores will create a GRV (Goods Received Voucher) in the system</li>
+                <li>Once the GRV is created, your delivery will appear here automatically</li>
+              </ol>
+              <p className="text-xs text-blue-600 mt-3 italic">
+                Note: When you acknowledge a Purchase Order, a pending delivery record is created. Once Stores receives the goods, the delivery status will be updated and a GRV number will be assigned.
+              </p>
+            </div>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -137,9 +167,13 @@ export default function MyDeliveries() {
                 {deliveries.map((delivery) => (
                   <tr key={delivery._id} className="hover:bg-gray-50">
                     <td className="py-4 px-6">
-                      <span className="font-mono text-sm font-medium text-primary">
-                        {delivery.grvNumber}
-                      </span>
+                      {delivery.status === 'pending' ? (
+                        <span className="text-sm text-yellow-600 italic">Awaiting GRV</span>
+                      ) : (
+                        <span className="font-mono text-sm font-medium text-primary">
+                          {delivery.grvNumber || '-'}
+                        </span>
+                      )}
                     </td>
                     <td className="py-4 px-6">
                       <span className="font-mono text-sm text-gray-600">
@@ -148,11 +182,17 @@ export default function MyDeliveries() {
                     </td>
                     <td className="py-4 px-6">
                       <span className="text-sm text-gray-600">
-                        {delivery.deliveryNoteNumber || '-'}
+                        {delivery.deliveryNoteNumber || (delivery.status === 'pending' ? 'Not yet provided' : '-')}
                       </span>
                     </td>
                     <td className="py-4 px-6 text-sm text-gray-500">
-                      {new Date(delivery.deliveryDate).toLocaleDateString('en-ZA')}
+                      {delivery.status === 'pending' && delivery.expectedDeliveryDate ? (
+                        <span>
+                          Expected: {new Date(delivery.expectedDeliveryDate).toLocaleDateString('en-ZA')}
+                        </span>
+                      ) : (
+                        new Date(delivery.deliveryDate).toLocaleDateString('en-ZA')
+                      )}
                     </td>
                     <td className="py-4 px-6">
                       <span className="text-sm text-gray-600">{delivery.items?.length || 0} items</span>
@@ -169,8 +209,8 @@ export default function MyDeliveries() {
                       )}
                     </td>
                     <td className="py-4 px-6">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[delivery.status] || statusColors.received}`}>
-                        {delivery.status?.replace('_', ' ')}
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[delivery.status] || statusColors.received}`}>
+                        {formatStatus(delivery.status)}
                       </span>
                     </td>
                     <td className="py-4 px-6">

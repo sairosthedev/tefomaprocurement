@@ -1,4 +1,4 @@
-const { PurchaseOrder, SupplierProfile } = require('../../models');
+const { PurchaseOrder, SupplierProfile, Delivery } = require('../../models');
 const { createAuditLog } = require('../../middleware');
 
 const acknowledgePurchaseOrder = async (req, res) => {
@@ -71,6 +71,48 @@ const acknowledgePurchaseOrder = async (req, res) => {
     }
 
     await po.save();
+
+    // Create pending delivery record
+    // Check if a delivery already exists for this PO
+    const existingDelivery = await Delivery.findOne({
+      purchaseOrder: po._id,
+      isDeleted: false
+    });
+
+    if (!existingDelivery) {
+      // Create delivery items from PO items
+      const deliveryItems = po.items.map(item => ({
+        poItem: item._id,
+        description: item.description,
+        quantityOrdered: item.quantity,
+        quantityReceived: 0, // Will be updated when Stores receives goods
+        quantityRejected: 0,
+        condition: 'good'
+      }));
+
+      // Create pending delivery
+      const pendingDelivery = await Delivery.create({
+        purchaseOrder: po._id,
+        supplier: po.supplier,
+        deliveryDate: po.expectedDeliveryDate || new Date(),
+        expectedDeliveryDate: po.expectedDeliveryDate,
+        items: deliveryItems,
+        status: 'pending',
+        isPartialDelivery: false,
+        isFinalDelivery: true,
+        notes: 'Delivery pending - awaiting goods from supplier'
+      });
+
+      await createAuditLog({
+        action: 'create',
+        entity: 'Delivery',
+        entityId: pendingDelivery._id,
+        user: req.user,
+        description: `Created pending delivery for PO: ${po.poNumber}`,
+        newData: { status: 'pending', poNumber: po.poNumber },
+        req
+      });
+    }
 
     await createAuditLog({
       action: 'acknowledge',

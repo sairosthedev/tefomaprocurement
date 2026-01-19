@@ -38,19 +38,39 @@ const receiveGoods = async (req, res) => {
       }
     });
 
-    // Create delivery/GRV
-    const delivery = await Delivery.create({
+    // Check if there's a pending delivery for this PO
+    let delivery = await Delivery.findOne({
       purchaseOrder: purchaseOrderId,
-      supplier: po.supplier,
-      deliveryNoteNumber,
-      deliveryDate: new Date(deliveryDate),
-      receivedBy: req.user._id,
-      items,
-      isPartialDelivery: !allReceived,
-      isFinalDelivery: allReceived,
-      status: 'received',
-      notes
+      status: 'pending',
+      isDeleted: false
     });
+
+    if (delivery) {
+      // Update existing pending delivery to received
+      delivery.deliveryNoteNumber = deliveryNoteNumber;
+      delivery.deliveryDate = new Date(deliveryDate);
+      delivery.receivedBy = req.user._id;
+      delivery.items = items;
+      delivery.isPartialDelivery = !allReceived;
+      delivery.isFinalDelivery = allReceived;
+      delivery.status = 'received';
+      delivery.notes = notes;
+      await delivery.save();
+    } else {
+      // Create new delivery/GRV
+      delivery = await Delivery.create({
+        purchaseOrder: purchaseOrderId,
+        supplier: po.supplier,
+        deliveryNoteNumber,
+        deliveryDate: new Date(deliveryDate),
+        receivedBy: req.user._id,
+        items,
+        isPartialDelivery: !allReceived,
+        isFinalDelivery: allReceived,
+        status: 'received',
+        notes
+      });
+    }
 
     // Update PO quantities and create store transactions
     for (const item of items) {
