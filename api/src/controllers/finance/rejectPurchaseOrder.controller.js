@@ -21,10 +21,11 @@ const rejectPurchaseOrder = async (req, res) => {
       });
     }
 
-    if (po.status !== 'pending_finance') {
+    // Allow rejection if PO is pending approvals and Finance hasn't approved yet
+    if (po.status !== 'pending_approvals' || po.financeApproved) {
       return res.status(400).json({
         success: false,
-        message: 'Purchase order is not pending finance approval'
+        message: 'Purchase order is not pending Finance approval'
       });
     }
 

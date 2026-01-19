@@ -12,5 +12,9 @@ router.post('/requisitions', department.createRequisition);
 router.get('/requisitions', department.getRequisitions);
 router.put('/requisitions/:id/submit', department.submitRequisition);
 
+// Store Requisitions
+router.post('/store-requisitions', department.createStoreRequisition);
+router.get('/store-requisitions', department.getStoreRequisitions);
+
 module.exports = router;
 

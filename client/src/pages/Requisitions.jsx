@@ -6,7 +6,7 @@ import api from '../lib/api';
 import { 
   Plus, Search, Filter, Eye, Edit, Trash2, Send, 
   Clock, CheckCircle, XCircle, Package, Loader2, AlertCircle,
-  Check, X, FileText
+  Check, X, FileText, ShoppingCart, Truck
 } from 'lucide-react';
 import Modal from '../components/Modal';
 
@@ -245,6 +245,7 @@ export default function Requisitions() {
                   <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Items</th>
                   <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Priority</th>
                   <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Status</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">PO Status</th>
                   <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Date</th>
                   <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Actions</th>
                 </tr>
@@ -280,9 +281,97 @@ export default function Requisitions() {
                       </span>
                     </td>
                     <td className="py-4 px-6">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[req.status] || statusColors.draft}`}>
-                        {statusLabels[req.status] || req.status}
-                      </span>
+                      {/* Show computed status: if PO exists, show 'ordered', if delivered to stores, show appropriate status */}
+                      {(() => {
+                        let displayStatus = req.status;
+                        if (req.purchaseOrder) {
+                          displayStatus = 'ordered';
+                        } else if (req.itemsDeliveredToStores) {
+                          displayStatus = 'ordered'; // Will show as delivered in PO Status column
+                        }
+                        return (
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[displayStatus] || statusColors.draft}`}>
+                            {statusLabels[displayStatus] || displayStatus}
+                          </span>
+                        );
+                      })()}
+                    </td>
+                    <td className="py-4 px-6">
+                      {req.purchaseOrder ? (
+                        <div className="flex flex-col gap-1">
+                          <div className="font-mono text-sm font-semibold text-primary">
+                            {req.purchaseOrder.poNumber}
+                          </div>
+                          {req.purchaseOrder.supplier?.companyName && (
+                            <div className="text-xs text-gray-600">
+                              {req.purchaseOrder.supplier.companyName}
+                            </div>
+                          )}
+                          {req.purchaseOrder.status === 'pending_approvals' ? (
+                            <div className="flex flex-col gap-0.5 mt-1">
+                              <span className={`text-xs ${req.purchaseOrder.financeApproved ? 'text-green-700' : 'text-amber-700'}`}>
+                                Finance: {req.purchaseOrder.financeApproved ? 'Approved' : 'Pending'}
+                              </span>
+                              <span className={`text-xs ${req.purchaseOrder.cooApproved ? 'text-green-700' : 'text-purple-700'}`}>
+                                COO: {req.purchaseOrder.cooApproved ? 'Approved' : 'Pending'}
+                              </span>
+                            </div>
+                          ) : req.itemsDeliveredToStores ? (
+                            <div className="flex flex-col gap-0.5 mt-1">
+                              <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+                                ✅ Delivered to Stores
+                              </span>
+                            </div>
+                          ) : (
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium mt-1 ${
+                              req.purchaseOrder.status === 'approved' ? 'bg-green-100 text-green-700' :
+                              req.purchaseOrder.status === 'issued' ? 'bg-blue-100 text-blue-700' :
+                              req.purchaseOrder.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                              req.purchaseOrder.status === 'draft' ? 'bg-gray-100 text-gray-700' :
+                              'bg-gray-100 text-gray-700'
+                            }`}>
+                              {req.purchaseOrder.status === 'pending_finance' ? 'Pending Finance' :
+                               req.purchaseOrder.status === 'pending_coo' ? 'Pending COO' :
+                               req.purchaseOrder.status === 'pending_approvals' ? 'Pending Approvals' :
+                               req.purchaseOrder.status === 'approved' ? 'Approved' :
+                               req.purchaseOrder.status === 'issued' ? 'Issued' :
+                               req.purchaseOrder.status === 'rejected' ? 'Rejected' :
+                               req.purchaseOrder.status === 'draft' ? 'Draft' :
+                               req.purchaseOrder.status}
+                            </span>
+                          )}
+                        </div>
+                      ) : req.status === 'ordered' ? (
+                        <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">
+                          ⏳ PO Pending
+                        </span>
+                      ) : req.status === 'quoted' ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700">
+                            📋 Quotations Received
+                          </span>
+                          {req.rfq?.rfqNumber && (
+                            <span className="text-xs text-gray-500 font-mono">
+                              {req.rfq.rfqNumber}
+                            </span>
+                          )}
+                        </div>
+                      ) : req.status === 'sourcing' && req.rfq ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                            🔍 RFQ Created
+                          </span>
+                          <span className="text-xs text-gray-500 font-mono">
+                            {req.rfq.rfqNumber}
+                          </span>
+                        </div>
+                      ) : req.status === 'sourcing' ? (
+                        <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                          🔍 Sourcing
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">-</span>
+                      )}
                     </td>
                     <td className="py-4 px-6 text-sm text-gray-500">
                       {new Date(req.createdAt).toLocaleDateString('en-ZA')}
@@ -345,6 +434,18 @@ export default function Requisitions() {
                             Create RFQ
                           </button>
                         )}
+
+                        {/* Request from Stores Button - Show when items are delivered to stores */}
+                        {!isProcurement && req.itemsDeliveredToStores && (
+                          <button
+                            onClick={() => handleRequestFromStores(req)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700"
+                            title="Request items from stores"
+                          >
+                            <Truck className="h-3.5 w-3.5" />
+                            Request from Stores
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -402,6 +503,209 @@ export default function Requisitions() {
                 <p className="text-gray-900">{new Date(selectedRequisition.createdAt).toLocaleDateString('en-ZA')}</p>
               </div>
             </div>
+
+            {/* Purchase Order Status */}
+            {selectedRequisition.purchaseOrder && (
+              <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <ShoppingCart className="h-5 w-5 text-blue-600" />
+                  <h3 className="font-semibold text-blue-900">Purchase Order Status</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mb-3">
+                  <div>
+                    <label className="text-sm text-gray-600">PO Number</label>
+                    <p className="font-mono font-medium text-primary text-lg">
+                      {selectedRequisition.purchaseOrder.poNumber}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-600">PO Status</label>
+                    <p>
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                        selectedRequisition.purchaseOrder.status === 'pending_approvals' ? 'bg-blue-100 text-blue-700' :
+                        selectedRequisition.purchaseOrder.status === 'approved' ? 'bg-green-100 text-green-700' :
+                        selectedRequisition.purchaseOrder.status === 'issued' ? 'bg-blue-100 text-blue-700' :
+                        selectedRequisition.purchaseOrder.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                        'bg-amber-100 text-amber-700'
+                      }`}>
+                        {selectedRequisition.purchaseOrder.status === 'pending_approvals' ? '⏳ Pending Approvals' :
+                         selectedRequisition.purchaseOrder.status === 'pending_finance' ? 'Pending Finance' :
+                         selectedRequisition.purchaseOrder.status === 'pending_coo' ? 'Pending COO' :
+                         selectedRequisition.purchaseOrder.status === 'approved' ? 'Approved' :
+                         selectedRequisition.purchaseOrder.status === 'issued' ? 'Issued' :
+                         selectedRequisition.purchaseOrder.status === 'rejected' ? 'Rejected' :
+                         selectedRequisition.purchaseOrder.status}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+                {selectedRequisition.purchaseOrder.status === 'pending_approvals' && (
+                  <div className="bg-white rounded-lg p-3 border border-blue-100">
+                    <p className="text-sm font-medium text-gray-700 mb-2">Approval Progress:</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className={`rounded-lg p-2.5 ${selectedRequisition.purchaseOrder.financeApproved ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-medium text-gray-700">Finance</span>
+                          {selectedRequisition.purchaseOrder.financeApproved ? (
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <Clock className="h-4 w-4 text-amber-600" />
+                          )}
+                        </div>
+                        <p className={`text-xs ${selectedRequisition.purchaseOrder.financeApproved ? 'text-green-700' : 'text-amber-700'}`}>
+                          {selectedRequisition.purchaseOrder.financeApproved ? 'Approved' : 'Pending Approval'}
+                        </p>
+                        {selectedRequisition.purchaseOrder.financeApprovedAt && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            {new Date(selectedRequisition.purchaseOrder.financeApprovedAt).toLocaleDateString('en-ZA')}
+                          </p>
+                        )}
+                      </div>
+                      <div className={`rounded-lg p-2.5 ${selectedRequisition.purchaseOrder.cooApproved ? 'bg-green-50 border border-green-200' : 'bg-purple-50 border border-purple-200'}`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-medium text-gray-700">COO</span>
+                          {selectedRequisition.purchaseOrder.cooApproved ? (
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <Clock className="h-4 w-4 text-purple-600" />
+                          )}
+                        </div>
+                        <p className={`text-xs ${selectedRequisition.purchaseOrder.cooApproved ? 'text-green-700' : 'text-purple-700'}`}>
+                          {selectedRequisition.purchaseOrder.cooApproved ? 'Approved' : 'Pending Approval'}
+                        </p>
+                        {selectedRequisition.purchaseOrder.cooApprovedAt && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            {new Date(selectedRequisition.purchaseOrder.cooApprovedAt).toLocaleDateString('en-ZA')}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    {!selectedRequisition.purchaseOrder.financeApproved || !selectedRequisition.purchaseOrder.cooApproved ? (
+                      <p className="text-xs text-amber-700 mt-3 italic">
+                        ⏳ Purchase Order is awaiting approval from {!selectedRequisition.purchaseOrder.financeApproved && !selectedRequisition.purchaseOrder.cooApproved ? 'Finance and COO' : !selectedRequisition.purchaseOrder.financeApproved ? 'Finance' : 'COO'}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-green-700 mt-3 font-medium">
+                        ✓ All approvals complete. Purchase Order is ready to be issued.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Delivered to Stores Status */}
+            {selectedRequisition.itemsDeliveredToStores && (
+              <div className="bg-green-50 rounded-xl p-4 border border-green-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <Truck className="h-5 w-5 text-green-600" />
+                  <h3 className="font-semibold text-green-900">Items Available in Stores</h3>
+                </div>
+                <p className="text-sm text-green-800 mb-3">
+                  Your ordered items have been received and are now available in stores. You can request them using the button below.
+                </p>
+                <button
+                  onClick={() => {
+                    handleRequestFromStores(selectedRequisition);
+                    setShowViewModal(false);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700"
+                >
+                  <Truck className="h-4 w-4" />
+                  Request from Stores
+                </button>
+              </div>
+            )}
+
+            {/* Purchase Order Status */}
+            {selectedRequisition.purchaseOrder && (
+              <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <ShoppingCart className="h-5 w-5 text-blue-600" />
+                  <h3 className="font-semibold text-blue-900">Purchase Order Status</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mb-3">
+                  <div>
+                    <label className="text-sm text-gray-600">PO Number</label>
+                    <p className="font-mono font-medium text-primary text-lg">
+                      {selectedRequisition.purchaseOrder.poNumber}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-600">PO Status</label>
+                    <p>
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                        selectedRequisition.purchaseOrder.status === 'pending_approvals' ? 'bg-blue-100 text-blue-700' :
+                        selectedRequisition.purchaseOrder.status === 'approved' ? 'bg-green-100 text-green-700' :
+                        selectedRequisition.purchaseOrder.status === 'issued' ? 'bg-blue-100 text-blue-700' :
+                        selectedRequisition.purchaseOrder.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                        'bg-amber-100 text-amber-700'
+                      }`}>
+                        {selectedRequisition.purchaseOrder.status === 'pending_approvals' ? '⏳ Pending Approvals' :
+                         selectedRequisition.purchaseOrder.status === 'pending_finance' ? 'Pending Finance' :
+                         selectedRequisition.purchaseOrder.status === 'pending_coo' ? 'Pending COO' :
+                         selectedRequisition.purchaseOrder.status === 'approved' ? 'Approved' :
+                         selectedRequisition.purchaseOrder.status === 'issued' ? 'Issued' :
+                         selectedRequisition.purchaseOrder.status === 'rejected' ? 'Rejected' :
+                         selectedRequisition.purchaseOrder.status}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+                {selectedRequisition.purchaseOrder.status === 'pending_approvals' && (
+                  <div className="bg-white rounded-lg p-3 border border-blue-100">
+                    <p className="text-sm font-medium text-gray-700 mb-2">Approval Progress:</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className={`rounded-lg p-2.5 ${selectedRequisition.purchaseOrder.financeApproved ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-medium text-gray-700">Finance</span>
+                          {selectedRequisition.purchaseOrder.financeApproved ? (
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <Clock className="h-4 w-4 text-amber-600" />
+                          )}
+                        </div>
+                        <p className={`text-xs ${selectedRequisition.purchaseOrder.financeApproved ? 'text-green-700' : 'text-amber-700'}`}>
+                          {selectedRequisition.purchaseOrder.financeApproved ? 'Approved' : 'Pending Approval'}
+                        </p>
+                        {selectedRequisition.purchaseOrder.financeApprovedAt && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            {new Date(selectedRequisition.purchaseOrder.financeApprovedAt).toLocaleDateString('en-ZA')}
+                          </p>
+                        )}
+                      </div>
+                      <div className={`rounded-lg p-2.5 ${selectedRequisition.purchaseOrder.cooApproved ? 'bg-green-50 border border-green-200' : 'bg-purple-50 border border-purple-200'}`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-medium text-gray-700">COO</span>
+                          {selectedRequisition.purchaseOrder.cooApproved ? (
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <Clock className="h-4 w-4 text-purple-600" />
+                          )}
+                        </div>
+                        <p className={`text-xs ${selectedRequisition.purchaseOrder.cooApproved ? 'text-green-700' : 'text-purple-700'}`}>
+                          {selectedRequisition.purchaseOrder.cooApproved ? 'Approved' : 'Pending Approval'}
+                        </p>
+                        {selectedRequisition.purchaseOrder.cooApprovedAt && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            {new Date(selectedRequisition.purchaseOrder.cooApprovedAt).toLocaleDateString('en-ZA')}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    {!selectedRequisition.purchaseOrder.financeApproved || !selectedRequisition.purchaseOrder.cooApproved ? (
+                      <p className="text-xs text-amber-700 mt-3 italic">
+                        ⏳ Purchase Order is awaiting approval from {!selectedRequisition.purchaseOrder.financeApproved && !selectedRequisition.purchaseOrder.cooApproved ? 'Finance and COO' : !selectedRequisition.purchaseOrder.financeApproved ? 'Finance' : 'COO'}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-green-700 mt-3 font-medium">
+                        ✓ All approvals complete. Purchase Order is ready to be issued.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div>
               <label className="text-sm text-gray-500">Justification</label>

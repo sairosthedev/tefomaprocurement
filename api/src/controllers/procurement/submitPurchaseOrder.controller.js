@@ -20,12 +20,19 @@ const submitPurchaseOrder = async (req, res) => {
       });
     }
 
-    po.status = 'pending_finance';
+    // Set status to pending_approvals for parallel Finance and COO approvals
+    po.status = 'pending_approvals';
+    po.financeApproved = false;
+    po.cooApproved = false;
+    po.financeApprovedBy = null;
+    po.financeApprovedAt = null;
+    po.cooApprovedBy = null;
+    po.cooApprovedAt = null;
     po.approvalHistory.push({
       action: 'submitted',
       by: req.user._id,
       role: req.user.role,
-      comments: 'Submitted for Finance approval'
+      comments: 'Submitted for Finance and COO approval'
     });
 
     await po.save();
@@ -35,14 +42,14 @@ const submitPurchaseOrder = async (req, res) => {
       entity: 'PurchaseOrder',
       entityId: po._id,
       user: req.user,
-      description: `Submitted PO: ${po.poNumber} for Finance approval`,
-      newData: { status: 'pending_finance' },
+      description: `Submitted PO: ${po.poNumber} for Finance and COO approval`,
+      newData: { status: 'pending_approvals' },
       req
     });
 
     res.status(200).json({
       success: true,
-      message: 'Purchase order submitted for Finance approval',
+      message: 'Purchase order submitted for Finance and COO approval',
       data: po
     });
   } catch (error) {

@@ -4,6 +4,7 @@ const { createAuditLog } = require('../../middleware');
 const acknowledgePurchaseOrder = async (req, res) => {
   try {
     const { id } = req.params;
+    const { deliveryNoteNumber, expectedDeliveryDate } = req.body;
 
     const profile = await SupplierProfile.findOne({ user: req.user._id });
     if (!profile) {
@@ -94,13 +95,14 @@ const acknowledgePurchaseOrder = async (req, res) => {
       const pendingDelivery = await Delivery.create({
         purchaseOrder: po._id,
         supplier: po.supplier,
-        deliveryDate: po.expectedDeliveryDate || new Date(),
-        expectedDeliveryDate: po.expectedDeliveryDate,
+        deliveryDate: expectedDeliveryDate ? new Date(expectedDeliveryDate) : (po.expectedDeliveryDate || new Date()),
+        expectedDeliveryDate: expectedDeliveryDate ? new Date(expectedDeliveryDate) : po.expectedDeliveryDate,
+        deliveryNoteNumber: deliveryNoteNumber || null, // Supplier can provide delivery note number
         items: deliveryItems,
         status: 'pending',
         isPartialDelivery: false,
         isFinalDelivery: true,
-        notes: 'Delivery pending - awaiting goods from supplier'
+        notes: deliveryNoteNumber ? `Delivery note: ${deliveryNoteNumber}` : 'Delivery pending - awaiting goods from supplier'
       });
 
       await createAuditLog({

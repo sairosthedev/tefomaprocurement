@@ -4,8 +4,10 @@ const getPendingApprovals = async (req, res) => {
   try {
     const { page = 1, limit = 20 } = req.query;
     
+    // Get POs that are pending approvals and Finance hasn't approved yet
     const query = { 
-      status: 'pending_finance',
+      status: 'pending_approvals',
+      financeApproved: false,
       isDeleted: false 
     };
 

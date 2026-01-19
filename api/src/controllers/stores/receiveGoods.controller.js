@@ -1,4 +1,4 @@
-const { Delivery, PurchaseOrder, Inventory, StoreTransaction, Item } = require('../../models');
+const { Delivery, PurchaseOrder, Inventory, StoreTransaction, Item, PurchaseRequisition } = require('../../models');
 const { createAuditLog } = require('../../middleware');
 
 const receiveGoods = async (req, res) => {
@@ -72,19 +72,139 @@ const receiveGoods = async (req, res) => {
       });
     }
 
-    // Update PO quantities and create store transactions
+    // Get initial transaction count to avoid race conditions
+    let transactionCounter = await StoreTransaction.countDocuments();
+    const year = new Date().getFullYear();
+
+    // Update PO quantities and update inventory
     for (const item of items) {
       const poItem = po.items.id(item.poItem);
-      if (poItem) {
-        poItem.quantityReceived = (poItem.quantityReceived || 0) + item.quantityReceived;
+      if (!poItem) continue;
+
+      // Update PO item quantity received
+      poItem.quantityReceived = (poItem.quantityReceived || 0) + item.quantityReceived;
+
+      // Find or create Item by matching description
+      let inventoryItem = await Item.findOne({
+        $or: [
+          { name: { $regex: new RegExp(poItem.description, 'i') } },
+          { description: { $regex: new RegExp(poItem.description, 'i') } }
+        ],
+        isDeleted: false
+      });
+
+      // If item not found, create a new one
+      if (!inventoryItem) {
+        // Generate item code
+        const itemCount = await Item.countDocuments();
+        const itemCode = `ITEM-${String(itemCount + 1).padStart(6, '0')}`;
+        
+        // Normalize unit to lowercase to match enum values
+        const normalizedUnit = (poItem.unit || 'each').toLowerCase();
+        const validUnits = ['each', 'kg', 'litre', 'meter', 'box', 'pack', 'set', 'roll', 'sheet', 'pair'];
+        const unit = validUnits.includes(normalizedUnit) ? normalizedUnit : 'each';
+        
+        inventoryItem = await Item.create({
+          code: itemCode,
+          name: poItem.description,
+          description: poItem.description,
+          category: 'General', // Default category
+          unit: unit,
+          status: 'active'
+        });
       }
 
-      // TODO: Update inventory and create store transactions
-      // This would require linking PO items to inventory items
+      // Find or create Inventory for this item
+      let inventory = await Inventory.findOne({
+        item: inventoryItem._id,
+        location: 'Main Store',
+        isDeleted: false
+      });
+
+      if (!inventory) {
+        inventory = await Inventory.create({
+          item: inventoryItem._id,
+          location: 'Main Store',
+          quantityOnHand: 0,
+          quantityReserved: 0,
+          unitCost: poItem.unitPrice || 0
+        });
+      }
+
+      // Update inventory quantities (only for items in good condition)
+      const goodQuantity = item.condition === 'good' ? item.quantityReceived : 0;
+      if (goodQuantity > 0) {
+        const previousQty = inventory.quantityOnHand;
+        inventory.quantityOnHand += goodQuantity;
+        
+        // Update unit cost if this is a new item or if we want to use weighted average
+        // For now, we'll use the PO unit price if inventory is empty, otherwise keep existing
+        if (inventory.quantityOnHand === goodQuantity) {
+          inventory.unitCost = poItem.unitPrice || inventory.unitCost;
+        }
+        
+        inventory.lastReceivedDate = new Date();
+        await inventory.save();
+
+        // Generate transaction number (increment counter for each transaction)
+        transactionCounter++;
+        const transactionNumber = `ST-REC-${year}-${String(transactionCounter).padStart(6, '0')}`;
+
+        // Create store transaction for receipt
+        await StoreTransaction.create({
+          transactionNumber,
+          type: 'receipt',
+          item: inventoryItem._id,
+          inventory: inventory._id,
+          quantity: goodQuantity,
+          previousQuantity: previousQty,
+          newQuantity: inventory.quantityOnHand,
+          unitCost: poItem.unitPrice || 0,
+          totalValue: goodQuantity * (poItem.unitPrice || 0),
+          reference: {
+            type: 'grv',
+            document: delivery._id
+          },
+          performedBy: req.user._id,
+          notes: `Received from PO ${po.poNumber} - GRV ${delivery.grvNumber || 'Pending'}`
+        });
+      }
     }
 
     po.status = allReceived ? 'completed' : 'partially_received';
     await po.save();
+
+    // Auto-accept delivery when goods are received (can be inspected later if needed)
+    if (delivery.status === 'received') {
+      delivery.status = 'accepted';
+      await delivery.save();
+    }
+
+    // Update Purchase Requisition status if PO is completed
+    if (allReceived && po.purchaseRequisition) {
+      const requisition = await PurchaseRequisition.findById(po.purchaseRequisition);
+      if (requisition && requisition.status === 'ordered') {
+        requisition.status = 'completed';
+        requisition.statusHistory.push({
+          action: 'po_created',
+          by: req.user._id,
+          role: req.user.role,
+          comments: `Purchase order ${po.poNumber} completed - all goods received and accepted`
+        });
+        await requisition.save();
+
+        await createAuditLog({
+          action: 'status_change',
+          entity: 'PurchaseRequisition',
+          entityId: requisition._id,
+          user: req.user,
+          description: `Requisition ${requisition.requisitionNumber} completed - all goods delivered`,
+          previousData: { status: 'ordered' },
+          newData: { status: 'completed' },
+          req
+        });
+      }
+    }
 
     await createAuditLog({
       action: 'create',
@@ -92,13 +212,14 @@ const receiveGoods = async (req, res) => {
       entityId: delivery._id,
       user: req.user,
       description: `Received goods: ${delivery.grvNumber} for PO ${po.poNumber}`,
-      newData: { grvNumber: delivery.grvNumber, itemCount: items.length },
+      newData: { grvNumber: delivery.grvNumber, itemCount: items.length, status: delivery.status },
       req
     });
 
     res.status(201).json({
       success: true,
-      data: delivery
+      data: delivery,
+      message: allReceived ? 'All goods received and requisition marked as completed' : 'Goods received successfully'
     });
   } catch (error) {
     console.error('Receive goods error:', error);

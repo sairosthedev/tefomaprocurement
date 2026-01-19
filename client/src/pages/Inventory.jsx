@@ -79,7 +79,10 @@ export default function Inventory() {
     }
   };
 
-  const lowStockCount = inventory.filter(item => item.currentQuantity <= item.reorderLevel).length;
+  const lowStockCount = inventory.filter(inv => {
+    const item = inv.item || {};
+    return inv.quantityOnHand <= (item.reorderLevel || 0);
+  }).length;
 
   return (
     <div className="p-8">
@@ -139,8 +142,8 @@ export default function Inventory() {
             <div>
               <p className="text-sm text-gray-500">Stock Value</p>
               <p className="text-2xl font-bold text-gray-900">
-                {formatCurrency(inventory.reduce((sum, item) => 
-                  sum + (item.currentQuantity * (item.unitPrice || 0)), 0
+                {formatCurrency(inventory.reduce((sum, inv) => 
+                  sum + (inv.totalValue || 0), 0
                 ))}
               </p>
             </div>
@@ -155,7 +158,7 @@ export default function Inventory() {
             <div>
               <p className="text-sm text-gray-500">Categories</p>
               <p className="text-2xl font-bold text-gray-900">
-                {new Set(inventory.map(i => i.category)).size}
+                {new Set(inventory.map(inv => inv.item?.category).filter(Boolean)).size}
               </p>
             </div>
           </div>
@@ -217,32 +220,33 @@ export default function Inventory() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {inventory.map((item) => {
-                  const isLowStock = item.currentQuantity <= item.reorderLevel;
+                {inventory.map((inv) => {
+                  const item = inv.item || {};
+                  const isLowStock = inv.quantityOnHand <= (item.reorderLevel || 0);
                   return (
-                    <tr key={item._id} className={`hover:bg-gray-50 ${isLowStock ? 'bg-red-50/50' : ''}`}>
+                    <tr key={inv._id} className={`hover:bg-gray-50 ${isLowStock ? 'bg-red-50/50' : ''}`}>
                       <td className="py-4 px-6">
                         <span className="font-mono text-sm font-medium text-primary">
-                          {item.itemCode || `ITM-${item._id.slice(-6).toUpperCase()}`}
+                          {item.code || `ITM-${inv._id.slice(-6).toUpperCase()}`}
                         </span>
                       </td>
                       <td className="py-4 px-6">
-                        <p className="font-medium text-gray-900">{item.name}</p>
-                        <p className="text-sm text-gray-500 truncate max-w-xs">{item.description}</p>
+                        <p className="font-medium text-gray-900">{item.name || '-'}</p>
+                        <p className="text-sm text-gray-500 truncate max-w-xs">{item.description || ''}</p>
                       </td>
                       <td className="py-4 px-6">
                         <span className="text-sm text-gray-600">{item.category || '-'}</span>
                       </td>
                       <td className="py-4 px-6">
                         <span className={`text-sm font-semibold ${isLowStock ? 'text-red-600' : 'text-gray-900'}`}>
-                          {item.currentQuantity} {item.unit}
+                          {inv.quantityOnHand || 0} {item.unit || 'each'}
                         </span>
                       </td>
                       <td className="py-4 px-6 text-sm text-gray-500">
-                        {item.reorderLevel} {item.unit}
+                        {item.reorderLevel || 0} {item.unit || 'each'}
                       </td>
                       <td className="py-4 px-6 text-sm text-gray-900">
-                        {formatCurrency(item.unitPrice || 0)}
+                        {formatCurrency(inv.unitCost || 0)}
                       </td>
                       <td className="py-4 px-6">
                         {isLowStock ? (
@@ -257,7 +261,7 @@ export default function Inventory() {
                       </td>
                       <td className="py-4 px-6">
                         <button
-                          onClick={() => { setSelectedItem(item); setShowViewModal(true); }}
+                          onClick={() => { setSelectedItem({ ...inv, item }); setShowViewModal(true); }}
                           className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
                         >
                           <Eye className="h-4 w-4" />
@@ -406,36 +410,36 @@ export default function Inventory() {
               <div>
                 <label className="text-sm text-gray-500">Item Code</label>
                 <p className="font-mono font-medium text-primary">
-                  {selectedItem.itemCode || `ITM-${selectedItem._id.slice(-6).toUpperCase()}`}
+                  {selectedItem.item?.code || `ITM-${selectedItem._id.slice(-6).toUpperCase()}`}
                 </p>
               </div>
               <div>
                 <label className="text-sm text-gray-500">Category</label>
-                <p className="text-gray-900">{selectedItem.category || '-'}</p>
+                <p className="text-gray-900">{selectedItem.item?.category || '-'}</p>
               </div>
               <div>
                 <label className="text-sm text-gray-500">Current Stock</label>
                 <p className="text-xl font-bold text-gray-900">
-                  {selectedItem.currentQuantity} {selectedItem.unit}
+                  {selectedItem.quantityOnHand || 0} {selectedItem.item?.unit || 'each'}
                 </p>
               </div>
               <div>
                 <label className="text-sm text-gray-500">Unit Price</label>
-                <p className="text-gray-900">{formatCurrency(selectedItem.unitPrice || 0)}</p>
+                <p className="text-gray-900">{formatCurrency(selectedItem.unitCost || 0)}</p>
               </div>
             </div>
             <div>
               <label className="text-sm text-gray-500">Name</label>
-              <p className="text-gray-900 font-medium">{selectedItem.name}</p>
+              <p className="text-gray-900 font-medium">{selectedItem.item?.name || '-'}</p>
             </div>
             <div>
               <label className="text-sm text-gray-500">Description</label>
-              <p className="text-gray-900">{selectedItem.description || 'No description'}</p>
+              <p className="text-gray-900">{selectedItem.item?.description || 'No description'}</p>
             </div>
             <div>
               <label className="text-sm text-gray-500">Total Value</label>
               <p className="text-xl font-bold text-green-600">
-                {formatCurrency(selectedItem.currentQuantity * (selectedItem.unitPrice || 0))}
+                {formatCurrency(selectedItem.totalValue || 0)}
               </p>
             </div>
           </div>

@@ -39,6 +39,15 @@ const statusIcons = {
   expired: Clock
 };
 
+const statusLabels = {
+  draft: 'Draft',
+  submitted: 'Received from Supplier',
+  under_review: 'Under Review',
+  accepted: 'Accepted',
+  rejected: 'Rejected',
+  expired: 'Expired'
+};
+
 export default function Quotations() {
   const { showToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -213,7 +222,7 @@ export default function Quotations() {
             className="px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
           >
             <option value="">All Status</option>
-            <option value="submitted">Submitted</option>
+            <option value="submitted">Received from Supplier</option>
             <option value="under_review">Under Review</option>
             <option value="accepted">Accepted</option>
             <option value="rejected">Rejected</option>
@@ -290,7 +299,7 @@ export default function Quotations() {
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${statusColors[quotation.status]}`}>
                           <StatusIcon className="h-3.5 w-3.5" />
-                          {quotation.status.replace('_', ' ').charAt(0).toUpperCase() + quotation.status.replace('_', ' ').slice(1)}
+                          {statusLabels[quotation.status] || quotation.status.replace('_', ' ').charAt(0).toUpperCase() + quotation.status.replace('_', ' ').slice(1)}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
@@ -336,7 +345,7 @@ export default function Quotations() {
               <div>
                 <label className="text-sm text-gray-500">Status</label>
                 <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${statusColors[selectedQuotation.status]}`}>
-                  {selectedQuotation.status.replace('_', ' ').charAt(0).toUpperCase() + selectedQuotation.status.replace('_', ' ').slice(1)}
+                  {statusLabels[selectedQuotation.status] || selectedQuotation.status.replace('_', ' ').charAt(0).toUpperCase() + selectedQuotation.status.replace('_', ' ').slice(1)}
                 </span>
               </div>
               <div>

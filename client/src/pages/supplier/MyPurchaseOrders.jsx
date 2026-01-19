@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../components/Toast';
 import api from '../../lib/api';
 import { ShoppingCart, Eye, Loader2, CheckCircle, Truck, Download } from 'lucide-react';
@@ -24,11 +25,17 @@ const statusColors = {
 };
 
 export default function MyPurchaseOrders() {
+  const navigate = useNavigate();
   const { showToast } = useToast();
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPO, setSelectedPO] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showAcknowledgeModal, setShowAcknowledgeModal] = useState(false);
+  const [acknowledgeData, setAcknowledgeData] = useState({
+    deliveryNoteNumber: '',
+    expectedDeliveryDate: ''
+  });
 
   useEffect(() => {
     fetchMyPurchaseOrders();
@@ -53,10 +60,26 @@ export default function MyPurchaseOrders() {
     }
   };
 
-  const handleAcknowledge = async (id) => {
+  const openAcknowledgeModal = (po) => {
+    setSelectedPO(po);
+    setAcknowledgeData({
+      deliveryNoteNumber: '',
+      expectedDeliveryDate: po.expectedDeliveryDate ? new Date(po.expectedDeliveryDate).toISOString().split('T')[0] : ''
+    });
+    setShowAcknowledgeModal(true);
+  };
+
+  const handleAcknowledge = async () => {
+    if (!selectedPO) return;
+    
     try {
-      await api.put(`/supplier/purchase-orders/${id}/acknowledge`);
+      await api.put(`/supplier/purchase-orders/${selectedPO._id}/acknowledge`, {
+        deliveryNoteNumber: acknowledgeData.deliveryNoteNumber.trim() || undefined,
+        expectedDeliveryDate: acknowledgeData.expectedDeliveryDate || undefined
+      });
       showToast('Purchase order acknowledged', 'success');
+      setShowAcknowledgeModal(false);
+      setAcknowledgeData({ deliveryNoteNumber: '', expectedDeliveryDate: '' });
       fetchMyPurchaseOrders();
     } catch (error) {
       showToast(error.response?.data?.message || 'Failed to acknowledge', 'error');
@@ -181,7 +204,7 @@ export default function MyPurchaseOrders() {
                         </button>
                         {(po.status === 'approved' || po.status === 'issued') && !po.isAcknowledged && (
                           <button
-                            onClick={() => handleAcknowledge(po._id)}
+                            onClick={() => openAcknowledgeModal(po)}
                             className="px-3 py-1.5 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700"
                           >
                             Acknowledge
@@ -194,10 +217,10 @@ export default function MyPurchaseOrders() {
                             </span>
                             {po.status === 'issued' && (
                               <button
-                                onClick={() => window.location.href = '/app/my-deliveries'}
+                                onClick={() => navigate('/app/my-deliveries')}
                                 className="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                               >
-                                View Deliveries
+                                Manage Delivery
                               </button>
                             )}
                           </div>
@@ -211,6 +234,81 @@ export default function MyPurchaseOrders() {
           </div>
         )}
       </div>
+
+      {/* Acknowledge Modal */}
+      <Modal
+        isOpen={showAcknowledgeModal}
+        onClose={() => {
+          setShowAcknowledgeModal(false);
+          setAcknowledgeData({ deliveryNoteNumber: '', expectedDeliveryDate: '' });
+        }}
+        title="Acknowledge Purchase Order"
+      >
+        {selectedPO && (
+          <div className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <p className="text-sm text-blue-800">
+                <strong>PO Number:</strong> {selectedPO.poNumber}
+              </p>
+              <p className="text-sm text-blue-800 mt-1">
+                <strong>Total Value:</strong> {formatCurrency(selectedPO.totalAmount, selectedPO.currency || 'USD')}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-sm text-gray-700 mb-4">
+                By acknowledging this purchase order, you confirm that you have received it and will proceed with delivery. 
+                A pending delivery record will be created for tracking purposes.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Delivery Note Number <span className="text-gray-400">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={acknowledgeData.deliveryNoteNumber}
+                  onChange={(e) => setAcknowledgeData({ ...acknowledgeData, deliveryNoteNumber: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                  placeholder="Enter delivery note number if available"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Expected Delivery Date <span className="text-gray-400">(Optional)</span>
+                </label>
+                <input
+                  type="date"
+                  value={acknowledgeData.expectedDeliveryDate}
+                  onChange={(e) => setAcknowledgeData({ ...acknowledgeData, expectedDeliveryDate: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <button
+                onClick={() => {
+                  setShowAcknowledgeModal(false);
+                  setAcknowledgeData({ deliveryNoteNumber: '', expectedDeliveryDate: '' });
+                }}
+                className="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAcknowledge}
+                className="px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700"
+              >
+                Confirm Acknowledgment
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* View Modal */}
       <Modal

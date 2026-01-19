@@ -12,7 +12,7 @@ const getInventory = async (req, res) => {
       .populate({
         path: 'item',
         match: search ? { name: { $regex: search, $options: 'i' } } : {},
-        select: 'code name category unit reorderLevel'
+        select: 'code name description category unit reorderLevel'
       })
       .sort({ 'item.name': 1 })
       .skip(skip)

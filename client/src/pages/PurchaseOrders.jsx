@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { procurementAPI } from '../lib/api';
+import { procurementAPI, financeAPI } from '../lib/api';
 import { formatCurrency } from '../lib/constants';
 import { useToast } from '../components/Toast';
+import { useAuth } from '../context/AuthContext';
 import { 
   Search, 
   Plus,
@@ -22,6 +23,7 @@ const statusColors = {
   draft: 'bg-gray-100 text-gray-700',
   pending_finance: 'bg-amber-100 text-amber-700',
   pending_coo: 'bg-purple-100 text-purple-700',
+  pending_approvals: 'bg-blue-100 text-blue-700',
   approved: 'bg-blue-100 text-blue-700',
   rejected: 'bg-red-100 text-red-700',
   issued: 'bg-green-100 text-green-700',
@@ -34,6 +36,7 @@ const statusIcons = {
   draft: Clock,
   pending_finance: Clock,
   pending_coo: Clock,
+  pending_approvals: Clock,
   approved: CheckCircle,
   rejected: XCircle,
   issued: Send,
@@ -45,26 +48,32 @@ const statusIcons = {
 export default function PurchaseOrders() {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { user } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [submitting, setSubmitting] = useState(null);
 
+  const isFinance = user?.role === 'finance';
+
   useEffect(() => {
     fetchOrders();
-  }, [search, statusFilter]);
+  }, [search, statusFilter, isFinance]);
 
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const response = await procurementAPI.getPurchaseOrders({ 
+      // Use Finance API if user is Finance, otherwise use Procurement API
+      const apiToUse = isFinance ? financeAPI : procurementAPI;
+      const response = await apiToUse.getPurchaseOrders({ 
         search, 
         status: statusFilter 
       });
       setOrders(response.data.data);
     } catch (error) {
       console.error('Error fetching orders:', error);
+      showToast(error.response?.data?.message || 'Failed to fetch purchase orders', 'error');
     } finally {
       setLoading(false);
     }
@@ -98,13 +107,15 @@ export default function PurchaseOrders() {
           <h1 className="text-2xl font-bold text-gray-900">Purchase Orders</h1>
           <p className="text-gray-500 mt-1">Manage and track purchase orders</p>
         </div>
-        <button 
-          onClick={() => navigate('/app/quotations?status=accepted')}
-          className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
-        >
-          <Plus className="h-5 w-5" />
-          Create PO from Quotation
-        </button>
+        {!isFinance && (
+          <button 
+            onClick={() => navigate('/app/quotations?status=accepted')}
+            className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+          >
+            <Plus className="h-5 w-5" />
+            Create PO from Quotation
+          </button>
+        )}
       </div>
 
       {/* Filters */}
@@ -129,6 +140,7 @@ export default function PurchaseOrders() {
             <option value="draft">Draft</option>
             <option value="pending_finance">Pending Finance</option>
             <option value="pending_coo">Pending COO</option>
+            <option value="pending_approvals">Pending Approvals</option>
             <option value="approved">Approved</option>
             <option value="issued">Issued</option>
             <option value="completed">Completed</option>
@@ -200,17 +212,28 @@ export default function PurchaseOrders() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${statusColors[order.status]}`}>
-                          <StatusIcon className="h-3.5 w-3.5" />
-                          {formatStatus(order.status)}
-                        </span>
+                        {order.status === 'pending_approvals' ? (
+                          <div className="flex flex-col gap-1">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${order.financeApproved ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                              Finance: {order.financeApproved ? 'Approved' : 'Pending'}
+                            </span>
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${order.cooApproved ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
+                              COO: {order.cooApproved ? 'Approved' : 'Pending'}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${statusColors[order.status]}`}>
+                            <StatusIcon className="h-3.5 w-3.5" />
+                            {formatStatus(order.status)}
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
                         {new Date(order.createdAt).toLocaleDateString('en-ZA')}
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {order.status === 'draft' && (
+                          {!isFinance && order.status === 'draft' && (
                             <button
                               onClick={() => handleSubmit(order._id)}
                               disabled={submitting === order._id}

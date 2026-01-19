@@ -14,20 +14,36 @@ const approvePurchaseOrder = async (req, res) => {
       });
     }
 
-    if (po.status !== 'pending_finance') {
+    // Check if PO is pending approvals and Finance hasn't approved yet
+    if (po.status !== 'pending_approvals') {
       return res.status(400).json({
         success: false,
-        message: 'Purchase order is not pending finance approval'
+        message: 'Purchase order is not pending approvals'
       });
     }
 
-    po.status = 'pending_coo';
+    if (po.financeApproved) {
+      return res.status(400).json({
+        success: false,
+        message: 'Purchase order has already been approved by Finance'
+      });
+    }
+
+    // Mark Finance approval
+    po.financeApproved = true;
+    po.financeApprovedBy = req.user._id;
+    po.financeApprovedAt = new Date();
     po.approvalHistory.push({
       action: 'finance_approved',
       by: req.user._id,
       role: 'finance',
       comments: comments || 'Approved by Finance'
     });
+
+    // Check if both approvals are complete
+    if (po.financeApproved && po.cooApproved) {
+      po.status = 'approved';
+    }
 
     await po.save();
 
@@ -37,13 +53,18 @@ const approvePurchaseOrder = async (req, res) => {
       entityId: po._id,
       user: req.user,
       description: `Finance approved PO: ${po.poNumber}`,
-      newData: { status: 'pending_coo' },
+      newData: { 
+        financeApproved: true,
+        status: po.status 
+      },
       req
     });
 
     res.status(200).json({
       success: true,
-      message: 'Purchase order approved by Finance',
+      message: po.status === 'approved' 
+        ? 'Purchase order approved by Finance. All approvals complete.' 
+        : 'Purchase order approved by Finance. Awaiting COO approval.',
       data: po
     });
   } catch (error) {

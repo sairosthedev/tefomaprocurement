@@ -1,4 +1,4 @@
-const { PurchaseOrder, Quotation, RFQ } = require('../../models');
+const { PurchaseOrder, Quotation, RFQ, PurchaseRequisition } = require('../../models');
 const { createAuditLog } = require('../../middleware');
 
 const createPurchaseOrder = async (req, res) => {
@@ -83,6 +83,33 @@ const createPurchaseOrder = async (req, res) => {
         comments: 'Purchase Order created'
       }]
     });
+
+    // Update Purchase Requisition status to 'ordered' if it exists
+    if (po.purchaseRequisition) {
+      const requisition = await PurchaseRequisition.findById(po.purchaseRequisition);
+      if (requisition && requisition.status !== 'ordered' && requisition.status !== 'completed') {
+        const previousStatus = requisition.status;
+        requisition.status = 'ordered';
+        requisition.statusHistory.push({
+          action: 'po_created',
+          by: req.user._id,
+          role: req.user.role,
+          comments: `Purchase order ${po.poNumber} created`
+        });
+        await requisition.save();
+
+        await createAuditLog({
+          action: 'status_change',
+          entity: 'PurchaseRequisition',
+          entityId: requisition._id,
+          user: req.user,
+          description: `Requisition ${requisition.requisitionNumber} status updated to ordered`,
+          previousData: { status: previousStatus },
+          newData: { status: 'ordered' },
+          req
+        });
+      }
+    }
 
     await createAuditLog({
       action: 'create',

@@ -100,9 +100,27 @@ const PurchaseOrderSchema = new mongoose.Schema({
   termsAndConditions: String,
   status: {
     type: String,
-    enum: ['draft', 'pending_finance', 'pending_coo', 'approved', 'rejected', 'issued', 'partially_received', 'completed', 'cancelled'],
+    enum: ['draft', 'pending_finance', 'pending_coo', 'pending_approvals', 'approved', 'rejected', 'issued', 'partially_received', 'completed', 'cancelled'],
     default: 'draft'
   },
+  financeApproved: {
+    type: Boolean,
+    default: false
+  },
+  financeApprovedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  financeApprovedAt: Date,
+  cooApproved: {
+    type: Boolean,
+    default: false
+  },
+  cooApprovedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  cooApprovedAt: Date,
   approvalHistory: [ApprovalHistorySchema],
   issuedAt: Date,
   issuedBy: {

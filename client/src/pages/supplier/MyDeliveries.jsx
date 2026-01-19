@@ -238,10 +238,31 @@ export default function MyDeliveries() {
       >
         {selectedDelivery && (
           <div className="space-y-6">
+            {selectedDelivery.status === 'pending' && (
+              <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-200 mb-6">
+                <div className="flex items-start gap-3">
+                  <Clock className="h-5 w-5 text-yellow-600 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-medium text-yellow-800">Pending Delivery</p>
+                    <p className="text-sm text-yellow-700 mt-1">
+                      This delivery is pending. Please prepare and deliver the goods to the delivery address specified in the Purchase Order. 
+                      Once Stores receives the goods, this delivery will be updated with a GRV number and status.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm text-gray-500">GRV Number</label>
-                <p className="font-mono font-medium text-primary">{selectedDelivery.grvNumber}</p>
+                <p className="font-mono font-medium text-primary">
+                  {selectedDelivery.status === 'pending' ? (
+                    <span className="text-yellow-600 italic">Awaiting GRV</span>
+                  ) : (
+                    selectedDelivery.grvNumber || '-'
+                  )}
+                </p>
               </div>
               <div>
                 <label className="text-sm text-gray-500">PO Number</label>
@@ -249,19 +270,27 @@ export default function MyDeliveries() {
               </div>
               <div>
                 <label className="text-sm text-gray-500">Delivery Note Number</label>
-                <p className="text-gray-900">{selectedDelivery.deliveryNoteNumber || '-'}</p>
+                <p className="text-gray-900">
+                  {selectedDelivery.deliveryNoteNumber || (selectedDelivery.status === 'pending' ? 'Not yet provided' : '-')}
+                </p>
               </div>
               <div>
-                <label className="text-sm text-gray-500">Delivery Date</label>
+                <label className="text-sm text-gray-500">
+                  {selectedDelivery.status === 'pending' ? 'Expected Delivery Date' : 'Delivery Date'}
+                </label>
                 <p className="text-gray-900">
-                  {new Date(selectedDelivery.deliveryDate).toLocaleDateString('en-ZA')}
+                  {selectedDelivery.status === 'pending' && selectedDelivery.expectedDeliveryDate ? (
+                    new Date(selectedDelivery.expectedDeliveryDate).toLocaleDateString('en-ZA')
+                  ) : (
+                    new Date(selectedDelivery.deliveryDate).toLocaleDateString('en-ZA')
+                  )}
                 </p>
               </div>
               <div>
                 <label className="text-sm text-gray-500">Status</label>
                 <p>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[selectedDelivery.status]}`}>
-                    {selectedDelivery.status?.replace('_', ' ')}
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[selectedDelivery.status]}`}>
+                    {formatStatus(selectedDelivery.status)}
                   </span>
                 </p>
               </div>
@@ -279,18 +308,22 @@ export default function MyDeliveries() {
                   )}
                 </p>
               </div>
-              <div>
-                <label className="text-sm text-gray-500">Received By</label>
-                <p className="text-gray-900">
-                  {selectedDelivery.receivedBy?.firstName} {selectedDelivery.receivedBy?.lastName}
-                </p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-500">Received Date</label>
-                <p className="text-gray-900">
-                  {new Date(selectedDelivery.createdAt).toLocaleDateString('en-ZA')}
-                </p>
-              </div>
+              {selectedDelivery.receivedBy && (
+                <div>
+                  <label className="text-sm text-gray-500">Received By</label>
+                  <p className="text-gray-900">
+                    {selectedDelivery.receivedBy.firstName} {selectedDelivery.receivedBy.lastName}
+                  </p>
+                </div>
+              )}
+              {selectedDelivery.receivedBy && (
+                <div>
+                  <label className="text-sm text-gray-500">Received Date</label>
+                  <p className="text-gray-900">
+                    {new Date(selectedDelivery.createdAt).toLocaleDateString('en-ZA')}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div>
@@ -302,8 +335,12 @@ export default function MyDeliveries() {
                       <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Description</th>
                       <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Ordered</th>
                       <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Received</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Rejected</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Condition</th>
+                      {selectedDelivery.status !== 'pending' && (
+                        <>
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Rejected</th>
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Condition</th>
+                        </>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -311,17 +348,27 @@ export default function MyDeliveries() {
                       <tr key={index}>
                         <td className="py-3 px-4 text-sm font-medium">{item.description}</td>
                         <td className="py-3 px-4 text-sm text-gray-600">{item.quantityOrdered || '-'}</td>
-                        <td className="py-3 px-4 text-sm text-gray-900 font-medium">{item.quantityReceived}</td>
-                        <td className="py-3 px-4 text-sm text-red-600">{item.quantityRejected || 0}</td>
-                        <td className="py-3 px-4 text-sm">
-                          <span className={`px-2 py-0.5 rounded text-xs ${
-                            item.condition === 'good' ? 'bg-green-100 text-green-700' :
-                            item.condition === 'damaged' ? 'bg-red-100 text-red-700' :
-                            'bg-amber-100 text-amber-700'
-                          }`}>
-                            {item.condition || 'good'}
-                          </span>
+                        <td className="py-3 px-4 text-sm text-gray-900 font-medium">
+                          {selectedDelivery.status === 'pending' ? (
+                            <span className="text-yellow-600 italic">Pending</span>
+                          ) : (
+                            item.quantityReceived || 0
+                          )}
                         </td>
+                        {selectedDelivery.status !== 'pending' && (
+                          <>
+                            <td className="py-3 px-4 text-sm text-red-600">{item.quantityRejected || 0}</td>
+                            <td className="py-3 px-4 text-sm">
+                              <span className={`px-2 py-0.5 rounded text-xs ${
+                                item.condition === 'good' ? 'bg-green-100 text-green-700' :
+                                item.condition === 'damaged' ? 'bg-red-100 text-red-700' :
+                                'bg-amber-100 text-amber-700'
+                              }`}>
+                                {item.condition || 'good'}
+                              </span>
+                            </td>
+                          </>
+                        )}
                       </tr>
                     ))}
                   </tbody>

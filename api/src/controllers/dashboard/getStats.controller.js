@@ -13,7 +13,7 @@ const getStats = async (req, res) => {
     const totalQuotations = await Quotation.countDocuments();
     const pendingQuotations = await Quotation.countDocuments({ status: 'submitted' });
     const totalPOs = await PurchaseOrder.countDocuments();
-    const pendingPOs = await PurchaseOrder.countDocuments({ status: { $in: ['pending_finance', 'pending_coo'] } });
+    const pendingPOs = await PurchaseOrder.countDocuments({ status: { $in: ['pending_finance', 'pending_coo', 'pending_approvals'] } });
     const approvedPOs = await PurchaseOrder.countDocuments({ status: 'approved' });
 
     // Role-specific stats
@@ -39,7 +39,10 @@ const getStats = async (req, res) => {
         break;
 
       case 'finance':
-        const pendingFinanceApproval = await PurchaseOrder.countDocuments({ status: 'pending_finance' });
+        const pendingFinanceApproval = await PurchaseOrder.countDocuments({ 
+          status: 'pending_approvals',
+          financeApproved: false
+        });
         const financeApproved = await PurchaseOrder.countDocuments({ 
           status: { $in: ['pending_coo', 'approved', 'sent'] },
           financeApproval: { $exists: true }
@@ -57,7 +60,10 @@ const getStats = async (req, res) => {
         break;
 
       case 'coo':
-        const pendingCOOApproval = await PurchaseOrder.countDocuments({ status: 'pending_coo' });
+        const pendingCOOApproval = await PurchaseOrder.countDocuments({ 
+          status: 'pending_approvals',
+          cooApproved: false
+        });
         const cooApproved = await PurchaseOrder.countDocuments({ 
           cooApproval: { $exists: true }
         });

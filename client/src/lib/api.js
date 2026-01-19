@@ -95,6 +95,7 @@ export const departmentAPI = {
 // Finance API
 export const financeAPI = {
   getPendingApprovals: (params) => api.get('/finance/pending-approvals', { params }),
+  getPurchaseOrders: (params) => api.get('/finance/purchase-orders', { params }),
   approvePO: (id, data) => api.put(`/finance/purchase-orders/${id}/approve`, data),
   rejectPO: (id, data) => api.put(`/finance/purchase-orders/${id}/reject`, data)
 };

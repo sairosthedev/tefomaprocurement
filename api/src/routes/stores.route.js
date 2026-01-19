@@ -10,6 +10,8 @@ router.use(authorize('stores_officer', 'admin'));
 // Deliveries / GRV
 router.post('/deliveries', stores.receiveGoods);
 router.get('/deliveries', stores.getDeliveries);
+router.get('/pending-deliveries', stores.getPendingDeliveries);
+router.put('/deliveries/:id/accept', stores.acceptDelivery);
 
 // Inventory
 router.get('/inventory', stores.getInventory);

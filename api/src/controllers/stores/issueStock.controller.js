@@ -47,8 +47,13 @@ const issueStock = async (req, res) => {
       inventory.lastIssuedDate = new Date();
       await inventory.save();
 
+      // Generate transaction number (increment counter for each transaction)
+      transactionCounter++;
+      const transactionNumber = `ST-ISS-${year}-${String(transactionCounter).padStart(6, '0')}`;
+
       // Create store transaction
       await StoreTransaction.create({
+        transactionNumber,
         type: 'issue',
         item: reqItem.item._id,
         inventory: inventory._id,

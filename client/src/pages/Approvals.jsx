@@ -12,6 +12,7 @@ import { formatCurrency } from '../lib/constants';
 const statusColors = {
   pending_finance: 'bg-amber-100 text-amber-700',
   pending_coo: 'bg-purple-100 text-purple-700',
+  pending_approvals: 'bg-blue-100 text-blue-700',
   approved: 'bg-green-100 text-green-700',
   rejected: 'bg-red-100 text-red-700'
 };
@@ -19,6 +20,7 @@ const statusColors = {
 const statusLabels = {
   pending_finance: 'Awaiting Finance',
   pending_coo: 'Awaiting COO',
+  pending_approvals: 'Pending Approvals',
   approved: 'Approved',
   rejected: 'Rejected'
 };
@@ -51,7 +53,7 @@ export default function Approvals() {
           break;
         case 'admin':
           // Admin can see all pending POs
-          endpoint = '/procurement/purchase-orders?status=pending_finance,pending_coo';
+          endpoint = '/procurement/purchase-orders?status=pending_approvals';
           break;
         default:
           endpoint = '/finance/pending-approvals';
@@ -255,9 +257,20 @@ export default function Approvals() {
                       )}
                     </td>
                     <td className="py-4 px-6">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[item.status] || statusColors.pending_finance}`}>
-                        {statusLabels[item.status] || item.status}
-                      </span>
+                      {item.status === 'pending_approvals' ? (
+                        <div className="flex flex-col gap-1">
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${item.financeApproved ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                            Finance: {item.financeApproved ? 'Approved' : 'Pending'}
+                          </span>
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${item.cooApproved ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
+                            COO: {item.cooApproved ? 'Approved' : 'Pending'}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[item.status] || statusColors.pending_finance}`}>
+                          {statusLabels[item.status] || item.status}
+                        </span>
+                      )}
                     </td>
                     <td className="py-4 px-6 text-sm text-gray-500">
                       {new Date(item.createdAt).toLocaleDateString('en-ZA')}
@@ -322,6 +335,51 @@ export default function Approvals() {
                 </p>
               </div>
             </div>
+
+            {/* Approval Status */}
+            {selectedItem.status === 'pending_approvals' && (
+              <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+                <p className="text-sm font-medium text-blue-800 mb-3">Approval Status</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className={`rounded-lg p-3 ${selectedItem.financeApproved ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700">Finance</span>
+                      {selectedItem.financeApproved ? (
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                      ) : (
+                        <Clock className="h-5 w-5 text-amber-600" />
+                      )}
+                    </div>
+                    <p className={`text-xs mt-1 ${selectedItem.financeApproved ? 'text-green-700' : 'text-amber-700'}`}>
+                      {selectedItem.financeApproved ? 'Approved' : 'Pending'}
+                    </p>
+                    {selectedItem.financeApprovedAt && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {new Date(selectedItem.financeApprovedAt).toLocaleDateString('en-ZA')}
+                      </p>
+                    )}
+                  </div>
+                  <div className={`rounded-lg p-3 ${selectedItem.cooApproved ? 'bg-green-50 border border-green-200' : 'bg-purple-50 border border-purple-200'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700">COO</span>
+                      {selectedItem.cooApproved ? (
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                      ) : (
+                        <Clock className="h-5 w-5 text-purple-600" />
+                      )}
+                    </div>
+                    <p className={`text-xs mt-1 ${selectedItem.cooApproved ? 'text-green-700' : 'text-purple-700'}`}>
+                      {selectedItem.cooApproved ? 'Approved' : 'Pending'}
+                    </p>
+                    {selectedItem.cooApprovedAt && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {new Date(selectedItem.cooApprovedAt).toLocaleDateString('en-ZA')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* High Value Warning */}
             {(selectedItem.totalAmount || 0) >= 10000 && (

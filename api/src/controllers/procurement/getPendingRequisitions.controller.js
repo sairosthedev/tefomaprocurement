@@ -1,4 +1,4 @@
-const { PurchaseRequisition } = require('../../models');
+const { PurchaseRequisition, PurchaseOrder } = require('../../models');
 
 const getPendingRequisitions = async (req, res) => {
   try {
@@ -25,11 +25,31 @@ const getPendingRequisitions = async (req, res) => {
       .populate('department', 'name code')
       .populate('requestedBy', 'firstName lastName email')
       .populate('processedBy', 'firstName lastName')
-      .sort({ createdAt: -1 });
+      .populate('rfq')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Get purchase orders for these requisitions
+    const requisitionIds = requisitions.map(r => r._id);
+    const purchaseOrders = await PurchaseOrder.find({
+      purchaseRequisition: { $in: requisitionIds },
+      isDeleted: false
+    })
+      .select('poNumber status financeApproved cooApproved financeApprovedAt cooApprovedAt purchaseRequisition')
+      .lean();
+
+    // Map POs to requisitions
+    const requisitionsWithPOs = requisitions.map(req => {
+      const po = purchaseOrders.find(p => p.purchaseRequisition?.toString() === req._id.toString());
+      if (po) {
+        req.purchaseOrder = po;
+      }
+      return req;
+    });
 
     res.status(200).json({
       success: true,
-      data: requisitions
+      data: requisitionsWithPOs
     });
   } catch (error) {
     console.error('Get pending requisitions error:', error);
