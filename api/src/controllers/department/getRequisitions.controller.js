@@ -1,4 +1,4 @@
-const { PurchaseRequisition, PurchaseOrder, Quotation, Delivery } = require('../../models');
+const { PurchaseRequisition, PurchaseOrder, Quotation, Delivery, StoreRequisition } = require('../../models');
 
 const getRequisitions = async (req, res) => {
   try {
@@ -112,6 +112,28 @@ const getRequisitions = async (req, res) => {
       acceptedDeliveries.map(d => d.purchaseOrder.toString())
     );
 
+    // Check which requisitions have store requisitions that are issued (items collected)
+    const storeRequisitions = await StoreRequisition.find({
+      department: req.user.department,
+      isDeleted: false,
+      status: { $in: ['issued', 'partially_issued'] }
+    })
+      .select('_id purpose status')
+      .lean();
+    
+    // Create a set of requisition IDs that have collected items
+    // We'll match by checking if the store requisition purpose contains the purchase requisition number
+    const collectedRequisitionIds = new Set();
+    requisitions.forEach(req => {
+      const reqNumber = req.requisitionNumber || `PR-${req._id.toString().slice(-6)}`;
+      const hasCollected = storeRequisitions.some(sr => 
+        sr.purpose && sr.purpose.includes(reqNumber)
+      );
+      if (hasCollected) {
+        collectedRequisitionIds.add(req._id.toString());
+      }
+    });
+
     // Map POs to requisitions
     const requisitionsWithPOs = requisitions.map(req => {
       const reqObj = req.toObject();
@@ -140,6 +162,9 @@ const getRequisitions = async (req, res) => {
         reqObj.purchaseOrder = po;
         // Check if items have been delivered to stores (accepted deliveries exist)
         reqObj.itemsDeliveredToStores = poWithDeliveries.has(po._id.toString());
+        
+        // Check if items have been collected (store requisition issued)
+        reqObj.itemsCollected = collectedRequisitionIds.has(req._id.toString());
         
         // Update requisition status based on PO and delivery status
         if (reqObj.itemsDeliveredToStores) {

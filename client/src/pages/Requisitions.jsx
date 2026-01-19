@@ -435,8 +435,8 @@ export default function Requisitions() {
                           </button>
                         )}
 
-                        {/* Request from Stores Button - Show when items are delivered to stores */}
-                        {!isProcurement && req.itemsDeliveredToStores && (
+                        {/* Request from Stores Button - Show when items are delivered to stores but not yet collected */}
+                        {!isProcurement && req.itemsDeliveredToStores && !req.itemsCollected && (
                           <button
                             onClick={() => handleRequestFromStores(req)}
                             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700"
@@ -445,6 +445,12 @@ export default function Requisitions() {
                             <Truck className="h-3.5 w-3.5" />
                             Request from Stores
                           </button>
+                        )}
+                        {/* Collected Badge - Show when items have been collected */}
+                        {!isProcurement && req.itemsCollected && (
+                          <span className="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-lg">
+                            ✓ Collected
+                          </span>
                         )}
                       </div>
                     </td>
@@ -601,19 +607,32 @@ export default function Requisitions() {
                   <Truck className="h-5 w-5 text-green-600" />
                   <h3 className="font-semibold text-green-900">Items Available in Stores</h3>
                 </div>
-                <p className="text-sm text-green-800 mb-3">
-                  Your ordered items have been received and are now available in stores. You can request them using the button below.
-                </p>
-                <button
-                  onClick={() => {
-                    handleRequestFromStores(selectedRequisition);
-                    setShowViewModal(false);
-                  }}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700"
-                >
-                  <Truck className="h-4 w-4" />
-                  Request from Stores
-                </button>
+                {selectedRequisition.itemsCollected ? (
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-2 bg-emerald-100 text-emerald-700 font-medium rounded-lg">
+                      ✓ Items Collected
+                    </span>
+                    <p className="text-sm text-green-800">
+                      Your items have been collected from stores.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm text-green-800 mb-3">
+                      Your ordered items have been received and are now available in stores. You can request them using the button below.
+                    </p>
+                    <button
+                      onClick={() => {
+                        handleRequestFromStores(selectedRequisition);
+                        setShowViewModal(false);
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700"
+                    >
+                      <Truck className="h-4 w-4" />
+                      Request from Stores
+                    </button>
+                  </>
+                )}
               </div>
             )}
 
