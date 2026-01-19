@@ -1,4 +1,4 @@
-const { StoreTransaction } = require('../../models');
+const { StoreTransaction, Delivery, StoreRequisition } = require('../../models');
 
 const getMovements = async (req, res) => {
   try {
@@ -59,13 +59,47 @@ const getMovements = async (req, res) => {
         .populate('inventory', 'location')
         .populate('performedBy', 'firstName lastName')
         .populate('department', 'name')
-        .populate('reference.document')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit))
         .lean(),
       StoreTransaction.countDocuments(query)
     ]);
+
+    // Manually populate reference documents based on type
+    const documentIdsByType = {
+      grv: [],
+      store_requisition: []
+    };
+    
+    transactions.forEach(t => {
+      if (t.reference?.document && t.reference?.type) {
+        const docId = t.reference.document.toString();
+        if (t.reference.type === 'grv') {
+          if (!documentIdsByType.grv.includes(docId)) {
+            documentIdsByType.grv.push(docId);
+          }
+        } else if (t.reference.type === 'store_requisition') {
+          if (!documentIdsByType.store_requisition.includes(docId)) {
+            documentIdsByType.store_requisition.push(docId);
+          }
+        }
+      }
+    });
+    
+    // Fetch documents
+    const [deliveries, storeRequisitions] = await Promise.all([
+      documentIdsByType.grv.length > 0 
+        ? Delivery.find({ _id: { $in: documentIdsByType.grv } }).select('grvNumber').lean()
+        : [],
+      documentIdsByType.store_requisition.length > 0
+        ? StoreRequisition.find({ _id: { $in: documentIdsByType.store_requisition } }).select('requisitionNumber').lean()
+        : []
+    ]);
+    
+    // Create maps for quick lookup
+    const deliveryMap = new Map(deliveries.map(d => [d._id.toString(), d]));
+    const storeRequisitionMap = new Map(storeRequisitions.map(sr => [sr._id.toString(), sr]));
 
     // Transform transactions to match frontend expectations
     const movements = transactions.map(t => {
@@ -80,11 +114,18 @@ const getMovements = async (req, res) => {
       
       // Get reference number
       let referenceNumber = t.transactionNumber;
-      if (t.reference?.document) {
-        if (t.reference.type === 'grv' && t.reference.document.grvNumber) {
-          referenceNumber = t.reference.document.grvNumber;
-        } else if (t.reference.type === 'store_requisition' && t.reference.document.requisitionNumber) {
-          referenceNumber = t.reference.document.requisitionNumber;
+      if (t.reference?.document && t.reference?.type) {
+        const docId = t.reference.document.toString();
+        if (t.reference.type === 'grv') {
+          const delivery = deliveryMap.get(docId);
+          if (delivery?.grvNumber) {
+            referenceNumber = delivery.grvNumber;
+          }
+        } else if (t.reference.type === 'store_requisition') {
+          const storeReq = storeRequisitionMap.get(docId);
+          if (storeReq?.requisitionNumber) {
+            referenceNumber = storeReq.requisitionNumber;
+          }
         }
       }
       

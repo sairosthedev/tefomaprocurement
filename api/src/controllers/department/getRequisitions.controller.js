@@ -31,14 +31,7 @@ const getRequisitions = async (req, res) => {
     const requisitionIds = requisitions.map(r => r._id);
     const rfqIds = requisitions.filter(r => r.rfq).map(r => (r.rfq._id || r.rfq).toString());
     
-    console.log(`[DEBUG] Department Requisitions - Requisition IDs: ${requisitionIds.length}, RFQ IDs: ${rfqIds.length}`);
-    console.log(`[DEBUG] Requisition Numbers:`, requisitions.map(r => r.requisitionNumber || r._id.toString()));
-    if (rfqIds.length > 0) {
-      console.log(`[DEBUG] RFQ IDs:`, rfqIds);
-    }
-    
     // Find POs linked directly to requisitions
-    console.log(`[DEBUG] Searching for POs with requisitionIds:`, requisitionIds.map(id => id.toString()));
     
     const directPOs = await PurchaseOrder.find({
       purchaseRequisition: { $in: requisitionIds },
@@ -51,29 +44,6 @@ const getRequisitions = async (req, res) => {
       .populate('purchaseRequisition', '_id requisitionNumber') // Populate to ensure we can match it
       .populate('rfq', '_id purchaseRequisition') // Also populate RFQ to check purchaseRequisition link
       .lean();
-    
-    console.log(`[DEBUG] Direct POs found: ${directPOs.length}`);
-    if (directPOs.length > 0) {
-      directPOs.forEach(po => {
-        const reqId = po.purchaseRequisition ? (po.purchaseRequisition._id || po.purchaseRequisition).toString() : 'null';
-        console.log(`[DEBUG] Found PO: ${po.poNumber}, purchaseRequisition: ${reqId}`);
-      });
-    }
-    
-    // Check ALL POs to see what they're linked to
-    const allPOsInDB = await PurchaseOrder.find({ isDeleted: false })
-      .select('poNumber purchaseRequisition rfq')
-      .populate('purchaseRequisition', '_id requisitionNumber')
-      .populate('rfq', '_id purchaseRequisition')
-      .lean();
-    
-    console.log(`[DEBUG] All ${allPOsInDB.length} POs in database:`);
-    allPOsInDB.forEach(po => {
-      const poReqId = po.purchaseRequisition ? (po.purchaseRequisition._id || po.purchaseRequisition).toString() : 'null';
-      const rfqId = po.rfq ? (po.rfq._id || po.rfq).toString() : 'null';
-      const rfqReqId = po.rfq?.purchaseRequisition ? (typeof po.rfq.purchaseRequisition === 'object' ? po.rfq.purchaseRequisition._id?.toString() : po.rfq.purchaseRequisition.toString()) : 'null';
-      console.log(`  PO: ${po.poNumber}, direct purchaseRequisition: ${poReqId}, rfq: ${rfqId}, rfq.purchaseRequisition: ${rfqReqId}`);
-    });
     
     // Also find POs by RFQ directly (in case purchaseRequisition wasn't set)
     // Convert rfqIds to ObjectIds if they're strings
@@ -127,7 +97,6 @@ const getRequisitions = async (req, res) => {
       .populate('quotation', '_id')
       .lean() : [];
     
-    console.log(`[DEBUG] RFQ Via Req POs found: ${rfqViaReqPOs.length} for ${matchingRfqIds.length} matching RFQs`);
 
     // Also find POs linked via RFQ -> quotation -> PO chain (in case purchaseRequisition wasn't set)
     let rfqLinkedPOs = [];
@@ -139,8 +108,6 @@ const getRequisitions = async (req, res) => {
       })
         .select('_id rfq')
         .lean() : [];
-      
-      console.log(`[DEBUG] Quotations found: ${quotations.length} for ${rfqObjectIds.length} RFQs`);
       
       const quotationIds = quotations.map(q => q._id);
       
@@ -155,8 +122,6 @@ const getRequisitions = async (req, res) => {
           .populate('cooApprovedBy', 'firstName lastName')
           .populate('quotation', '_id') // Populate quotation to ensure we can match it
           .lean();
-        
-        console.log(`[DEBUG] RFQ Linked POs found: ${rfqLinkedPOs.length} for ${quotationIds.length} quotations`);
       }
     }
 
@@ -167,18 +132,10 @@ const getRequisitions = async (req, res) => {
       const poId = po._id.toString();
       if (!allPOsMap.has(poId)) {
         allPOsMap.set(poId, po);
-        console.log(`[DEBUG] Added PO: ${po.poNumber}, purchaseRequisition: ${po.purchaseRequisition?._id || po.purchaseRequisition}, rfq: ${po.rfq?._id || po.rfq}`);
       }
     });
     
     const allPOs = Array.from(allPOsMap.values());
-    
-    // Debug: Log PO counts
-    console.log(`[DEBUG] Department Requisitions - Found ${allPOs.length} total POs (direct: ${directPOs.length}, rfqLinked: ${rfqLinkedPOs.length}, rfqPOs: ${rfqPOs.length}, rfqViaReq: ${rfqViaReqPOs.length})`);
-    
-    // Also check if there are ANY POs in the database for debugging
-    const totalPOsInDB = await PurchaseOrder.countDocuments({ isDeleted: false });
-    console.log(`[DEBUG] Total POs in database: ${totalPOsInDB}`);
     
     // Create a map of RFQ ID to quotation IDs for lookup
     const rfqToQuotationMap = {};
@@ -304,6 +261,9 @@ const getRequisitions = async (req, res) => {
       
       if (po) {
         reqObj.purchaseOrder = po;
+        console.log(`[FOUND] Requisition ${req.requisitionNumber || reqId} → PO ${po.poNumber}`);
+        console.log(`[FOUND] Full PO Record:`, JSON.stringify(po, null, 2));
+        
         // Check if items have been delivered to stores (received or accepted deliveries exist)
         reqObj.itemsDeliveredToStores = poWithDeliveries.has(po._id.toString());
         

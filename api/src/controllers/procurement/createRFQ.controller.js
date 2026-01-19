@@ -56,9 +56,6 @@ const createRFQ = async (req, res) => {
     // (Suppliers are already validated above, so we can safely publish)
     const rfqStatus = requestedStatus === 'open' ? 'open' : 'draft';
     
-    // Debug: Log purchaseRequisitionId
-    console.log(`[DEBUG] Creating RFQ - purchaseRequisitionId: ${purchaseRequisitionId}`);
-    
     const rfqData = {
       rfqNumber,
       title,
@@ -80,10 +77,6 @@ const createRFQ = async (req, res) => {
     }
 
     const rfq = await RFQ.create(rfqData);
-    
-    // Debug: Verify RFQ was created with purchaseRequisition
-    const createdRFQ = await RFQ.findById(rfq._id).select('purchaseRequisition').lean();
-    console.log(`[DEBUG] RFQ created: ${rfq.rfqNumber}, purchaseRequisition: ${createdRFQ?.purchaseRequisition || 'null'}`);
 
     // Update purchase requisition if linked
     if (purchaseRequisitionId) {
