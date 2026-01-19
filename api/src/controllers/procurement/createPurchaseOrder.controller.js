@@ -12,7 +12,13 @@ const createPurchaseOrder = async (req, res) => {
     } = req.body;
 
     const quotation = await Quotation.findById(quotationId)
-      .populate('rfq')
+      .populate({
+        path: 'rfq',
+        populate: {
+          path: 'purchaseRequisition',
+          select: '_id requisitionNumber'
+        }
+      })
       .populate('supplier');
 
     if (!quotation) {
@@ -59,11 +65,20 @@ const createPurchaseOrder = async (req, res) => {
     const year = new Date().getFullYear();
     const poNumber = `PO-${year}-${String(count + 1).padStart(5, '0')}`;
 
+    // Get purchaseRequisition from RFQ - fetch RFQ separately if needed
+    let purchaseRequisitionId = null;
+    if (quotation.rfq) {
+      const rfqId = quotation.rfq._id || quotation.rfq;
+      // Fetch RFQ to get purchaseRequisition (in case it wasn't populated)
+      const rfq = await RFQ.findById(rfqId).select('purchaseRequisition').lean();
+      purchaseRequisitionId = rfq?.purchaseRequisition || null;
+    }
+    
     const po = await PurchaseOrder.create({
       poNumber,
       quotation: quotation._id,
-      rfq: quotation.rfq?._id,
-      purchaseRequisition: quotation.rfq?.purchaseRequisition,
+      rfq: quotation.rfq?._id || quotation.rfq,
+      purchaseRequisition: purchaseRequisitionId,
       supplier: quotation.supplier._id,
       createdBy: req.user._id,
       items: poItems,

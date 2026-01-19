@@ -403,13 +403,19 @@ export default function Requisitions() {
                             <button
                               onClick={() => handleSubmit(req._id)}
                               disabled={submittingId === req._id}
-                              className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               title="Submit for Acceptance"
                             >
                               {submittingId === req._id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <>
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  <span>Submitting...</span>
+                                </>
                               ) : (
-                                <Send className="h-4 w-4" />
+                                <>
+                                  <Send className="h-4 w-4" />
+                                  <span>Submit</span>
+                                </>
                               )}
                             </button>
                           </>

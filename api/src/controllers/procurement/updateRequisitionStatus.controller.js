@@ -38,7 +38,7 @@ const updateRequisitionStatus = async (req, res) => {
     await requisition.save();
 
     await createAuditLog({
-      action: 'update_status',
+      action: 'status_change',
       entity: 'PurchaseRequisition',
       entityId: requisition._id,
       user: req.user,

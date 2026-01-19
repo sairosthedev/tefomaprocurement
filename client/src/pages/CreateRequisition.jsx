@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 import api from '../lib/api';
-import { Plus, Trash2, Save, Send, ArrowLeft, Package } from 'lucide-react';
+import { Plus, Trash2, Save, Send, ArrowLeft, Package, Loader2 } from 'lucide-react';
 import { UNITS_OF_MEASUREMENT } from '../lib/constants';
 
 export default function CreateRequisition() {
@@ -44,12 +44,14 @@ export default function CreateRequisition() {
       // Validate
       if (!formData.title.trim()) {
         showToast('Please enter a title', 'error');
+        setLoading(false);
         return;
       }
       
       const validItems = formData.items.filter(item => item.description.trim());
       if (validItems.length === 0) {
         showToast('Please add at least one item', 'error');
+        setLoading(false);
         return;
       }
 
@@ -220,7 +222,7 @@ export default function CreateRequisition() {
             type="button"
             onClick={() => handleSave(false)}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Save className="h-4 w-4" />
             Save Draft
@@ -229,10 +231,19 @@ export default function CreateRequisition() {
             type="button"
             onClick={() => handleSave(true)}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-medium rounded-xl hover:bg-primary-dark transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-medium rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Send className="h-4 w-4" />
-            Submit for Approval
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Submitting...</span>
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4" />
+                <span>Submit for Approval</span>
+              </>
+            )}
           </button>
         </div>
       </div>
