@@ -9,9 +9,9 @@ import {
   Calendar,
   Users,
   Loader2,
-  Send,
-  Eye
+  Send
 } from 'lucide-react';
+import ViewButton from '../components/ViewButton';
 
 const statusColors = {
   draft: 'bg-gray-100 text-gray-700',
@@ -163,10 +163,10 @@ export default function RFQs() {
               </div>
 
               <div className="flex gap-2 mt-6 pt-4 border-t border-gray-100">
-                <button className="flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                  <Eye className="h-4 w-4" />
-                  View
-                </button>
+                <ViewButton
+                  onClick={() => navigate(`/app/rfqs/${rfq._id}`)}
+                  className="flex-1 justify-center"
+                />
                 {rfq.status === 'draft' && (
                   <button className="flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg transition-colors">
                     <Send className="h-4 w-4" />

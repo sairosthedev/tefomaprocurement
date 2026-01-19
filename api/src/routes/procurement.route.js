@@ -17,6 +17,7 @@ router.put('/suppliers/:id/blacklist', procurement.blacklistSupplier);
 
 // Requisitions (Procurement accepts these - not approves)
 router.get('/requisitions', procurement.getPendingRequisitions);
+router.get('/requisitions/:id', procurement.getRequisitionById);
 router.put('/requisitions/:id/accept', procurement.acceptRequisition);
 router.put('/requisitions/:id/reject', procurement.rejectRequisition);
 router.put('/requisitions/:id/sourcing', procurement.updateRequisitionStatus);
@@ -25,6 +26,7 @@ router.put('/requisitions/:id/status', procurement.updateRequisitionStatus);
 // RFQs
 router.post('/rfqs', procurement.createRFQ);
 router.get('/rfqs', procurement.getRFQs);
+router.get('/rfqs/:id', procurement.getRFQById);
 router.put('/rfqs/:id/publish', procurement.publishRFQ);
 
 // Quotations
@@ -36,6 +38,7 @@ router.put('/quotations/:id/reject', procurement.rejectQuotation);
 // Purchase Orders
 router.post('/purchase-orders', procurement.createPurchaseOrder);
 router.get('/purchase-orders', procurement.getPurchaseOrders);
+router.get('/purchase-orders/:id', procurement.getPurchaseOrderById);
 router.put('/purchase-orders/:id/submit', procurement.submitPurchaseOrder);
 
 module.exports = router;

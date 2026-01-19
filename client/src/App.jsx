@@ -21,12 +21,16 @@ import AuditLogs from './pages/AuditLogs';
 // Procurement Pages
 import Suppliers from './pages/Suppliers';
 import RFQs from './pages/RFQs';
+import RFQDetail from './pages/RFQDetail';
 import CreateRFQ from './pages/CreateRFQ';
 import Quotations from './pages/Quotations';
+import QuotationDetail from './pages/QuotationDetail';
 import PurchaseOrders from './pages/PurchaseOrders';
+import PurchaseOrderDetail from './pages/PurchaseOrderDetail';
 
 // Department Head Pages
 import Requisitions from './pages/Requisitions';
+import RequisitionDetail from './pages/RequisitionDetail';
 import CreateRequisition from './pages/CreateRequisition';
 import StoreRequisitions from './pages/StoreRequisitions';
 import Approvals from './pages/Approvals';
@@ -126,9 +130,19 @@ function App() {
                 <CreateRFQ />
               </AppLayout>
             } />
+            <Route path="/app/rfqs/:id" element={
+              <AppLayout allowedRoles={['admin', 'procurement_officer']}>
+                <RFQDetail />
+              </AppLayout>
+            } />
             <Route path="/app/quotations" element={
               <AppLayout allowedRoles={['admin', 'procurement_officer']}>
                 <Quotations />
+              </AppLayout>
+            } />
+            <Route path="/app/quotations/:id" element={
+              <AppLayout allowedRoles={['admin', 'procurement_officer']}>
+                <QuotationDetail />
               </AppLayout>
             } />
             <Route path="/app/purchase-orders" element={
@@ -136,11 +150,21 @@ function App() {
                 <PurchaseOrders />
               </AppLayout>
             } />
+            <Route path="/app/purchase-orders/:id" element={
+              <AppLayout allowedRoles={['admin', 'procurement_officer', 'finance', 'coo']}>
+                <PurchaseOrderDetail />
+              </AppLayout>
+            } />
 
             {/* Department Head Routes */}
             <Route path="/app/requisitions" element={
               <AppLayout allowedRoles={['admin', 'procurement_officer', 'department_head']}>
                 <Requisitions />
+              </AppLayout>
+            } />
+            <Route path="/app/requisitions/:id" element={
+              <AppLayout allowedRoles={['admin', 'procurement_officer', 'department_head']}>
+                <RequisitionDetail />
               </AppLayout>
             } />
             <Route path="/app/requisitions/create" element={

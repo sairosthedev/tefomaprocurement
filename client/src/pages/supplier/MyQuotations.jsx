@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../../components/Toast';
 import api from '../../lib/api';
-import { FileText, Eye, Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { FileText, Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
+import ViewButton from '../../components/ViewButton';
 import Modal from '../../components/Modal';
 import { formatCurrency } from '../../lib/constants';
 import confetti from 'canvas-confetti';
@@ -186,10 +187,7 @@ export default function MyQuotations() {
                             }, 300);
                           }
                         }}
-                        className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
+                      />
                     </td>
                   </tr>
                 ))}

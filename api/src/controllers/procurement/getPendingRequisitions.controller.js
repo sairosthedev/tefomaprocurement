@@ -1,4 +1,4 @@
-const { PurchaseRequisition, PurchaseOrder, Quotation } = require('../../models');
+const { PurchaseRequisition, PurchaseOrder, Quotation, Delivery, StoreRequisition } = require('../../models');
 
 const getPendingRequisitions = async (req, res) => {
   try {
@@ -10,8 +10,8 @@ const getPendingRequisitions = async (req, res) => {
     if (status) {
       query.status = status;
     } else {
-      // Show pending_acceptance by default, or all non-draft
-      query.status = { $in: ['pending_acceptance', 'accepted', 'sourcing', 'quoted', 'ordered'] };
+      // Show pending_acceptance by default, or all non-draft (including completed to show delivered items)
+      query.status = { $in: ['pending_acceptance', 'accepted', 'sourcing', 'quoted', 'ordered', 'completed'] };
     }
 
     if (search) {
@@ -101,8 +101,49 @@ const getPendingRequisitions = async (req, res) => {
       });
     }
 
+    // Get PO IDs to check deliveries
+    const poIds = allPOs.map(po => po._id);
+    
+    // Check which POs have received or accepted deliveries (items in stores)
+    // Include 'received' status because receiveGoods auto-accepts, but also check accepted
+    const deliveries = await Delivery.find({
+      purchaseOrder: { $in: poIds },
+      status: { $in: ['received', 'accepted', 'partially_accepted'] },
+      isDeleted: false
+    })
+      .select('purchaseOrder status')
+      .lean();
+    
+    const poWithDeliveries = new Set(
+      deliveries.map(d => d.purchaseOrder.toString())
+    );
+
+    // Check which requisitions have store requisitions that are issued (items collected)
+    // For procurement, we need to check all departments' store requisitions
+    const storeRequisitions = await StoreRequisition.find({
+      isDeleted: false,
+      status: { $in: ['issued', 'partially_issued'] }
+    })
+      .select('_id purpose status department')
+      .lean();
+    
+    // Create a set of requisition IDs that have collected items
+    // We'll match by checking if the store requisition purpose contains the purchase requisition number
+    const collectedRequisitionIds = new Set();
+    requisitions.forEach(req => {
+      const reqNumber = req.requisitionNumber || `PR-${req._id.toString().slice(-6)}`;
+      const hasCollected = storeRequisitions.some(sr => 
+        sr.purpose && sr.purpose.includes(reqNumber)
+      );
+      if (hasCollected) {
+        collectedRequisitionIds.add(req._id.toString());
+      }
+    });
+
     // Map POs to requisitions
     const requisitionsWithPOs = requisitions.map(req => {
+      const reqObj = { ...req };
+      
       // First try direct link via purchaseRequisition
       let po = allPOs.find(p => {
         const poReqId = p.purchaseRequisition?.toString();
@@ -124,13 +165,21 @@ const getPendingRequisitions = async (req, res) => {
       }
       
       if (po) {
-        req.purchaseOrder = po;
+        reqObj.purchaseOrder = po;
+        
+        // Check if items have been delivered to stores (received or accepted deliveries exist)
+        reqObj.itemsDeliveredToStores = poWithDeliveries.has(po._id.toString());
+        
+        // Check if items have been collected (store requisition issued)
+        reqObj.itemsCollected = collectedRequisitionIds.has(req._id.toString());
+        
         // If PO exists, update requisition status to 'ordered' for display
-        if (req.status !== 'ordered' && req.status !== 'completed') {
-          req.status = 'ordered';
+        if (reqObj.status !== 'ordered' && reqObj.status !== 'completed') {
+          reqObj.status = 'ordered';
         }
       }
-      return req;
+      
+      return reqObj;
     });
 
     res.status(200).json({

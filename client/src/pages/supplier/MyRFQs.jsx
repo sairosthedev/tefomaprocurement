@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../components/Toast';
 import api from '../../lib/api';
 import { 
-  FileSearch, Eye, Clock, Send, Loader2, 
+  FileSearch, Clock, Send, Loader2, 
   Calendar, AlertCircle, CheckCircle, PartyPopper
 } from 'lucide-react';
+import ViewButton from '../../components/ViewButton';
 import Modal from '../../components/Modal';
 
 const statusColors = {
@@ -293,7 +294,7 @@ export default function MyRFQs() {
                       </td>
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-2">
-                          <button
+                          <ViewButton
                             onClick={() => { 
                               setSelectedRFQ(rfq);
                               setShowViewModal(true);
@@ -303,10 +304,7 @@ export default function MyRFQs() {
                                 setTimeout(() => setShowConfetti(false), 3000);
                               }
                             }}
-                            className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
+                          />
                           {canSubmit && (
                             <button
                               onClick={() => navigate(`/app/submit-quotation?rfq=${rfq._id}`)}

@@ -3,9 +3,10 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import api from '../lib/api';
 import { 
-  Plus, Search, Package, Eye, CheckCircle, XCircle, 
+  Plus, Search, Package, CheckCircle, XCircle, 
   Loader2, Clock, Truck, AlertCircle
 } from 'lucide-react';
+import ViewButton from '../components/ViewButton';
 import Modal from '../components/Modal';
 
 const statusColors = {
@@ -182,12 +183,9 @@ export default function StoreRequisitions() {
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-2">
-                        <button
+                        <ViewButton
                           onClick={() => { setSelectedRequisition(req); setShowViewModal(true); }}
-                          className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
+                        />
                         {isStoresOfficer && req.status === 'pending' && (
                           <button
                             onClick={() => handleIssue(req._id)}

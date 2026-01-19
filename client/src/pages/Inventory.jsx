@@ -3,8 +3,9 @@ import { useToast } from '../components/Toast';
 import api from '../lib/api';
 import { 
   Search, Package, AlertTriangle, TrendingDown, 
-  TrendingUp, Loader2, Eye, Edit, Plus
+  TrendingUp, Loader2, Edit, Plus
 } from 'lucide-react';
+import ViewButton from '../components/ViewButton';
 import Modal from '../components/Modal';
 import { formatCurrency, UNITS_OF_MEASUREMENT } from '../lib/constants';
 
@@ -260,12 +261,9 @@ export default function Inventory() {
                         )}
                       </td>
                       <td className="py-4 px-6">
-                        <button
+                        <ViewButton
                           onClick={() => { setSelectedItem({ ...inv, item }); setShowViewModal(true); }}
-                          className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
+                        />
                       </td>
                     </tr>
                   );

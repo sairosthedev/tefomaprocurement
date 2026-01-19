@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import Modal, { ConfirmModal } from '../components/Modal';
@@ -20,6 +20,7 @@ import {
   Phone,
   ShoppingCart
 } from 'lucide-react';
+import ViewButton from '../components/ViewButton';
 
 const statusColors = {
   draft: 'bg-gray-100 text-gray-700',
@@ -50,6 +51,7 @@ const statusLabels = {
 
 export default function Quotations() {
   const { showToast } = useToast();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [quotations, setQuotations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -303,13 +305,9 @@ export default function Quotations() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button 
-                          onClick={() => fetchQuotationDetails(quotation._id)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/5 rounded-lg transition-colors"
-                        >
-                          <Eye className="h-4 w-4" />
-                          View
-                        </button>
+                        <ViewButton
+                          onClick={() => navigate(`/app/quotations/${quotation._id}`)}
+                        />
                       </td>
                     </tr>
                   );

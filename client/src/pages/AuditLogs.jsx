@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import api from '../lib/api';
 import { 
   Search, FileCheck, Loader2, Calendar, User, 
-  Filter, Eye, LogIn, Edit, Trash2, Plus
+  Filter, LogIn, Edit, Trash2, Plus
 } from 'lucide-react';
+import ViewButton from '../components/ViewButton';
 import Modal from '../components/Modal';
 
 const actionIcons = {
@@ -192,12 +193,9 @@ export default function AuditLogs() {
                         {log.ipAddress || '-'}
                       </td>
                       <td className="py-4 px-6">
-                        <button
+                        <ViewButton
                           onClick={() => { setSelectedLog(log); setShowModal(true); }}
-                          className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
+                        />
                       </td>
                     </tr>
                   );

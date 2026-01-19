@@ -4,10 +4,11 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import api, { departmentAPI } from '../lib/api';
 import { 
-  Plus, Search, Filter, Eye, Edit, Trash2, Send, 
+  Plus, Search, Filter, Edit, Trash2, Send, 
   Clock, CheckCircle, XCircle, Package, Loader2, AlertCircle,
   Check, X, FileText, ShoppingCart, Truck
 } from 'lucide-react';
+import ViewButton from '../components/ViewButton';
 import Modal from '../components/Modal';
 
 const statusColors = {
@@ -230,19 +231,19 @@ export default function Requisitions() {
           <div className="bg-green-50 border border-green-200 rounded-xl p-4">
             <p className="text-sm text-green-600 font-medium">Accepted</p>
             <p className="text-2xl font-bold text-green-700">
-              {requisitions.filter(r => r.status === 'accepted').length}
+              {requisitions.filter(r => r.status === 'accepted' && !r.purchaseOrder).length}
             </p>
           </div>
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
             <p className="text-sm text-blue-600 font-medium">In Sourcing</p>
             <p className="text-2xl font-bold text-blue-700">
-              {requisitions.filter(r => r.status === 'sourcing').length}
+              {requisitions.filter(r => r.status === 'sourcing' && !r.purchaseOrder).length}
             </p>
           </div>
           <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
             <p className="text-sm text-purple-600 font-medium">Ordered</p>
             <p className="text-2xl font-bold text-purple-700">
-              {requisitions.filter(r => r.status === 'ordered').length}
+              {requisitions.filter(r => r.purchaseOrder || r.status === 'ordered').length}
             </p>
           </div>
         </div>
@@ -415,13 +416,9 @@ export default function Requisitions() {
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => { setSelectedRequisition(req); setShowViewModal(true); }}
-                          className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
-                          title="View Details"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
+                        <ViewButton
+                          onClick={() => navigate(`/app/requisitions/${req._id}`)}
+                        />
                         
                         {/* Department Head Actions */}
                         {!isProcurement && req.status === 'draft' && (
@@ -661,24 +658,30 @@ export default function Requisitions() {
                       ✓ Items Collected
                     </span>
                     <p className="text-sm text-green-800">
-                      Your items have been collected from stores.
+                      {isProcurement 
+                        ? `Items have been collected by ${selectedRequisition.department?.name || 'the department'}.`
+                        : 'Your items have been collected from stores.'}
                     </p>
                   </div>
                 ) : (
                   <>
                     <p className="text-sm text-green-800 mb-3">
-                      Your ordered items have been received and are now available in stores. You can request them using the button below.
+                      {isProcurement
+                        ? `Ordered items have been received and are now available in stores for ${selectedRequisition.department?.name || 'the requesting department'}.`
+                        : 'Your ordered items have been received and are now available in stores. You can request them using the button below.'}
                     </p>
-                    <button
-                      onClick={() => {
-                        handleRequestFromStores(selectedRequisition);
-                        setShowViewModal(false);
-                      }}
-                      className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700"
-                    >
-                      <Truck className="h-4 w-4" />
-                      Request from Stores
-                    </button>
+                    {!isProcurement && (
+                      <button
+                        onClick={() => {
+                          handleRequestFromStores(selectedRequisition);
+                          setShowViewModal(false);
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700"
+                      >
+                        <Truck className="h-4 w-4" />
+                        Request from Stores
+                      </button>
+                    )}
                   </>
                 )}
               </div>

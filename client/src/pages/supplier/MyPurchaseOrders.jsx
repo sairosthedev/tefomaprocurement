@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../components/Toast';
 import api from '../../lib/api';
-import { ShoppingCart, Eye, Loader2, CheckCircle, Truck, Download } from 'lucide-react';
+import { ShoppingCart, Loader2, CheckCircle, Truck, Download } from 'lucide-react';
+import ViewButton from '../../components/ViewButton';
 import Modal from '../../components/Modal';
 import { formatCurrency } from '../../lib/constants';
 
@@ -196,12 +197,9 @@ export default function MyPurchaseOrders() {
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-2">
-                        <button
+                        <ViewButton
                           onClick={() => { setSelectedPO(po); setShowViewModal(true); }}
-                          className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
+                        />
                         {(po.status === 'approved' || po.status === 'issued') && !po.isAcknowledged && (
                           <button
                             onClick={() => openAcknowledgeModal(po)}

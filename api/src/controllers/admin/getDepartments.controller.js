@@ -1,4 +1,4 @@
-const { Department } = require('../../models');
+const { Department, User } = require('../../models');
 
 const getDepartments = async (req, res) => {
   try {
@@ -11,9 +11,24 @@ const getDepartments = async (req, res) => {
       .populate('head', 'firstName lastName email')
       .sort({ name: 1 });
 
+    // Calculate user count for each department
+    const departmentsWithCounts = await Promise.all(
+      departments.map(async (dept) => {
+        const userCount = await User.countDocuments({
+          department: dept._id,
+          isDeleted: false
+        });
+
+        return {
+          ...dept.toObject(),
+          userCount
+        };
+      })
+    );
+
     res.status(200).json({
       success: true,
-      data: departments
+      data: departmentsWithCounts
     });
   } catch (error) {
     console.error('Get departments error:', error);

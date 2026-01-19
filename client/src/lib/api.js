@@ -62,6 +62,7 @@ export const procurementAPI = {
   approveSupplier: (id) => api.put(`/procurement/suppliers/${id}/approve`),
   blacklistSupplier: (id, data) => api.put(`/procurement/suppliers/${id}/blacklist`, data),
   getRFQs: (params) => api.get('/procurement/rfqs', { params }),
+  getRFQById: (id) => api.get(`/procurement/rfqs/${id}`),
   createRFQ: (data) => api.post('/procurement/rfqs', data),
   publishRFQ: (id) => api.put(`/procurement/rfqs/${id}/publish`),
   getQuotations: (params) => api.get('/procurement/quotations', { params }),
@@ -69,8 +70,11 @@ export const procurementAPI = {
   acceptQuotation: (id, data) => api.put(`/procurement/quotations/${id}/accept`, data),
   rejectQuotation: (id, data) => api.put(`/procurement/quotations/${id}/reject`, data),
   getPurchaseOrders: (params) => api.get('/procurement/purchase-orders', { params }),
+  getPurchaseOrderById: (id) => api.get(`/procurement/purchase-orders/${id}`),
   createPurchaseOrder: (data) => api.post('/procurement/purchase-orders', data),
-  submitPurchaseOrder: (id) => api.put(`/procurement/purchase-orders/${id}/submit`)
+  submitPurchaseOrder: (id) => api.put(`/procurement/purchase-orders/${id}/submit`),
+  getPendingRequisitions: (params) => api.get('/procurement/requisitions', { params }),
+  getRequisitionById: (id) => api.get(`/procurement/requisitions/${id}`)
 };
 
 // Supplier API
@@ -88,6 +92,7 @@ export const supplierAPI = {
 export const departmentAPI = {
   createRequisition: (data) => api.post('/department/requisitions', data),
   getRequisitions: (params) => api.get('/department/requisitions', { params }),
+  getRequisitionById: (id) => api.get(`/department/requisitions/${id}`),
   submitRequisition: (id) => api.put(`/department/requisitions/${id}/submit`),
   approveRequisition: (id, data) => api.put(`/department/requisitions/${id}/approve`, data),
   createStoreRequisition: (data) => api.post('/department/store-requisitions', data),
@@ -98,6 +103,7 @@ export const departmentAPI = {
 export const financeAPI = {
   getPendingApprovals: (params) => api.get('/finance/pending-approvals', { params }),
   getPurchaseOrders: (params) => api.get('/finance/purchase-orders', { params }),
+  getPurchaseOrderById: (id) => api.get(`/procurement/purchase-orders/${id}`),
   approvePO: (id, data) => api.put(`/finance/purchase-orders/${id}/approve`, data),
   rejectPO: (id, data) => api.put(`/finance/purchase-orders/${id}/reject`, data)
 };

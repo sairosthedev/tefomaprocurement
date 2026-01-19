@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useToast } from '../components/Toast';
 import api from '../lib/api';
 import { 
-  Plus, Search, Truck, Eye, CheckCircle, 
+  Plus, Search, Truck, CheckCircle, 
   Loader2, Package, Calendar, FileText, AlertCircle, Clock
 } from 'lucide-react';
+import ViewButton from '../components/ViewButton';
 import Modal from '../components/Modal';
 import { formatCurrency } from '../lib/constants';
 
@@ -250,12 +251,9 @@ export default function Deliveries() {
                       )}
                     </td>
                     <td className="py-4 px-6">
-                      <button
+                      <ViewButton
                         onClick={() => { setSelectedDelivery(delivery); setShowViewModal(true); }}
-                        className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
+                      />
                     </td>
                   </tr>
                 ))}

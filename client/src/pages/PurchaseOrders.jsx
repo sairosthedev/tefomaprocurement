@@ -11,13 +11,13 @@ import {
   Calendar,
   DollarSign,
   Loader2,
-  Eye,
   CheckCircle,
   XCircle,
   Clock,
   Send,
   Truck
 } from 'lucide-react';
+import ViewButton from '../components/ViewButton';
 
 const statusColors = {
   draft: 'bg-gray-100 text-gray-700',
@@ -252,10 +252,9 @@ export default function PurchaseOrders() {
                               )}
                             </button>
                           )}
-                          <button className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/5 rounded-lg transition-colors">
-                            <Eye className="h-4 w-4" />
-                            View
-                          </button>
+                          <ViewButton
+                            onClick={() => navigate(`/app/purchase-orders/${order._id}`)}
+                          />
                         </div>
                       </td>
                     </tr>

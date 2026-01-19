@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../components/Toast';
-import api from '../lib/api';
+import api, { adminAPI } from '../lib/api';
 import { Building2, Plus, Edit, Trash2, Users, Loader2 } from 'lucide-react';
 import Modal from '../components/Modal';
 
@@ -10,6 +10,8 @@ export default function Departments() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState(null);
+  const [departmentHeads, setDepartmentHeads] = useState([]);
+  const [loadingHeads, setLoadingHeads] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     code: '',
@@ -19,6 +21,7 @@ export default function Departments() {
 
   useEffect(() => {
     fetchDepartments();
+    fetchDepartmentHeads();
   }, []);
 
   const fetchDepartments = async () => {
@@ -30,8 +33,21 @@ export default function Departments() {
       }
     } catch (error) {
       console.error('Failed to fetch departments:', error);
+      showToast('Failed to fetch departments', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDepartmentHeads = async () => {
+    try {
+      setLoadingHeads(true);
+      const response = await adminAPI.getUsers({ role: 'department_head' });
+      setDepartmentHeads(response.data.data || []);
+    } catch (error) {
+      console.error('Failed to fetch department heads:', error);
+    } finally {
+      setLoadingHeads(false);
     }
   };
 
@@ -154,12 +170,14 @@ export default function Departments() {
               <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <Users className="h-4 w-4" />
-                  <span>{dept.userCount || 0} members</span>
+                  <span>{dept.userCount || 0} member{dept.userCount !== 1 ? 's' : ''}</span>
                 </div>
-                {dept.head && (
+                {dept.head && dept.head.firstName ? (
                   <span className="text-sm text-gray-500">
-                    Head: {dept.head.firstName} {dept.head.lastName}
+                    Head: {dept.head.firstName} {dept.head.lastName || ''}
                   </span>
+                ) : (
+                  <span className="text-sm text-gray-400 italic">No head assigned</span>
                 )}
               </div>
             </div>
@@ -208,6 +226,31 @@ export default function Departments() {
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
               placeholder="Brief description of the department..."
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Department Head
+            </label>
+            {loadingHeads ? (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading department heads...
+              </div>
+            ) : (
+              <select
+                value={formData.head}
+                onChange={(e) => setFormData({ ...formData, head: e.target.value })}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white"
+              >
+                <option value="">Select a department head (optional)</option>
+                {departmentHeads.map((user) => (
+                  <option key={user._id} value={user._id}>
+                    {user.firstName} {user.lastName} {user.email ? `(${user.email})` : ''}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
