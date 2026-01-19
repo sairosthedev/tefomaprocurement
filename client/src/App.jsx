@@ -44,6 +44,7 @@ import MyRFQs from './pages/supplier/MyRFQs';
 import SubmitQuotation from './pages/supplier/SubmitQuotation';
 import MyQuotations from './pages/supplier/MyQuotations';
 import MyPurchaseOrders from './pages/supplier/MyPurchaseOrders';
+import MyDeliveries from './pages/supplier/MyDeliveries';
 import SupplierProfile from './pages/supplier/SupplierProfile';
 
 function AppLayout({ children, allowedRoles }) {
