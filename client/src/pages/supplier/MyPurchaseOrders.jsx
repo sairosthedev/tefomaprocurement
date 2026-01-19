@@ -6,6 +6,16 @@ import Modal from '../../components/Modal';
 import { formatCurrency } from '../../lib/constants';
 
 const statusColors = {
+  draft: 'bg-gray-100 text-gray-700',
+  pending_finance: 'bg-amber-100 text-amber-700',
+  pending_coo: 'bg-purple-100 text-purple-700',
+  approved: 'bg-blue-100 text-blue-700',
+  rejected: 'bg-red-100 text-red-700',
+  issued: 'bg-green-100 text-green-700',
+  partially_received: 'bg-cyan-100 text-cyan-700',
+  completed: 'bg-emerald-100 text-emerald-700',
+  cancelled: 'bg-gray-100 text-gray-700',
+  // Legacy statuses for backward compatibility
   sent: 'bg-blue-100 text-blue-700',
   acknowledged: 'bg-amber-100 text-amber-700',
   in_progress: 'bg-purple-100 text-purple-700',
@@ -29,10 +39,15 @@ export default function MyPurchaseOrders() {
       setLoading(true);
       const response = await api.get('/supplier/purchase-orders');
       if (response.data.success) {
+        console.log('Purchase orders received:', response.data.data);
         setPurchaseOrders(response.data.data || []);
+      } else {
+        console.error('Failed to fetch purchase orders:', response.data.message);
+        showToast(response.data.message || 'Failed to load purchase orders', 'error');
       }
     } catch (error) {
       console.error('Failed to fetch purchase orders:', error);
+      showToast(error.response?.data?.message || 'Failed to load purchase orders', 'error');
     } finally {
       setLoading(false);
     }
@@ -66,7 +81,7 @@ export default function MyPurchaseOrders() {
             <div>
               <p className="text-sm text-blue-600">New Orders</p>
               <p className="text-2xl font-bold text-blue-700">
-                {purchaseOrders.filter(po => po.status === 'sent').length}
+                {purchaseOrders.filter(po => po.status === 'approved' || po.status === 'issued').length}
               </p>
             </div>
           </div>
@@ -80,7 +95,7 @@ export default function MyPurchaseOrders() {
             <div>
               <p className="text-sm text-amber-600">In Progress</p>
               <p className="text-2xl font-bold text-amber-700">
-                {purchaseOrders.filter(po => ['acknowledged', 'in_progress', 'shipped'].includes(po.status)).length}
+                {purchaseOrders.filter(po => ['issued', 'partially_received'].includes(po.status)).length}
               </p>
             </div>
           </div>
@@ -92,9 +107,9 @@ export default function MyPurchaseOrders() {
               <CheckCircle className="h-6 w-6 text-green-600" />
             </div>
             <div>
-              <p className="text-sm text-green-600">Delivered</p>
+              <p className="text-sm text-green-600">Completed</p>
               <p className="text-2xl font-bold text-green-700">
-                {purchaseOrders.filter(po => po.status === 'delivered').length}
+                {purchaseOrders.filter(po => po.status === 'completed').length}
               </p>
             </div>
           </div>
@@ -133,7 +148,9 @@ export default function MyPurchaseOrders() {
                         {po.poNumber}
                       </span>
                       <p className="text-xs text-gray-500 mt-1">
-                        {new Date(po.createdAt).toLocaleDateString('en-ZA')}
+                        {po.issuedAt 
+                          ? new Date(po.issuedAt).toLocaleDateString('en-ZA')
+                          : new Date(po.createdAt).toLocaleDateString('en-ZA')}
                       </p>
                     </td>
                     <td className="py-4 px-6">
@@ -141,7 +158,7 @@ export default function MyPurchaseOrders() {
                     </td>
                     <td className="py-4 px-6">
                       <span className="font-semibold text-gray-900">
-                        {formatCurrency(po.totalAmount, po.currency)}
+                        {formatCurrency(po.totalAmount, po.currency || 'USD')}
                       </span>
                     </td>
                     <td className="py-4 px-6 text-sm text-gray-500">
@@ -162,13 +179,18 @@ export default function MyPurchaseOrders() {
                         >
                           <Eye className="h-4 w-4" />
                         </button>
-                        {po.status === 'sent' && (
+                        {(po.status === 'approved' || po.status === 'issued') && !po.isAcknowledged && (
                           <button
                             onClick={() => handleAcknowledge(po._id)}
                             className="px-3 py-1.5 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700"
                           >
                             Acknowledge
                           </button>
+                        )}
+                        {po.isAcknowledged && (
+                          <span className="px-3 py-1.5 text-sm font-medium bg-green-100 text-green-700 rounded-lg">
+                            Acknowledged
+                          </span>
                         )}
                       </div>
                     </td>
@@ -204,7 +226,7 @@ export default function MyPurchaseOrders() {
               <div>
                 <label className="text-sm text-gray-500">Total Value</label>
                 <p className="text-xl font-bold text-gray-900">
-                  {formatCurrency(selectedPO.totalAmount, selectedPO.currency)}
+                  {formatCurrency(selectedPO.totalAmount, selectedPO.currency || 'USD')}
                 </p>
               </div>
               <div>
@@ -247,10 +269,10 @@ export default function MyPurchaseOrders() {
                         <td className="py-3 px-4 text-sm font-medium">{item.description}</td>
                         <td className="py-3 px-4 text-sm">{item.quantity} {item.unit}</td>
                         <td className="py-3 px-4 text-sm">
-                          {formatCurrency(item.unitPrice, selectedPO.currency)}
+                          {formatCurrency(item.unitPrice, selectedPO.currency || 'USD')}
                         </td>
                         <td className="py-3 px-4 text-sm font-medium">
-                          {formatCurrency(item.totalPrice || item.quantity * item.unitPrice, selectedPO.currency)}
+                          {formatCurrency(item.totalPrice || item.quantity * item.unitPrice, selectedPO.currency || 'USD')}
                         </td>
                       </tr>
                     ))}

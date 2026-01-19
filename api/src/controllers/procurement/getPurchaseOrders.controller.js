@@ -18,7 +18,7 @@ const getPurchaseOrders = async (req, res) => {
       PurchaseOrder.find(query)
         .populate('supplier', 'companyName')
         .populate('createdBy', 'firstName lastName')
-        .populate('quotation', 'quotationNumber')
+        .populate('quotation', 'quotationNumber currency')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit)),

@@ -1,7 +1,8 @@
 // Currency configuration
 export const CURRENCIES = [
   { code: 'USD', symbol: '$', name: 'US Dollar' },
-  { code: 'ZWG', symbol: 'ZWG', name: 'Zimbabwean Gold' }
+  { code: 'ZWG', symbol: 'ZWG', name: 'Zimbabwean Gold' },
+  { code: 'ZAR', symbol: 'R', name: 'South African Rand' }
 ];
 export const currencies = CURRENCIES; // alias
 
@@ -13,6 +14,12 @@ export const formatCurrency = (amount, currency = 'USD') => {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2 
     }).format(amount || 0)}`;
+  }
+  if (currency === 'ZAR') {
+    return new Intl.NumberFormat('en-ZA', { 
+      style: 'currency', 
+      currency: 'ZAR' 
+    }).format(amount || 0);
   }
   return new Intl.NumberFormat('en-US', { 
     style: 'currency', 

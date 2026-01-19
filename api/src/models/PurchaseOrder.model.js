@@ -31,7 +31,7 @@ const POItemSchema = new mongoose.Schema({
 const ApprovalHistorySchema = new mongoose.Schema({
   action: {
     type: String,
-    enum: ['created', 'submitted', 'finance_approved', 'finance_rejected', 'coo_approved', 'coo_rejected', 'issued'],
+    enum: ['created', 'submitted', 'finance_approved', 'finance_rejected', 'coo_approved', 'coo_rejected', 'issued', 'acknowledged'],
     required: true
   },
   by: {

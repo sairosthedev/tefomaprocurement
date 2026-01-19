@@ -57,7 +57,6 @@ const roleNavigation = {
     { name: "Requisitions", href: "/app/requisitions", icon: ClipboardList },
     { name: "RFQs", href: "/app/rfqs", icon: FileSearch },
     { name: "Quotations", href: "/app/quotations", icon: FileText },
-    { name: "Evaluations", href: "/app/evaluations", icon: FileCheck },
     { name: "Purchase Orders", href: "/app/purchase-orders", icon: ShoppingCart },
     { name: "Suppliers", href: "/app/suppliers", icon: Users },
     { name: "Reports", href: "/app/reports", icon: BarChart3 },
@@ -98,7 +97,6 @@ const roleNavigation = {
   supplier: [
     { name: "Dashboard", href: "/app", icon: LayoutDashboard },
     { name: "My RFQs", href: "/app/my-rfqs", icon: FileSearch },
-    { name: "Submit Quotation", href: "/app/submit-quotation", icon: Send },
     { name: "My Purchase Orders", href: "/app/my-purchase-orders", icon: ShoppingCart },
     { name: "Deliveries", href: "/app/my-deliveries", icon: Truck },
     { name: "My Profile", href: "/app/supplier-profile", icon: Building2 },

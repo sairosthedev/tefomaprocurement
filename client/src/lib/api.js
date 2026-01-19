@@ -65,8 +65,12 @@ export const procurementAPI = {
   createRFQ: (data) => api.post('/procurement/rfqs', data),
   publishRFQ: (id) => api.put(`/procurement/rfqs/${id}/publish`),
   getQuotations: (params) => api.get('/procurement/quotations', { params }),
+  getQuotation: (id) => api.get(`/procurement/quotations/${id}`),
+  acceptQuotation: (id, data) => api.put(`/procurement/quotations/${id}/accept`, data),
+  rejectQuotation: (id, data) => api.put(`/procurement/quotations/${id}/reject`, data),
   getPurchaseOrders: (params) => api.get('/procurement/purchase-orders', { params }),
-  createPurchaseOrder: (data) => api.post('/procurement/purchase-orders', data)
+  createPurchaseOrder: (data) => api.post('/procurement/purchase-orders', data),
+  submitPurchaseOrder: (id) => api.put(`/procurement/purchase-orders/${id}/submit`)
 };
 
 // Supplier API
@@ -76,7 +80,8 @@ export const supplierAPI = {
   getMyRFQs: (params) => api.get('/supplier/rfqs', { params }),
   submitQuotation: (data) => api.post('/supplier/quotations', data),
   getMyQuotations: (params) => api.get('/supplier/quotations', { params }),
-  getMyPurchaseOrders: (params) => api.get('/supplier/purchase-orders', { params })
+  getMyPurchaseOrders: (params) => api.get('/supplier/purchase-orders', { params }),
+  getMyDeliveries: (params) => api.get('/supplier/deliveries', { params })
 };
 
 // Department API

@@ -82,11 +82,11 @@ export default function SubmitQuotation() {
 
       setSubmitting(true);
       await api.post('/supplier/quotations', {
-        rfq: rfqId,
+        rfqId: rfqId,
         currency: formData.currency,
-        deliveryDays: formData.deliveryDays,
+        deliveryPeriod: formData.deliveryDays,
         paymentTerms: formData.paymentTerms,
-        validityDays: formData.validityDays,
+        validityPeriod: formData.validityDays,
         notes: formData.notes,
         items: formData.items.map(item => ({
           description: item.description,
@@ -95,7 +95,8 @@ export default function SubmitQuotation() {
           unitPrice: parseFloat(item.unitPrice),
           totalPrice: item.quantity * parseFloat(item.unitPrice),
           brand: item.brand,
-          notes: item.notes
+          notes: item.notes,
+          vatIncluded: false
         })),
         totalAmount: calculateTotal()
       });

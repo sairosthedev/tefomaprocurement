@@ -15,26 +15,48 @@ const getMyPurchaseOrders = async (req, res) => {
     
     const query = { 
       supplier: profile._id,
-      isDeleted: false,
-      status: { $in: ['issued', 'partially_received', 'completed'] }
+      isDeleted: false
     };
     
-    if (status) query.status = status;
+    // Show all POs except draft, pending, or rejected (suppliers should see approved/issued POs)
+    // This includes: approved, issued, partially_received, completed
+    if (!status) {
+      query.status = { $in: ['approved', 'issued', 'partially_received', 'completed'] };
+    } else {
+      query.status = status;
+    }
 
     const skip = (page - 1) * limit;
     
+    // Debug: Log the query to help troubleshoot
+    console.log('Supplier PO Query:', JSON.stringify(query, null, 2));
+    
     const [orders, total] = await Promise.all([
       PurchaseOrder.find(query)
-        .select('poNumber items totalAmount status expectedDeliveryDate issuedAt')
-        .sort({ issuedAt: -1 })
+        .populate('quotation', 'quotationNumber currency')
+        .select('poNumber items totalAmount status expectedDeliveryDate issuedAt createdAt paymentTerms deliveryAddress approvalHistory')
+        .sort({ createdAt: -1, issuedAt: -1 })
         .skip(skip)
         .limit(parseInt(limit)),
       PurchaseOrder.countDocuments(query)
     ]);
+    
+    // Add acknowledgment status to each order
+    const ordersWithAcknowledgment = orders.map(order => {
+      const orderObj = order.toObject();
+      const isAcknowledged = order.approvalHistory?.some(
+        h => h.action === 'acknowledged' && h.by.toString() === req.user._id.toString()
+      );
+      orderObj.isAcknowledged = isAcknowledged || false;
+      return orderObj;
+    });
+    
+    // Debug: Log results
+    console.log(`Found ${orders.length} purchase orders for supplier ${profile._id}`);
 
     res.status(200).json({
       success: true,
-      data: orders,
+      data: ordersWithAcknowledgment,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),

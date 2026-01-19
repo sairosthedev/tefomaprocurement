@@ -52,10 +52,9 @@ const createRFQ = async (req, res) => {
     const year = new Date().getFullYear();
     const rfqNumber = `RFQ-${year}-${String(count + 1).padStart(5, '0')}`;
 
-    // Determine status: use requested status if valid, otherwise default to 'draft'
-    const rfqStatus = (requestedStatus === 'open' && invitedSuppliers.length > 0) 
-      ? 'open' 
-      : 'draft';
+    // Auto-publish: if 'open' status is requested, automatically publish the RFQ
+    // (Suppliers are already validated above, so we can safely publish)
+    const rfqStatus = requestedStatus === 'open' ? 'open' : 'draft';
     
     const rfqData = {
       rfqNumber,
@@ -72,7 +71,7 @@ const createRFQ = async (req, res) => {
       status: rfqStatus
     };
 
-    // Set publishedAt if status is 'open'
+    // Automatically set publishedAt when status is 'open' (auto-publish)
     if (rfqStatus === 'open') {
       rfqData.publishedAt = new Date();
     }

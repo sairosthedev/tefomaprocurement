@@ -29,6 +29,20 @@ const createPurchaseOrder = async (req, res) => {
       });
     }
 
+    // Check if a PO already exists for this quotation
+    const existingPO = await PurchaseOrder.findOne({
+      quotation: quotationId,
+      isDeleted: false
+    });
+
+    if (existingPO) {
+      return res.status(400).json({
+        success: false,
+        message: `A Purchase Order already exists for this quotation. PO Number: ${existingPO.poNumber}`,
+        data: existingPO
+      });
+    }
+
     // Create PO items from quotation items
     const poItems = quotation.items.map(item => ({
       description: item.description,
@@ -40,7 +54,13 @@ const createPurchaseOrder = async (req, res) => {
       quantityReceived: 0
     }));
 
+    // Generate PO number
+    const count = await PurchaseOrder.countDocuments();
+    const year = new Date().getFullYear();
+    const poNumber = `PO-${year}-${String(count + 1).padStart(5, '0')}`;
+
     const po = await PurchaseOrder.create({
+      poNumber,
       quotation: quotation._id,
       rfq: quotation.rfq?._id,
       purchaseRequisition: quotation.rfq?.purchaseRequisition,

@@ -13,6 +13,7 @@ router.put('/profile', supplier.updateProfile);
 
 // RFQs
 router.get('/rfqs', supplier.getMyRFQs);
+router.get('/rfqs/:id', supplier.getRFQById);
 
 // Quotations
 router.post('/quotations', supplier.submitQuotation);
@@ -20,6 +21,10 @@ router.get('/quotations', supplier.getMyQuotations);
 
 // Purchase Orders
 router.get('/purchase-orders', supplier.getMyPurchaseOrders);
+router.put('/purchase-orders/:id/acknowledge', supplier.acknowledgePurchaseOrder);
+
+// Deliveries
+router.get('/deliveries', supplier.getMyDeliveries);
 
 module.exports = router;
 

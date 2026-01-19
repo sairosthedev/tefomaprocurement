@@ -4,6 +4,7 @@ import api from '../../lib/api';
 import { FileText, Eye, Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
 import Modal from '../../components/Modal';
 import { formatCurrency } from '../../lib/constants';
+import confetti from 'canvas-confetti';
 
 const statusColors = {
   submitted: 'bg-blue-100 text-blue-700',
@@ -82,9 +83,9 @@ export default function MyQuotations() {
               <CheckCircle className="h-6 w-6 text-green-600" />
             </div>
             <div>
-              <p className="text-sm text-green-600">Awarded</p>
+              <p className="text-sm text-green-600">Accepted</p>
               <p className="text-2xl font-bold text-green-700">
-                {quotations.filter(q => q.status === 'awarded' || q.status === 'accepted').length}
+                {quotations.filter(q => q.status === 'accepted' || q.status === 'awarded').length}
               </p>
             </div>
           </div>
@@ -151,12 +152,40 @@ export default function MyQuotations() {
                     </td>
                     <td className="py-4 px-6">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[quote.status] || statusColors.submitted}`}>
-                        {quote.status?.replace('_', ' ') || 'Submitted'}
+                        {quote.status === 'accepted' ? 'Accepted' : (quote.status?.replace('_', ' ') || 'Submitted')}
                       </span>
                     </td>
                     <td className="py-4 px-6">
                       <button
-                        onClick={() => { setSelectedQuotation(quote); setShowViewModal(true); }}
+                        onClick={() => {
+                          setSelectedQuotation(quote);
+                          setShowViewModal(true);
+                          // Trigger confetti if accepted
+                          if (quote.status === 'accepted') {
+                            setTimeout(() => {
+                              confetti({
+                                particleCount: 100,
+                                spread: 70,
+                                origin: { y: 0.6 }
+                              });
+                              // Second burst
+                              setTimeout(() => {
+                                confetti({
+                                  particleCount: 50,
+                                  angle: 60,
+                                  spread: 55,
+                                  origin: { x: 0 }
+                                });
+                                confetti({
+                                  particleCount: 50,
+                                  angle: 120,
+                                  spread: 55,
+                                  origin: { x: 1 }
+                                });
+                              }, 250);
+                            }, 300);
+                          }
+                        }}
                         className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
                       >
                         <Eye className="h-4 w-4" />
@@ -179,6 +208,20 @@ export default function MyQuotations() {
       >
         {selectedQuotation && (
           <div className="space-y-6">
+            {/* Accepted Celebration Banner */}
+            {selectedQuotation.status === 'accepted' && (
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <CheckCircle className="h-6 w-6 text-green-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-green-800 text-lg">🎉 Quotation Accepted!</h3>
+                    <p className="text-sm text-green-700 mt-1">Congratulations! Your quotation has been accepted by the procurement team.</p>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm text-gray-500">Quotation Number</label>
@@ -189,8 +232,8 @@ export default function MyQuotations() {
               <div>
                 <label className="text-sm text-gray-500">Status</label>
                 <p>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[selectedQuotation.status]}`}>
-                    {selectedQuotation.status?.replace('_', ' ')}
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[selectedQuotation.status] || statusColors.submitted}`}>
+                    {selectedQuotation.status === 'accepted' ? 'Accepted' : (selectedQuotation.status?.replace('_', ' ') || 'Submitted')}
                   </span>
                 </p>
               </div>

@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
+import { formatCurrency } from '../lib/constants';
+import { useToast } from '../components/Toast';
 import { 
   Search, 
   Plus,
@@ -40,10 +43,13 @@ const statusIcons = {
 };
 
 export default function PurchaseOrders() {
+  const navigate = useNavigate();
+  const { showToast } = useToast();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [submitting, setSubmitting] = useState(null);
 
   useEffect(() => {
     fetchOrders();
@@ -64,17 +70,24 @@ export default function PurchaseOrders() {
     }
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-ZA', {
-      style: 'currency',
-      currency: 'ZAR'
-    }).format(amount);
-  };
 
   const formatStatus = (status) => {
     return status.split('_').map(word => 
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
+  };
+
+  const handleSubmit = async (poId) => {
+    try {
+      setSubmitting(poId);
+      await procurementAPI.submitPurchaseOrder(poId);
+      showToast('Purchase order submitted for Finance approval', 'success');
+      fetchOrders();
+    } catch (error) {
+      showToast(error.response?.data?.message || 'Failed to submit purchase order', 'error');
+    } finally {
+      setSubmitting(null);
+    }
   };
 
   return (
@@ -85,9 +98,12 @@ export default function PurchaseOrders() {
           <h1 className="text-2xl font-bold text-gray-900">Purchase Orders</h1>
           <p className="text-gray-500 mt-1">Manage and track purchase orders</p>
         </div>
-        <button className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors">
+        <button 
+          onClick={() => navigate('/app/quotations?status=accepted')}
+          className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+        >
           <Plus className="h-5 w-5" />
-          Create PO
+          Create PO from Quotation
         </button>
       </div>
 
@@ -174,7 +190,7 @@ export default function PurchaseOrders() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-1 font-semibold text-gray-900">
                           <DollarSign className="h-4 w-4 text-gray-400" />
-                          {formatCurrency(order.totalAmount)}
+                          {formatCurrency(order.totalAmount, order.quotation?.currency || 'USD')}
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
@@ -193,10 +209,31 @@ export default function PurchaseOrders() {
                         {new Date(order.createdAt).toLocaleDateString('en-ZA')}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/5 rounded-lg transition-colors">
-                          <Eye className="h-4 w-4" />
-                          View
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          {order.status === 'draft' && (
+                            <button
+                              onClick={() => handleSubmit(order._id)}
+                              disabled={submitting === order._id}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium bg-green-600 text-white hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50"
+                            >
+                              {submitting === order._id ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  Submitting...
+                                </>
+                              ) : (
+                                <>
+                                  <Send className="h-4 w-4" />
+                                  Submit for Approval
+                                </>
+                              )}
+                            </button>
+                          )}
+                          <button className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/5 rounded-lg transition-colors">
+                            <Eye className="h-4 w-4" />
+                            View
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

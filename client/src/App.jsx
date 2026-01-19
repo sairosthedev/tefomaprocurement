@@ -23,7 +23,6 @@ import Suppliers from './pages/Suppliers';
 import RFQs from './pages/RFQs';
 import CreateRFQ from './pages/CreateRFQ';
 import Quotations from './pages/Quotations';
-import Evaluations from './pages/Evaluations';
 import PurchaseOrders from './pages/PurchaseOrders';
 
 // Department Head Pages
@@ -131,11 +130,6 @@ function App() {
                 <Quotations />
               </AppLayout>
             } />
-            <Route path="/app/evaluations" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer']}>
-                <Evaluations />
-              </AppLayout>
-            } />
             <Route path="/app/purchase-orders" element={
               <AppLayout allowedRoles={['admin', 'procurement_officer', 'finance', 'coo']}>
                 <PurchaseOrders />
@@ -211,7 +205,7 @@ function App() {
             } />
             <Route path="/app/my-deliveries" element={
               <AppLayout allowedRoles={['supplier']}>
-                <Notifications /> {/* Placeholder - can create dedicated page */}
+                <MyDeliveries />
               </AppLayout>
             } />
             <Route path="/app/supplier-profile" element={

@@ -8,7 +8,8 @@ const submitQuotation = async (req, res) => {
       items, 
       validityPeriod, 
       deliveryPeriod, 
-      paymentTerms, 
+      paymentTerms,
+      currency,
       notes 
     } = req.body;
 
@@ -78,7 +79,14 @@ const submitQuotation = async (req, res) => {
     const vatAmount = items.some(item => !item.vatIncluded) ? subtotal * 0.15 : 0;
     const totalAmount = subtotal + vatAmount;
 
+    // Generate quotation number
+    const count = await Quotation.countDocuments();
+    const year = new Date().getFullYear();
+    const quotationNumber = `QT-${year}-${String(count + 1).padStart(5, '0')}`;
+
+    const validityDays = validityPeriod || 30;
     const quotation = await Quotation.create({
+      quotationNumber,
       rfq: rfqId,
       supplier: profile._id,
       submittedBy: req.user._id,
@@ -86,11 +94,16 @@ const submitQuotation = async (req, res) => {
       subtotal,
       vatAmount,
       totalAmount,
-      validityPeriod: validityPeriod || 30,
+      validityPeriod: validityDays,
       deliveryPeriod,
       paymentTerms,
+      currency: currency || 'USD',
       notes,
-      status: 'submitted'
+      status: 'submitted',
+      isLocked: true,
+      lockedAt: new Date(),
+      submittedAt: new Date(),
+      validUntil: new Date(Date.now() + validityDays * 24 * 60 * 60 * 1000)
     });
 
     // Update RFQ invitation status

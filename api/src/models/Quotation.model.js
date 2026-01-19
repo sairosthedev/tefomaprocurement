@@ -73,6 +73,11 @@ const QuotationSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  currency: {
+    type: String,
+    default: 'USD',
+    enum: ['USD', 'ZWG', 'ZAR']
+  },
   notes: String,
   status: {
     type: String,

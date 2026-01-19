@@ -29,10 +29,14 @@ router.put('/rfqs/:id/publish', procurement.publishRFQ);
 
 // Quotations
 router.get('/quotations', procurement.getQuotations);
+router.get('/quotations/:id', procurement.getQuotationById);
+router.put('/quotations/:id/accept', procurement.acceptQuotation);
+router.put('/quotations/:id/reject', procurement.rejectQuotation);
 
 // Purchase Orders
 router.post('/purchase-orders', procurement.createPurchaseOrder);
 router.get('/purchase-orders', procurement.getPurchaseOrders);
+router.put('/purchase-orders/:id/submit', procurement.submitPurchaseOrder);
 
 module.exports = router;
 

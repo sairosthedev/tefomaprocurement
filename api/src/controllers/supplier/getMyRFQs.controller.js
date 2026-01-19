@@ -1,4 +1,4 @@
-const { RFQ, SupplierProfile } = require('../../models');
+const { RFQ, SupplierProfile, Quotation } = require('../../models');
 
 const getMyRFQs = async (req, res) => {
   try {
@@ -26,6 +26,7 @@ const getMyRFQs = async (req, res) => {
     const [rfqs, total] = await Promise.all([
       RFQ.find(query)
         .populate('invitedSuppliers.supplier', '_id')
+        .populate('invitedSuppliers.quotation', 'status quotationNumber')
         .select('rfqNumber title description items submissionDeadline status publishedAt invitedSuppliers')
         .sort({ publishedAt: -1, createdAt: -1 })
         .skip(skip)
@@ -33,7 +34,7 @@ const getMyRFQs = async (req, res) => {
       RFQ.countDocuments(query)
     ]);
 
-    // Add responded status for each RFQ
+    // Add responded status and quotation status for each RFQ
     const rfqsWithStatus = rfqs.map(rfq => {
       const invitation = rfq.invitedSuppliers?.find(
         inv => {
@@ -41,10 +42,19 @@ const getMyRFQs = async (req, res) => {
           return supplierId.toString() === profile._id.toString();
         }
       );
+      
+      // Get quotation status if quotation exists
+      let quotationStatus = null;
+      if (invitation?.quotation) {
+        const quotation = invitation.quotation;
+        quotationStatus = quotation.status || null;
+      }
+      
       return {
         ...rfq.toObject(),
         hasResponded: invitation?.responded || false,
-        hasSubmitted: invitation?.responded || false
+        hasSubmitted: invitation?.responded || false,
+        quotationStatus: quotationStatus
       };
     });
 
