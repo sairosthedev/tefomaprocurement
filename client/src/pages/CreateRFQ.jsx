@@ -110,7 +110,7 @@ export default function CreateRFQ() {
       const rfqData = {
         title: formData.title,
         description: formData.description,
-        purchaseRequisition: requisitionId,
+        purchaseRequisitionId: requisitionId, // Backend expects purchaseRequisitionId, not purchaseRequisition
         items: requisition?.items?.map(item => ({
           description: item.description,
           specifications: item.specification || item.specifications,
