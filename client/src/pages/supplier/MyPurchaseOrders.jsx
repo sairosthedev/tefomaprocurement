@@ -188,9 +188,19 @@ export default function MyPurchaseOrders() {
                           </button>
                         )}
                         {po.isAcknowledged && (
-                          <span className="px-3 py-1.5 text-sm font-medium bg-green-100 text-green-700 rounded-lg">
-                            Acknowledged
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="px-3 py-1.5 text-sm font-medium bg-green-100 text-green-700 rounded-lg">
+                              Acknowledged
+                            </span>
+                            {po.status === 'issued' && (
+                              <button
+                                onClick={() => window.location.href = '/app/my-deliveries'}
+                                className="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                              >
+                                View Deliveries
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
                     </td>
@@ -211,6 +221,21 @@ export default function MyPurchaseOrders() {
       >
         {selectedPO && (
           <div className="space-y-6">
+            {/* Acknowledgment Info */}
+            {selectedPO.isAcknowledged && selectedPO.status === 'issued' && (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-medium text-green-800">Purchase Order Acknowledged & Issued</p>
+                    <p className="text-sm text-green-700 mt-1">
+                      You can now prepare and deliver the goods. Once delivered, Stores will receive the goods and create a GRV (Goods Received Voucher). 
+                      You can track your deliveries in the <strong>"My Deliveries"</strong> section.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <div>
                 <label className="text-sm text-gray-500">PO Number</label>
