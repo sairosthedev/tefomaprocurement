@@ -189,7 +189,7 @@ export default function StoreRequisitions() {
                         {isStoresOfficer && req.status === 'pending' && (
                           <button
                             onClick={() => handleIssue(req._id)}
-                            className="px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700"
+                            className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
                           >
                             Issue Items
                           </button>

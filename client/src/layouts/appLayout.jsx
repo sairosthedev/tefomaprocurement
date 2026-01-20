@@ -180,10 +180,10 @@ export function SidebarLayout({ children }) {
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg text-[14px] font-medium transition-all duration-200",
                     "outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
-                    "focus-visible:bg-primary-light/70 focus-visible:text-white",
+                    "focus-visible:bg-primary-light focus-visible:text-white",
                     isActive
                       ? "bg-primary-light text-white shadow-sm"
-                      : "text-gray-100/80 hover:bg-primary-light/50 hover:text-white active:bg-primary-light/60",
+                      : "text-gray-100/80 hover:bg-primary-light hover:text-white active:bg-primary-light",
                   )}
                 >
                   <Icon className="h-[18px] w-[18px] shrink-0" />

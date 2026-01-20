@@ -192,7 +192,7 @@ export default function Quotations() {
   };
 
   return (
-    <div className="py-8">
+    <div className="p-8">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Quotations</h1>
@@ -486,7 +486,7 @@ export default function Quotations() {
                 <button
                   onClick={handleAccept}
                   disabled={processing}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-medium rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50"
                 >
                   {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                   Accept Quotation

@@ -486,7 +486,7 @@ export default function Requisitions() {
                         {!isProcurement && req.itemsDeliveredToStores && !req.itemsCollected && (
                           <button
                             onClick={() => handleRequestFromStores(req)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700"
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
                             title="Request items from stores"
                           >
                             <Truck className="h-3.5 w-3.5" />
@@ -678,7 +678,7 @@ export default function Requisitions() {
                           handleRequestFromStores(selectedRequisition);
                           setShowViewModal(false);
                         }}
-                        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700"
+                        className="flex items-center gap-2 px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark"
                       >
                         <Truck className="h-4 w-4" />
                         Request from Stores
@@ -841,7 +841,7 @@ export default function Requisitions() {
               <div className="flex gap-3 pt-4 border-t">
                 <button
                   onClick={() => { setShowViewModal(false); openActionModal(selectedRequisition, 'accept'); }}
-                  className="flex-1 py-2.5 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700"
+                  className="flex-1 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark"
                 >
                   Accept Requisition
                 </button>
@@ -897,7 +897,7 @@ export default function Requisitions() {
               disabled={actionLoading}
               className={`flex-1 py-2.5 text-white rounded-xl font-medium ${
                 actionType === 'accept' 
-                  ? 'bg-green-600 hover:bg-green-700' 
+                  ? 'bg-primary hover:bg-primary-dark' 
                   : 'bg-red-600 hover:bg-red-700'
               } disabled:opacity-50`}
             >

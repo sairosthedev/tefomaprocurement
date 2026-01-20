@@ -155,8 +155,8 @@ export default function Register() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
         <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
-          <div className="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Building2 className="h-8 w-8 text-green-600" />
+          <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Building2 className="h-8 w-8 text-primary" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Registration Successful!</h2>
           <p className="text-gray-600 mb-6">
@@ -200,7 +200,7 @@ export default function Register() {
             {['Account', 'Company', 'Address', 'Banking'].map((label, idx) => (
               <div key={label} className="flex items-center">
                 <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                  step > idx + 1 ? 'bg-green-500 text-white' :
+                  step > idx + 1 ? 'bg-primary text-white' :
                   step === idx + 1 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'
                 }`}>
                   {step > idx + 1 ? '✓' : idx + 1}

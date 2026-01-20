@@ -101,7 +101,7 @@ export default function PurchaseOrders() {
   };
 
   return (
-    <div className="py-8">
+    <div className="p-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -239,7 +239,7 @@ export default function PurchaseOrders() {
                             <button
                               onClick={() => handleSubmit(order._id)}
                               disabled={submitting === order._id}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium bg-green-600 text-white hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50"
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium bg-primary text-white hover:bg-primary-dark rounded-lg transition-colors disabled:opacity-50"
                             >
                               {submitting === order._id ? (
                                 <>

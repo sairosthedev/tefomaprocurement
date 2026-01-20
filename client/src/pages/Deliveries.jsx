@@ -363,7 +363,7 @@ export default function Deliveries() {
               <button
                 onClick={handleReceive}
                 disabled={isReceiving}
-                className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-medium rounded-xl hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isReceiving ? (
                   <>

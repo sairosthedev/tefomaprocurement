@@ -48,3 +48,18 @@
     background: transparent;
   }
 }
+
+/* Force primary green color for sidebar */
+aside[class*="bg-primary"] {
+  background-color: #193019 !important;
+}
+
+/* Force primary green for sidebar navigation hover state */
+aside nav a:hover {
+  background-color: #234523 !important;
+}
+
+/* Force primary green for sidebar navigation active state (has shadow-sm class) */
+aside nav a.shadow-sm {
+  background-color: #234523 !important;
+}

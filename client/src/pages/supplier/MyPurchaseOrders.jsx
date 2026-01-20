@@ -203,7 +203,7 @@ export default function MyPurchaseOrders() {
                         {(po.status === 'approved' || po.status === 'issued') && !po.isAcknowledged && (
                           <button
                             onClick={() => openAcknowledgeModal(po)}
-                            className="px-3 py-1.5 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700"
+                            className="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
                           >
                             Acknowledge
                           </button>
@@ -299,7 +299,7 @@ export default function MyPurchaseOrders() {
               </button>
               <button
                 onClick={handleAcknowledge}
-                className="px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700"
+                className="px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark"
               >
                 Confirm Acknowledgment
               </button>

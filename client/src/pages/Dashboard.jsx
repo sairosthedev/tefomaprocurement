@@ -212,7 +212,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="py-8">
+    <div className="p-8">
       {/* Welcome Section */}
       <div className="mb-8 flex items-center justify-between">
         <div>

@@ -50,7 +50,7 @@ export function ConfirmModal({ isOpen, onClose, onConfirm, title, message, confi
   const buttonStyles = {
     danger: 'bg-red-600 hover:bg-red-700 text-white',
     primary: 'bg-primary hover:bg-primary-dark text-white',
-    success: 'bg-green-600 hover:bg-green-700 text-white'
+    success: 'bg-primary hover:bg-primary-dark text-white'
   };
 
   return (
