@@ -45,7 +45,7 @@ const getStats = async (req, res) => {
         });
         const financeApproved = await PurchaseOrder.countDocuments({ 
           status: { $in: ['pending_coo', 'approved', 'sent'] },
-          financeApproval: { $exists: true }
+          financeApproved: true
         });
         const totalPOValue = await PurchaseOrder.aggregate([
           { $match: { status: { $in: ['approved', 'sent', 'delivered'] } } },
@@ -65,7 +65,7 @@ const getStats = async (req, res) => {
           cooApproved: false
         });
         const cooApproved = await PurchaseOrder.countDocuments({ 
-          cooApproval: { $exists: true }
+          cooApproved: true
         });
         const majorPOValue = await PurchaseOrder.aggregate([
           { $match: { status: 'pending_coo' } },
@@ -101,7 +101,7 @@ const getStats = async (req, res) => {
           requestedBy: req.user._id 
         });
         const pendingRequisitions = await PurchaseRequisition.countDocuments({ 
-          status: 'pending',
+          status: 'pending_acceptance',
           department: req.user.department
         });
         stats = {
@@ -110,6 +110,43 @@ const getStats = async (req, res) => {
           openRFQs: { value: openRFQs, label: 'Active RFQs' },
           purchaseOrders: { value: totalPOs, label: 'Purchase Orders' }
         };
+        break;
+
+      case 'supplier':
+        const supplierProfileForStats = await SupplierProfile.findOne({ user: req.user._id });
+        if (supplierProfileForStats) {
+          const myQuotations = await Quotation.countDocuments({ 
+            supplier: supplierProfileForStats._id,
+            isDeleted: false
+          });
+          const myPOs = await PurchaseOrder.countDocuments({ 
+            supplier: supplierProfileForStats._id,
+            isDeleted: false
+          });
+          const myRFQs = await RFQ.countDocuments({
+            invitedSuppliers: { $elemMatch: { supplier: supplierProfileForStats._id } },
+            status: { $in: ['draft', 'open'] },
+            isDeleted: false
+          });
+          const submittedQuotations = await Quotation.countDocuments({
+            supplier: supplierProfileForStats._id,
+            status: 'submitted',
+            isDeleted: false
+          });
+          stats = {
+            myRFQs: { value: myRFQs, label: 'My RFQs' },
+            myQuotations: { value: myQuotations, label: 'My Quotations' },
+            submittedQuotations: { value: submittedQuotations, label: 'Submitted Quotations' },
+            myPOs: { value: myPOs, label: 'My Purchase Orders' }
+          };
+        } else {
+          stats = {
+            openRFQs: { value: openRFQs, label: 'Open RFQs' },
+            quotations: { value: totalQuotations, label: 'Quotations' },
+            purchaseOrders: { value: totalPOs, label: 'Purchase Orders' },
+            suppliers: { value: activeSuppliers, label: 'Active Suppliers' }
+          };
+        }
         break;
 
       default:
@@ -173,10 +210,14 @@ const getStats = async (req, res) => {
             },
             { $group: { _id: null, total: { $sum: '$totalAmount' } } }
           ]);
+          const financeApprovedForAdditional = await PurchaseOrder.countDocuments({ 
+            status: { $in: ['pending_coo', 'approved', 'sent'] },
+            financeApproved: true
+          });
           additionalStats = {
             pendingValue: { value: `$${(pendingFinanceValue[0]?.total || 0).toLocaleString()}`, label: 'Pending Value' },
             monthlyValue: { value: `$${(monthlyPOValue[0]?.total || 0).toLocaleString()}`, label: 'Monthly PO Value' },
-            approvedPOs: { value: financeApproved, label: 'Finance Approved' },
+            approvedPOs: { value: financeApprovedForAdditional, label: 'Finance Approved' },
             totalPOs: { value: totalPOs, label: 'All Purchase Orders' }
           };
           break;
@@ -189,6 +230,9 @@ const getStats = async (req, res) => {
           const majorPOs = await PurchaseOrder.countDocuments({ 
             status: 'pending_coo',
             totalAmount: { $gte: 50000 } // Major POs (assuming threshold)
+          });
+          const cooApproved = await PurchaseOrder.countDocuments({ 
+            cooApproved: true
           });
           additionalStats = {
             pendingValue: { value: `$${(pendingCOOValue[0]?.total || 0).toLocaleString()}`, label: 'Pending Value' },
@@ -224,13 +268,17 @@ const getStats = async (req, res) => {
         case 'department_head':
           const approvedRequisitions = await PurchaseRequisition.countDocuments({ 
             requestedBy: req.user._id,
-            status: 'approved'
+            status: { $in: ['accepted', 'sourcing', 'quoted', 'ordered', 'completed'] }
           });
           const rejectedRequisitions = await PurchaseRequisition.countDocuments({ 
             requestedBy: req.user._id,
             status: 'rejected'
           });
           const departmentRequisitions = await PurchaseRequisition.countDocuments({ 
+            department: req.user.department
+          });
+          const pendingRequisitions = await PurchaseRequisition.countDocuments({ 
+            status: 'pending_acceptance',
             department: req.user.department
           });
           additionalStats = {
@@ -242,26 +290,31 @@ const getStats = async (req, res) => {
           break;
 
         default: // supplier or other roles
-          const supplierProfile = await SupplierProfile.findOne({ user: req.user._id });
-          if (supplierProfile) {
-            const myQuotations = await Quotation.countDocuments({ 
-              supplier: supplierProfile._id,
+          const supplierProfileForAdditional = await SupplierProfile.findOne({ user: req.user._id });
+          if (supplierProfileForAdditional) {
+            const myQuotationsAdditional = await Quotation.countDocuments({ 
+              supplier: supplierProfileForAdditional._id,
               isDeleted: false
             });
-            const myPOs = await PurchaseOrder.countDocuments({ 
-              supplier: supplierProfile._id,
+            const myPOsAdditional = await PurchaseOrder.countDocuments({ 
+              supplier: supplierProfileForAdditional._id,
               isDeleted: false
             });
-            const submittedQuotations = await Quotation.countDocuments({
-              supplier: supplierProfile._id,
+            const submittedQuotationsAdditional = await Quotation.countDocuments({
+              supplier: supplierProfileForAdditional._id,
               status: 'submitted',
               isDeleted: false
             });
+            const myRFQsAdditional = await RFQ.countDocuments({
+              invitedSuppliers: { $elemMatch: { supplier: supplierProfileForAdditional._id } },
+              status: { $in: ['draft', 'open'] },
+              isDeleted: false
+            });
             additionalStats = {
-              myQuotations: { value: myQuotations, label: 'My Quotations' },
-              submittedQuotations: { value: submittedQuotations, label: 'Submitted Quotations' },
-              myPOs: { value: myPOs, label: 'My Purchase Orders' },
-              openRFQs: { value: openRFQs, label: 'Open RFQs' }
+              myQuotations: { value: myQuotationsAdditional, label: 'My Quotations' },
+              submittedQuotations: { value: submittedQuotationsAdditional, label: 'Submitted Quotations' },
+              myPOs: { value: myPOsAdditional, label: 'My Purchase Orders' },
+              myRFQs: { value: myRFQsAdditional, label: 'My RFQs' }
             };
           } else {
             additionalStats = {

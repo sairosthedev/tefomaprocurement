@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { procurementAPI } from '../lib/api';
+import { useToast } from '../components/Toast';
 import Tabs from '../components/Tabs';
+import Modal from '../components/Modal';
 import { 
   Search, 
   Filter, 
@@ -13,7 +15,11 @@ import {
   Mail,
   Phone,
   Loader2,
-  Users
+  Users,
+  Eye,
+  EyeOff,
+  Upload,
+  FileText
 } from 'lucide-react';
 
 const statusColors = {
@@ -31,10 +37,40 @@ const statusIcons = {
 };
 
 export default function Suppliers() {
+  const { showToast } = useToast();
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    companyName: '',
+    tradingAs: '',
+    registrationNumber: '',
+    taxNumber: '',
+    vatNumber: '',
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: 'password',
+    phone: '',
+    physicalAddress: '',
+    city: '',
+    province: '',
+    postalCode: '',
+    categories: '',
+    bankName: '',
+    bankAccountName: '',
+    bankAccountNumber: '',
+    bankBranchCode: ''
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showOptionalFields, setShowOptionalFields] = useState(false);
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
+  const [bulkImportData, setBulkImportData] = useState('');
+  const [bulkImportResults, setBulkImportResults] = useState(null);
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     fetchSuppliers();
@@ -55,6 +91,157 @@ export default function Suppliers() {
     }
   };
 
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Validate required fields
+    if (!formData.companyName || !formData.email || !formData.firstName || !formData.lastName || !formData.registrationNumber) {
+      showToast('Company name, email, first name, last name, and registration number are required', 'error');
+      return;
+    }
+
+    if (!formData.password || formData.password.length < 6) {
+      showToast('Password must be at least 6 characters', 'error');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      
+      // Parse categories from comma-separated string
+      const categories = formData.categories
+        ? formData.categories.split(',').map(c => c.trim()).filter(c => c)
+        : [];
+
+      const response = await procurementAPI.createSupplier({
+        ...formData,
+        categories
+      });
+
+      if (response.data.success) {
+        showToast('Supplier created successfully', 'success');
+        setShowAddModal(false);
+        setFormData({
+          companyName: '',
+          tradingAs: '',
+          registrationNumber: '',
+          taxNumber: '',
+          vatNumber: '',
+          firstName: '',
+          lastName: '',
+          email: '',
+          password: 'password',
+          phone: '',
+          physicalAddress: '',
+          city: '',
+          province: '',
+          postalCode: '',
+          categories: '',
+          bankName: '',
+          bankAccountName: '',
+          bankAccountNumber: '',
+          bankBranchCode: ''
+        });
+        setShowPassword(false);
+        fetchSuppliers();
+      }
+    } catch (error) {
+      console.error('Error creating supplier:', error);
+      showToast(
+        error.response?.data?.message || 'Failed to create supplier',
+        'error'
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleBulkImport = async () => {
+    if (!bulkImportData.trim()) {
+      showToast('Please provide supplier data', 'error');
+      return;
+    }
+
+    try {
+      setImporting(true);
+      let suppliers = [];
+
+      // Try to parse as JSON first
+      try {
+        const parsed = JSON.parse(bulkImportData);
+        suppliers = Array.isArray(parsed) ? parsed : [parsed];
+      } catch (e) {
+        // If not JSON, try to parse as CSV-like format
+        const lines = bulkImportData.trim().split('\n');
+        if (lines.length < 2) {
+          showToast('Invalid data format. Please provide JSON array or CSV with headers', 'error');
+          return;
+        }
+        
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, ''));
+        
+        for (let i = 1; i < lines.length; i++) {
+          if (!lines[i].trim()) continue;
+          const values = lines[i].split(',').map(v => v.trim());
+          const supplier = {};
+          headers.forEach((header, index) => {
+            supplier[header] = values[index] || '';
+          });
+          
+          // Map CSV headers to API fields
+          suppliers.push({
+            companyName: supplier.companyname || supplier.company || '',
+            tradingAs: supplier.tradingas || supplier.trading || '',
+            registrationNumber: supplier.registrationnumber || supplier.regnumber || '',
+            taxNumber: supplier.taxnumber || supplier.tax || '',
+            vatNumber: supplier.vatnumber || supplier.vat || '',
+            contactPerson: supplier.contactperson || supplier.contact || supplier.name || '',
+            email: supplier.email || '',
+            phone: supplier.phone || '',
+            physicalAddress: supplier.address || supplier.physicaladdress || '',
+            city: supplier.city || '',
+            province: supplier.province || '',
+            postalCode: supplier.postalcode || supplier.postcode || '',
+            categories: supplier.categories || supplier.category || '',
+            bankName: supplier.bankname || supplier.bank || '',
+            bankAccountName: supplier.accountname || supplier.bankaccountname || '',
+            bankAccountNumber: supplier.accountnumber || supplier.bankaccountnumber || '',
+            bankBranchCode: supplier.branchcode || supplier.branch || ''
+          });
+        }
+      }
+
+      if (suppliers.length === 0) {
+        showToast('No valid supplier data found', 'error');
+        return;
+      }
+
+      const response = await procurementAPI.bulkImportSuppliers({ suppliers });
+      
+      if (response.data.success) {
+        setBulkImportResults(response.data.data);
+        showToast(`Imported ${response.data.data.success.length} suppliers successfully`, 'success');
+        fetchSuppliers();
+      }
+    } catch (error) {
+      console.error('Bulk import error:', error);
+      showToast(
+        error.response?.data?.message || 'Failed to import suppliers',
+        'error'
+      );
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div className="p-8">
       {/* Header */}
@@ -63,10 +250,22 @@ export default function Suppliers() {
           <h1 className="text-2xl font-bold text-gray-900">Suppliers</h1>
           <p className="text-gray-500 mt-1">Manage and view all registered suppliers</p>
         </div>
-        <button className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors">
-          <Plus className="h-5 w-5" />
-          Add Supplier
-        </button>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setShowBulkImportModal(true)}
+            className="flex items-center gap-2 border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2.5 px-4 rounded-xl transition-colors"
+          >
+            <Upload className="h-5 w-5" />
+            Bulk Import
+          </button>
+          <button 
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+          >
+            <Plus className="h-5 w-5" />
+            Add Supplier
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -204,6 +403,492 @@ export default function Suppliers() {
           </div>
         )}
       </div>
+
+      {/* Add Supplier Modal */}
+      <Modal
+        isOpen={showAddModal}
+        onClose={() => {
+          if (!submitting) {
+            setShowAddModal(false);
+            setFormData({
+              companyName: '',
+              tradingAs: '',
+              registrationNumber: '',
+              taxNumber: '',
+              vatNumber: '',
+              firstName: '',
+              lastName: '',
+              email: '',
+              password: 'password',
+              phone: '',
+              physicalAddress: '',
+              city: '',
+              province: '',
+              postalCode: '',
+              categories: '',
+              bankName: '',
+              bankAccountName: '',
+              bankAccountNumber: '',
+              bankBranchCode: ''
+            });
+            setShowPassword(false);
+            setShowOptionalFields(false);
+          }
+        }}
+        title="Add New Supplier"
+        size="md"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Essential Fields - Always Visible */}
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Company Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="companyName"
+                  value={formData.companyName}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Registration Number <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="registrationNumber"
+                  value={formData.registrationNumber}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  First Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Last Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Email <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                required
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Password <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  required
+                  minLength={6}
+                  className="w-full px-3 py-2 pr-10 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-0.5">Default: "password"</p>
+            </div>
+          </div>
+
+          {/* Optional Fields - Collapsible */}
+          <div className="border-t border-gray-200 pt-3">
+            <button
+              type="button"
+              onClick={() => setShowOptionalFields(!showOptionalFields)}
+              className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 w-full"
+            >
+              <span>{showOptionalFields ? '−' : '+'}</span>
+              <span>Additional Information {showOptionalFields ? '(Hide)' : '(Show)'}</span>
+            </button>
+
+            {showOptionalFields && (
+              <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Trading As</label>
+                    <input
+                      type="text"
+                      name="tradingAs"
+                      value={formData.tradingAs}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Phone</label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Tax Number</label>
+                    <input
+                      type="text"
+                      name="taxNumber"
+                      value={formData.taxNumber}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">VAT Number</label>
+                    <input
+                      type="text"
+                      name="vatNumber"
+                      value={formData.vatNumber}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Categories</label>
+                  <input
+                    type="text"
+                    name="categories"
+                    value={formData.categories}
+                    onChange={handleInputChange}
+                    placeholder="e.g., Electronics, Office Supplies"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Address</label>
+                  <input
+                    type="text"
+                    name="physicalAddress"
+                    value={formData.physicalAddress}
+                    onChange={handleInputChange}
+                    placeholder="Street address"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none mb-2"
+                  />
+                  <div className="grid grid-cols-3 gap-2">
+                    <input
+                      type="text"
+                      name="city"
+                      value={formData.city}
+                      onChange={handleInputChange}
+                      placeholder="City"
+                      className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    />
+                    <input
+                      type="text"
+                      name="province"
+                      value={formData.province}
+                      onChange={handleInputChange}
+                      placeholder="Province"
+                      className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    />
+                    <input
+                      type="text"
+                      name="postalCode"
+                      value={formData.postalCode}
+                      onChange={handleInputChange}
+                      placeholder="Postal Code"
+                      className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Bank Name</label>
+                    <input
+                      type="text"
+                      name="bankName"
+                      value={formData.bankName}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Account Name</label>
+                    <input
+                      type="text"
+                      name="bankAccountName"
+                      value={formData.bankAccountName}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Account Number</label>
+                    <input
+                      type="text"
+                      name="bankAccountNumber"
+                      value={formData.bankAccountNumber}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Branch Code</label>
+                    <input
+                      type="text"
+                      name="bankBranchCode"
+                      value={formData.bankBranchCode}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Form Actions */}
+          <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={() => setShowAddModal(false)}
+              disabled={submitting}
+              className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-4 py-2 bg-primary hover:bg-primary-dark text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Create Supplier'
+              )}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Bulk Import Modal */}
+      <Modal
+        isOpen={showBulkImportModal}
+        onClose={() => {
+          if (!importing) {
+            setShowBulkImportModal(false);
+            setBulkImportData('');
+            setBulkImportResults(null);
+          }
+        }}
+        title="Bulk Import Suppliers"
+        size="lg"
+      >
+        <div className="space-y-4">
+          {!bulkImportResults ? (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Supplier Data (JSON or CSV format)
+                </label>
+                <textarea
+                  value={bulkImportData}
+                  onChange={(e) => setBulkImportData(e.target.value)}
+                  placeholder={`JSON Format:
+[
+  {
+    "companyName": "Company ABC",
+    "registrationNumber": "REG123",
+    "contactPerson": "John Doe",
+    "email": "john@company.com",
+    "phone": "1234567890"
+  }
+]
+
+Or CSV Format (first line headers):
+companyName,registrationNumber,contactPerson,email,phone
+Company ABC,REG123,John Doe,john@company.com,1234567890`}
+                  rows={12}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none font-mono"
+                />
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-start gap-2">
+                  <FileText className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-xs text-blue-800">
+                    <p className="font-medium mb-1">Required fields: companyName, registrationNumber, contactPerson, email</p>
+                    <p>Optional fields: tradingAs, taxNumber, vatNumber, phone, physicalAddress, city, province, postalCode, categories, bankName, bankAccountName, bankAccountNumber, bankBranchCode</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBulkImportModal(false);
+                    setBulkImportData('');
+                  }}
+                  disabled={importing}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBulkImport}
+                  disabled={importing || !bulkImportData.trim()}
+                  className="px-4 py-2 bg-primary hover:bg-primary-dark text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {importing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Importing...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4" />
+                      Import Suppliers
+                    </>
+                  )}
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <h3 className="font-semibold text-green-900">
+                    Import Complete: {bulkImportResults.success.length} successful
+                  </h3>
+                </div>
+                {bulkImportResults.failed.length > 0 && (
+                  <p className="text-sm text-green-800">
+                    {bulkImportResults.failed.length} failed
+                  </p>
+                )}
+              </div>
+
+              {bulkImportResults.success.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-2">Successfully Imported:</h4>
+                  <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-lg">
+                    <table className="w-full text-xs">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left">Company</th>
+                          <th className="px-3 py-2 text-left">Email</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {bulkImportResults.success.map((item, idx) => (
+                          <tr key={idx}>
+                            <td className="px-3 py-2">{item.companyName}</td>
+                            <td className="px-3 py-2">{item.email}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {bulkImportResults.failed.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-red-900 mb-2">Failed:</h4>
+                  <div className="max-h-40 overflow-y-auto border border-red-200 rounded-lg">
+                    <table className="w-full text-xs">
+                      <thead className="bg-red-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left">Company</th>
+                          <th className="px-3 py-2 text-left">Email</th>
+                          <th className="px-3 py-2 text-left">Reason</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-red-100">
+                        {bulkImportResults.failed.map((item, idx) => (
+                          <tr key={idx}>
+                            <td className="px-3 py-2">{item.companyName}</td>
+                            <td className="px-3 py-2">{item.email}</td>
+                            <td className="px-3 py-2 text-red-600">{item.reason}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBulkImportModal(false);
+                    setBulkImportData('');
+                    setBulkImportResults(null);
+                  }}
+                  className="px-4 py-2 bg-primary hover:bg-primary-dark text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }
