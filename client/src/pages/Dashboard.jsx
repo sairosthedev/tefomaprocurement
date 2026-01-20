@@ -265,46 +265,46 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Activity (Admin only) or Additional Stats (Other roles) */}
         {user?.role === 'admin' ? (
-          <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
-            </div>
-            <div className="space-y-4">
-              {recentActivity.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Clock className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                  <p>No recent activity</p>
-                </div>
-              ) : (
-                recentActivity.map((activity) => {
-                  const Icon = activityIconMap[activity.type] || FileText;
-                  const iconColor = activityColorMap[activity.type] || 'text-gray-500';
-                  return (
-                    <div
-                      key={activity.id}
-                      className="flex items-start gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="p-2 rounded-lg bg-gray-100">
-                        <Icon className={`h-5 w-5 ${iconColor}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900">{activity.message}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-gray-500">{activity.time}</span>
-                          {activity.user && (
-                            <>
-                              <span className="text-xs text-gray-300">•</span>
-                              <span className="text-xs text-gray-500">{activity.user}</span>
-                            </>
-                          )}
-                        </div>
+        <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
+          </div>
+          <div className="space-y-4">
+            {recentActivity.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Clock className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                <p>No recent activity</p>
+              </div>
+            ) : (
+              recentActivity.map((activity) => {
+                const Icon = activityIconMap[activity.type] || FileText;
+                const iconColor = activityColorMap[activity.type] || 'text-gray-500';
+                return (
+                  <div
+                    key={activity.id}
+                    className="flex items-start gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="p-2 rounded-lg bg-gray-100">
+                      <Icon className={`h-5 w-5 ${iconColor}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900">{activity.message}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-gray-500">{activity.time}</span>
+                        {activity.user && (
+                          <>
+                            <span className="text-xs text-gray-300">•</span>
+                            <span className="text-xs text-gray-500">{activity.user}</span>
+                          </>
+                        )}
                       </div>
                     </div>
-                  );
-                })
-              )}
-            </div>
+                  </div>
+                );
+              })
+            )}
           </div>
+        </div>
         ) : (
           <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-6">

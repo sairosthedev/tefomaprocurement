@@ -24,7 +24,7 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={{ addToast, showToast }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-50 space-y-2">
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 space-y-2 max-w-md w-full mx-4">
         {toasts.map(toast => (
           <Toast key={toast.id} {...toast} onClose={() => removeToast(toast.id)} />
         ))}
@@ -47,10 +47,10 @@ function Toast({ message, type, onClose }) {
   };
 
   return (
-    <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border shadow-lg ${bgColors[type]} animate-slide-in`}>
+    <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border shadow-lg ${bgColors[type]} animate-fade-in`}>
       {icons[type]}
-      <span className="text-sm font-medium text-gray-800">{message}</span>
-      <button onClick={onClose} className="ml-2 p-1 hover:bg-black/5 rounded-lg">
+      <span className="text-sm font-medium text-gray-800 flex-1">{message}</span>
+      <button onClick={onClose} className="ml-2 p-1 hover:bg-black/5 rounded-lg transition-colors">
         <X className="h-4 w-4 text-gray-500" />
       </button>
     </div>

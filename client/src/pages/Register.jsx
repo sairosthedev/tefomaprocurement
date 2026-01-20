@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authAPI } from '../lib/api';
+import { useToast } from '../components/Toast';
 import { Loader2, Eye, EyeOff, Building2, ArrowLeft } from 'lucide-react';
 import Logo from '../components/Logo';
 
 export default function Register() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const { showToast } = useToast();
 
   const [formData, setFormData] = useState({
     // User info
@@ -69,26 +70,24 @@ export default function Register() {
   };
 
   const validateStep = () => {
-    setError('');
-    
     if (step === 1) {
       if (!formData.email || !formData.password || !formData.firstName || !formData.lastName) {
-        setError('Please fill in all required fields');
+        showToast('Please fill in all required fields', 'error', 4000);
         return false;
       }
       if (formData.password !== formData.confirmPassword) {
-        setError('Passwords do not match');
+        showToast('Passwords do not match', 'error', 4000);
         return false;
       }
       if (formData.password.length < 6) {
-        setError('Password must be at least 6 characters');
+        showToast('Password must be at least 6 characters', 'error', 4000);
         return false;
       }
     }
     
     if (step === 2) {
       if (!formData.companyName || !formData.registrationNumber) {
-        setError('Company name and registration number are required');
+        showToast('Company name and registration number are required', 'error', 4000);
         return false;
       }
     }
@@ -111,7 +110,6 @@ export default function Register() {
     if (!validateStep()) return;
 
     setLoading(true);
-    setError('');
 
     try {
       await authAPI.register({
@@ -145,7 +143,7 @@ export default function Register() {
 
       setSuccess(true);
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      showToast(err.response?.data?.message || 'Registration failed. Please try again.', 'error', 5000);
     } finally {
       setLoading(false);
     }
@@ -216,11 +214,6 @@ export default function Register() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-8">
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
-              {error}
-            </div>
-          )}
 
           {/* Step 1: Account Info */}
           {step === 1 && (

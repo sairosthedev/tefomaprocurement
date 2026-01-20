@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
 import { Loader2 } from 'lucide-react';
 import Logo from '../components/Logo';
 
@@ -10,10 +11,10 @@ export default function Login() {
     password: ''
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const { login } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -28,7 +29,6 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     setIsLoading(true);
 
     try {
@@ -47,7 +47,7 @@ export default function Login() {
       
       navigate(roleRoutes[user.role] || from, { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
+      showToast(err.response?.data?.message || 'Login failed. Please try again.', 'error', 5000);
     } finally {
       setIsLoading(false);
     }
@@ -68,13 +68,6 @@ export default function Login() {
               <p className="text-gray-600">Log in to your account to continue</p>
             </div>
           </div>
-
-          {/* Error Message */}
-            {error && (
-            <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-                {error}
-              </div>
-            )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -158,16 +151,6 @@ export default function Login() {
                 )}
               </button>
             </form>
-
-          {/* Supplier Registration Link */}
-          <div className="text-center pt-4">
-              <p className="text-gray-600 text-sm">
-                Are you a supplier?{' '}
-              <Link to="/register" className="text-primary hover:text-primary-dark font-medium transition-colors duration-200 hover:underline">
-                  Register here
-                </Link>
-              </p>
-            </div>
         </div>
       </div>
     </div>
