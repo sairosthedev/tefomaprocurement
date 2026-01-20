@@ -80,26 +80,42 @@ const getPendingRequisitions = async (req, res) => {
       }
     });
     
-    // Create a map of RFQ ID to quotation IDs for lookup
-    const rfqToQuotationMap = {};
+    // Fetch all quotations for RFQs linked to these requisitions
+    let allQuotations = [];
     if (rfqIds.length > 0) {
-      const quotations = await Quotation.find({
+      allQuotations = await Quotation.find({
         rfq: { $in: rfqIds },
         isDeleted: false
       })
-        .select('_id rfq')
+        .select('_id quotationNumber rfq supplier status totalAmount currency submittedAt')
+        .populate('supplier', 'companyName')
+        .sort({ submittedAt: -1 })
         .lean();
-      
-      quotations.forEach(q => {
-        const rfqId = q.rfq?.toString();
-        if (rfqId) {
-          if (!rfqToQuotationMap[rfqId]) {
-            rfqToQuotationMap[rfqId] = [];
-          }
-          rfqToQuotationMap[rfqId].push(q._id.toString());
-        }
-      });
     }
+
+    // Create a map of RFQ ID to quotations for lookup
+    const rfqToQuotationsMap = {};
+    allQuotations.forEach(q => {
+      const rfqId = q.rfq?.toString();
+      if (rfqId) {
+        if (!rfqToQuotationsMap[rfqId]) {
+          rfqToQuotationsMap[rfqId] = [];
+        }
+        rfqToQuotationsMap[rfqId].push(q);
+      }
+    });
+
+    // Also create a map of RFQ ID to quotation IDs for PO lookup
+    const rfqToQuotationMap = {};
+    allQuotations.forEach(q => {
+      const rfqId = q.rfq?.toString();
+      if (rfqId) {
+        if (!rfqToQuotationMap[rfqId]) {
+          rfqToQuotationMap[rfqId] = [];
+        }
+        rfqToQuotationMap[rfqId].push(q._id.toString());
+      }
+    });
 
     // Get PO IDs to check deliveries
     const poIds = allPOs.map(po => po._id);
@@ -140,9 +156,17 @@ const getPendingRequisitions = async (req, res) => {
       }
     });
 
-    // Map POs to requisitions
+    // Map POs and quotations to requisitions
     const requisitionsWithPOs = requisitions.map(req => {
       const reqObj = { ...req };
+      
+      // Get quotations for this requisition's RFQ
+      if (req.rfq) {
+        const rfqId = (req.rfq._id || req.rfq).toString();
+        reqObj.quotations = rfqToQuotationsMap[rfqId] || [];
+      } else {
+        reqObj.quotations = [];
+      }
       
       // First try direct link via purchaseRequisition
       let po = allPOs.find(p => {

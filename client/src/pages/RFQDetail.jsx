@@ -1,22 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { procurementAPI } from '../lib/api';
+import ViewButton from '../components/ViewButton';
+import Modal from '../components/Modal';
+import { formatCurrency } from '../lib/constants';
 import { 
   ArrowLeft, FileText, Package, Users, 
-  Calendar, Loader2, ExternalLink
+  Calendar, Loader2, ExternalLink, DollarSign,
+  CheckCircle, Clock, XCircle, Send, Edit, Building2
 } from 'lucide-react';
 
 export default function RFQDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { showToast } = useToast();
   const [rfq, setRFQ] = useState(null);
+  const [quotations, setQuotations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingQuotations, setLoadingQuotations] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     fetchRFQ();
   }, [id]);
+
+  useEffect(() => {
+    if (rfq && rfq._id) {
+      fetchQuotations();
+    }
+  }, [rfq]);
 
   const fetchRFQ = async () => {
     try {
@@ -33,6 +48,56 @@ export default function RFQDetail() {
       setLoading(false);
     }
   };
+
+  const fetchQuotations = async () => {
+    try {
+      setLoadingQuotations(true);
+      const response = await procurementAPI.getQuotations({ rfqId: rfq._id });
+      
+      if (response.data.success) {
+        setQuotations(response.data.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch quotations:', error);
+    } finally {
+      setLoadingQuotations(false);
+    }
+  };
+
+  const statusColors = {
+    draft: 'bg-gray-100 text-gray-700',
+    submitted: 'bg-blue-100 text-blue-700',
+    under_review: 'bg-amber-100 text-amber-700',
+    accepted: 'bg-green-100 text-green-700',
+    rejected: 'bg-red-100 text-red-700',
+    expired: 'bg-gray-100 text-gray-700'
+  };
+
+  const statusIcons = {
+    submitted: Clock,
+    under_review: Clock,
+    accepted: CheckCircle,
+    rejected: XCircle,
+    expired: XCircle
+  };
+
+  const isProcurement = user?.role === 'procurement_officer' || user?.role === 'admin';
+
+  const handlePublishRFQ = async () => {
+    try {
+      setActionLoading(true);
+      const response = await procurementAPI.publishRFQ(id);
+      if (response.data.success) {
+        showToast('RFQ published successfully', 'success');
+        fetchRFQ();
+      }
+    } catch (error) {
+      showToast(error.response?.data?.message || 'Failed to publish RFQ', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
 
   if (loading) {
     return (
@@ -70,8 +135,39 @@ export default function RFQDetail() {
       </button>
       
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">{rfq.rfqNumber}</h1>
-        <p className="text-gray-600 mt-1">{rfq.title || 'RFQ Details'}</p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">{rfq.rfqNumber}</h1>
+            <p className="text-gray-600 mt-1">{rfq.title || 'RFQ Details'}</p>
+          </div>
+          {isProcurement && (
+            <div className="flex items-center gap-2">
+              {rfq.status === 'draft' && (
+                <button
+                  onClick={handlePublishRFQ}
+                  disabled={actionLoading}
+                  className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {actionLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                  Publish RFQ
+                </button>
+              )}
+              {rfq.status === 'draft' && (
+                <button
+                  onClick={() => navigate(`/app/rfqs/${id}/edit`)}
+                  className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors"
+                >
+                  <Edit className="h-4 w-4" />
+                  Edit
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -124,6 +220,88 @@ export default function RFQDetail() {
               </div>
             </div>
           )}
+
+          {/* Submitted Quotations from Suppliers Section */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2 mb-4">
+              <Building2 className="h-5 w-5 text-primary" />
+              Supplier Quotations ({quotations.length})
+            </h2>
+            {loadingQuotations ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 text-primary animate-spin" />
+              </div>
+            ) : quotations.length === 0 ? (
+              <div className="text-center py-8">
+                <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">No supplier quotations submitted yet</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {quotations.map((quotation) => {
+                  const StatusIcon = statusIcons[quotation.status] || FileText;
+                  return (
+                    <div key={quotation._id} className="border border-gray-200 rounded-lg p-4 hover:border-primary/50 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          {/* Supplier Name - Prominent */}
+                          <div className="flex items-center gap-2 mb-3">
+                            <Building2 className="h-4 w-4 text-primary" />
+                            <p className="font-semibold text-gray-900">
+                              {quotation.supplier?.companyName || 'Unknown Supplier'}
+                            </p>
+                          </div>
+                          
+                          {/* Quotation Number and Status */}
+                          <div className="flex items-center gap-3 mb-3">
+                            <span className="font-mono font-medium text-primary text-sm">
+                              {quotation.quotationNumber}
+                            </span>
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[quotation.status] || statusColors.submitted}`}>
+                              <StatusIcon className="h-3.5 w-3.5" />
+                              {quotation.status?.replace('_', ' ') || 'Submitted'}
+                            </span>
+                          </div>
+                          
+                          {/* Details Grid */}
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-xs text-gray-500 mb-1">Total Amount</p>
+                              <p className="font-semibold text-gray-900 flex items-center gap-1 text-sm">
+                                <DollarSign className="h-4 w-4 text-gray-400" />
+                                {formatCurrency(quotation.totalAmount, quotation.currency || 'USD')}
+                              </p>
+                            </div>
+                            {quotation.submittedAt && (
+                              <div>
+                                <p className="text-xs text-gray-500 mb-1">Submitted</p>
+                                <p className="text-sm text-gray-700">
+                                  {new Date(quotation.submittedAt).toLocaleDateString('en-ZA')}
+                                </p>
+                              </div>
+                            )}
+                            {quotation.validUntil && (
+                              <div>
+                                <p className="text-xs text-gray-500 mb-1">Valid Until</p>
+                                <p className="text-sm text-gray-700">
+                                  {new Date(quotation.validUntil).toLocaleDateString('en-ZA')}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="ml-4">
+                          <ViewButton
+                            onClick={() => navigate(`/app/quotations/${quotation._id}`)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           {/* Related Requisition */}
           {rfq.purchaseRequisition && (

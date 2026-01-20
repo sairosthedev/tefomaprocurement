@@ -3,8 +3,15 @@ const router = express.Router();
 const { procurement } = require('../controllers');
 const { protect, authorize } = require('../middleware');
 
-// All routes require procurement officer or admin role
+// All routes require authentication
 router.use(protect);
+
+// Purchase Orders - View routes (allow finance and COO to view, must be before general authorize)
+router.get('/purchase-orders', authorize('procurement_officer', 'admin', 'finance', 'coo'), procurement.getPurchaseOrders);
+router.get('/purchase-orders/:id', authorize('procurement_officer', 'admin', 'finance', 'coo'), procurement.getPurchaseOrderById);
+router.get('/purchase-orders/:id/pdf', authorize('procurement_officer', 'admin', 'finance', 'coo'), procurement.downloadPurchaseOrderPDF);
+
+// Routes that require procurement officer or admin role
 router.use(authorize('procurement_officer', 'admin'));
 
 // Suppliers
@@ -35,10 +42,8 @@ router.get('/quotations/:id', procurement.getQuotationById);
 router.put('/quotations/:id/accept', procurement.acceptQuotation);
 router.put('/quotations/:id/reject', procurement.rejectQuotation);
 
-// Purchase Orders
+// Purchase Orders - Create and submit require procurement/admin
 router.post('/purchase-orders', procurement.createPurchaseOrder);
-router.get('/purchase-orders', procurement.getPurchaseOrders);
-router.get('/purchase-orders/:id', procurement.getPurchaseOrderById);
 router.put('/purchase-orders/:id/submit', procurement.submitPurchaseOrder);
 
 module.exports = router;

@@ -78,6 +78,7 @@ const roleNavigation = {
   coo: [
     { name: "Dashboard", href: "/app", icon: LayoutDashboard },
     { name: "Approvals", href: "/app/approvals", icon: CheckSquare },
+    { name: "Purchase Orders", href: "/app/purchase-orders", icon: ShoppingCart },
     { name: "Reports", href: "/app/reports", icon: BarChart3 },
     { name: "Suppliers", href: "/app/suppliers", icon: Users },
     { name: "Notifications", href: "/app/notifications", icon: Bell },

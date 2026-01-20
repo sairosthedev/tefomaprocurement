@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '../../components/Toast';
 import api from '../../lib/api';
 import { ShoppingCart, Loader2, CheckCircle, Truck, Download } from 'lucide-react';
@@ -27,11 +27,11 @@ const statusColors = {
 
 export default function MyPurchaseOrders() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { showToast } = useToast();
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPO, setSelectedPO] = useState(null);
-  const [showViewModal, setShowViewModal] = useState(false);
   const [showAcknowledgeModal, setShowAcknowledgeModal] = useState(false);
   const [acknowledgeData, setAcknowledgeData] = useState({
     deliveryNoteNumber: '',
@@ -41,6 +41,15 @@ export default function MyPurchaseOrders() {
   useEffect(() => {
     fetchMyPurchaseOrders();
   }, []);
+
+  useEffect(() => {
+    // Check if there's a PO ID in the query params (from RFQ page)
+    const poId = searchParams.get('po');
+    if (poId && purchaseOrders.length > 0) {
+      // Navigate directly to the detail page
+      navigate(`/app/my-purchase-orders/${poId}`, { replace: true });
+    }
+  }, [searchParams, purchaseOrders, navigate]);
 
   const fetchMyPurchaseOrders = async () => {
     try {
@@ -198,7 +207,7 @@ export default function MyPurchaseOrders() {
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-2">
                         <ViewButton
-                          onClick={() => { setSelectedPO(po); setShowViewModal(true); }}
+                          onClick={() => navigate(`/app/my-purchase-orders/${po._id}`)}
                         />
                         {(po.status === 'approved' || po.status === 'issued') && !po.isAcknowledged && (
                           <button
@@ -308,121 +317,6 @@ export default function MyPurchaseOrders() {
         )}
       </Modal>
 
-      {/* View Modal */}
-      <Modal
-        isOpen={showViewModal}
-        onClose={() => setShowViewModal(false)}
-        title="Purchase Order Details"
-        size="lg"
-      >
-        {selectedPO && (
-          <div className="space-y-6">
-            {/* Acknowledgment Info */}
-            {selectedPO.isAcknowledged && (selectedPO.status === 'issued' || selectedPO.status === 'approved') && (
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                <div className="flex items-start gap-3">
-                  <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="font-medium text-green-800">Purchase Order Acknowledged</p>
-                    <p className="text-sm text-green-700 mt-2">
-                      <strong>Next Steps:</strong>
-                    </p>
-                    <ol className="text-sm text-green-700 mt-1 space-y-1 list-decimal list-inside ml-2">
-                      <li>Prepare and deliver the goods to the delivery address specified below</li>
-                      <li>Stores will receive the goods and validate them against this PO</li>
-                      <li>Stores will create a GRV (Goods Received Voucher) in the system</li>
-                      <li>Your delivery will appear in <strong>"My Deliveries"</strong> once Stores has received and processed the goods</li>
-                    </ol>
-                    <p className="text-xs text-green-600 mt-2 italic">
-                      Note: Deliveries are only created by Stores when they physically receive the goods. Acknowledging a PO does not create a delivery record.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-            <div className="flex items-center justify-between">
-              <div>
-                <label className="text-sm text-gray-500">PO Number</label>
-                <p className="font-mono text-xl font-bold text-primary">{selectedPO.poNumber}</p>
-              </div>
-              <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl hover:bg-gray-50">
-                <Download className="h-4 w-4" />
-                Download PDF
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-gray-500">Total Value</label>
-                <p className="text-xl font-bold text-gray-900">
-                  {formatCurrency(selectedPO.totalAmount, selectedPO.currency || 'USD')}
-                </p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-500">Status</label>
-                <p>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[selectedPO.status]}`}>
-                    {selectedPO.status?.replace('_', ' ')}
-                  </span>
-                </p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-500">Expected Delivery</label>
-                <p className="text-gray-900">
-                  {selectedPO.expectedDeliveryDate 
-                    ? new Date(selectedPO.expectedDeliveryDate).toLocaleDateString('en-ZA')
-                    : 'Not specified'}
-                </p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-500">Payment Terms</label>
-                <p className="text-gray-900">{selectedPO.paymentTerms || 'Net 30'}</p>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-sm text-gray-500 mb-2 block">Order Items</label>
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Item</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Qty</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Unit Price</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {selectedPO.items?.map((item, index) => (
-                      <tr key={index}>
-                        <td className="py-3 px-4 text-sm font-medium">{item.description}</td>
-                        <td className="py-3 px-4 text-sm">{item.quantity} {item.unit}</td>
-                        <td className="py-3 px-4 text-sm">
-                          {formatCurrency(item.unitPrice, selectedPO.currency || 'USD')}
-                        </td>
-                        <td className="py-3 px-4 text-sm font-medium">
-                          {formatCurrency(item.totalPrice || item.quantity * item.unitPrice, selectedPO.currency || 'USD')}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {selectedPO.deliveryAddress && (
-              <div>
-                <label className="text-sm text-gray-500">Delivery Address</label>
-                <p className="text-gray-900">
-                  {typeof selectedPO.deliveryAddress === 'string' 
-                    ? selectedPO.deliveryAddress 
-                    : `${selectedPO.deliveryAddress.street || ''}, ${selectedPO.deliveryAddress.city || ''}, ${selectedPO.deliveryAddress.province || ''} ${selectedPO.deliveryAddress.postalCode || ''}`.trim().replace(/^,\s*|,\s*$/g, '')}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-      </Modal>
     </div>
   );
 }

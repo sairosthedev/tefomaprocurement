@@ -21,6 +21,7 @@ const getRequisitionById = require('./getRequisitionById.controller');
 const acceptRequisition = require('./acceptRequisition.controller');
 const rejectRequisition = require('./rejectRequisition.controller');
 const updateRequisitionStatus = require('./updateRequisitionStatus.controller');
+const downloadPurchaseOrderPDF = require('./downloadPurchaseOrderPDF.controller');
 
 module.exports = {
   getSuppliers,
@@ -45,6 +46,7 @@ module.exports = {
   getRequisitionById,
   acceptRequisition,
   rejectRequisition,
-  updateRequisitionStatus
+  updateRequisitionStatus,
+  downloadPurchaseOrderPDF
 };
 

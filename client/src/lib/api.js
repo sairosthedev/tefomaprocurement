@@ -71,10 +71,13 @@ export const procurementAPI = {
   rejectQuotation: (id, data) => api.put(`/procurement/quotations/${id}/reject`, data),
   getPurchaseOrders: (params) => api.get('/procurement/purchase-orders', { params }),
   getPurchaseOrderById: (id) => api.get(`/procurement/purchase-orders/${id}`),
+  downloadPurchaseOrderPDF: (id) => api.get(`/procurement/purchase-orders/${id}/pdf`, { responseType: 'blob' }),
   createPurchaseOrder: (data) => api.post('/procurement/purchase-orders', data),
   submitPurchaseOrder: (id) => api.put(`/procurement/purchase-orders/${id}/submit`),
   getPendingRequisitions: (params) => api.get('/procurement/requisitions', { params }),
-  getRequisitionById: (id) => api.get(`/procurement/requisitions/${id}`)
+  getRequisitionById: (id) => api.get(`/procurement/requisitions/${id}`),
+  acceptRequisition: (id, data) => api.put(`/procurement/requisitions/${id}/accept`, data),
+  rejectRequisition: (id, data) => api.put(`/procurement/requisitions/${id}/reject`, data)
 };
 
 // Supplier API
@@ -85,6 +88,7 @@ export const supplierAPI = {
   submitQuotation: (data) => api.post('/supplier/quotations', data),
   getMyQuotations: (params) => api.get('/supplier/quotations', { params }),
   getMyPurchaseOrders: (params) => api.get('/supplier/purchase-orders', { params }),
+  downloadPurchaseOrderPDF: (id) => api.get(`/supplier/purchase-orders/${id}/pdf`, { responseType: 'blob' }),
   getMyDeliveries: (params) => api.get('/supplier/deliveries', { params })
 };
 
@@ -104,6 +108,7 @@ export const financeAPI = {
   getPendingApprovals: (params) => api.get('/finance/pending-approvals', { params }),
   getPurchaseOrders: (params) => api.get('/finance/purchase-orders', { params }),
   getPurchaseOrderById: (id) => api.get(`/procurement/purchase-orders/${id}`),
+  downloadPurchaseOrderPDF: (id) => api.get(`/finance/purchase-orders/${id}/pdf`, { responseType: 'blob' }),
   approvePO: (id, data) => api.put(`/finance/purchase-orders/${id}/approve`, data),
   rejectPO: (id, data) => api.put(`/finance/purchase-orders/${id}/reject`, data)
 };

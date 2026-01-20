@@ -49,6 +49,7 @@ import SubmitQuotation from './pages/supplier/SubmitQuotation';
 import MyQuotations from './pages/supplier/MyQuotations';
 import MySubmittedQuotations from './pages/supplier/MySubmittedQuotations';
 import MyPurchaseOrders from './pages/supplier/MyPurchaseOrders';
+import SupplierPurchaseOrderDetail from './pages/supplier/SupplierPurchaseOrderDetail';
 import MyDeliveries from './pages/supplier/MyDeliveries';
 import SupplierProfile from './pages/supplier/SupplierProfile';
 
@@ -232,6 +233,11 @@ function App() {
             <Route path="/app/my-purchase-orders" element={
               <AppLayout allowedRoles={['supplier']}>
                 <MyPurchaseOrders />
+              </AppLayout>
+            } />
+            <Route path="/app/my-purchase-orders/:id" element={
+              <AppLayout allowedRoles={['supplier']}>
+                <SupplierPurchaseOrderDetail />
               </AppLayout>
             } />
             <Route path="/app/my-deliveries" element={

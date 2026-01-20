@@ -1,33 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/Toast';
-import { procurementAPI, financeAPI, cooAPI } from '../lib/api';
-import Modal from '../components/Modal';
+import { useToast } from '../../components/Toast';
+import api, { supplierAPI } from '../../lib/api';
+import Modal from '../../components/Modal';
 import { 
-  ArrowLeft, ShoppingCart, Package, User, Building2, 
-  Calendar, DollarSign, Loader2, CheckCircle, Clock, ExternalLink, FileText,
-  Send, XCircle, Receipt, MapPin, CreditCard, FileCheck, Download
+  ArrowLeft, ShoppingCart, Package, Building2, 
+  Calendar, DollarSign, Loader2, CheckCircle, 
+  ExternalLink, FileText, Receipt, MapPin, 
+  CreditCard, Download, Truck
 } from 'lucide-react';
-import { formatCurrency } from '../lib/constants';
+import { formatCurrency } from '../../lib/constants';
 
-export default function PurchaseOrderDetail() {
+const statusColors = {
+  draft: 'bg-gray-100 text-gray-700',
+  pending_finance: 'bg-amber-100 text-amber-700',
+  pending_coo: 'bg-purple-100 text-purple-700',
+  approved: 'bg-blue-100 text-blue-700',
+  rejected: 'bg-red-100 text-red-700',
+  issued: 'bg-green-100 text-green-700',
+  partially_received: 'bg-cyan-100 text-cyan-700',
+  completed: 'bg-emerald-100 text-emerald-700',
+  cancelled: 'bg-gray-100 text-gray-700'
+};
+
+export default function SupplierPurchaseOrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { showToast } = useToast();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [downloadLoading, setDownloadLoading] = useState(false);
-  const [showApproveModal, setShowApproveModal] = useState(false);
-  const [showRejectModal, setShowRejectModal] = useState(false);
-  const [comments, setComments] = useState('');
-  const [rejectReason, setRejectReason] = useState('');
-
-  const isFinance = user?.role === 'finance';
-  const isCOO = user?.role === 'coo';
-  const isProcurement = user?.role === 'procurement_officer' || user?.role === 'admin';
+  const [showAcknowledgeModal, setShowAcknowledgeModal] = useState(false);
+  const [acknowledgeData, setAcknowledgeData] = useState({
+    deliveryNoteNumber: '',
+    expectedDeliveryDate: ''
+  });
 
   useEffect(() => {
     fetchOrder();
@@ -36,10 +44,7 @@ export default function PurchaseOrderDetail() {
   const fetchOrder = async () => {
     try {
       setLoading(true);
-      // Finance uses finance API, others use procurement API (both point to same endpoint but may have different permissions)
-      const response = isFinance 
-        ? await financeAPI.getPurchaseOrderById(id)
-        : await procurementAPI.getPurchaseOrderById(id);
+      const response = await api.get(`/supplier/purchase-orders/${id}`);
       
       if (response.data.success && response.data.data) {
         setOrder(response.data.data);
@@ -52,55 +57,29 @@ export default function PurchaseOrderDetail() {
     }
   };
 
-  const handleSubmitPO = async () => {
-    try {
-      setActionLoading(true);
-      const response = await procurementAPI.submitPurchaseOrder(id);
-      if (response.data.success) {
-        showToast('Purchase Order submitted successfully', 'success');
-        fetchOrder();
-      }
-    } catch (error) {
-      showToast(error.response?.data?.message || 'Failed to submit purchase order', 'error');
-    } finally {
-      setActionLoading(false);
-    }
+  const openAcknowledgeModal = () => {
+    setAcknowledgeData({
+      deliveryNoteNumber: '',
+      expectedDeliveryDate: order.expectedDeliveryDate ? new Date(order.expectedDeliveryDate).toISOString().split('T')[0] : ''
+    });
+    setShowAcknowledgeModal(true);
   };
 
-  const handleApprovePO = async () => {
+  const handleAcknowledge = async () => {
+    if (!order) return;
+    
     try {
       setActionLoading(true);
-      const api = isFinance ? financeAPI : cooAPI;
-      const response = await api.approvePO(id, { comments });
-      if (response.data.success) {
-        showToast(`Purchase Order approved by ${isFinance ? 'Finance' : 'COO'}`, 'success');
-        setShowApproveModal(false);
-        setComments('');
-        fetchOrder();
-      }
+      await api.put(`/supplier/purchase-orders/${order._id}/acknowledge`, {
+        deliveryNoteNumber: acknowledgeData.deliveryNoteNumber.trim() || undefined,
+        expectedDeliveryDate: acknowledgeData.expectedDeliveryDate || undefined
+      });
+      showToast('Purchase order acknowledged successfully', 'success');
+      setShowAcknowledgeModal(false);
+      setAcknowledgeData({ deliveryNoteNumber: '', expectedDeliveryDate: '' });
+      fetchOrder();
     } catch (error) {
-      showToast(error.response?.data?.message || 'Failed to approve purchase order', 'error');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleRejectPO = async () => {
-    if (!rejectReason.trim()) {
-      showToast('Please provide a reason for rejection', 'error');
-      return;
-    }
-    try {
-      setActionLoading(true);
-      const response = await financeAPI.rejectPO(id, { reason: rejectReason });
-      if (response.data.success) {
-        showToast('Purchase Order rejected', 'success');
-        setShowRejectModal(false);
-        setRejectReason('');
-        fetchOrder();
-      }
-    } catch (error) {
-      showToast(error.response?.data?.message || 'Failed to reject purchase order', 'error');
+      showToast(error.response?.data?.message || 'Failed to acknowledge purchase order', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -109,8 +88,7 @@ export default function PurchaseOrderDetail() {
   const handleDownloadPDF = async () => {
     try {
       setDownloadLoading(true);
-      const api = isFinance ? financeAPI : procurementAPI;
-      const response = await api.downloadPurchaseOrderPDF(id);
+      const response = await supplierAPI.downloadPurchaseOrderPDF(id);
       
       // Create blob and download
       const blob = new Blob([response.data], { type: 'application/pdf' });
@@ -132,6 +110,24 @@ export default function PurchaseOrderDetail() {
     }
   };
 
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'approved':
+      case 'issued':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'pending_finance':
+      case 'pending_coo':
+      case 'pending_approvals':
+        return 'bg-amber-100 text-amber-800 border-amber-200';
+      case 'rejected':
+        return 'bg-red-100 text-red-800 border-red-200';
+      case 'completed':
+        return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-8 flex items-center justify-center min-h-screen">
@@ -144,7 +140,7 @@ export default function PurchaseOrderDetail() {
     return (
       <div className="p-8">
         <button
-          onClick={() => navigate('/app/purchase-orders')}
+          onClick={() => navigate('/app/my-purchase-orders')}
           className="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-900"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -157,29 +153,12 @@ export default function PurchaseOrderDetail() {
     );
   }
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'approved':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'pending_approvals':
-        return 'bg-amber-100 text-amber-800 border-amber-200';
-      case 'draft':
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-      case 'rejected':
-        return 'bg-red-100 text-red-800 border-red-200';
-      case 'issued':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Back Button */}
       <div className="p-8 pb-0">
         <button
-          onClick={() => navigate('/app/purchase-orders')}
+          onClick={() => navigate('/app/my-purchase-orders')}
           className="mb-6 flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -214,16 +193,18 @@ export default function PurchaseOrderDetail() {
                   <div className="flex items-center gap-2 text-white/90">
                     <Calendar className="h-5 w-5" />
                     <span className="text-sm font-medium">
-                      {new Date(order.createdAt).toLocaleDateString('en-ZA', { 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                      })}
+                      {order.issuedAt 
+                        ? new Date(order.issuedAt).toLocaleDateString('en-ZA', { 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          })
+                        : new Date(order.createdAt).toLocaleDateString('en-ZA', { 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          })}
                     </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-white/90">
-                    <Building2 className="h-5 w-5" />
-                    <span className="text-sm font-medium">{order.supplier?.companyName || 'N/A'}</span>
                   </div>
                   <div className={`px-4 py-1.5 rounded-full border-2 backdrop-blur-sm ${getStatusColor(order.status)}`}>
                     <span className="text-xs font-semibold uppercase tracking-wide">
@@ -235,53 +216,24 @@ export default function PurchaseOrderDetail() {
               
               {/* Action Buttons */}
               <div className="flex items-center gap-2 ml-6">
-                {isProcurement && order.status === 'draft' && (
+                {(order.status === 'approved' || order.status === 'issued') && !order.isAcknowledged && (
                   <button
-                    onClick={handleSubmitPO}
+                    onClick={openAcknowledgeModal}
                     disabled={actionLoading}
                     className="flex items-center gap-2 bg-white hover:bg-gray-50 text-primary font-semibold py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {actionLoading ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    ) : (
-                      <Send className="h-5 w-5" />
-                    )}
-                    Submit for Approval
+                    <CheckCircle className="h-5 w-5" />
+                    Acknowledge PO
                   </button>
                 )}
-                {(isFinance || isCOO) && order.status === 'pending_approvals' && (
-                  <>
-                    {isFinance && !order.financeApproved && (
-                      <>
-                        <button
-                          onClick={() => setShowApproveModal(true)}
-                          disabled={actionLoading}
-                          className="flex items-center gap-2 bg-white hover:bg-gray-50 text-green-700 font-semibold py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <CheckCircle className="h-5 w-5" />
-                          Approve
-                        </button>
-                        <button
-                          onClick={() => setShowRejectModal(true)}
-                          disabled={actionLoading}
-                          className="flex items-center gap-2 bg-white hover:bg-gray-50 text-red-700 font-semibold py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <XCircle className="h-5 w-5" />
-                          Reject
-                        </button>
-                      </>
-                    )}
-                    {isCOO && !order.cooApproved && order.financeApproved && (
-                      <button
-                        onClick={() => setShowApproveModal(true)}
-                        disabled={actionLoading}
-                        className="flex items-center gap-2 bg-white hover:bg-gray-50 text-green-700 font-semibold py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <CheckCircle className="h-5 w-5" />
-                        Approve
-                      </button>
-                    )}
-                  </>
+                {order.isAcknowledged && order.status === 'issued' && (
+                  <button
+                    onClick={() => navigate('/app/my-deliveries')}
+                    className="flex items-center gap-2 bg-white hover:bg-gray-50 text-blue-700 font-semibold py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl"
+                  >
+                    <Truck className="h-5 w-5" />
+                    Manage Delivery
+                  </button>
                 )}
                 <button
                   onClick={handleDownloadPDF}
@@ -305,6 +257,32 @@ export default function PurchaseOrderDetail() {
       <div className="px-8 pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
+            {/* Acknowledgment Banner */}
+            {order.isAcknowledged && (order.status === 'issued' || order.status === 'approved') && (
+              <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-6">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-green-100 rounded-xl">
+                    <CheckCircle className="h-6 w-6 text-green-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-green-800 text-lg mb-2">Purchase Order Acknowledged</h3>
+                    <p className="text-sm text-green-700 mb-3">
+                      <strong>Next Steps:</strong>
+                    </p>
+                    <ol className="text-sm text-green-700 space-y-1 list-decimal list-inside ml-2">
+                      <li>Prepare and deliver the goods to the delivery address specified below</li>
+                      <li>Stores will receive the goods and validate them against this PO</li>
+                      <li>Stores will create a GRV (Goods Received Voucher) in the system</li>
+                      <li>Your delivery will appear in <strong>"My Deliveries"</strong> once Stores has received and processed the goods</li>
+                    </ol>
+                    <p className="text-xs text-green-600 mt-3 italic">
+                      Note: Deliveries are only created by Stores when they physically receive the goods. Acknowledging a PO does not create a delivery record.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Items Section */}
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
               <div className="bg-gradient-to-r from-primary/5 to-primary/10 px-6 py-4 border-b border-gray-100">
@@ -328,7 +306,7 @@ export default function PurchaseOrderDetail() {
                         </div>
                         <div className="text-right">
                           <p className="text-lg font-bold text-primary">
-                            {formatCurrency(item.totalPrice, order.quotation?.currency || 'USD')}
+                            {formatCurrency(item.totalPrice || item.quantity * item.unitPrice, order.currency || 'USD')}
                           </p>
                         </div>
                       </div>
@@ -339,11 +317,11 @@ export default function PurchaseOrderDetail() {
                         </div>
                         <div>
                           <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Unit Price</p>
-                          <p className="font-semibold text-gray-900">{formatCurrency(item.unitPrice, order.quotation?.currency || 'USD')}</p>
+                          <p className="font-semibold text-gray-900">{formatCurrency(item.unitPrice, order.currency || 'USD')}</p>
                         </div>
                         <div>
                           <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Line Total</p>
-                          <p className="font-semibold text-primary">{formatCurrency(item.totalPrice, order.quotation?.currency || 'USD')}</p>
+                          <p className="font-semibold text-primary">{formatCurrency(item.totalPrice || item.quantity * item.unitPrice, order.currency || 'USD')}</p>
                         </div>
                       </div>
                     </div>
@@ -352,8 +330,8 @@ export default function PurchaseOrderDetail() {
               </div>
             </div>
 
-            {/* Related Requisition */}
-            {order.purchaseRequisition && (
+            {/* Related RFQ */}
+            {order.rfq && (
               <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
                 <div className="bg-gradient-to-r from-primary/5 to-primary/10 px-6 py-4 border-b border-gray-100">
                   <div className="flex items-center justify-between">
@@ -361,20 +339,21 @@ export default function PurchaseOrderDetail() {
                       <div className="p-2 bg-primary/10 rounded-lg">
                         <FileText className="h-5 w-5 text-primary" />
                       </div>
-                      Related Requisition
+                      Related RFQ
                     </h2>
                     <button
-                      onClick={() => navigate(`/app/requisitions/${order.purchaseRequisition._id || order.purchaseRequisition}`)}
+                      onClick={() => navigate(`/app/my-rfqs`)}
                       className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/10 rounded-lg transition-colors"
                     >
                       <ExternalLink className="h-4 w-4" />
-                      View
+                      View RFQ
                     </button>
                   </div>
                 </div>
                 <div className="p-6">
+                  <label className="text-xs text-gray-500 uppercase tracking-wide mb-2 block">RFQ Number</label>
                   <p className="font-mono font-bold text-primary text-lg">
-                    {order.purchaseRequisition.requisitionNumber || order.purchaseRequisition}
+                    {order.rfq.rfqNumber || order.rfq}
                   </p>
                 </div>
               </div>
@@ -398,7 +377,7 @@ export default function PurchaseOrderDetail() {
                   <div className="flex justify-between items-center py-2 border-b border-gray-100">
                     <span className="text-sm text-gray-600">Subtotal</span>
                     <span className="font-semibold text-gray-900">
-                      {formatCurrency(order.subtotal, order.quotation?.currency || 'USD')}
+                      {formatCurrency(order.subtotal, order.currency || 'USD')}
                     </span>
                   </div>
                 )}
@@ -406,7 +385,7 @@ export default function PurchaseOrderDetail() {
                   <div className="flex justify-between items-center py-2 border-b border-gray-100">
                     <span className="text-sm text-gray-600">VAT</span>
                     <span className="font-semibold text-gray-900">
-                      {formatCurrency(order.vatAmount, order.quotation?.currency || 'USD')}
+                      {formatCurrency(order.vatAmount, order.currency || 'USD')}
                     </span>
                   </div>
                 )}
@@ -414,7 +393,7 @@ export default function PurchaseOrderDetail() {
                   <div className="flex justify-between items-center pt-4">
                     <span className="text-base font-bold text-gray-900">Total Amount</span>
                     <span className="text-2xl font-bold text-primary">
-                      {formatCurrency(order.totalAmount, order.quotation?.currency || 'USD')}
+                      {formatCurrency(order.totalAmount, order.currency || 'USD')}
                     </span>
                   </div>
                 )}
@@ -426,20 +405,12 @@ export default function PurchaseOrderDetail() {
               <div className="bg-gradient-to-r from-primary/5 to-primary/10 px-6 py-4 border-b border-gray-100">
                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-3">
                   <div className="p-2 bg-primary/10 rounded-lg">
-                    <FileCheck className="h-5 w-5 text-primary" />
+                    <FileText className="h-5 w-5 text-primary" />
                   </div>
                   Order Details
                 </h3>
               </div>
               <div className="p-6 space-y-5">
-                <div>
-                  <label className="text-xs text-gray-500 uppercase tracking-wide mb-2 block">Supplier</label>
-                  <div className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-gray-400" />
-                    <p className="font-semibold text-gray-900">{order.supplier?.companyName || 'N/A'}</p>
-                  </div>
-                </div>
-                
                 {order.deliveryAddress && (
                   <div>
                     <label className="text-xs text-gray-500 uppercase tracking-wide mb-2 block">Delivery Address</label>
@@ -488,149 +459,104 @@ export default function PurchaseOrderDetail() {
                 )}
 
                 <div>
-                  <label className="text-xs text-gray-500 uppercase tracking-wide mb-2 block">Created Date</label>
+                  <label className="text-xs text-gray-500 uppercase tracking-wide mb-2 block">Order Date</label>
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-gray-400" />
                     <p className="font-semibold text-gray-900">
-                      {new Date(order.createdAt).toLocaleDateString('en-ZA', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
+                      {order.issuedAt 
+                        ? new Date(order.issuedAt).toLocaleDateString('en-ZA', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })
+                        : new Date(order.createdAt).toLocaleDateString('en-ZA', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
                     </p>
                   </div>
                 </div>
               </div>
             </div>
-
-            {/* Approval Status */}
-            {(order.financeApproved || order.cooApproved || order.status === 'pending_approvals') && (
-              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-                <div className="bg-gradient-to-r from-primary/5 to-primary/10 px-6 py-4 border-b border-gray-100">
-                  <h3 className="text-lg font-bold text-gray-900 flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                      <CheckCircle className="h-5 w-5 text-primary" />
-                    </div>
-                    Approval Status
-                  </h3>
-                </div>
-                <div className="p-6 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Finance</span>
-                    {order.financeApproved ? (
-                      <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">
-                        Approved
-                      </span>
-                    ) : (
-                      <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-semibold">
-                        Pending
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">COO</span>
-                    {order.cooApproved ? (
-                      <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">
-                        Approved
-                      </span>
-                    ) : (
-                      <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-semibold">
-                        Pending
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
 
-      {/* Approve PO Modal */}
+      {/* Acknowledge Modal */}
       <Modal
-        isOpen={showApproveModal}
+        isOpen={showAcknowledgeModal}
         onClose={() => {
-          setShowApproveModal(false);
-          setComments('');
+          setShowAcknowledgeModal(false);
+          setAcknowledgeData({ deliveryNoteNumber: '', expectedDeliveryDate: '' });
         }}
-        title={`Approve Purchase Order - ${isFinance ? 'Finance' : 'COO'}`}
+        title="Acknowledge Purchase Order"
       >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Comments (Optional)
-            </label>
-            <textarea
-              value={comments}
-              onChange={(e) => setComments(e.target.value)}
-              rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-              placeholder="Add any comments about approving this purchase order..."
-            />
-          </div>
-          <div className="flex items-center justify-end gap-3">
-            <button
-              onClick={() => {
-                setShowApproveModal(false);
-                setComments('');
-              }}
-              className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleApprovePO}
-              disabled={actionLoading}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {actionLoading ? 'Approving...' : 'Approve Purchase Order'}
-            </button>
-          </div>
-        </div>
-      </Modal>
+        {order && (
+          <div className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <p className="text-sm text-blue-800">
+                <strong>PO Number:</strong> {order.poNumber}
+              </p>
+              <p className="text-sm text-blue-800 mt-1">
+                <strong>Total Value:</strong> {formatCurrency(order.totalAmount, order.currency || 'USD')}
+              </p>
+            </div>
 
-      {/* Reject PO Modal */}
-      <Modal
-        isOpen={showRejectModal}
-        onClose={() => {
-          setShowRejectModal(false);
-          setRejectReason('');
-        }}
-        title="Reject Purchase Order"
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Reason for Rejection <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              rows={4}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-              placeholder="Please provide a reason for rejecting this purchase order..."
-            />
+            <div>
+              <p className="text-sm text-gray-700 mb-4">
+                By acknowledging this purchase order, you confirm that you have received it and will proceed with delivery. 
+                A pending delivery record will be created for tracking purposes.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Delivery Note Number <span className="text-gray-400">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={acknowledgeData.deliveryNoteNumber}
+                  onChange={(e) => setAcknowledgeData({ ...acknowledgeData, deliveryNoteNumber: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                  placeholder="Enter delivery note number if available"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Expected Delivery Date <span className="text-gray-400">(Optional)</span>
+                </label>
+                <input
+                  type="date"
+                  value={acknowledgeData.expectedDeliveryDate}
+                  onChange={(e) => setAcknowledgeData({ ...acknowledgeData, expectedDeliveryDate: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <button
+                onClick={() => {
+                  setShowAcknowledgeModal(false);
+                  setAcknowledgeData({ deliveryNoteNumber: '', expectedDeliveryDate: '' });
+                }}
+                className="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAcknowledge}
+                disabled={actionLoading}
+                className="px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {actionLoading ? 'Acknowledging...' : 'Confirm Acknowledgment'}
+              </button>
+            </div>
           </div>
-          <div className="flex items-center justify-end gap-3">
-            <button
-              onClick={() => {
-                setShowRejectModal(false);
-                setRejectReason('');
-              }}
-              className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleRejectPO}
-              disabled={actionLoading || !rejectReason.trim()}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {actionLoading ? 'Rejecting...' : 'Reject Purchase Order'}
-            </button>
-          </div>
-        </div>
+        )}
       </Modal>
     </div>
   );

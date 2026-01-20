@@ -74,7 +74,16 @@ const createPurchaseOrder = async (req, res) => {
       purchaseRequisitionId = rfq?.purchaseRequisition || null;
     }
     
-    const po = await PurchaseOrder.create({
+    // Validate and parse expectedDeliveryDate if provided
+    let parsedExpectedDeliveryDate = null;
+    if (expectedDeliveryDate) {
+      const date = new Date(expectedDeliveryDate);
+      if (!isNaN(date.getTime())) {
+        parsedExpectedDeliveryDate = date;
+      }
+    }
+    
+    const poData = {
       poNumber,
       quotation: quotation._id,
       rfq: quotation.rfq?._id || quotation.rfq,
@@ -86,7 +95,6 @@ const createPurchaseOrder = async (req, res) => {
       vatAmount: quotation.vatAmount,
       totalAmount: quotation.totalAmount,
       deliveryAddress,
-      expectedDeliveryDate: new Date(expectedDeliveryDate),
       paymentTerms: quotation.paymentTerms,
       termsAndConditions,
       notes,
@@ -97,7 +105,14 @@ const createPurchaseOrder = async (req, res) => {
         role: req.user.role,
         comments: 'Purchase Order created'
       }]
-    });
+    };
+    
+    // Only add expectedDeliveryDate if it's valid
+    if (parsedExpectedDeliveryDate) {
+      poData.expectedDeliveryDate = parsedExpectedDeliveryDate;
+    }
+    
+    const po = await PurchaseOrder.create(poData);
 
     // Update Purchase Requisition status to 'ordered' if it exists
     if (po.purchaseRequisition) {
