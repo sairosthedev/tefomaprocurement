@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authAPI } from '../lib/api';
 import { Loader2, Eye, EyeOff, Building2, ArrowLeft } from 'lucide-react';
+import Logo from '../components/Logo';
 
 export default function Register() {
   const [step, setStep] = useState(1);
@@ -182,10 +183,15 @@ export default function Register() {
             <ArrowLeft className="h-4 w-4" />
             Back to Login
           </Link>
-          <h1 className="text-2xl font-bold">Supplier Registration</h1>
-          <p className="text-white/80 text-sm mt-1">
-            Register your company to become a supplier for Fossil Contracting
-          </p>
+          <div className="flex items-center gap-4 mb-4">
+            <Logo variant="icon" className="text-white" />
+            <div>
+              <h1 className="text-2xl font-bold">Supplier Registration</h1>
+              <p className="text-white/80 text-sm mt-1">
+                Register your company to become a supplier for Fossil Contracting
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Progress Steps */}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { procurementAPI } from '../lib/api';
+import Tabs from '../components/Tabs';
 import { 
   Search, 
   Filter, 
@@ -11,7 +12,8 @@ import {
   Building2,
   Mail,
   Phone,
-  Loader2
+  Loader2,
+  Users
 } from 'lucide-react';
 
 const statusColors = {
@@ -68,8 +70,8 @@ export default function Suppliers() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+        <div className="flex flex-col gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
@@ -80,18 +82,19 @@ export default function Suppliers() {
               className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
             />
           </div>
-          <div className="flex gap-3">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
-            >
-              <option value="">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="active">Active</option>
-              <option value="suspended">Suspended</option>
-              <option value="blacklisted">Blacklisted</option>
-            </select>
+          <div className="flex items-center gap-4">
+            <Tabs
+              tabs={[
+                { value: '', label: 'All', icon: Users },
+                { value: 'pending', label: 'Pending', icon: Clock },
+                { value: 'active', label: 'Active', icon: CheckCircle },
+                { value: 'suspended', label: 'Suspended', icon: XCircle },
+                { value: 'blacklisted', label: 'Blacklisted', icon: XCircle }
+              ]}
+              activeTab={statusFilter}
+              onTabChange={setStatusFilter}
+              variant="pills"
+            />
             <button className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">
               <Filter className="h-4 w-4" />
               More Filters

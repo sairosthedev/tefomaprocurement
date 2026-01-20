@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { adminAPI } from '../lib/api';
 import { Modal } from '../components/Modal';
 import { useToast } from '../components/Toast';
+import Tabs from '../components/Tabs';
 import { 
   Search, 
   Plus,
@@ -14,7 +15,8 @@ import {
   Edit,
   Trash2,
   Eye,
-  EyeOff
+  EyeOff,
+  Users as UsersIcon
 } from 'lucide-react';
 
 const roleColors = {
@@ -224,8 +226,8 @@ export default function Users() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+        <div className="flex flex-col gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
@@ -236,16 +238,19 @@ export default function Users() {
               className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
             />
           </div>
-          <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            className="px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
-          >
-            <option value="">All Roles</option>
-            {roleOptions.map(role => (
-              <option key={role.value} value={role.value}>{role.label}</option>
-            ))}
-          </select>
+          <Tabs
+            tabs={[
+              { value: '', label: 'All Roles', icon: UsersIcon },
+              ...roleOptions.map(role => ({
+                value: role.value,
+                label: role.label,
+                icon: Shield
+              }))
+            ]}
+            activeTab={roleFilter}
+            onTabChange={setRoleFilter}
+            variant="pills"
+          />
         </div>
       </div>
 

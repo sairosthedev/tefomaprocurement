@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
+import Tabs from '../components/Tabs';
 import { 
   Search, 
   Plus, 
@@ -9,7 +10,10 @@ import {
   Calendar,
   Users,
   Loader2,
-  Send
+  Send,
+  Clock,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
 import ViewButton from '../components/ViewButton';
 
@@ -66,8 +70,8 @@ export default function RFQs() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+        <div className="flex flex-col gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
@@ -78,18 +82,19 @@ export default function RFQs() {
               className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
             />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
-          >
-            <option value="">All Status</option>
-            <option value="draft">Draft</option>
-            <option value="open">Open</option>
-            <option value="closed">Closed</option>
-            <option value="evaluating">Evaluating</option>
-            <option value="awarded">Awarded</option>
-          </select>
+          <Tabs
+            tabs={[
+              { value: '', label: 'All', icon: FileSearch },
+              { value: 'draft', label: 'Draft', icon: Clock },
+              { value: 'open', label: 'Open', icon: FileSearch },
+              { value: 'closed', label: 'Closed', icon: XCircle },
+              { value: 'evaluating', label: 'Evaluating', icon: Clock },
+              { value: 'awarded', label: 'Awarded', icon: CheckCircle }
+            ]}
+            activeTab={statusFilter}
+            onTabChange={setStatusFilter}
+            variant="pills"
+          />
         </div>
       </div>
 

@@ -36,7 +36,23 @@ const iconMap = {
   lowStock: AlertCircle,
   pendingDeliveries: Package,
   myRequisitions: FileText,
-  suppliers: Users
+  suppliers: Users,
+  totalQuotations: FileText,
+  approvedQuotations: CheckCircle,
+  totalRFQs: FileSearch,
+  approvedPOs: CheckCircle,
+  monthlyValue: DollarSign,
+  majorPOs: ShoppingCart,
+  cooApproved: CheckCircle,
+  inventoryValue: DollarSign,
+  itemsNeedingReorder: AlertCircle,
+  receivedThisMonth: Package,
+  approvedRequisitions: CheckCircle,
+  rejectedRequisitions: AlertCircle,
+  departmentRequisitions: FileText,
+  myQuotations: FileText,
+  submittedQuotations: FileText,
+  myPOs: ShoppingCart
 };
 
 const colorMap = {
@@ -57,7 +73,23 @@ const colorMap = {
   lowStock: 'bg-red-500',
   pendingDeliveries: 'bg-orange-500',
   myRequisitions: 'bg-indigo-500',
-  suppliers: 'bg-purple-500'
+  suppliers: 'bg-purple-500',
+  totalQuotations: 'bg-indigo-500',
+  approvedQuotations: 'bg-green-500',
+  totalRFQs: 'bg-blue-500',
+  approvedPOs: 'bg-green-500',
+  monthlyValue: 'bg-emerald-500',
+  majorPOs: 'bg-orange-500',
+  cooApproved: 'bg-green-500',
+  inventoryValue: 'bg-emerald-500',
+  itemsNeedingReorder: 'bg-red-500',
+  receivedThisMonth: 'bg-blue-500',
+  approvedRequisitions: 'bg-green-500',
+  rejectedRequisitions: 'bg-red-500',
+  departmentRequisitions: 'bg-indigo-500',
+  myQuotations: 'bg-indigo-500',
+  submittedQuotations: 'bg-blue-500',
+  myPOs: 'bg-emerald-500'
 };
 
 const activityIconMap = {
@@ -85,6 +117,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState({});
   const [recentActivity, setRecentActivity] = useState([]);
+  const [additionalStats, setAdditionalStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -100,6 +133,7 @@ export default function Dashboard() {
       if (response.data.success) {
         setStats(response.data.data.stats);
         setRecentActivity(response.data.data.recentActivity || []);
+        setAdditionalStats(response.data.data.additionalStats || {});
       }
     } catch (err) {
       console.error('Failed to fetch dashboard data:', err);
@@ -158,6 +192,12 @@ export default function Dashboard() {
       ]
     };
     return actions[user?.role] || actions.admin;
+  };
+
+  const getAdditionalStats = () => {
+    // Return additional stats from API response
+    // These will be displayed in place of Recent Activity for non-admin users
+    return additionalStats;
   };
 
   if (loading) {
@@ -223,47 +263,84 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Activity */}
-        <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
-          </div>
-          <div className="space-y-4">
-            {recentActivity.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Clock className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                <p>No recent activity</p>
-              </div>
-            ) : (
-              recentActivity.map((activity) => {
-                const Icon = activityIconMap[activity.type] || FileText;
-                const iconColor = activityColorMap[activity.type] || 'text-gray-500';
-                return (
-                  <div
-                    key={activity.id}
-                    className="flex items-start gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="p-2 rounded-lg bg-gray-100">
-                      <Icon className={`h-5 w-5 ${iconColor}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">{activity.message}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-gray-500">{activity.time}</span>
-                        {activity.user && (
-                          <>
-                            <span className="text-xs text-gray-300">•</span>
-                            <span className="text-xs text-gray-500">{activity.user}</span>
-                          </>
-                        )}
+        {/* Recent Activity (Admin only) or Additional Stats (Other roles) */}
+        {user?.role === 'admin' ? (
+          <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
+            </div>
+            <div className="space-y-4">
+              {recentActivity.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <Clock className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                  <p>No recent activity</p>
+                </div>
+              ) : (
+                recentActivity.map((activity) => {
+                  const Icon = activityIconMap[activity.type] || FileText;
+                  const iconColor = activityColorMap[activity.type] || 'text-gray-500';
+                  return (
+                    <div
+                      key={activity.id}
+                      className="flex items-start gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="p-2 rounded-lg bg-gray-100">
+                        <Icon className={`h-5 w-5 ${iconColor}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900">{activity.message}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-gray-500">{activity.time}</span>
+                          {activity.user && (
+                            <>
+                              <span className="text-xs text-gray-300">•</span>
+                              <span className="text-xs text-gray-500">{activity.user}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })
-            )}
+                  );
+                })
+              )}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-gray-900">Additional Statistics</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {Object.entries(getAdditionalStats()).length > 0 ? (
+                Object.entries(getAdditionalStats()).map(([key, stat]) => {
+                  const Icon = iconMap[key] || FileText;
+                  const color = colorMap[key] || 'bg-gray-500';
+                  return (
+                    <div
+                      key={key}
+                      className="bg-gray-50 rounded-xl p-5 border border-gray-100 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">{stat.label}</p>
+                          <p className="text-2xl font-bold text-gray-900 mt-2">{stat.value}</p>
+                        </div>
+                        <div className={`${color} p-3 rounded-lg`}>
+                          <Icon className="h-5 w-5 text-white" />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="col-span-2 text-center py-8 text-gray-500">
+                  <TrendingUp className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                  <p>No additional statistics available</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Quick Actions */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">

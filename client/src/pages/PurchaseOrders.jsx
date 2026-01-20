@@ -4,6 +4,7 @@ import { procurementAPI, financeAPI } from '../lib/api';
 import { formatCurrency } from '../lib/constants';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
+import Tabs from '../components/Tabs';
 import { 
   Search, 
   Plus,
@@ -119,8 +120,8 @@ export default function PurchaseOrders() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+        <div className="flex flex-col gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
@@ -131,20 +132,21 @@ export default function PurchaseOrders() {
               className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
             />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
-          >
-            <option value="">All Status</option>
-            <option value="draft">Draft</option>
-            <option value="pending_finance">Pending Finance</option>
-            <option value="pending_coo">Pending COO</option>
-            <option value="pending_approvals">Pending Approvals</option>
-            <option value="approved">Approved</option>
-            <option value="issued">Issued</option>
-            <option value="completed">Completed</option>
-          </select>
+          <Tabs
+            tabs={[
+              { value: '', label: 'All', icon: ShoppingCart },
+              { value: 'draft', label: 'Draft', icon: Clock },
+              { value: 'pending_finance', label: 'Pending Finance', icon: Clock },
+              { value: 'pending_coo', label: 'Pending COO', icon: Clock },
+              { value: 'pending_approvals', label: 'Pending Approvals', icon: Clock },
+              { value: 'approved', label: 'Approved', icon: CheckCircle },
+              { value: 'issued', label: 'Issued', icon: Send },
+              { value: 'completed', label: 'Completed', icon: CheckCircle }
+            ]}
+            activeTab={statusFilter}
+            onTabChange={setStatusFilter}
+            variant="pills"
+          />
         </div>
       </div>
 

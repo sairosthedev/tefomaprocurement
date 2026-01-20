@@ -1,11 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ShieldX, ArrowLeft } from 'lucide-react';
+import Logo from '../components/Logo';
 
 export default function Unauthorized() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="text-center">
+        <div className="flex justify-center mb-6">
+          <Logo variant="default" />
+        </div>
         <div className="inline-flex items-center justify-center w-20 h-20 bg-red-100 rounded-full mb-6">
           <ShieldX className="h-10 w-10 text-red-600" />
         </div>

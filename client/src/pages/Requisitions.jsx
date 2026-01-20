@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import api, { departmentAPI } from '../lib/api';
+import Tabs from '../components/Tabs';
 import { 
   Plus, Search, Filter, Edit, Trash2, Send, 
   Clock, CheckCircle, XCircle, Package, Loader2, AlertCircle,
@@ -189,8 +190,8 @@ export default function Requisitions() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+        <div className="flex flex-col gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
@@ -201,21 +202,22 @@ export default function Requisitions() {
               className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
-          >
-            <option value="">All Statuses</option>
-            {!isProcurement && <option value="draft">Draft</option>}
-            <option value="pending_acceptance">Pending Acceptance</option>
-            <option value="accepted">Accepted</option>
-            <option value="rejected">Rejected</option>
-            <option value="sourcing">Sourcing</option>
-            <option value="quoted">Quoted</option>
-            <option value="ordered">Ordered</option>
-            <option value="completed">Completed</option>
-          </select>
+          <Tabs
+            tabs={[
+              { value: '', label: 'All', icon: FileText },
+              ...(!isProcurement ? [{ value: 'draft', label: 'Draft', icon: Clock }] : []),
+              { value: 'pending_acceptance', label: 'Pending Acceptance', icon: Clock },
+              { value: 'accepted', label: 'Accepted', icon: CheckCircle },
+              { value: 'rejected', label: 'Rejected', icon: XCircle },
+              { value: 'sourcing', label: 'Sourcing', icon: Search },
+              { value: 'quoted', label: 'Quoted', icon: FileText },
+              { value: 'ordered', label: 'Ordered', icon: ShoppingCart },
+              { value: 'completed', label: 'Completed', icon: CheckCircle }
+            ]}
+            activeTab={statusFilter}
+            onTabChange={setStatusFilter}
+            variant="pills"
+          />
         </div>
       </div>
 

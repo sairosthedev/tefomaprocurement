@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { cn } from '../../lib/utils'
+import Logo from '../components/Logo'
 import { 
   LayoutDashboard, 
   Users, 
@@ -143,14 +144,8 @@ export function SidebarLayout({ children }) {
         <div className="flex flex-col h-full py-6">
           {/* Logo/Brand */}
           <div className="px-4 mb-6">
-            <Link to="/app" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
-              <div className="h-11 w-11 bg-white/10 rounded-xl flex items-center justify-center">
-                <span className="text-xl">🦴</span>
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-white tracking-tight">iProcure</h2>
-                <p className="text-[11px] text-gray-400 font-medium">Fossil Contracting</p>
-              </div>
+            <Link to="/app" className="flex items-center hover:opacity-90 transition-opacity">
+              <Logo variant="compact" showText={true} className="text-white" />
             </Link>
           </div>
 
