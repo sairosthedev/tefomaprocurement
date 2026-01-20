@@ -98,6 +98,7 @@ const roleNavigation = {
   supplier: [
     { name: "Dashboard", href: "/app", icon: LayoutDashboard },
     { name: "My RFQs", href: "/app/my-rfqs", icon: FileSearch },
+    { name: "My Submitted Quotations", href: "/app/my-submitted-quotations", icon: FileText },
     { name: "My Purchase Orders", href: "/app/my-purchase-orders", icon: ShoppingCart },
     { name: "Deliveries", href: "/app/my-deliveries", icon: Truck },
     { name: "My Profile", href: "/app/supplier-profile", icon: Building2 },
@@ -169,9 +170,15 @@ export function SidebarLayout({ children }) {
           {/* Navigation */}
           <nav className="flex-1 px-3 flex flex-col gap-0.5 overflow-y-auto">
             {navigation.map((item) => {
-              const isActive = item.href === '/app' 
-                ? location.pathname === '/app'
-                : location.pathname.startsWith(item.href)
+              // Special handling for My RFQs - also active on submit-quotation page
+              let isActive;
+              if (item.href === '/app/my-rfqs') {
+                isActive = location.pathname.startsWith(item.href) || location.pathname.startsWith('/app/submit-quotation');
+              } else if (item.href === '/app') {
+                isActive = location.pathname === '/app';
+              } else {
+                isActive = location.pathname.startsWith(item.href);
+              }
               const Icon = item.icon
               return (
                 <Link

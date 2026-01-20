@@ -47,6 +47,7 @@ import StockMovements from './pages/StockMovements';
 import MyRFQs from './pages/supplier/MyRFQs';
 import SubmitQuotation from './pages/supplier/SubmitQuotation';
 import MyQuotations from './pages/supplier/MyQuotations';
+import MySubmittedQuotations from './pages/supplier/MySubmittedQuotations';
 import MyPurchaseOrders from './pages/supplier/MyPurchaseOrders';
 import MyDeliveries from './pages/supplier/MyDeliveries';
 import SupplierProfile from './pages/supplier/SupplierProfile';
@@ -216,6 +217,11 @@ function App() {
             <Route path="/app/submit-quotation" element={
               <AppLayout allowedRoles={['supplier']}>
                 <SubmitQuotation />
+              </AppLayout>
+            } />
+            <Route path="/app/my-submitted-quotations" element={
+              <AppLayout allowedRoles={['supplier']}>
+                <MySubmittedQuotations />
               </AppLayout>
             } />
             <Route path="/app/my-quotations" element={

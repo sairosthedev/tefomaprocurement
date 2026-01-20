@@ -413,7 +413,11 @@ export default function MyPurchaseOrders() {
             {selectedPO.deliveryAddress && (
               <div>
                 <label className="text-sm text-gray-500">Delivery Address</label>
-                <p className="text-gray-900">{selectedPO.deliveryAddress}</p>
+                <p className="text-gray-900">
+                  {typeof selectedPO.deliveryAddress === 'string' 
+                    ? selectedPO.deliveryAddress 
+                    : `${selectedPO.deliveryAddress.street || ''}, ${selectedPO.deliveryAddress.city || ''}, ${selectedPO.deliveryAddress.province || ''} ${selectedPO.deliveryAddress.postalCode || ''}`.trim().replace(/^,\s*|,\s*$/g, '')}
+                </p>
               </div>
             )}
           </div>
