@@ -63,3 +63,14 @@ aside nav a:hover {
 aside nav a.shadow-sm {
   background-color: #234523 !important;
 }
+
+/* Force primary green for login button */
+button[type="submit"].bg-primary,
+button.bg-primary[type="submit"] {
+  background-color: #193019 !important;
+}
+
+button[type="submit"].bg-primary:hover,
+button.bg-primary[type="submit"]:hover {
+  background-color: #0f1a0f !important;
+}

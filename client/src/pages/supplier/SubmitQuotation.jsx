@@ -102,7 +102,7 @@ export default function SubmitQuotation() {
       });
 
       showToast('Quotation submitted successfully', 'success');
-      navigate('/app/my-rfqs');
+      navigate('/app/my-rfqs', { replace: true });
     } catch (error) {
       showToast(error.response?.data?.message || 'Failed to submit quotation', 'error');
     } finally {

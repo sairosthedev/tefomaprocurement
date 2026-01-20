@@ -146,6 +146,7 @@ export default function Login() {
                 type="submit"
               disabled={isLoading}
               className="w-full bg-primary text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 active:scale-[0.98] transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:bg-primary flex items-center justify-center gap-2"
+              style={{ backgroundColor: '#193019' }}
               >
               {isLoading ? (
                   <>
