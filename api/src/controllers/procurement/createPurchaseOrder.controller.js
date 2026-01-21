@@ -12,6 +12,13 @@ const createPurchaseOrder = async (req, res) => {
       notes 
     } = req.body;
 
+    if (!quotationId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Quotation ID is required'
+      });
+    }
+
     const quotation = await Quotation.findById(quotationId)
       .populate({
         path: 'rfq',
@@ -22,7 +29,7 @@ const createPurchaseOrder = async (req, res) => {
       })
       .populate('supplier');
 
-    if (!quotation) {
+    if (!quotation || quotation.isDeleted) {
       return res.status(404).json({
         success: false,
         message: 'Quotation not found'
