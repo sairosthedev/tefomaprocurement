@@ -18,8 +18,8 @@ connectDB();
 const allowedOrigins = process.env.NODE_ENV === 'production' 
   ? [
       process.env.CLIENT_URL,
-      'https://fosssilprocure.vercel.app',
-      'https://www.fosssilprocure.vercel.app'
+      'https://fossilprocure.vercel.app',
+      'https://www.fossilprocure.vercel.app'
     ].filter(Boolean)
   : [
       'http://localhost:5173',
