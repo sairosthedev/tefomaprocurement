@@ -4,8 +4,7 @@ import { useToast } from '../../components/Toast';
 import api from '../../lib/api';
 import { 
   FileSearch, Clock, Send, Loader2, 
-  Calendar, AlertCircle, CheckCircle, PartyPopper,
-  ShoppingCart
+  Calendar, AlertCircle, CheckCircle, PartyPopper
 } from 'lucide-react';
 import ViewButton from '../../components/ViewButton';
 import Modal from '../../components/Modal';
@@ -309,18 +308,9 @@ export default function MyRFQs() {
                           {canSubmit && (
                             <button
                               onClick={() => navigate(`/app/submit-quotation?rfq=${rfq._id}`)}
-                              className="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                              className="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
                             >
                               Submit Quote
-                            </button>
-                          )}
-                          {rfq.quotationStatus === 'accepted' && rfq.purchaseOrderId && (
-                            <button
-                              onClick={() => navigate(`/app/my-purchase-orders?po=${rfq.purchaseOrderId}`)}
-                              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                            >
-                              <ShoppingCart className="h-4 w-4" />
-                              Go to Purchase Order
                             </button>
                           )}
                         </div>
@@ -345,26 +335,12 @@ export default function MyRFQs() {
           <div className="space-y-6">
             {/* Celebration Banner for Accepted Quotations */}
             {selectedRFQ.quotationStatus === 'accepted' && (
-              <div className="bg-gradient-to-r from-emerald-50 to-green-50 border-2 border-emerald-200 rounded-xl p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <PartyPopper className="h-8 w-8 text-emerald-600" />
-                  <div className="flex-1">
-                    <p className="font-bold text-emerald-800 text-lg">🎉 Congratulations! Your Quotation Has Been Accepted!</p>
-                    <p className="text-sm text-emerald-700 mt-1">Your quotation for this RFQ has been accepted by the procurement team.</p>
-                  </div>
+              <div className="bg-gradient-to-r from-emerald-50 to-green-50 border-2 border-emerald-200 rounded-xl p-4 flex items-center gap-3 animate-pulse">
+                <PartyPopper className="h-8 w-8 text-emerald-600" />
+                <div className="flex-1">
+                  <p className="font-bold text-emerald-800 text-lg">🎉 Congratulations! Your Quotation Has Been Accepted!</p>
+                  <p className="text-sm text-emerald-700 mt-1">Your quotation for this RFQ has been accepted by the procurement team.</p>
                 </div>
-                {selectedRFQ.purchaseOrderId && (
-                  <button
-                    onClick={() => {
-                      setShowViewModal(false);
-                      navigate(`/app/my-purchase-orders?po=${selectedRFQ.purchaseOrderId}`);
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors w-full justify-center"
-                  >
-                    <ShoppingCart className="h-5 w-5" />
-                    Go to Purchase Order
-                  </button>
-                )}
               </div>
             )}
             <div className="grid grid-cols-2 gap-4">

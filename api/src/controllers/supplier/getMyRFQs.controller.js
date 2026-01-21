@@ -1,4 +1,4 @@
-const { RFQ, SupplierProfile, Quotation, PurchaseOrder } = require('../../models');
+const { RFQ, SupplierProfile, Quotation } = require('../../models');
 
 const getMyRFQs = async (req, res) => {
   try {
@@ -34,8 +34,8 @@ const getMyRFQs = async (req, res) => {
       RFQ.countDocuments(query)
     ]);
 
-    // Add responded status, quotation status, and purchase order info for each RFQ
-    const rfqsWithStatus = await Promise.all(rfqs.map(async (rfq) => {
+    // Add responded status and quotation status for each RFQ
+    const rfqsWithStatus = rfqs.map(rfq => {
       const invitation = rfq.invitedSuppliers?.find(
         inv => {
           const supplierId = inv.supplier?._id || inv.supplier;
@@ -45,34 +45,18 @@ const getMyRFQs = async (req, res) => {
       
       // Get quotation status if quotation exists
       let quotationStatus = null;
-      let purchaseOrderId = null;
       if (invitation?.quotation) {
         const quotation = invitation.quotation;
         quotationStatus = quotation.status || null;
-        
-        // Check if a purchase order exists for this quotation
-        if (quotationStatus === 'accepted') {
-          const quotationId = quotation._id || quotation;
-          const purchaseOrder = await PurchaseOrder.findOne({
-            quotation: quotationId,
-            supplier: profile._id,
-            isDeleted: false
-          }).select('_id poNumber').lean();
-          
-          if (purchaseOrder) {
-            purchaseOrderId = purchaseOrder._id;
-          }
-        }
       }
       
       return {
         ...rfq.toObject(),
         hasResponded: invitation?.responded || false,
         hasSubmitted: invitation?.responded || false,
-        quotationStatus: quotationStatus,
-        purchaseOrderId: purchaseOrderId
+        quotationStatus: quotationStatus
       };
-    }));
+    });
 
     res.status(200).json({
       success: true,

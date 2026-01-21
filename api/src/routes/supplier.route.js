@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { supplier, procurement } = require('../controllers');
+const { supplier } = require('../controllers');
 const { protect, authorize } = require('../middleware');
 
 // All routes require supplier role
@@ -21,8 +21,6 @@ router.get('/quotations', supplier.getMyQuotations);
 
 // Purchase Orders
 router.get('/purchase-orders', supplier.getMyPurchaseOrders);
-router.get('/purchase-orders/:id', supplier.getMyPurchaseOrderById);
-router.get('/purchase-orders/:id/pdf', procurement.downloadPurchaseOrderPDF);
 router.put('/purchase-orders/:id/acknowledge', supplier.acknowledgePurchaseOrder);
 
 // Deliveries
