@@ -62,6 +62,7 @@ export const procurementAPI = {
   approveSupplier: (id) => api.put(`/procurement/suppliers/${id}/approve`),
   blacklistSupplier: (id, data) => api.put(`/procurement/suppliers/${id}/blacklist`, data),
   getRFQs: (params) => api.get('/procurement/rfqs', { params }),
+  getRFQ: (id) => api.get(`/procurement/rfqs/${id}`),
   createRFQ: (data) => api.post('/procurement/rfqs', data),
   publishRFQ: (id) => api.put(`/procurement/rfqs/${id}/publish`),
   getQuotations: (params) => api.get('/procurement/quotations', { params }),
@@ -69,6 +70,7 @@ export const procurementAPI = {
   acceptQuotation: (id, data) => api.put(`/procurement/quotations/${id}/accept`, data),
   rejectQuotation: (id, data) => api.put(`/procurement/quotations/${id}/reject`, data),
   getPurchaseOrders: (params) => api.get('/procurement/purchase-orders', { params }),
+  getPurchaseOrder: (id) => api.get(`/procurement/purchase-orders/${id}`),
   createPurchaseOrder: (data) => api.post('/procurement/purchase-orders', data),
   submitPurchaseOrder: (id) => api.put(`/procurement/purchase-orders/${id}/submit`)
 };
@@ -98,6 +100,7 @@ export const departmentAPI = {
 export const financeAPI = {
   getPendingApprovals: (params) => api.get('/finance/pending-approvals', { params }),
   getPurchaseOrders: (params) => api.get('/finance/purchase-orders', { params }),
+  getPurchaseOrder: (id) => api.get(`/finance/purchase-orders/${id}`),
   approvePO: (id, data) => api.put(`/finance/purchase-orders/${id}/approve`, data),
   rejectPO: (id, data) => api.put(`/finance/purchase-orders/${id}/reject`, data)
 };
@@ -105,6 +108,7 @@ export const financeAPI = {
 // COO API
 export const cooAPI = {
   getPendingApprovals: (params) => api.get('/coo/pending-approvals', { params }),
+  getPurchaseOrder: (id) => api.get(`/coo/purchase-orders/${id}`),
   approvePO: (id, data) => api.put(`/coo/purchase-orders/${id}/approve`, data)
 };
 

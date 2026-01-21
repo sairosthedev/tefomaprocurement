@@ -10,6 +10,7 @@ router.use(authorize('finance', 'admin'));
 // Approvals
 router.get('/pending-approvals', finance.getPendingApprovals);
 router.get('/purchase-orders', finance.getPurchaseOrders);
+router.get('/purchase-orders/:id', finance.getPurchaseOrderById);
 router.put('/purchase-orders/:id/approve', finance.approvePurchaseOrder);
 router.put('/purchase-orders/:id/reject', finance.rejectPurchaseOrder);
 

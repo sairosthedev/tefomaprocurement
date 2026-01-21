@@ -9,6 +9,7 @@ router.use(authorize('coo', 'admin'));
 
 // Approvals
 router.get('/pending-approvals', coo.getPendingApprovals);
+router.get('/purchase-orders/:id', coo.getPurchaseOrderById);
 router.put('/purchase-orders/:id/approve', coo.approvePurchaseOrder);
 
 module.exports = router;
