@@ -83,7 +83,7 @@ const approvePurchaseOrder = async (req, res) => {
         entity: 'PurchaseOrder',
         entityId: po._id,
         relatedUser: req.user._id,
-        metadata: { poNumber: po.poNumber }
+        metadata: { poNumber: po.poNumber, isSupplier: true }
       });
     }
 

@@ -19,6 +19,9 @@ import {
 // Map notification types to icons and colors
 const getNotificationIcon = (type) => {
   const icons = {
+    login_successful: CheckCircle,
+    supplier_added: CheckCircle,
+    supplier_approved: CheckCircle,
     requisition_submitted: FileText,
     requisition_approved: CheckCircle,
     requisition_rejected: XCircle,
@@ -49,6 +52,9 @@ const getNotificationIcon = (type) => {
 
 const getNotificationColors = (type) => {
   const colors = {
+    login_successful: { icon: 'text-green-500', bg: 'bg-green-100' },
+    supplier_added: { icon: 'text-green-500', bg: 'bg-green-100' },
+    supplier_approved: { icon: 'text-green-500', bg: 'bg-green-100' },
     requisition_submitted: { icon: 'text-blue-500', bg: 'bg-blue-100' },
     requisition_approved: { icon: 'text-green-500', bg: 'bg-green-100' },
     requisition_rejected: { icon: 'text-red-500', bg: 'bg-red-100' },

@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { User, SupplierProfile } = require('../../models');
 const { createAuditLog } = require('../../middleware');
+const { createNotification } = require('../../services/notification.service');
 
 const login = async (req, res) => {
   try {
@@ -81,6 +82,22 @@ const login = async (req, res) => {
       user,
       description: `User logged in successfully`,
       req
+    });
+
+    // Create login notification for security tracking
+    await createNotification({
+      recipient: user._id,
+      type: 'login_successful',
+      title: 'Successful Login',
+      message: `You have successfully logged into your account. ${req.ip ? `IP Address: ${req.ip}` : ''}`,
+      entity: 'User',
+      entityId: user._id,
+      relatedUser: user._id,
+      metadata: {
+        ipAddress: req.ip || req.connection?.remoteAddress,
+        userAgent: req.headers?.['user-agent'],
+        timestamp: new Date()
+      }
     });
 
     res.status(200).json({

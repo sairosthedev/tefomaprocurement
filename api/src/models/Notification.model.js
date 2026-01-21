@@ -11,6 +11,7 @@ const NotificationSchema = new mongoose.Schema({
     type: String,
     required: true,
     enum: [
+      'login_successful',
       'requisition_submitted',
       'requisition_approved',
       'requisition_rejected',
@@ -34,7 +35,9 @@ const NotificationSchema = new mongoose.Schema({
       'store_requisition_rejected',
       'stock_issued',
       'low_stock',
-      'rfq_deadline_approaching'
+      'rfq_deadline_approaching',
+      'supplier_added',
+      'supplier_approved'
     ]
   },
   title: {

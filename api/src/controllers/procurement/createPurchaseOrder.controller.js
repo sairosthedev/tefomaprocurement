@@ -160,7 +160,7 @@ const createPurchaseOrder = async (req, res) => {
       entity: 'PurchaseOrder',
       entityId: po._id,
       relatedUser: req.user._id,
-      metadata: { poNumber: po.poNumber, totalAmount: po.totalAmount }
+      metadata: { poNumber: po.poNumber, totalAmount: po.totalAmount, isSupplier: true }
     });
 
     // Notify finance and COO for approval

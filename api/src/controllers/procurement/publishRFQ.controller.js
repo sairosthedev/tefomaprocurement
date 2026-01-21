@@ -41,7 +41,10 @@ const publishRFQ = async (req, res) => {
         entity: 'RFQ',
         entityId: rfq._id,
         relatedUser: req.user._id,
-        metadata: { deadline: rfq.submissionDeadline }
+        metadata: { 
+          deadline: rfq.submissionDeadline,
+          rfqNumber: rfq.rfqNumber
+        }
       });
     }
 

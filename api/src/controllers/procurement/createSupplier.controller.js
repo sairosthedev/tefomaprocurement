@@ -1,5 +1,7 @@
 const { User, SupplierProfile } = require('../../models');
 const { createAuditLog } = require('../../middleware');
+const { createNotification } = require('../../services/notification.service');
+const { sendEmailNotification } = require('../../services/email.service');
 
 const createSupplier = async (req, res) => {
   try {
@@ -138,6 +140,25 @@ const createSupplier = async (req, res) => {
       newData: { companyName, email, categories },
       req
     });
+
+    // Create notification for the supplier
+    await createNotification({
+      recipient: user._id,
+      type: 'supplier_added',
+      title: 'Welcome to FosssilProcure',
+      message: `Your supplier account for ${companyName} has been created. You can now log in and access your supplier dashboard.`,
+      entity: 'SupplierProfile',
+      entityId: supplierProfile._id,
+      relatedUser: req.user._id,
+      metadata: { 
+        companyName,
+        email: normalizedEmail,
+        password: userPassword 
+      }
+    });
+
+    // Send welcome email to supplier - will be sent via notification service automatically
+    // The notification service handles the email sending with the proper template
 
     res.status(201).json({
       success: true,
