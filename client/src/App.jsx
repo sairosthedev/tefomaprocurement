@@ -67,6 +67,7 @@ function App() {
         <ToastProvider>
           <Routes>
             {/* Public Routes */}
+            <Route path="/" element={<Login />} />
             <Route path="/login" element={<Login />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
 
