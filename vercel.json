@@ -1,6 +1,7 @@
 {
-    "buildCommand": "npm run build",
-    "outputDirectory": "./client/dist",
+    "buildCommand": "npm run build -w client",
+    "outputDirectory": "client/dist",
+    "installCommand": "npm install",
     "rewrites": [
         {
             "source": "/(.*)",
