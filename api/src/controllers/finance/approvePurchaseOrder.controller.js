@@ -1,5 +1,6 @@
 const { PurchaseOrder } = require('../../models');
 const { createAuditLog } = require('../../middleware');
+const { notifyUsersByRole, notifySupplier } = require('../../services/notification.service');
 
 const approvePurchaseOrder = async (req, res) => {
   try {
@@ -59,6 +60,32 @@ const approvePurchaseOrder = async (req, res) => {
       },
       req
     });
+
+    // Notify procurement and COO
+    await notifyUsersByRole(po.status === 'approved' ? ['procurement_officer', 'coo'] : ['procurement_officer'], {
+      type: po.status === 'approved' ? 'po_coo_approved' : 'po_finance_approved',
+      title: po.status === 'approved' ? 'Purchase Order Fully Approved' : 'Purchase Order Approved by Finance',
+      message: po.status === 'approved' 
+        ? `Purchase Order ${po.poNumber} has been fully approved and is ready for issuance.`
+        : `Purchase Order ${po.poNumber} has been approved by Finance. ${po.cooApproved ? 'All approvals complete.' : 'Awaiting COO approval.'}`,
+      entity: 'PurchaseOrder',
+      entityId: po._id,
+      relatedUser: req.user._id,
+      metadata: { poNumber: po.poNumber, status: po.status }
+    });
+
+    // Notify supplier if fully approved
+    if (po.status === 'approved') {
+      await notifySupplier(po.supplier, {
+        type: 'po_coo_approved',
+        title: 'Purchase Order Approved',
+        message: `Purchase Order ${po.poNumber} has been fully approved and is ready for processing.`,
+        entity: 'PurchaseOrder',
+        entityId: po._id,
+        relatedUser: req.user._id,
+        metadata: { poNumber: po.poNumber }
+      });
+    }
 
     res.status(200).json({
       success: true,

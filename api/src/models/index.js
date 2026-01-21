@@ -12,6 +12,7 @@ const Delivery = require('./Delivery.model');
 const StoreTransaction = require('./StoreTransaction.model');
 const StoreRequisition = require('./StoreRequisition.model');
 const AuditLog = require('./AuditLog.model');
+const Notification = require('./Notification.model');
 
 module.exports = {
   User,
@@ -27,6 +28,7 @@ module.exports = {
   Delivery,
   StoreTransaction,
   StoreRequisition,
-  AuditLog
+  AuditLog,
+  Notification
 };
 

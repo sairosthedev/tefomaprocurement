@@ -5,6 +5,9 @@ const getInventory = require('./getInventory.controller');
 const getMovements = require('./getMovements.controller');
 const issueStock = require('./issueStock.controller');
 const acceptDelivery = require('./acceptDelivery.controller');
+const getStoreRequisitions = require('./getStoreRequisitions.controller');
+const approveStoreRequisition = require('./approveStoreRequisition.controller');
+const rejectStoreRequisition = require('./rejectStoreRequisition.controller');
 
 module.exports = {
   receiveGoods,
@@ -13,6 +16,9 @@ module.exports = {
   getInventory,
   getMovements,
   issueStock,
-  acceptDelivery
+  acceptDelivery,
+  getStoreRequisitions,
+  approveStoreRequisition,
+  rejectStoreRequisition
 };
 

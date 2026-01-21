@@ -1,5 +1,6 @@
 const { PurchaseRequisition } = require('../../models');
 const { createAuditLog } = require('../../middleware');
+const { createNotification } = require('../../services/notification.service');
 
 const rejectRequisition = async (req, res) => {
   try {
@@ -48,6 +49,18 @@ const rejectRequisition = async (req, res) => {
       description: `Procurement rejected requisition: ${requisition.requisitionNumber}`,
       newData: { status: 'rejected', reason: reason || comments },
       req
+    });
+
+    // Notify the requester
+    await createNotification({
+      recipient: requisition.requestedBy,
+      type: 'requisition_rejected_procurement',
+      title: 'Requisition Rejected',
+      message: `Your requisition ${requisition.requisitionNumber} has been rejected by Procurement. Reason: ${reason || comments || 'No reason provided'}`,
+      entity: 'PurchaseRequisition',
+      entityId: requisition._id,
+      relatedUser: req.user._id,
+      metadata: { reason: reason || comments }
     });
 
     res.status(200).json({

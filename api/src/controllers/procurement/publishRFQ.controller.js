@@ -1,5 +1,6 @@
-const { RFQ } = require('../../models');
+const { RFQ, SupplierProfile } = require('../../models');
 const { createAuditLog } = require('../../middleware');
+const { notifySupplier } = require('../../services/notification.service');
 
 const publishRFQ = async (req, res) => {
   try {
@@ -31,7 +32,18 @@ const publishRFQ = async (req, res) => {
     rfq.publishedAt = new Date();
     await rfq.save();
 
-    // TODO: Send email notifications to invited suppliers
+    // Notify all invited suppliers
+    for (const invitation of rfq.invitedSuppliers) {
+      await notifySupplier(invitation.supplier, {
+        type: 'rfq_published',
+        title: 'New RFQ Published',
+        message: `A new RFQ ${rfq.rfqNumber} has been published. Submission deadline: ${new Date(rfq.submissionDeadline).toLocaleDateString()}`,
+        entity: 'RFQ',
+        entityId: rfq._id,
+        relatedUser: req.user._id,
+        metadata: { deadline: rfq.submissionDeadline }
+      });
+    }
 
     await createAuditLog({
       action: 'status_change',

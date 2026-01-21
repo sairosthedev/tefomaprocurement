@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
-import api from '../lib/api';
+import api, { storesAPI, departmentAPI } from '../lib/api';
 import { 
   Plus, Search, Package, CheckCircle, XCircle, 
   Loader2, Clock, Truck, AlertCircle
@@ -26,7 +26,11 @@ export default function StoreRequisitions() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedRequisition, setSelectedRequisition] = useState(null);
+  const [actionComment, setActionComment] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
   const [formData, setFormData] = useState({
     items: [{ itemCode: '', description: '', quantity: 1 }]
   });
@@ -40,13 +44,16 @@ export default function StoreRequisitions() {
   const fetchRequisitions = async () => {
     try {
       setLoading(true);
-      const endpoint = isStoresOfficer ? '/stores/requisitions' : '/department/store-requisitions';
-      const response = await api.get(endpoint, { params: { search: searchTerm } });
+      const response = isStoresOfficer 
+        ? await storesAPI.getStoreRequisitions({ search: searchTerm })
+        : await departmentAPI.getStoreRequisitions({ search: searchTerm });
+      
       if (response.data.success) {
         setRequisitions(response.data.data || []);
       }
     } catch (error) {
       console.error('Failed to fetch store requisitions:', error);
+      showToast('Failed to fetch store requisitions', 'error');
     } finally {
       setLoading(false);
     }
@@ -70,9 +77,52 @@ export default function StoreRequisitions() {
     }
   };
 
+  const handleApprove = async () => {
+    if (!selectedRequisition) return;
+    
+    try {
+      setActionLoading(true);
+      await storesAPI.approveStoreRequisition(selectedRequisition._id, { 
+        comments: actionComment.trim() || undefined 
+      });
+      showToast('Store requisition approved successfully', 'success');
+      setShowApproveModal(false);
+      setActionComment('');
+      setSelectedRequisition(null);
+      fetchRequisitions();
+    } catch (error) {
+      showToast(error.response?.data?.message || 'Failed to approve requisition', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!selectedRequisition || !actionComment.trim()) {
+      showToast('Please provide a reason for rejection', 'error');
+      return;
+    }
+    
+    try {
+      setActionLoading(true);
+      await storesAPI.rejectStoreRequisition(selectedRequisition._id, { 
+        comments: actionComment.trim() 
+      });
+      showToast('Store requisition rejected', 'success');
+      setShowRejectModal(false);
+      setActionComment('');
+      setSelectedRequisition(null);
+      fetchRequisitions();
+    } catch (error) {
+      showToast(error.response?.data?.message || 'Failed to reject requisition', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleIssue = async (id) => {
     try {
-      await api.put(`/stores/requisitions/${id}/issue`);
+      await storesAPI.issueStock(id, {});
       showToast('Items issued successfully', 'success');
       fetchRequisitions();
     } catch (error) {
@@ -158,7 +208,7 @@ export default function StoreRequisitions() {
                   <tr key={req._id} className="hover:bg-gray-50">
                     <td className="py-4 px-6">
                       <span className="font-mono text-sm font-medium text-primary">
-                        SR-{req._id.slice(-6).toUpperCase()}
+                        {req.requisitionNumber || `SR-${req._id.slice(-6).toUpperCase()}`}
                       </span>
                     </td>
                     <td className="py-4 px-6">
@@ -187,6 +237,28 @@ export default function StoreRequisitions() {
                           onClick={() => { setSelectedRequisition(req); setShowViewModal(true); }}
                         />
                         {isStoresOfficer && req.status === 'pending' && (
+                          <>
+                            <button
+                              onClick={() => {
+                                setSelectedRequisition(req);
+                                setShowApproveModal(true);
+                              }}
+                              className="px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedRequisition(req);
+                                setShowRejectModal(true);
+                              }}
+                              className="px-3 py-1.5 text-xs font-medium bg-red-600 text-white rounded-lg hover:bg-red-700"
+                            >
+                              Reject
+                            </button>
+                          </>
+                        )}
+                        {isStoresOfficer && req.status === 'approved' && (
                           <button
                             onClick={() => handleIssue(req._id)}
                             className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
@@ -272,10 +344,12 @@ export default function StoreRequisitions() {
         {selectedRequisition && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-gray-500">Requisition #</label>
-                <p className="font-mono font-medium">SR-{selectedRequisition._id.slice(-6).toUpperCase()}</p>
-              </div>
+            <div>
+              <label className="text-sm text-gray-500">Requisition #</label>
+              <p className="font-mono font-medium">
+                {selectedRequisition.requisitionNumber || `SR-${selectedRequisition._id.slice(-6).toUpperCase()}`}
+              </p>
+            </div>
               <div>
                 <label className="text-sm text-gray-500">Status</label>
                 <p>
@@ -284,6 +358,11 @@ export default function StoreRequisitions() {
                   </span>
                 </p>
               </div>
+            </div>
+
+            <div>
+              <label className="text-sm text-gray-500 mb-2 block">Purpose</label>
+              <p className="text-sm text-gray-700 mb-4">{selectedRequisition.purpose || 'N/A'}</p>
             </div>
 
             <div>
@@ -300,9 +379,11 @@ export default function StoreRequisitions() {
                   <tbody className="divide-y divide-gray-100">
                     {selectedRequisition.items?.map((item, index) => (
                       <tr key={index}>
-                        <td className="py-3 px-4 text-sm">{item.description}</td>
-                        <td className="py-3 px-4 text-sm">{item.quantity}</td>
-                        <td className="py-3 px-4 text-sm">{item.issuedQuantity || '-'}</td>
+                        <td className="py-3 px-4 text-sm">
+                          {item.item?.name || item.item?.description || item.description || 'N/A'}
+                        </td>
+                        <td className="py-3 px-4 text-sm">{item.quantityRequested || item.quantity || '-'}</td>
+                        <td className="py-3 px-4 text-sm">{item.quantityIssued || '-'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -311,6 +392,125 @@ export default function StoreRequisitions() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Approve Modal */}
+      <Modal
+        isOpen={showApproveModal}
+        onClose={() => {
+          setShowApproveModal(false);
+          setActionComment('');
+          setSelectedRequisition(null);
+        }}
+        title="Approve Store Requisition"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Are you sure you want to approve this store requisition? This will allow the items to be issued.
+          </p>
+          
+          <div>
+            <label className="block text-sm text-gray-700 mb-2">Comments (optional)</label>
+            <textarea
+              value={actionComment}
+              onChange={(e) => setActionComment(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              placeholder="Add any comments about this approval..."
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <button
+              onClick={() => {
+                setShowApproveModal(false);
+                setActionComment('');
+                setSelectedRequisition(null);
+              }}
+              disabled={actionLoading}
+              className="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 rounded-lg disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleApprove}
+              disabled={actionLoading}
+              className="px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+            >
+              {actionLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Approving...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-4 w-4" />
+                  Approve
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Reject Modal */}
+      <Modal
+        isOpen={showRejectModal}
+        onClose={() => {
+          setShowRejectModal(false);
+          setActionComment('');
+          setSelectedRequisition(null);
+        }}
+        title="Reject Store Requisition"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Please provide a reason for rejecting this store requisition.
+          </p>
+          
+          <div>
+            <label className="block text-sm text-gray-700 mb-2">Rejection Reason <span className="text-red-500">*</span></label>
+            <textarea
+              value={actionComment}
+              onChange={(e) => setActionComment(e.target.value)}
+              rows={3}
+              required
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              placeholder="Explain why this requisition is being rejected..."
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <button
+              onClick={() => {
+                setShowRejectModal(false);
+                setActionComment('');
+                setSelectedRequisition(null);
+              }}
+              disabled={actionLoading}
+              className="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 rounded-lg disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleReject}
+              disabled={actionLoading || !actionComment.trim()}
+              className="px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
+            >
+              {actionLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Rejecting...
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-4 w-4" />
+                  Reject
+                </>
+              )}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

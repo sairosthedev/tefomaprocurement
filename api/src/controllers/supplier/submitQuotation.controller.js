@@ -1,5 +1,6 @@
 const { Quotation, RFQ, SupplierProfile } = require('../../models');
 const { createAuditLog } = require('../../middleware');
+const { notifyUsersByRole } = require('../../services/notification.service');
 
 const submitQuotation = async (req, res) => {
   try {
@@ -126,6 +127,17 @@ const submitQuotation = async (req, res) => {
       description: `Submitted quotation ${quotation.quotationNumber} for RFQ ${rfq.rfqNumber}`,
       newData: { totalAmount, deliveryPeriod },
       req
+    });
+
+    // Notify procurement officers
+    await notifyUsersByRole('procurement_officer', {
+      type: 'quotation_submitted',
+      title: 'New Quotation Received',
+      message: `${profile.companyName || 'A supplier'} has submitted a quotation ${quotation.quotationNumber} for RFQ ${rfq.rfqNumber}.`,
+      entity: 'Quotation',
+      entityId: quotation._id,
+      relatedUser: req.user._id,
+      metadata: { rfqNumber: rfq.rfqNumber, supplierName: profile.companyName }
     });
 
     res.status(201).json({

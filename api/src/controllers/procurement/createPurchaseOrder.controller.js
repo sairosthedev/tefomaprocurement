@@ -1,5 +1,6 @@
 const { PurchaseOrder, Quotation, RFQ, PurchaseRequisition } = require('../../models');
 const { createAuditLog } = require('../../middleware');
+const { notifySupplier, notifyUsersByRole } = require('../../services/notification.service');
 
 const createPurchaseOrder = async (req, res) => {
   try {
@@ -134,6 +135,28 @@ const createPurchaseOrder = async (req, res) => {
       description: `Created PO: ${po.poNumber} from quotation ${quotation.quotationNumber}`,
       newData: { poNumber: po.poNumber, totalAmount: po.totalAmount },
       req
+    });
+
+    // Notify supplier
+    await notifySupplier(quotation.supplier._id || quotation.supplier, {
+      type: 'po_created',
+      title: 'New Purchase Order Created',
+      message: `A new Purchase Order ${po.poNumber} has been created and requires your acknowledgement.`,
+      entity: 'PurchaseOrder',
+      entityId: po._id,
+      relatedUser: req.user._id,
+      metadata: { poNumber: po.poNumber, totalAmount: po.totalAmount }
+    });
+
+    // Notify finance and COO for approval
+    await notifyUsersByRole(['finance', 'coo'], {
+      type: 'po_created',
+      title: 'New Purchase Order Created',
+      message: `Purchase Order ${po.poNumber} has been created and requires approval.`,
+      entity: 'PurchaseOrder',
+      entityId: po._id,
+      relatedUser: req.user._id,
+      metadata: { poNumber: po.poNumber, totalAmount: po.totalAmount }
     });
 
     res.status(201).json({

@@ -1,5 +1,6 @@
 const { StoreRequisition, Item } = require('../../models');
 const { createAuditLog } = require('../../middleware');
+const { notifyUsersByRole } = require('../../services/notification.service');
 
 const createStoreRequisition = async (req, res) => {
   try {
@@ -99,6 +100,17 @@ const createStoreRequisition = async (req, res) => {
       description: `Created store requisition ${requisition.requisitionNumber}`,
       newData: { requisitionNumber: requisition.requisitionNumber, itemsCount: processedItems.length },
       req
+    });
+
+    // Notify stores officers
+    await notifyUsersByRole('stores_officer', {
+      type: 'store_requisition_created',
+      title: 'New Store Requisition',
+      message: `A new store requisition ${requisition.requisitionNumber} has been created and requires your review.`,
+      entity: 'StoreRequisition',
+      entityId: requisition._id,
+      relatedUser: req.user._id,
+      metadata: { requisitionNumber: requisition.requisitionNumber, itemsCount: processedItems.length }
     });
 
     const populatedRequisition = await StoreRequisition.findById(requisition._id)
