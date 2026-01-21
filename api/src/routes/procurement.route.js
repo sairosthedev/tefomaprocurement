@@ -3,15 +3,8 @@ const router = express.Router();
 const { procurement } = require('../controllers');
 const { protect, authorize } = require('../middleware');
 
-// All routes require authentication
+// All routes require procurement officer or admin role
 router.use(protect);
-
-// Purchase Orders - View routes (allow finance and COO to view, must be before general authorize)
-router.get('/purchase-orders', authorize('procurement_officer', 'admin', 'finance', 'coo'), procurement.getPurchaseOrders);
-router.get('/purchase-orders/:id', authorize('procurement_officer', 'admin', 'finance', 'coo'), procurement.getPurchaseOrderById);
-router.get('/purchase-orders/:id/pdf', authorize('procurement_officer', 'admin', 'finance', 'coo'), procurement.downloadPurchaseOrderPDF);
-
-// Routes that require procurement officer or admin role
 router.use(authorize('procurement_officer', 'admin'));
 
 // Suppliers
@@ -24,7 +17,6 @@ router.put('/suppliers/:id/blacklist', procurement.blacklistSupplier);
 
 // Requisitions (Procurement accepts these - not approves)
 router.get('/requisitions', procurement.getPendingRequisitions);
-router.get('/requisitions/:id', procurement.getRequisitionById);
 router.put('/requisitions/:id/accept', procurement.acceptRequisition);
 router.put('/requisitions/:id/reject', procurement.rejectRequisition);
 router.put('/requisitions/:id/sourcing', procurement.updateRequisitionStatus);
@@ -33,7 +25,6 @@ router.put('/requisitions/:id/status', procurement.updateRequisitionStatus);
 // RFQs
 router.post('/rfqs', procurement.createRFQ);
 router.get('/rfqs', procurement.getRFQs);
-router.get('/rfqs/:id', procurement.getRFQById);
 router.put('/rfqs/:id/publish', procurement.publishRFQ);
 
 // Quotations
@@ -42,8 +33,9 @@ router.get('/quotations/:id', procurement.getQuotationById);
 router.put('/quotations/:id/accept', procurement.acceptQuotation);
 router.put('/quotations/:id/reject', procurement.rejectQuotation);
 
-// Purchase Orders - Create and submit require procurement/admin
+// Purchase Orders
 router.post('/purchase-orders', procurement.createPurchaseOrder);
+router.get('/purchase-orders', procurement.getPurchaseOrders);
 router.put('/purchase-orders/:id/submit', procurement.submitPurchaseOrder);
 
 module.exports = router;
