@@ -14,38 +14,9 @@ const PORT = process.env.PORT || 3001;
 connectDB();
 
 // Middleware
-// CORS configuration - supports localhost, ngrok URLs, and production frontend
-const allowedOrigins = process.env.NODE_ENV === 'production' 
-  ? [
-      process.env.CLIENT_URL,
-      'https://fossilprocure.vercel.app',
-      'https://www.fossilprocure.vercel.app'
-    ].filter(Boolean)
-  : [
-      'http://localhost:5173',
-      'http://localhost:3000',
-      process.env.CLIENT_URL, // Can be set to ngrok URL for development
-      'https://fosssilprocure.vercel.app', // Allow production frontend in dev too
-      ...(process.env.NGROK_FRONTEND_URL ? [process.env.NGROK_FRONTEND_URL] : [])
-    ].filter(Boolean);
-
+// CORS configuration - allows all origins
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, postman, etc.)
-    if (!origin) return callback(null, true);
-    
-    // Check if origin is in allowed list
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    
-    // Allow ngrok URLs (for development)
-    if (process.env.NODE_ENV !== 'production' && origin.includes('ngrok')) {
-      return callback(null, true);
-    }
-    
-    callback(new Error('Not allowed by CORS'));
-  },
+  origin: true, // Allow all origins
   credentials: true
 }));
 app.use(express.json());
