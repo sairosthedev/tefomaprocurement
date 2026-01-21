@@ -115,7 +115,7 @@ export default function QuotationDetail() {
     try {
       setProcessing(true);
       await procurementAPI.createPurchaseOrder({
-        quotation: id,
+        quotationId: id,
         ...poFormData
       });
       showToast('Purchase Order created successfully', 'success');
