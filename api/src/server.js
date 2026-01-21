@@ -14,13 +14,18 @@ const PORT = process.env.PORT || 3001;
 connectDB();
 
 // Middleware
-// CORS configuration - supports localhost and ngrok URLs
+// CORS configuration - supports localhost, ngrok URLs, and production frontend
 const allowedOrigins = process.env.NODE_ENV === 'production' 
-  ? [process.env.CLIENT_URL]
+  ? [
+      process.env.CLIENT_URL,
+      'https://fosssilprocure.vercel.app',
+      'https://www.fosssilprocure.vercel.app'
+    ].filter(Boolean)
   : [
       'http://localhost:5173',
       'http://localhost:3000',
       process.env.CLIENT_URL, // Can be set to ngrok URL for development
+      'https://fosssilprocure.vercel.app', // Allow production frontend in dev too
       ...(process.env.NGROK_FRONTEND_URL ? [process.env.NGROK_FRONTEND_URL] : [])
     ].filter(Boolean);
 
