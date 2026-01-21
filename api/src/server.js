@@ -14,10 +14,33 @@ const PORT = process.env.PORT || 3001;
 connectDB();
 
 // Middleware
+// CORS configuration - supports localhost and ngrok URLs
+const allowedOrigins = process.env.NODE_ENV === 'production' 
+  ? [process.env.CLIENT_URL]
+  : [
+      'http://localhost:5173',
+      'http://localhost:3000',
+      process.env.CLIENT_URL, // Can be set to ngrok URL for development
+      ...(process.env.NGROK_FRONTEND_URL ? [process.env.NGROK_FRONTEND_URL] : [])
+    ].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? process.env.CLIENT_URL 
-    : 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is in allowed list
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // Allow ngrok URLs (for development)
+    if (process.env.NODE_ENV !== 'production' && origin.includes('ngrok')) {
+      return callback(null, true);
+    }
+    
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true
 }));
 app.use(express.json());

@@ -13,7 +13,8 @@
     "dev:client": "npm run dev -w client",
     "build": "npm run build -w client",
     "start": "npm run start -w api",
-    "install:all": "npm install"
+    "install:all": "npm install",
+    "ngrok": "powershell -ExecutionPolicy Bypass -File ./scripts/start-ngrok.ps1"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
