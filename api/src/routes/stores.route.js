@@ -19,7 +19,10 @@ router.get('/inventory', stores.getInventory);
 // Stock Movements
 router.get('/movements', stores.getMovements);
 
-// Stock issue
+// Store Requisitions
+router.get('/requisitions', stores.getStoreRequisitions);
+router.put('/requisitions/:id/approve', stores.approveStoreRequisition);
+router.put('/requisitions/:id/reject', stores.rejectStoreRequisition);
 router.put('/requisitions/:id/issue', stores.issueStock);
 
 module.exports = router;

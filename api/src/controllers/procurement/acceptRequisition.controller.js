@@ -1,5 +1,6 @@
 const { PurchaseRequisition } = require('../../models');
 const { createAuditLog } = require('../../middleware');
+const { createNotification } = require('../../services/notification.service');
 
 const acceptRequisition = async (req, res) => {
   try {
@@ -42,6 +43,17 @@ const acceptRequisition = async (req, res) => {
       previousData: { status: 'pending_acceptance' },
       newData: { status: 'accepted' },
       req
+    });
+
+    // Notify the requester
+    await createNotification({
+      recipient: requisition.requestedBy,
+      type: 'requisition_accepted',
+      title: 'Requisition Accepted',
+      message: `Your requisition ${requisition.requisitionNumber} has been accepted by Procurement and is being processed.`,
+      entity: 'PurchaseRequisition',
+      entityId: requisition._id,
+      relatedUser: req.user._id
     });
 
     res.status(200).json({

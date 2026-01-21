@@ -6,6 +6,7 @@ const departmentControllers = require('./department');
 const financeControllers = require('./finance');
 const cooControllers = require('./coo');
 const storesControllers = require('./stores');
+const notificationsControllers = require('./notifications');
 
 module.exports = {
   auth: authControllers,
@@ -15,6 +16,7 @@ module.exports = {
   department: departmentControllers,
   finance: financeControllers,
   coo: cooControllers,
-  stores: storesControllers
+  stores: storesControllers,
+  notifications: notificationsControllers
 };
 

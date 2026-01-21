@@ -1,5 +1,6 @@
-const { Delivery, PurchaseOrder, Inventory, StoreTransaction, Item, PurchaseRequisition } = require('../../models');
+const { Delivery, PurchaseOrder, Inventory, StoreTransaction, Item, PurchaseRequisition, User } = require('../../models');
 const { createAuditLog } = require('../../middleware');
+const { notifyUsersByRole, notifySupplier, notifyUsersByDepartment } = require('../../services/notification.service');
 
 const receiveGoods = async (req, res) => {
   try {
@@ -203,8 +204,45 @@ const receiveGoods = async (req, res) => {
           newData: { status: 'completed' },
           req
         });
+
+        // Notify the requester that goods are available
+        const { createNotification } = require('../../services/notification.service');
+        await createNotification({
+          recipient: requisition.requestedBy,
+          type: 'goods_received',
+          title: 'Goods Received - Ready for Collection',
+          message: `All items from Purchase Order ${po.poNumber} have been received. You can now request them from stores.`,
+          entity: 'PurchaseRequisition',
+          entityId: requisition._id,
+          relatedUser: req.user._id,
+          metadata: { poNumber: po.poNumber, grvNumber: delivery.grvNumber }
+        });
+      }
+
+      // Notify supplier that delivery was received
+      if (po.supplier) {
+        await notifySupplier(po.supplier, {
+          type: 'goods_received',
+          title: 'Delivery Received',
+          message: `Your delivery for Purchase Order ${po.poNumber} has been received and accepted.`,
+          entity: 'Delivery',
+          entityId: delivery._id,
+          relatedUser: req.user._id,
+          metadata: { poNumber: po.poNumber, grvNumber: delivery.grvNumber }
+        });
       }
     }
+
+    // Notify procurement about goods received
+    await notifyUsersByRole('procurement_officer', {
+      type: 'goods_received',
+      title: 'Goods Received',
+      message: `Goods have been received for Purchase Order ${po.poNumber}. GRV: ${delivery.grvNumber || 'Pending'}`,
+      entity: 'Delivery',
+      entityId: delivery._id,
+      relatedUser: req.user._id,
+      metadata: { poNumber: po.poNumber, grvNumber: delivery.grvNumber }
+    });
 
     await createAuditLog({
       action: 'create',

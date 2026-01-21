@@ -1,5 +1,6 @@
 const { StoreRequisition, Inventory, StoreTransaction } = require('../../models');
 const { createAuditLog } = require('../../middleware');
+const { createNotification } = require('../../services/notification.service');
 
 const issueStock = async (req, res) => {
   try {
@@ -21,29 +22,85 @@ const issueStock = async (req, res) => {
       });
     }
 
+    // If items are not provided, issue all items from the requisition
+    let itemsToIssue = [];
+    if (items && Array.isArray(items) && items.length > 0) {
+      // Use provided items
+      itemsToIssue = items;
+    } else {
+      // Issue all pending items from the requisition
+      requisition.items.forEach((reqItem) => {
+        const pendingQty = reqItem.quantityRequested - (reqItem.quantityIssued || 0);
+        if (pendingQty > 0) {
+          itemsToIssue.push({
+            itemId: reqItem._id.toString(),
+            quantity: pendingQty
+          });
+        }
+      });
+    }
+
+    if (itemsToIssue.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No items to issue'
+      });
+    }
+
+    // Get transaction counter for the year
+    const year = new Date().getFullYear();
+    const lastTransaction = await StoreTransaction.findOne({
+      transactionNumber: { $regex: `^ST-ISS-${year}-` }
+    }).sort({ createdAt: -1 });
+
+    let transactionCounter = 0;
+    if (lastTransaction && lastTransaction.transactionNumber) {
+      const match = lastTransaction.transactionNumber.match(/ST-ISS-\d+-(.+)/);
+      if (match) {
+        transactionCounter = parseInt(match[1], 10) || 0;
+      }
+    }
+
     // Process each item
-    for (const issueItem of items) {
+    for (const issueItem of itemsToIssue) {
       const reqItem = requisition.items.id(issueItem.itemId);
-      if (!reqItem) continue;
+      if (!reqItem) {
+        continue;
+      }
+
+      // Check if item is populated
+      if (!reqItem.item) {
+        await reqItem.populate('item');
+      }
 
       const inventory = await Inventory.findOne({ item: reqItem.item._id });
       if (!inventory) {
         return res.status(400).json({
           success: false,
-          message: `Inventory not found for item: ${reqItem.item.name}`
+          message: `Inventory not found for item: ${reqItem.item.name || reqItem.item.description || 'Unknown'}`
         });
       }
 
-      if (inventory.quantityAvailable < issueItem.quantity) {
+      // Calculate quantity to issue
+      const quantityToIssue = issueItem.quantity || (reqItem.quantityRequested - (reqItem.quantityIssued || 0));
+      
+      if (quantityToIssue <= 0) {
+        continue; // Skip if nothing to issue
+      }
+
+      // Recalculate quantityAvailable
+      inventory.quantityAvailable = inventory.quantityOnHand - inventory.quantityReserved;
+
+      if (inventory.quantityAvailable < quantityToIssue) {
         return res.status(400).json({
           success: false,
-          message: `Insufficient stock for item: ${reqItem.item.name}`
+          message: `Insufficient stock for item: ${reqItem.item.name || reqItem.item.description || 'Unknown'}. Available: ${inventory.quantityAvailable}, Requested: ${quantityToIssue}`
         });
       }
 
       // Update inventory
       const previousQty = inventory.quantityOnHand;
-      inventory.quantityOnHand -= issueItem.quantity;
+      inventory.quantityOnHand -= quantityToIssue;
       inventory.lastIssuedDate = new Date();
       await inventory.save();
 
@@ -57,7 +114,7 @@ const issueStock = async (req, res) => {
         type: 'issue',
         item: reqItem.item._id,
         inventory: inventory._id,
-        quantity: -issueItem.quantity,
+        quantity: -quantityToIssue,
         previousQuantity: previousQty,
         newQuantity: inventory.quantityOnHand,
         reference: {
@@ -70,7 +127,7 @@ const issueStock = async (req, res) => {
       });
 
       // Update requisition item
-      reqItem.quantityIssued = (reqItem.quantityIssued || 0) + issueItem.quantity;
+      reqItem.quantityIssued = (reqItem.quantityIssued || 0) + quantityToIssue;
     }
 
     // Check if all items are fully issued
@@ -91,6 +148,18 @@ const issueStock = async (req, res) => {
       description: `Issued stock for requisition: ${requisition.requisitionNumber}`,
       newData: { status: requisition.status },
       req
+    });
+
+    // Notify the requester
+    await createNotification({
+      recipient: requisition.requestedBy,
+      type: 'stock_issued',
+      title: 'Stock Issued',
+      message: `Stock has been issued for your store requisition ${requisition.requisitionNumber}.`,
+      entity: 'StoreRequisition',
+      entityId: requisition._id,
+      relatedUser: req.user._id,
+      metadata: { status: requisition.status }
     });
 
     res.status(200).json({

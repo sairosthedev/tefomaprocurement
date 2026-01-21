@@ -124,7 +124,18 @@ export const storesAPI = {
   receiveGoods: (data) => api.post('/stores/deliveries', data),
   getDeliveries: (params) => api.get('/stores/deliveries', { params }),
   getInventory: (params) => api.get('/stores/inventory', { params }),
+  getStoreRequisitions: (params) => api.get('/stores/requisitions', { params }),
+  approveStoreRequisition: (id, data) => api.put(`/stores/requisitions/${id}/approve`, data),
+  rejectStoreRequisition: (id, data) => api.put(`/stores/requisitions/${id}/reject`, data),
   issueStock: (id, data) => api.put(`/stores/requisitions/${id}/issue`, data)
+};
+
+// Notifications API
+export const notificationsAPI = {
+  getNotifications: (params) => api.get('/notifications', { params }),
+  getUnreadCount: () => api.get('/notifications/unread-count'),
+  markAsRead: (id) => api.put(`/notifications/${id}/read`),
+  markAllAsRead: () => api.put('/notifications/read-all')
 };
 
 export default api;

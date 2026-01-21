@@ -104,20 +104,20 @@ export default function Requisitions() {
     }
 
     try {
-      // Create a store requisition for the items from the purchase order
+      // Create a store requisition for the items that HAVE been delivered/received
       const items = requisition.purchaseOrder.items.map(poItem => ({
         description: poItem.description,
-        quantityRequested: poItem.quantity - (poItem.quantityReceived || 0),
+        quantity: poItem.quantityReceived || 0,
         unit: poItem.unit || 'Each'
-      })).filter(item => item.quantityRequested > 0);
+      })).filter(item => item.quantity > 0);
 
       if (items.length === 0) {
-        showToast('All items have already been received', 'info');
+        showToast('No items have been delivered yet. Please wait for delivery confirmation.', 'info');
         return;
       }
 
       await departmentAPI.createStoreRequisition({
-        purpose: `Request items from Purchase Order ${requisition.purchaseOrder.poNumber} for Requisition ${requisition.requisitionNumber}`,
+        purpose: `Request delivered items from Purchase Order ${requisition.purchaseOrder.poNumber} for Requisition ${requisition.requisitionNumber}`,
         items: items,
         priority: requisition.priority || 'medium'
       });
