@@ -51,6 +51,10 @@ const DeliverySchema = new mongoose.Schema({
   expectedDeliveryDate: {
     type: Date
   },
+  receivedAtSite: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Site'
+  },
   receivedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'

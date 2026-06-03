@@ -4,7 +4,8 @@ const { createAuditLog } = require('../../middleware');
 const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { firstName, lastName, role, department, phone, status, password } = req.body;
+    const { firstName, lastName, role, department, homeSite, phone, status, password } =
+      req.body;
 
     const user = await User.findById(id);
     if (!user || user.isDeleted) {
@@ -27,6 +28,7 @@ const updateUser = async (req, res) => {
     if (lastName) user.lastName = lastName;
     if (role) user.role = role;
     if (department !== undefined) user.department = department;
+    if (homeSite !== undefined) user.homeSite = homeSite;
     if (phone !== undefined) user.phone = phone;
     if (status) user.status = status;
     

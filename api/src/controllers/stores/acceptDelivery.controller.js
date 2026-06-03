@@ -1,5 +1,6 @@
-const { Delivery, PurchaseOrder, PurchaseRequisition, Inventory, StoreTransaction, Item } = require('../../models');
+const { Delivery, PurchaseOrder, PurchaseRequisition, StoreTransaction, Item } = require('../../models');
 const { createAuditLog } = require('../../middleware');
+const { resolveSiteId, findOrCreateInventory } = require('../../lib/siteScope');
 
 const acceptDelivery = async (req, res) => {
   try {
@@ -41,6 +42,14 @@ const acceptDelivery = async (req, res) => {
     // Update inventory when accepting (only for accepted/partially_accepted items)
     // This ensures items are put into stock when delivery is accepted
     if (status === 'accepted' || status === 'partially_accepted') {
+      const receiveSiteId =
+        delivery.receivedAtSite ||
+        po.deliverToSite ||
+        (await resolveSiteId(req.user));
+
+      const year = new Date().getFullYear();
+      let transactionCounter = await StoreTransaction.countDocuments();
+
       for (const deliveryItem of delivery.items) {
         // Only process items in 'good' condition
         if (deliveryItem.condition !== 'good') continue;
@@ -77,23 +86,9 @@ const acceptDelivery = async (req, res) => {
           });
         }
 
-        // Find or create Inventory for this item in Main Store
-        let inventory = await Inventory.findOne({
-          item: inventoryItem._id,
-          location: 'Main Store',
-          isDeleted: false
-        });
-
-        if (!inventory) {
-          inventory = await Inventory.create({
-            item: inventoryItem._id,
-            location: 'Main Store',
-            quantityOnHand: 0,
-            quantityReserved: 0,
-            quantityAvailable: 0,
-            unitCost: poItem.unitPrice,
-            totalValue: 0
-          });
+        let inventory = await findOrCreateInventory(inventoryItem._id, receiveSiteId);
+        if (!delivery.receivedAtSite) {
+          delivery.receivedAtSite = receiveSiteId;
         }
 
         // Calculate quantity to add (only for accepted items)
@@ -122,6 +117,7 @@ const acceptDelivery = async (req, res) => {
           await StoreTransaction.create({
             transactionNumber,
             type: 'receipt',
+            site: receiveSiteId,
             item: inventoryItem._id,
             inventory: inventory._id,
             quantity: quantityToAdd,

@@ -1,0 +1,12 @@
+{
+  "name": "@fosssil/shared",
+  "version": "1.0.0",
+  "description": "Shared constants and domain enums used by both the API and the client",
+  "private": true,
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./constants/*": "./src/constants/*.js"
+  },
+  "license": "UNLICENSED"
+}

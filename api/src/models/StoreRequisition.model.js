@@ -24,6 +24,11 @@ const StoreRequisitionSchema = new mongoose.Schema({
     unique: true,
     required: true
   },
+  site: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Site',
+    required: true
+  },
   department: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Department',

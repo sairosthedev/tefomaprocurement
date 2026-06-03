@@ -34,6 +34,10 @@ const UserSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Department'
   },
+  homeSite: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Site'
+  },
   phone: {
     type: String,
     trim: true

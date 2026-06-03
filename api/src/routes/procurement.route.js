@@ -28,6 +28,7 @@ router.post('/rfqs', procurement.createRFQ);
 router.get('/rfqs', procurement.getRFQs);
 router.get('/rfqs/:id', procurement.getRFQById);
 router.put('/rfqs/:id/publish', procurement.publishRFQ);
+router.put('/rfqs/:id/close', procurement.closeRFQ);
 
 // Quotations
 router.get('/quotations', procurement.getQuotations);

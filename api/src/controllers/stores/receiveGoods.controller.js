@@ -1,6 +1,7 @@
 const { Delivery, PurchaseOrder, Inventory, StoreTransaction, Item, PurchaseRequisition, User } = require('../../models');
 const { createAuditLog } = require('../../middleware');
 const { notifyUsersByRole, notifySupplier, notifyUsersByDepartment } = require('../../services/notification.service');
+const { resolveSiteId, findOrCreateInventory } = require('../../lib/siteScope');
 
 const receiveGoods = async (req, res) => {
   try {
@@ -46,10 +47,15 @@ const receiveGoods = async (req, res) => {
       isDeleted: false
     });
 
+    const receiveSiteId =
+      po.deliverToSite ||
+      (await resolveSiteId(req.user, req.body.receivedAtSiteId));
+
     if (delivery) {
       // Update existing pending delivery to received
       delivery.deliveryNoteNumber = deliveryNoteNumber;
       delivery.deliveryDate = new Date(deliveryDate);
+      delivery.receivedAtSite = receiveSiteId;
       delivery.receivedBy = req.user._id;
       delivery.items = items;
       delivery.isPartialDelivery = !allReceived;
@@ -62,6 +68,7 @@ const receiveGoods = async (req, res) => {
       delivery = await Delivery.create({
         purchaseOrder: purchaseOrderId,
         supplier: po.supplier,
+        receivedAtSite: receiveSiteId,
         deliveryNoteNumber,
         deliveryDate: new Date(deliveryDate),
         receivedBy: req.user._id,
@@ -115,21 +122,9 @@ const receiveGoods = async (req, res) => {
         });
       }
 
-      // Find or create Inventory for this item
-      let inventory = await Inventory.findOne({
-        item: inventoryItem._id,
-        location: 'Main Store',
-        isDeleted: false
-      });
-
-      if (!inventory) {
-        inventory = await Inventory.create({
-          item: inventoryItem._id,
-          location: 'Main Store',
-          quantityOnHand: 0,
-          quantityReserved: 0,
-          unitCost: poItem.unitPrice || 0
-        });
+      let inventory = await findOrCreateInventory(inventoryItem._id, receiveSiteId);
+      if (!inventory.unitCost && poItem.unitPrice) {
+        inventory.unitCost = poItem.unitPrice;
       }
 
       // Update inventory quantities (only for items in good condition)
@@ -155,6 +150,7 @@ const receiveGoods = async (req, res) => {
         await StoreTransaction.create({
           transactionNumber,
           type: 'receipt',
+          site: receiveSiteId,
           item: inventoryItem._id,
           inventory: inventory._id,
           quantity: goodQuantity,

@@ -8,6 +8,7 @@ const createRFQ = require('./createRFQ.controller');
 const getRFQs = require('./getRFQs.controller');
 const getRFQById = require('./getRFQById.controller');
 const publishRFQ = require('./publishRFQ.controller');
+const closeRFQ = require('./closeRFQ.controller');
 const getQuotations = require('./getQuotations.controller');
 const getQuotationById = require('./getQuotationById.controller');
 const acceptQuotation = require('./acceptQuotation.controller');
@@ -33,6 +34,7 @@ module.exports = {
   getRFQs,
   getRFQById,
   publishRFQ,
+  closeRFQ,
   getQuotations,
   getQuotationById,
   acceptQuotation,

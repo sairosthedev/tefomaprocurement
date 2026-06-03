@@ -6,6 +6,10 @@ const createDepartment = require('./createDepartment.controller');
 const getDepartments = require('./getDepartments.controller');
 const updateDepartment = require('./updateDepartment.controller');
 const deleteDepartment = require('./deleteDepartment.controller');
+const createSite = require('./createSite.controller');
+const getSites = require('./getSites.controller');
+const updateSite = require('./updateSite.controller');
+const deleteSite = require('./deleteSite.controller');
 
 module.exports = {
   createUser,
@@ -15,6 +19,10 @@ module.exports = {
   createDepartment,
   getDepartments,
   updateDepartment,
-  deleteDepartment
+  deleteDepartment,
+  createSite,
+  getSites,
+  updateSite,
+  deleteSite
 };
 

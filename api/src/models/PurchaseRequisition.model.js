@@ -25,6 +25,13 @@ const RequisitionItemSchema = new mongoose.Schema({
   storeAvailability: {
     available: { type: Boolean, default: false },
     quantityAvailable: { type: Number, default: 0 },
+    quantityAtSite: { type: Number, default: 0 },
+    quantityAtOtherSites: { type: Number, default: 0 },
+    suggestedAction: {
+      type: String,
+      enum: ['store_issue', 'stock_transfer', 'purchase', null],
+      default: null
+    },
     checkedAt: Date,
     checkedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
   }
@@ -59,6 +66,10 @@ const PurchaseRequisitionSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Title is required'],
     trim: true
+  },
+  site: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Site'
   },
   department: {
     type: mongoose.Schema.Types.ObjectId,

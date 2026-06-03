@@ -1,6 +1,7 @@
 const { StoreRequisition, Item } = require('../../models');
 const { createAuditLog } = require('../../middleware');
 const { notifyUsersByRole } = require('../../services/notification.service');
+const { resolveSiteId } = require('../../lib/siteScope');
 
 const createStoreRequisition = async (req, res) => {
   try {
@@ -81,8 +82,11 @@ const createStoreRequisition = async (req, res) => {
     const year = new Date().getFullYear();
     const requisitionNumber = `SR-${year}-${String(count + 1).padStart(5, '0')}`;
 
+    const siteId = await resolveSiteId(req.user, req.body.siteId);
+
     const requisition = await StoreRequisition.create({
       requisitionNumber,
+      site: siteId,
       department: req.user.department,
       requestedBy: req.user._id,
       items: processedItems,
@@ -115,6 +119,7 @@ const createStoreRequisition = async (req, res) => {
 
     const populatedRequisition = await StoreRequisition.findById(requisition._id)
       .populate('requestedBy', 'firstName lastName')
+      .populate('site', 'code name type')
       .populate('department', 'name')
       .populate('items.item', 'code description unit');
 

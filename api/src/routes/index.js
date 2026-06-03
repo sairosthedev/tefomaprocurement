@@ -11,6 +11,7 @@ const cooRoutes = require('./coo.route');
 const storesRoutes = require('./stores.route');
 const dashboardRoutes = require('./dashboard.route');
 const notificationsRoutes = require('./notifications.route');
+const sitesRoutes = require('./sites.route');
 
 // API Status
 router.get('/', (req, res) => {
@@ -32,5 +33,6 @@ router.use('/coo', cooRoutes);
 router.use('/stores', storesRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/notifications', notificationsRoutes);
+router.use('/sites', sitesRoutes);
 
 module.exports = router;

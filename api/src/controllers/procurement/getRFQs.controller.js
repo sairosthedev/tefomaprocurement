@@ -1,4 +1,4 @@
-const { RFQ } = require('../../models');
+const { RFQ, Quotation } = require('../../models');
 
 const getRFQs = async (req, res) => {
   try {
@@ -23,9 +23,28 @@ const getRFQs = async (req, res) => {
         .populate('invitedSuppliers.supplier', 'companyName')
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(parseInt(limit)),
+        .limit(parseInt(limit))
+        .lean(),
       RFQ.countDocuments(query)
     ]);
+
+    // Attach the number of bids received per RFQ (count only, no values).
+    if (rfqs.length > 0) {
+      const counts = await Quotation.aggregate([
+        {
+          $match: {
+            rfq: { $in: rfqs.map((r) => r._id) },
+            status: { $in: ['submitted', 'under_review', 'accepted', 'rejected'] },
+            isDeleted: false
+          }
+        },
+        { $group: { _id: '$rfq', count: { $sum: 1 } } }
+      ]);
+      const countMap = new Map(counts.map((c) => [c._id.toString(), c.count]));
+      rfqs.forEach((r) => {
+        r.bidCount = countMap.get(r._id.toString()) || 0;
+      });
+    }
 
     res.status(200).json({
       success: true,

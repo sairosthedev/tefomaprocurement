@@ -1,48 +1,49 @@
-const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
+'use strict';
+
+require('dotenv').config();
+
+const { createApp } = require('./app');
 const connectDB = require('./config/db');
-const routes = require('./routes');
+const logger = require('./lib/logger');
 
-// Load environment variables
-dotenv.config();
-
-const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Connect to MongoDB
-connectDB();
+async function bootstrap() {
+  await connectDB();
 
-// Middleware
-// CORS configuration - allows all origins
-app.use(cors({
-  origin: true, // Allow all origins
-  credentials: true
-}));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+  const app = createApp();
+  const server = app.listen(PORT, () => {
+    logger.info(`API server running on http://localhost:${PORT}`);
+  });
 
-// Routes
-app.use('/api', routes);
+  const shutdown = (signal) => {
+    logger.info(`Received ${signal}, shutting down gracefully...`);
+    server.close((err) => {
+      if (err) {
+        logger.error('Error closing server', err);
+        process.exit(1);
+      }
+      process.exit(0);
+    });
+    setTimeout(() => {
+      logger.warn('Forcing shutdown after timeout');
+      process.exit(1);
+    }, 10_000).unref();
+  };
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
+
+  process.on('unhandledRejection', (reason) => {
+    logger.error('Unhandled promise rejection', reason);
+  });
+  process.on('uncaughtException', (error) => {
+    logger.error('Uncaught exception', error);
+    shutdown('uncaughtException');
+  });
+}
+
+bootstrap().catch((err) => {
+  logger.error('Fatal startup error', err);
+  process.exit(1);
 });
-
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 API server running on http://localhost:${PORT}`);
-});
-
-
-
-
-
-
-
-
-
-
-
-

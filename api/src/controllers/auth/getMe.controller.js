@@ -3,7 +3,8 @@ const { User, SupplierProfile } = require('../../models');
 const getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user._id)
-      .populate('department', 'name code');
+      .populate('department', 'name code')
+      .populate('homeSite', 'code name type hasLocalStore');
 
     let supplierProfile = null;
     if (user.role === 'supplier') {
@@ -20,6 +21,7 @@ const getMe = async (req, res) => {
         fullName: user.fullName,
         role: user.role,
         department: user.department,
+        homeSite: user.homeSite,
         phone: user.phone,
         status: user.status,
         lastLogin: user.lastLogin,

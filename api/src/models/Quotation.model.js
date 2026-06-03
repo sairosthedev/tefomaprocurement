@@ -37,6 +37,10 @@ const QuotationSchema = new mongoose.Schema({
     ref: 'RFQ',
     required: true
   },
+  site: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Site'
+  },
   supplier: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'SupplierProfile',

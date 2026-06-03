@@ -25,5 +25,12 @@ router.put('/requisitions/:id/approve', stores.approveStoreRequisition);
 router.put('/requisitions/:id/reject', stores.rejectStoreRequisition);
 router.put('/requisitions/:id/issue', stores.issueStock);
 
+// Stock transfers (HQ ↔ sites)
+router.post('/transfers', stores.createStockTransfer);
+router.get('/transfers', stores.getStockTransfers);
+router.put('/transfers/:id/approve', stores.approveStockTransfer);
+router.put('/transfers/:id/ship', stores.shipStockTransfer);
+router.put('/transfers/:id/receive', stores.receiveStockTransfer);
+
 module.exports = router;
 

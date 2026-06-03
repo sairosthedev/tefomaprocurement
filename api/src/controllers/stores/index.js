@@ -8,6 +8,11 @@ const acceptDelivery = require('./acceptDelivery.controller');
 const getStoreRequisitions = require('./getStoreRequisitions.controller');
 const approveStoreRequisition = require('./approveStoreRequisition.controller');
 const rejectStoreRequisition = require('./rejectStoreRequisition.controller');
+const createStockTransfer = require('./createStockTransfer.controller');
+const getStockTransfers = require('./getStockTransfers.controller');
+const approveStockTransfer = require('./approveStockTransfer.controller');
+const shipStockTransfer = require('./shipStockTransfer.controller');
+const receiveStockTransfer = require('./receiveStockTransfer.controller');
 
 module.exports = {
   receiveGoods,
@@ -19,6 +24,11 @@ module.exports = {
   acceptDelivery,
   getStoreRequisitions,
   approveStoreRequisition,
-  rejectStoreRequisition
+  rejectStoreRequisition,
+  createStockTransfer,
+  getStockTransfers,
+  approveStockTransfer,
+  shipStockTransfer,
+  receiveStockTransfer
 };
 

@@ -19,5 +19,11 @@ router.get('/departments', admin.getDepartments);
 router.put('/departments/:id', admin.updateDepartment);
 router.delete('/departments/:id', admin.deleteDepartment);
 
+// Site management
+router.post('/sites', admin.createSite);
+router.get('/sites', admin.getSites);
+router.put('/sites/:id', admin.updateSite);
+router.delete('/sites/:id', admin.deleteSite);
+
 module.exports = router;
 

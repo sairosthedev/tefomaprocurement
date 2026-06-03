@@ -3,7 +3,8 @@ const { createAuditLog } = require('../../middleware');
 
 const createUser = async (req, res) => {
   try {
-    const { email, password, firstName, lastName, role, department, phone, status } = req.body;
+    const { email, password, firstName, lastName, role, department, homeSite, phone, status } =
+      req.body;
 
     // Validate required fields
     if (!email || !password || !firstName || !lastName || !role) {
@@ -35,6 +36,7 @@ const createUser = async (req, res) => {
       lastName,
       role,
       department: department || null,
+      homeSite: homeSite || null,
       phone,
       status: status || 'active'
     });

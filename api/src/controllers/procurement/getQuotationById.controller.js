@@ -1,11 +1,12 @@
 const { Quotation, PurchaseOrder } = require('../../models');
+const { isRfqSealed } = require('../../lib/rfqVisibility');
 
 const getQuotationById = async (req, res) => {
   try {
     const { id } = req.params;
 
     const quotation = await Quotation.findById(id)
-      .populate('rfq', 'rfqNumber title description items submissionDeadline')
+      .populate('rfq', 'rfqNumber title description items submissionDeadline status')
       .populate('supplier', 'companyName contactEmail contactPhone')
       .populate('submittedBy', 'firstName lastName email')
       .select('-isDeleted');
@@ -14,6 +15,17 @@ const getQuotationById = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Quotation not found'
+      });
+    }
+
+    // Sealed bids: while the RFQ is still ongoing, procurement cannot open
+    // individual bids. Admins are exempt.
+    if (req.user.role !== 'admin' && isRfqSealed(quotation.rfq)) {
+      return res.status(403).json({
+        success: false,
+        sealed: true,
+        message:
+          'This bid is sealed until the RFQ submission deadline passes or the RFQ is closed.'
       });
     }
 

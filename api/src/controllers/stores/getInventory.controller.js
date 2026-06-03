@@ -1,14 +1,21 @@
 const { Inventory } = require('../../models');
+const { buildSiteFilter } = require('../../lib/siteScope');
 
 const getInventory = async (req, res) => {
   try {
-    const { search, belowReorderLevel, page = 1, limit = 50 } = req.query;
-    
-    const query = { isDeleted: false };
+    const { search, belowReorderLevel, site, page = 1, limit = 50 } = req.query;
+
+    let query = { isDeleted: false };
+    try {
+      query = { ...query, ...buildSiteFilter(req.user, site) };
+    } catch (err) {
+      return res.status(err.statusCode || 403).json({ success: false, message: err.message });
+    }
 
     const skip = (page - 1) * limit;
     
     let inventoryQuery = Inventory.find(query)
+      .populate('site', 'code name type')
       .populate({
         path: 'item',
         match: search ? { name: { $regex: search, $options: 'i' } } : {},

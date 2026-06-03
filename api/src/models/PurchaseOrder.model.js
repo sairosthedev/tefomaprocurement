@@ -89,6 +89,10 @@ const PurchaseOrderSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  deliverToSite: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Site'
+  },
   deliveryAddress: {
     street: String,
     city: String,

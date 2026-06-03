@@ -1,15 +1,17 @@
-const { PurchaseOrder, Quotation, RFQ, PurchaseRequisition } = require('../../models');
+const { PurchaseOrder, Quotation, RFQ, PurchaseRequisition, Site } = require('../../models');
 const { createAuditLog } = require('../../middleware');
 const { notifySupplier, notifyUsersByRole } = require('../../services/notification.service');
+const { resolveSiteId } = require('../../lib/siteScope');
 
 const createPurchaseOrder = async (req, res) => {
   try {
-    const { 
-      quotationId, 
-      deliveryAddress, 
+    const {
+      quotationId,
+      deliverToSiteId,
+      deliveryAddress,
       expectedDeliveryDate,
       termsAndConditions,
-      notes 
+      notes
     } = req.body;
 
     if (!quotationId) {
@@ -75,13 +77,30 @@ const createPurchaseOrder = async (req, res) => {
 
     // Get purchaseRequisition from RFQ - fetch RFQ separately if needed
     let purchaseRequisitionId = null;
+    let requisitionSiteId = null;
     if (quotation.rfq) {
       const rfqId = quotation.rfq._id || quotation.rfq;
-      // Fetch RFQ to get purchaseRequisition (in case it wasn't populated)
       const rfq = await RFQ.findById(rfqId).select('purchaseRequisition').lean();
       purchaseRequisitionId = rfq?.purchaseRequisition || null;
+      if (purchaseRequisitionId) {
+        const pr = await PurchaseRequisition.findById(purchaseRequisitionId).select('site');
+        requisitionSiteId = pr?.site || null;
+      }
     }
-    
+
+    const deliverToSite = await resolveSiteId(
+      req.user,
+      deliverToSiteId || requisitionSiteId
+    );
+
+    let resolvedDeliveryAddress = deliveryAddress;
+    if (!resolvedDeliveryAddress && deliverToSite) {
+      const site = await Site.findById(deliverToSite);
+      if (site?.address) {
+        resolvedDeliveryAddress = site.address;
+      }
+    }
+
     const po = await PurchaseOrder.create({
       poNumber,
       quotation: quotation._id,
@@ -93,7 +112,8 @@ const createPurchaseOrder = async (req, res) => {
       subtotal: quotation.subtotal,
       vatAmount: quotation.vatAmount,
       totalAmount: quotation.totalAmount,
-      deliveryAddress,
+      deliverToSite,
+      deliveryAddress: resolvedDeliveryAddress,
       expectedDeliveryDate: new Date(expectedDeliveryDate),
       paymentTerms: quotation.paymentTerms,
       termsAndConditions,

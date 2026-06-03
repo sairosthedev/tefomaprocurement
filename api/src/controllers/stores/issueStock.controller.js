@@ -1,6 +1,7 @@
-const { StoreRequisition, Inventory, StoreTransaction } = require('../../models');
+const { StoreRequisition, StoreTransaction } = require('../../models');
 const { createAuditLog } = require('../../middleware');
 const { createNotification } = require('../../services/notification.service');
+const { findOrCreateInventory, userSiteId, canAccessAllSites } = require('../../lib/siteScope');
 
 const issueStock = async (req, res) => {
   try {
@@ -20,6 +21,16 @@ const issueStock = async (req, res) => {
         success: false,
         message: 'Requisition must be approved before issuing'
       });
+    }
+
+    if (!canAccessAllSites(req.user)) {
+      const home = userSiteId(req.user);
+      if (home && requisition.site?.toString() !== home) {
+        return res.status(403).json({
+          success: false,
+          message: 'You can only issue stock for your home site'
+        });
+      }
     }
 
     // If items are not provided, issue all items from the requisition
@@ -73,13 +84,7 @@ const issueStock = async (req, res) => {
         await reqItem.populate('item');
       }
 
-      const inventory = await Inventory.findOne({ item: reqItem.item._id });
-      if (!inventory) {
-        return res.status(400).json({
-          success: false,
-          message: `Inventory not found for item: ${reqItem.item.name || reqItem.item.description || 'Unknown'}`
-        });
-      }
+      const inventory = await findOrCreateInventory(reqItem.item._id, requisition.site);
 
       // Calculate quantity to issue
       const quantityToIssue = issueItem.quantity || (reqItem.quantityRequested - (reqItem.quantityIssued || 0));
@@ -112,6 +117,7 @@ const issueStock = async (req, res) => {
       await StoreTransaction.create({
         transactionNumber,
         type: 'issue',
+        site: requisition.site,
         item: reqItem.item._id,
         inventory: inventory._id,
         quantity: -quantityToIssue,

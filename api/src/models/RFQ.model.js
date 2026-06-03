@@ -51,6 +51,10 @@ const RFQSchema = new mongoose.Schema({
     trim: true
   },
   description: String,
+  site: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Site'
+  },
   purchaseRequisition: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'PurchaseRequisition'

@@ -16,6 +16,11 @@ const StoreTransactionSchema = new mongoose.Schema({
     ref: 'Item',
     required: true
   },
+  site: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Site',
+    required: true
+  },
   inventory: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Inventory',
@@ -38,7 +43,7 @@ const StoreTransactionSchema = new mongoose.Schema({
   reference: {
     type: {
       type: String,
-      enum: ['grv', 'store_requisition', 'adjustment', 'transfer']
+      enum: ['grv', 'store_requisition', 'adjustment', 'transfer', 'stock_transfer']
     },
     document: {
       type: mongoose.Schema.Types.ObjectId,

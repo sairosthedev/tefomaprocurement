@@ -1,12 +1,19 @@
 const { StoreRequisition } = require('../../models');
+const { buildSiteFilter } = require('../../lib/siteScope');
 
 const getStoreRequisitions = async (req, res) => {
   try {
-    const { search, status, page = 1, limit = 20 } = req.query;
-    
-    const query = { 
-      isDeleted: false 
+    const { search, status, site, page = 1, limit = 20 } = req.query;
+
+    let query = {
+      isDeleted: false
     };
+
+    try {
+      query = { ...query, ...buildSiteFilter(req.user, site) };
+    } catch (err) {
+      return res.status(err.statusCode || 403).json({ success: false, message: err.message });
+    }
     
     if (status) query.status = status;
     if (search) {
@@ -20,6 +27,7 @@ const getStoreRequisitions = async (req, res) => {
     
     const [requisitions, total] = await Promise.all([
       StoreRequisition.find(query)
+        .populate('site', 'code name type')
         .populate('requestedBy', 'firstName lastName')
         .populate('department', 'name')
         .populate('items.item', 'code name description unit')

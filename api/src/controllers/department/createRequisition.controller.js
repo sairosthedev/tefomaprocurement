@@ -1,5 +1,10 @@
 const { PurchaseRequisition } = require('../../models');
 const { createAuditLog } = require('../../middleware');
+const { resolveSiteId } = require('../../lib/siteScope');
+const {
+  checkItemAvailability,
+  suggestAction
+} = require('../../services/inventoryAvailability.service');
 
 const createRequisition = async (req, res) => {
   try {
@@ -24,14 +29,37 @@ const createRequisition = async (req, res) => {
     }
 
     // Calculate estimated prices and process items
-    const processedItems = (items || []).map(item => ({
-      description: item.description,
-      specification: item.specification || item.specifications,
-      quantity: item.quantity || 1,
-      unit: item.unit || 'Each',
-      estimatedUnitPrice: item.estimatedUnitPrice || 0,
-      estimatedTotalPrice: item.estimatedUnitPrice ? item.estimatedUnitPrice * item.quantity : 0
-    }));
+    const siteId = await resolveSiteId(req.user, req.body.siteId);
+
+    const processedItems = [];
+    for (const item of items || []) {
+      const line = {
+        item: item.item || item.itemId,
+        description: item.description,
+        specification: item.specification || item.specifications,
+        quantity: item.quantity || 1,
+        unit: item.unit || 'Each',
+        estimatedUnitPrice: item.estimatedUnitPrice || 0,
+        estimatedTotalPrice: item.estimatedUnitPrice
+          ? item.estimatedUnitPrice * item.quantity
+          : 0
+      };
+
+      if (line.item) {
+        const { atSite, elsewhere, total } = await checkItemAvailability(line.item, siteId);
+        const suggestion = suggestAction(line.quantity, { atSite, elsewhere });
+        line.storeAvailability = {
+          available: total >= line.quantity,
+          quantityAvailable: total,
+          quantityAtSite: suggestion.quantityAtSite,
+          quantityAtOtherSites: suggestion.quantityAtOtherSites,
+          suggestedAction: suggestion.suggestedAction,
+          checkedAt: new Date()
+        };
+      }
+
+      processedItems.push(line);
+    }
 
     // Generate requisition number
     const count = await PurchaseRequisition.countDocuments();
@@ -46,6 +74,7 @@ const createRequisition = async (req, res) => {
     const requisition = await PurchaseRequisition.create({
       requisitionNumber,
       title: title || 'Untitled Requisition',
+      site: siteId,
       department: req.user.department || null,
       requestedBy: req.user._id,
       items: processedItems,

@@ -89,6 +89,7 @@ const submitQuotation = async (req, res) => {
     const quotation = await Quotation.create({
       quotationNumber,
       rfq: rfqId,
+      site: rfq.site,
       supplier: profile._id,
       submittedBy: req.user._id,
       items,

@@ -1,5 +1,6 @@
 const { RFQ, PurchaseRequisition, SupplierProfile } = require('../../models');
 const { createAuditLog } = require('../../middleware');
+const { resolveSiteId } = require('../../lib/siteScope');
 
 const createRFQ = async (req, res) => {
   try {
@@ -47,6 +48,15 @@ const createRFQ = async (req, res) => {
       invitedAt: new Date()
     }));
 
+    // Resolve the delivery site for this RFQ: prefer the linked requisition's
+    // site, then an explicit body value, else fall back to the user's site/HQ.
+    let requisitionSiteId = null;
+    if (purchaseRequisitionId) {
+      const pr = await PurchaseRequisition.findById(purchaseRequisitionId).select('site');
+      requisitionSiteId = pr?.site || null;
+    }
+    const siteId = await resolveSiteId(req.user, req.body.siteId || requisitionSiteId);
+
     // Generate RFQ number
     const count = await RFQ.countDocuments();
     const year = new Date().getFullYear();
@@ -60,6 +70,7 @@ const createRFQ = async (req, res) => {
       rfqNumber,
       title,
       description,
+      site: siteId,
       purchaseRequisition: purchaseRequisitionId || undefined, // Only set if provided
       items,
       invitedSuppliers,

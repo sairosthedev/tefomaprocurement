@@ -5,7 +5,7 @@ const path = require('path');
 // Load env vars
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 
-const { User } = require('../models');
+const { User, Site } = require('../models');
 
 const seedDatabase = async () => {
   try {
@@ -13,6 +13,18 @@ const seedDatabase = async () => {
     const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/fossilprocure';
     await mongoose.connect(mongoUri);
     console.log('📦 Connected to MongoDB');
+
+    let hq = await Site.findOne({ code: 'HQ', isDeleted: false });
+    if (!hq) {
+      hq = await Site.create({
+        code: 'HQ',
+        name: 'Head Office Stores',
+        type: 'hq',
+        hasLocalStore: true,
+        status: 'active'
+      });
+      console.log('Created HQ site');
+    }
 
     // Check if admin already exists
     const existingAdmin = await User.findOne({ email: 'admin@fossilzim.com' });
@@ -28,6 +40,7 @@ const seedDatabase = async () => {
       firstName: 'System',
       lastName: 'Admin',
       role: 'admin',
+      homeSite: hq._id,
       status: 'active'
     });
 
