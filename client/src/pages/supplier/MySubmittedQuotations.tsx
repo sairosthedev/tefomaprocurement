@@ -12,7 +12,7 @@ import ViewButton from '../../components/ViewButton';
 import Modal from '../../components/Modal';
 import { formatCurrency } from '../../lib/constants';
 
-const statusColors = {
+const statusColors: any = {
   submitted: 'bg-blue-100 text-blue-700',
   under_review: 'bg-amber-100 text-amber-700',
   accepted: 'bg-green-100 text-green-700',
@@ -21,7 +21,7 @@ const statusColors = {
   expired: 'bg-gray-100 text-gray-700'
 };
 
-const statusLabels = {
+const statusLabels: any = {
   submitted: 'Submitted',
   under_review: 'Under Review',
   accepted: 'Accepted',
@@ -34,11 +34,11 @@ export default function MySubmittedQuotations() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [quotations, setQuotations] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [loading, setLoading] = useState<any>(true);
+  const [searchTerm, setSearchTerm] = useState<any>('');
+  const [statusFilter, setStatusFilter] = useState<any>('');
   const [selectedQuotation, setSelectedQuotation] = useState<any>(null);
-  const [showViewModal, setShowViewModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState<any>(false);
 
   useEffect(() => {
     fetchQuotations();
@@ -56,7 +56,7 @@ export default function MySubmittedQuotations() {
       if (response.data.success) {
         setQuotations(response.data.data || []);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch quotations:', error);
       showToast('Failed to load quotations', 'error');
     } finally {
@@ -64,7 +64,7 @@ export default function MySubmittedQuotations() {
     }
   };
 
-  const filteredQuotations = quotations.filter(quote => {
+  const filteredQuotations = quotations.filter((quote: any) => {
     if (!searchTerm) return true;
     const search = searchTerm.toLowerCase();
     return (
@@ -76,10 +76,10 @@ export default function MySubmittedQuotations() {
 
   const quotationStatusTabs = [
     { value: '', label: 'All', icon: FileText, count: quotations.length },
-    { value: 'submitted', label: 'Submitted', icon: Clock, count: quotations.filter(q => q.status === 'submitted').length },
-    { value: 'under_review', label: 'Under Review', icon: Eye, count: quotations.filter(q => q.status === 'under_review').length },
-    { value: 'accepted', label: 'Accepted', icon: CheckCircle, count: quotations.filter(q => q.status === 'accepted' || q.status === 'awarded').length },
-    { value: 'rejected', label: 'Rejected', icon: XCircle, count: quotations.filter(q => q.status === 'rejected').length }
+    { value: 'submitted', label: 'Submitted', icon: Clock, count: quotations.filter((q: any) => q.status === 'submitted').length },
+    { value: 'under_review', label: 'Under Review', icon: Eye, count: quotations.filter((q: any) => q.status === 'under_review').length },
+    { value: 'accepted', label: 'Accepted', icon: CheckCircle, count: quotations.filter((q: any) => q.status === 'accepted' || q.status === 'awarded').length },
+    { value: 'rejected', label: 'Rejected', icon: XCircle, count: quotations.filter((q: any) => q.status === 'rejected').length }
   ];
 
   return (
@@ -112,7 +112,7 @@ export default function MySubmittedQuotations() {
             <div>
               <p className="text-sm text-amber-600 font-medium">Under Review</p>
               <p className="text-2xl font-bold text-amber-700">
-                {quotations.filter(q => q.status === 'under_review').length}
+                {quotations.filter((q: any) => q.status === 'under_review').length}
               </p>
             </div>
           </div>
@@ -126,7 +126,7 @@ export default function MySubmittedQuotations() {
             <div>
               <p className="text-sm text-green-600 font-medium">Accepted/Awarded</p>
               <p className="text-2xl font-bold text-green-700">
-                {quotations.filter(q => q.status === 'accepted' || q.status === 'awarded').length}
+                {quotations.filter((q: any) => q.status === 'accepted' || q.status === 'awarded').length}
               </p>
             </div>
           </div>
@@ -141,7 +141,7 @@ export default function MySubmittedQuotations() {
               <p className="text-sm text-purple-600 font-medium">Total Value</p>
               <p className="text-xl font-bold text-purple-700">
                 {formatCurrency(
-                  quotations.reduce((sum, q) => sum + (q.totalAmount || 0), 0),
+                  quotations.reduce((sum: any, q: any) => sum + (q.totalAmount || 0), 0),
                   quotations[0]?.currency || 'USD'
                 )}
               </p>
@@ -159,7 +159,7 @@ export default function MySubmittedQuotations() {
               type="text"
               placeholder="Search by quotation number, RFQ number, or title..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e: any) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
             />
           </div>
@@ -201,7 +201,7 @@ export default function MySubmittedQuotations() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredQuotations.map((quote) => (
+                {filteredQuotations.map((quote: any) => (
                   <tr key={quote._id} className="hover:bg-gray-50 transition-colors">
                     <td className="py-4 px-6">
                       <span className="font-mono text-sm font-medium text-primary">
@@ -415,7 +415,7 @@ export default function MySubmittedQuotations() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {selectedQuotation.items?.map((item, index) => (
+                    {selectedQuotation.items?.map((item: any, index: any) => (
                       <tr key={index}>
                         <td className="py-3 px-4">
                           <p className="text-sm font-medium text-gray-900">{item.description}</p>
@@ -437,7 +437,7 @@ export default function MySubmittedQuotations() {
                   </tbody>
                   <tfoot className="bg-gray-50">
                     <tr>
-                      <td colSpan="5" className="py-3 px-4 text-right font-semibold text-gray-700">
+                      <td colSpan={5} className="py-3 px-4 text-right font-semibold text-gray-700">
                         Grand Total:
                       </td>
                       <td className="py-3 px-4 text-lg font-bold text-primary text-right">

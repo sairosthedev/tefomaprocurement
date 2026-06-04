@@ -19,7 +19,7 @@ import {
   User
 } from 'lucide-react';
 
-const statusColors = {
+const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
   pending_finance: 'bg-amber-100 text-amber-700',
   pending_coo: 'bg-purple-100 text-purple-700',
@@ -37,9 +37,9 @@ export default function PurchaseOrderDetail() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<any>(true);
   const [po, setPo] = useState<any>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState<any>(false);
 
   const isProcurement = user?.role === 'procurement_officer' || user?.role === 'admin';
   const isFinance = user?.role === 'finance';
@@ -52,7 +52,7 @@ export default function PurchaseOrderDetail() {
   const fetchPurchaseOrder = async () => {
     try {
       setLoading(true);
-      let response;
+      let response: any;
       if (isFinance) {
         response = await financeAPI.getPurchaseOrder(id);
       } else if (isCOO) {
@@ -64,7 +64,7 @@ export default function PurchaseOrderDetail() {
       if (response.data.success) {
         setPo(response.data.data);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching purchase order:', error);
       showToast(error.response?.data?.message || 'Failed to load purchase order details', 'error');
     } finally {
@@ -78,7 +78,7 @@ export default function PurchaseOrderDetail() {
       await procurementAPI.submitPurchaseOrder(id);
       showToast('Purchase order submitted successfully', 'success');
       fetchPurchaseOrder();
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to submit purchase order', 'error');
     } finally {
       setSubmitting(false);
@@ -141,7 +141,7 @@ export default function PurchaseOrderDetail() {
             </div>
             <div className="flex items-center gap-3">
               <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[po.status]}`}>
-                {po.status?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                {po.status?.replace(/_/g, ' ').replace(/\b\w/g, (l: any) => l.toUpperCase())}
               </span>
               {isProcurement && po.status === 'draft' && (
                 <button
@@ -292,7 +292,7 @@ export default function PurchaseOrderDetail() {
                   </tr>
                 </thead>
                 <tbody>
-                  {po.items.map((item, index) => (
+                  {po.items.map((item: any, index: any) => (
                     <tr key={index} className="border-b border-gray-100">
                       <td className="py-3 px-4">
                         <p className="font-medium text-gray-900">{item.description}</p>
@@ -312,7 +312,7 @@ export default function PurchaseOrderDetail() {
                 </tbody>
                 <tfoot>
                   <tr className="bg-gray-50">
-                    <td colSpan="3" className="py-3 px-4 text-right font-semibold text-gray-900">
+                    <td colSpan={3} className="py-3 px-4 text-right font-semibold text-gray-900">
                       Total Amount:
                     </td>
                     <td className="py-3 px-4 text-right font-bold text-lg text-gray-900">

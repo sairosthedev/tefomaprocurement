@@ -12,7 +12,7 @@ import {
 import ViewButton from '../components/ViewButton';
 import Modal from '../components/Modal';
 
-const statusColors = {
+const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
   pending_acceptance: 'bg-amber-100 text-amber-700',
   accepted: 'bg-green-100 text-green-700',
@@ -24,7 +24,7 @@ const statusColors = {
   cancelled: 'bg-gray-100 text-gray-500'
 };
 
-const statusLabels = {
+const statusLabels: any = {
   draft: 'Draft',
   pending_acceptance: 'Pending Acceptance',
   accepted: 'Accepted',
@@ -36,7 +36,7 @@ const statusLabels = {
   cancelled: 'Cancelled'
 };
 
-const priorityColors = {
+const priorityColors: any = {
   low: 'bg-gray-100 text-gray-600',
   medium: 'bg-blue-100 text-blue-600',
   high: 'bg-orange-100 text-orange-600',
@@ -48,15 +48,15 @@ export default function Requisitions() {
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [requisitions, setRequisitions] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [loading, setLoading] = useState<any>(true);
+  const [searchTerm, setSearchTerm] = useState<any>('');
+  const [statusFilter, setStatusFilter] = useState<any>('');
   const [selectedRequisition, setSelectedRequisition] = useState<any>(null);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [showActionModal, setShowActionModal] = useState(false);
-  const [actionType, setActionType] = useState(''); // 'accept' or 'reject'
-  const [actionComment, setActionComment] = useState('');
-  const [actionLoading, setActionLoading] = useState(false);
+  const [showViewModal, setShowViewModal] = useState<any>(false);
+  const [showActionModal, setShowActionModal] = useState<any>(false);
+  const [actionType, setActionType] = useState<any>(''); // 'accept' or 'reject'
+  const [actionComment, setActionComment] = useState<any>('');
+  const [actionLoading, setActionLoading] = useState<any>(false);
   const [submittingId, setSubmittingId] = useState<any>(null);
 
   const isProcurement = user?.role === 'procurement_officer' || user?.role === 'admin';
@@ -76,7 +76,7 @@ export default function Requisitions() {
       if (response.data.success) {
         setRequisitions(response.data.data || []);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch requisitions:', error);
       showToast('Failed to load requisitions', 'error');
     } finally {
@@ -84,20 +84,20 @@ export default function Requisitions() {
     }
   };
 
-  const handleSubmit = async (id) => {
+  const handleSubmit = async (id: any) => {
     try {
       setSubmittingId(id);
       await api.put(`/department/requisitions/${id}/submit`);
       showToast('Requisition submitted for acceptance', 'success');
       fetchRequisitions();
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to submit', 'error');
     } finally {
       setSubmittingId(null);
     }
   };
 
-  const handleRequestFromStores = async (requisition) => {
+  const handleRequestFromStores = async (requisition: any) => {
     if (!requisition || !requisition.purchaseOrder) {
       showToast('Purchase order information not available', 'error');
       return;
@@ -105,11 +105,11 @@ export default function Requisitions() {
 
     try {
       // Create a store requisition for the items that HAVE been delivered/received
-      const items = requisition.purchaseOrder.items.map(poItem => ({
+      const items = requisition.purchaseOrder.items.map((poItem: any) => ({
         description: poItem.description,
         quantity: poItem.quantityReceived || 0,
         unit: poItem.unit || 'Each'
-      })).filter(item => item.quantity > 0);
+      })).filter((item: any) => item.quantity > 0);
 
       if (items.length === 0) {
         showToast('No items have been delivered yet. Please wait for delivery confirmation.', 'info');
@@ -124,7 +124,7 @@ export default function Requisitions() {
 
       showToast('Store requisition created successfully', 'success');
       fetchRequisitions();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating store requisition:', error);
       showToast(error.response?.data?.message || 'Failed to create store requisition', 'error');
     }
@@ -150,14 +150,14 @@ export default function Requisitions() {
       setShowActionModal(false);
       setActionComment('');
       fetchRequisitions();
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || `Failed to ${actionType}`, 'error');
     } finally {
       setActionLoading(false);
     }
   };
 
-  const openActionModal = (req, type) => {
+  const openActionModal = (req: any, type: any) => {
     setSelectedRequisition(req);
     setActionType(type);
     setActionComment('');
@@ -198,7 +198,7 @@ export default function Requisitions() {
               type="text"
               placeholder="Search requisitions..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e: any) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
@@ -227,25 +227,25 @@ export default function Requisitions() {
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
             <p className="text-sm text-amber-600 font-medium">Pending Acceptance</p>
             <p className="text-2xl font-bold text-amber-700">
-              {requisitions.filter(r => r.status === 'pending_acceptance').length}
+              {requisitions.filter((r: any) => r.status === 'pending_acceptance').length}
             </p>
           </div>
           <div className="bg-green-50 border border-green-200 rounded-xl p-4">
             <p className="text-sm text-green-600 font-medium">Accepted</p>
             <p className="text-2xl font-bold text-green-700">
-              {requisitions.filter(r => r.status === 'accepted' && !r.purchaseOrder).length}
+              {requisitions.filter((r: any) => r.status === 'accepted' && !r.purchaseOrder).length}
             </p>
           </div>
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
             <p className="text-sm text-blue-600 font-medium">In Sourcing</p>
             <p className="text-2xl font-bold text-blue-700">
-              {requisitions.filter(r => r.status === 'sourcing' && !r.purchaseOrder).length}
+              {requisitions.filter((r: any) => r.status === 'sourcing' && !r.purchaseOrder).length}
             </p>
           </div>
           <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
             <p className="text-sm text-purple-600 font-medium">Ordered</p>
             <p className="text-2xl font-bold text-purple-700">
-              {requisitions.filter(r => r.purchaseOrder || r.status === 'ordered').length}
+              {requisitions.filter((r: any) => r.purchaseOrder || r.status === 'ordered').length}
             </p>
           </div>
         </div>
@@ -291,7 +291,7 @@ export default function Requisitions() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {requisitions.map((req) => (
+                {requisitions.map((req: any) => (
                   <tr key={req._id} className="hover:bg-gray-50">
                     <td className="py-4 px-6">
                       <span className="font-mono text-sm font-medium text-primary">
@@ -796,7 +796,7 @@ export default function Requisitions() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {selectedRequisition.items?.map((item, index) => (
+                    {selectedRequisition.items?.map((item: any, index: any) => (
                       <tr key={index}>
                         <td className="py-3 px-4 text-sm">{item.description || item.name}</td>
                         <td className="py-3 px-4 text-sm">{item.quantity} {item.unit}</td>
@@ -812,7 +812,7 @@ export default function Requisitions() {
               <div>
                 <label className="text-sm text-gray-500 mb-2 block">Status History</label>
                 <div className="space-y-2">
-                  {selectedRequisition.statusHistory.map((history, index) => (
+                  {selectedRequisition.statusHistory.map((history: any, index: any) => (
                     <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                       {history.action === 'accepted' ? (
                         <CheckCircle className="h-5 w-5 text-green-500" />
@@ -878,7 +878,7 @@ export default function Requisitions() {
             </label>
             <textarea
               value={actionComment}
-              onChange={(e) => setActionComment(e.target.value)}
+              onChange={(e: any) => setActionComment(e.target.value)}
               rows={3}
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               placeholder={actionType === 'accept' ? 'Add any comments...' : 'Please provide a reason...'}

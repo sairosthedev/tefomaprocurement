@@ -7,7 +7,7 @@ import {
 import ViewButton from '../components/ViewButton';
 import Modal from '../components/Modal';
 
-const actionIcons = {
+const actionIcons: any = {
   login: LogIn,
   create: Plus,
   update: Edit,
@@ -16,7 +16,7 @@ const actionIcons = {
   reject: Trash2
 };
 
-const actionColors = {
+const actionColors: any = {
   login: 'bg-blue-100 text-blue-600',
   create: 'bg-green-100 text-green-600',
   update: 'bg-amber-100 text-amber-600',
@@ -28,12 +28,12 @@ const actionColors = {
 
 export default function AuditLogs() {
   const [logs, setLogs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [actionFilter, setActionFilter] = useState('');
-  const [entityFilter, setEntityFilter] = useState('');
+  const [loading, setLoading] = useState<any>(true);
+  const [searchTerm, setSearchTerm] = useState<any>('');
+  const [actionFilter, setActionFilter] = useState<any>('');
+  const [entityFilter, setEntityFilter] = useState<any>('');
   const [selectedLog, setSelectedLog] = useState<any>(null);
-  const [showModal, setShowModal] = useState(false);
+  const [showModal, setShowModal] = useState<any>(false);
 
   useEffect(() => {
     fetchLogs();
@@ -48,7 +48,7 @@ export default function AuditLogs() {
       if (response.data.success) {
         setLogs(response.data.data || []);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch audit logs:', error);
       // Mock data for demonstration
       setLogs([
@@ -102,13 +102,13 @@ export default function AuditLogs() {
               type="text"
               placeholder="Search by description, user, or entity..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e: any) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
           <select
             value={actionFilter}
-            onChange={(e) => setActionFilter(e.target.value)}
+            onChange={(e: any) => setActionFilter(e.target.value)}
             className="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
           >
             <option value="">All Actions</option>
@@ -121,7 +121,7 @@ export default function AuditLogs() {
           </select>
           <select
             value={entityFilter}
-            onChange={(e) => setEntityFilter(e.target.value)}
+            onChange={(e: any) => setEntityFilter(e.target.value)}
             className="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
           >
             <option value="">All Entities</option>
@@ -159,7 +159,7 @@ export default function AuditLogs() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {logs.map((log) => {
+                {logs.map((log: any) => {
                   const Icon = actionIcons[log.action] || FileCheck;
                   const colorClass = actionColors[log.action] || 'bg-gray-100 text-gray-600';
                   

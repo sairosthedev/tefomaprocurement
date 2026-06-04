@@ -9,7 +9,7 @@ import {
 import Modal from '../components/Modal';
 import { formatCurrency } from '../lib/constants';
 
-const statusColors = {
+const statusColors: any = {
   pending_finance: 'bg-amber-100 text-amber-700',
   pending_coo: 'bg-purple-100 text-purple-700',
   pending_approvals: 'bg-blue-100 text-blue-700',
@@ -17,7 +17,7 @@ const statusColors = {
   rejected: 'bg-red-100 text-red-700'
 };
 
-const statusLabels = {
+const statusLabels: any = {
   pending_finance: 'Awaiting Finance',
   pending_coo: 'Awaiting COO',
   pending_approvals: 'Pending Approvals',
@@ -29,11 +29,11 @@ export default function Approvals() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const [pendingItems, setPendingItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<any>(true);
   const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [comment, setComment] = useState('');
+  const [showModal, setShowModal] = useState<any>(false);
+  const [actionLoading, setActionLoading] = useState<any>(false);
+  const [comment, setComment] = useState<any>('');
 
   useEffect(() => {
     fetchPendingApprovals();
@@ -63,7 +63,7 @@ export default function Approvals() {
       if (response.data.success) {
         setPendingItems(response.data.data || []);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch approvals:', error);
       showToast('Failed to load pending approvals', 'error');
     } finally {
@@ -93,7 +93,7 @@ export default function Approvals() {
       setShowModal(false);
       setComment('');
       fetchPendingApprovals();
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to approve', 'error');
     } finally {
       setActionLoading(false);
@@ -127,7 +127,7 @@ export default function Approvals() {
       setShowModal(false);
       setComment('');
       fetchPendingApprovals();
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to reject', 'error');
     } finally {
       setActionLoading(false);
@@ -185,7 +185,7 @@ export default function Approvals() {
             <div>
               <p className="text-sm text-blue-600 font-medium">Total Value</p>
               <p className="text-2xl font-bold text-blue-700">
-                {formatCurrency(pendingItems.reduce((sum, item) => sum + (item.totalAmount || 0), 0))}
+                {formatCurrency(pendingItems.reduce((sum: any, item: any) => sum + (item.totalAmount || 0), 0))}
               </p>
             </div>
           </div>
@@ -198,7 +198,7 @@ export default function Approvals() {
             <div>
               <p className="text-sm text-red-600 font-medium">High Value (≥$10,000)</p>
               <p className="text-2xl font-bold text-red-700">
-                {pendingItems.filter(item => (item.totalAmount || 0) >= 10000).length}
+                {pendingItems.filter((item: any) => (item.totalAmount || 0) >= 10000).length}
               </p>
             </div>
           </div>
@@ -232,7 +232,7 @@ export default function Approvals() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {pendingItems.map((item) => (
+                {pendingItems.map((item: any) => (
                   <tr key={item._id} className={`hover:bg-gray-50 ${(item.totalAmount || 0) >= 10000 ? 'bg-red-50/30' : ''}`}>
                     <td className="py-4 px-6">
                       <span className="font-mono text-sm font-medium text-primary">
@@ -408,7 +408,7 @@ export default function Approvals() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {selectedItem.items?.map((item, index) => (
+                    {selectedItem.items?.map((item: any, index: any) => (
                       <tr key={index}>
                         <td className="py-3 px-4 text-sm">{item.description}</td>
                         <td className="py-3 px-4 text-sm">{item.quantity} {item.unit}</td>
@@ -442,7 +442,7 @@ export default function Approvals() {
               <div>
                 <label className="text-sm text-gray-500 mb-2 block">Approval History</label>
                 <div className="space-y-2">
-                  {selectedItem.approvalHistory.filter(h => h.action === 'finance_approved').map((history, index) => (
+                  {selectedItem.approvalHistory.filter((h: any) => h.action === 'finance_approved').map((history: any, index: any) => (
                     <div key={index} className="bg-green-50 rounded-xl p-4 border border-green-100">
                       <div className="flex items-center gap-2 text-green-700">
                         <CheckCircle className="h-5 w-5" />
@@ -467,7 +467,7 @@ export default function Approvals() {
               </label>
               <textarea
                 value={comment}
-                onChange={(e) => setComment(e.target.value)}
+                onChange={(e: any) => setComment(e.target.value)}
                 rows={3}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
                 placeholder="Add your comments or reason for decision..."

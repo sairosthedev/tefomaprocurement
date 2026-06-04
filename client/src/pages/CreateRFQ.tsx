@@ -15,14 +15,14 @@ export default function CreateRFQ() {
   
   const requisitionId = searchParams.get('requisition');
   
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState<any>(true);
+  const [submitting, setSubmitting] = useState<any>(false);
   const [requisition, setRequisition] = useState<any>(null);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [selectedSuppliers, setSelectedSuppliers] = useState<any[]>([]);
-  const [supplierSearch, setSupplierSearch] = useState('');
+  const [supplierSearch, setSupplierSearch] = useState<any>('');
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<any>({
     title: '',
     description: '',
     submissionDeadline: '',
@@ -45,11 +45,11 @@ export default function CreateRFQ() {
       setLoading(true);
       // Fetch the requisition details
       const response = await api.get(`/procurement/requisitions?status=accepted`);
-      const req = response.data.data?.find(r => r._id === requisitionId);
+      const req = response.data.data?.find((r: any) => r._id === requisitionId);
       
       if (req) {
         setRequisition(req);
-        setFormData(prev => ({
+        setFormData((prev: any) => ({
           ...prev,
           title: `RFQ for ${req.title}`,
           description: req.justification || ''
@@ -57,7 +57,7 @@ export default function CreateRFQ() {
       } else {
         showToast('Requisition not found or not accepted', 'error');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching requisition:', error);
       showToast('Failed to load requisition', 'error');
     } finally {
@@ -69,28 +69,28 @@ export default function CreateRFQ() {
     try {
       const response = await procurementAPI.getSuppliers({ status: 'active' });
       setSuppliers(response.data.data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching suppliers:', error);
       showToast('Failed to load suppliers', 'error');
     }
   };
 
-  const filteredSuppliers = suppliers.filter(s => 
+  const filteredSuppliers = suppliers.filter((s: any) => 
     s.companyName?.toLowerCase().includes(supplierSearch.toLowerCase()) ||
     s.contactEmail?.toLowerCase().includes(supplierSearch.toLowerCase())
   );
 
-  const toggleSupplier = (supplier) => {
-    setSelectedSuppliers(prev => {
-      const exists = prev.find(s => s._id === supplier._id);
+  const toggleSupplier = (supplier: any) => {
+    setSelectedSuppliers((prev: any) => {
+      const exists = prev.find((s: any) => s._id === supplier._id);
       if (exists) {
-        return prev.filter(s => s._id !== supplier._id);
+        return prev.filter((s: any) => s._id !== supplier._id);
       }
       return [...prev, supplier];
     });
   };
 
-  const handleSubmit = async (e, asDraft = false) => {
+  const handleSubmit = async (e: any, asDraft = false) => {
     e.preventDefault();
 
     if (!asDraft) {
@@ -107,17 +107,17 @@ export default function CreateRFQ() {
     try {
       setSubmitting(true);
 
-      const rfqData = {
+      const rfqData: any = {
         title: formData.title,
         description: formData.description,
         purchaseRequisitionId: requisitionId, // Backend expects purchaseRequisitionId, not purchaseRequisition
-        items: requisition?.items?.map(item => ({
+        items: requisition?.items?.map((item: any) => ({
           description: item.description,
           specifications: item.specification || item.specifications,
           quantity: item.quantity,
           unit: item.unit || 'Each'
         })) || [],
-        invitedSuppliers: selectedSuppliers.map(s => s._id),
+        invitedSuppliers: selectedSuppliers.map((s: any) => s._id),
         submissionDeadline: formData.submissionDeadline,
         deliveryRequiredBy: formData.deliveryRequiredBy,
         termsAndConditions: formData.termsAndConditions,
@@ -134,7 +134,7 @@ export default function CreateRFQ() {
 
       showToast(asDraft ? 'RFQ saved as draft' : 'RFQ created and sent to suppliers', 'success');
       navigate('/app/rfqs');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating RFQ:', error);
       showToast(error.response?.data?.message || 'Failed to create RFQ', 'error');
     } finally {
@@ -170,7 +170,7 @@ export default function CreateRFQ() {
         </div>
       </div>
 
-      <form onSubmit={(e) => handleSubmit(e, false)}>
+      <form onSubmit={(e: any) => handleSubmit(e, false)}>
         <div className="space-y-6">
           {/* Requisition Info Banner */}
           {requisition && (
@@ -207,7 +207,7 @@ export default function CreateRFQ() {
                 <input
                   type="text"
                   value={formData.title}
-                  onChange={(e) => setFormData({...formData, title: e.target.value})}
+                  onChange={(e: any) => setFormData({...formData, title: e.target.value})}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   placeholder="Enter RFQ title"
                   required
@@ -220,7 +220,7 @@ export default function CreateRFQ() {
                 </label>
                 <textarea
                   value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  onChange={(e: any) => setFormData({...formData, description: e.target.value})}
                   rows={3}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
                   placeholder="Additional details or requirements for suppliers..."
@@ -234,7 +234,7 @@ export default function CreateRFQ() {
                 <input
                   type="datetime-local"
                   value={formData.submissionDeadline}
-                  onChange={(e) => setFormData({...formData, submissionDeadline: e.target.value})}
+                  onChange={(e: any) => setFormData({...formData, submissionDeadline: e.target.value})}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   min={new Date().toISOString().slice(0, 16)}
                 />
@@ -247,7 +247,7 @@ export default function CreateRFQ() {
                 <input
                   type="date"
                   value={formData.deliveryRequiredBy}
-                  onChange={(e) => setFormData({...formData, deliveryRequiredBy: e.target.value})}
+                  onChange={(e: any) => setFormData({...formData, deliveryRequiredBy: e.target.value})}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 />
               </div>
@@ -282,7 +282,7 @@ export default function CreateRFQ() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {requisition.items.map((item, index) => (
+                    {requisition.items.map((item: any, index: any) => (
                       <tr key={index} className="bg-gray-50/50">
                         <td className="py-3 px-4 text-sm text-gray-500">{index + 1}</td>
                         <td className="py-3 px-4">
@@ -325,7 +325,7 @@ export default function CreateRFQ() {
             {/* Selected Suppliers */}
             {selectedSuppliers.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-4">
-                {selectedSuppliers.map((supplier) => (
+                {selectedSuppliers.map((supplier: any) => (
                   <div
                     key={supplier._id}
                     className="flex items-center gap-2 bg-primary/10 text-primary px-3 py-1.5 rounded-full"
@@ -349,7 +349,7 @@ export default function CreateRFQ() {
               <input
                 type="text"
                 value={supplierSearch}
-                onChange={(e) => setSupplierSearch(e.target.value)}
+                onChange={(e: any) => setSupplierSearch(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 placeholder="Search suppliers..."
               />
@@ -364,8 +364,8 @@ export default function CreateRFQ() {
                 </div>
               ) : (
                 <div className="divide-y divide-gray-100">
-                  {filteredSuppliers.map((supplier) => {
-                    const isSelected = selectedSuppliers.some(s => s._id === supplier._id);
+                  {filteredSuppliers.map((supplier: any) => {
+                    const isSelected = selectedSuppliers.some((s: any) => s._id === supplier._id);
                     return (
                       <div
                         key={supplier._id}
@@ -403,7 +403,7 @@ export default function CreateRFQ() {
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Terms & Conditions</h2>
             <textarea
               value={formData.termsAndConditions}
-              onChange={(e) => setFormData({...formData, termsAndConditions: e.target.value})}
+              onChange={(e: any) => setFormData({...formData, termsAndConditions: e.target.value})}
               rows={4}
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
               placeholder="Enter terms and conditions for this RFQ..."
@@ -422,7 +422,7 @@ export default function CreateRFQ() {
             <div className="flex gap-3">
               <button
                 type="button"
-                onClick={(e) => handleSubmit(e, true)}
+                onClick={(e: any) => handleSubmit(e, true)}
                 disabled={submitting}
                 className="px-6 py-2.5 border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
               >

@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import ViewButton from '../components/ViewButton';
 
-const statusColors = {
+const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
   open: 'bg-blue-100 text-blue-700',
   closed: 'bg-amber-100 text-amber-700',
@@ -29,9 +29,9 @@ const statusColors = {
 export default function RFQs() {
   const navigate = useNavigate();
   const [rfqs, setRFQs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [loading, setLoading] = useState<any>(true);
+  const [search, setSearch] = useState<any>('');
+  const [statusFilter, setStatusFilter] = useState<any>('');
 
   useEffect(() => {
     fetchRFQs();
@@ -45,7 +45,7 @@ export default function RFQs() {
         status: statusFilter 
       });
       setRFQs(response.data.data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching RFQs:', error);
     } finally {
       setLoading(false);
@@ -78,7 +78,7 @@ export default function RFQs() {
               type="text"
               placeholder="Search RFQs..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e: any) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
             />
           </div>
@@ -111,7 +111,7 @@ export default function RFQs() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {rfqs.map((rfq) => (
+          {rfqs.map((rfq: any) => (
             <div 
               key={rfq._id}
               className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
@@ -143,7 +143,7 @@ export default function RFQs() {
                     </div>
                     {rfq.invitedSuppliers && rfq.invitedSuppliers.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mt-1">
-                        {rfq.invitedSuppliers.slice(0, 3).map((invited, idx) => {
+                        {rfq.invitedSuppliers.slice(0, 3).map((invited: any, idx: any) => {
                           const supplierName = invited.supplier?.companyName || 
                                              (typeof invited.supplier === 'string' ? 'Loading...' : 'Unknown Supplier');
                           return (

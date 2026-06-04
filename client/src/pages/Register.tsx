@@ -6,13 +6,13 @@ import { Loader2, Eye, EyeOff, Building2, ArrowLeft } from 'lucide-react';
 import Logo from '../components/Logo';
 
 export default function Register() {
-  const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [step, setStep] = useState<any>(1);
+  const [loading, setLoading] = useState<any>(false);
+  const [success, setSuccess] = useState<any>(false);
+  const [showPassword, setShowPassword] = useState<any>(false);
   const { showToast } = useToast();
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<any>({
     // User info
     email: '',
     password: '',
@@ -55,16 +55,16 @@ export default function Register() {
     'Other'
   ];
 
-  const handleChange = (e) => {
+  const handleChange = (e: any) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev: any) => ({ ...prev, [name]: value }));
   };
 
-  const toggleCategory = (category) => {
-    setFormData(prev => ({
+  const toggleCategory = (category: any) => {
+    setFormData((prev: any) => ({
       ...prev,
       categories: prev.categories.includes(category)
-        ? prev.categories.filter(c => c !== category)
+        ? prev.categories.filter((c: any) => c !== category)
         : [...prev.categories, category]
     }));
   };
@@ -97,15 +97,15 @@ export default function Register() {
 
   const nextStep = () => {
     if (validateStep()) {
-      setStep(prev => prev + 1);
+      setStep((prev: any) => prev + 1);
     }
   };
 
   const prevStep = () => {
-    setStep(prev => prev - 1);
+    setStep((prev: any) => prev - 1);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault();
     if (!validateStep()) return;
 
@@ -142,7 +142,7 @@ export default function Register() {
       });
 
       setSuccess(true);
-    } catch (err) {
+    } catch (err: any) {
       showToast(err.response?.data?.message || 'Registration failed. Please try again.', 'error', 5000);
     } finally {
       setLoading(false);
@@ -195,7 +195,7 @@ export default function Register() {
         {/* Progress Steps */}
         <div className="px-8 py-4 border-b border-gray-100">
           <div className="flex items-center justify-between">
-            {['Account', 'Company', 'Address', 'Banking'].map((label, idx) => (
+            {['Account', 'Company', 'Address', 'Banking'].map((label: any, idx: any) => (
               <div key={label} className="flex items-center">
                 <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
                   step > idx + 1 ? 'bg-primary text-white' :
@@ -352,7 +352,7 @@ export default function Register() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Product/Service Categories</label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {categoryOptions.map(cat => (
+                  {categoryOptions.map((cat: any) => (
                     <label
                       key={cat}
                       className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${

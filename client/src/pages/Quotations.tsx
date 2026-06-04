@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import ViewButton from '../components/ViewButton';
 
-const statusColors = {
+const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
   submitted: 'bg-blue-100 text-blue-700',
   under_review: 'bg-purple-100 text-purple-700',
@@ -32,7 +32,7 @@ const statusColors = {
   expired: 'bg-amber-100 text-amber-700'
 };
 
-const statusIcons = {
+const statusIcons: any = {
   draft: Clock,
   submitted: FileText,
   under_review: Eye,
@@ -41,7 +41,7 @@ const statusIcons = {
   expired: Clock
 };
 
-const statusLabels = {
+const statusLabels: any = {
   draft: 'Draft',
   submitted: 'Received from Supplier',
   under_review: 'Under Review',
@@ -55,17 +55,17 @@ export default function Quotations() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [quotations, setQuotations] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
+  const [loading, setLoading] = useState<any>(true);
+  const [search, setSearch] = useState<any>('');
+  const [statusFilter, setStatusFilter] = useState<any>(searchParams.get('status') || '');
   const [selectedQuotation, setSelectedQuotation] = useState<any>(null);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [showRejectModal, setShowRejectModal] = useState(false);
-  const [showCreatePOModal, setShowCreatePOModal] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
-  const [rejectComments, setRejectComments] = useState('');
-  const [processing, setProcessing] = useState(false);
-  const [poFormData, setPOFormData] = useState({
+  const [showViewModal, setShowViewModal] = useState<any>(false);
+  const [showRejectModal, setShowRejectModal] = useState<any>(false);
+  const [showCreatePOModal, setShowCreatePOModal] = useState<any>(false);
+  const [rejectReason, setRejectReason] = useState<any>('');
+  const [rejectComments, setRejectComments] = useState<any>('');
+  const [processing, setProcessing] = useState<any>(false);
+  const [poFormData, setPOFormData] = useState<any>({
     deliveryAddress: {
       street: '',
       city: '',
@@ -89,7 +89,7 @@ export default function Quotations() {
         status: statusFilter 
       });
       setQuotations(response.data.data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching quotations:', error);
       showToast('Failed to load quotations', 'error');
     } finally {
@@ -97,12 +97,12 @@ export default function Quotations() {
     }
   };
 
-  const fetchQuotationDetails = async (id) => {
+  const fetchQuotationDetails = async (id: any) => {
     try {
       const response = await procurementAPI.getQuotation(id);
       setSelectedQuotation(response.data.data);
       setShowViewModal(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching quotation details:', error);
       showToast('Failed to load quotation details', 'error');
     }
@@ -118,7 +118,7 @@ export default function Quotations() {
       setShowViewModal(false);
       setSelectedQuotation(null);
       fetchQuotations();
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to accept quotation', 'error');
     } finally {
       setProcessing(false);
@@ -144,14 +144,14 @@ export default function Quotations() {
       setRejectReason('');
       setRejectComments('');
       fetchQuotations();
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to reject quotation', 'error');
     } finally {
       setProcessing(false);
     }
   };
 
-  const canAcceptOrReject = (quotation) => {
+  const canAcceptOrReject = (quotation: any) => {
     return quotation.status === 'submitted' || quotation.status === 'under_review';
   };
 
@@ -184,7 +184,7 @@ export default function Quotations() {
       });
       // Optionally navigate to purchase orders page
       // navigate('/app/purchase-orders');
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to create purchase order', 'error');
     } finally {
       setProcessing(false);
@@ -208,7 +208,7 @@ export default function Quotations() {
               type="text"
               placeholder="Search quotations..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e: any) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
             />
           </div>
@@ -221,7 +221,7 @@ export default function Quotations() {
               { value: 'rejected', label: 'Rejected', icon: XCircle }
             ]}
             activeTab={statusFilter}
-            onTabChange={(value) => {
+            onTabChange={(value: any) => {
               setStatusFilter(value);
               if (value) {
                 setSearchParams({ status: value });
@@ -275,7 +275,7 @@ export default function Quotations() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {quotations.map((quotation) => {
+                {quotations.map((quotation: any) => {
                   const StatusIcon = statusIcons[quotation.status];
                   return (
                     <tr key={quotation._id} className="hover:bg-gray-50 transition-colors">
@@ -412,7 +412,7 @@ export default function Quotations() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {selectedQuotation.items?.map((item, index) => (
+                    {selectedQuotation.items?.map((item: any, index: any) => (
                       <tr key={index}>
                         <td className="py-3 px-4">
                           <p className="text-sm font-medium text-gray-900">{item.description}</p>
@@ -434,7 +434,7 @@ export default function Quotations() {
                   </tbody>
                   <tfoot className="bg-gray-50">
                     <tr>
-                      <td colSpan="3" className="py-3 px-4 text-right font-semibold text-gray-700">
+                      <td colSpan={3} className="py-3 px-4 text-right font-semibold text-gray-700">
                         Subtotal:
                       </td>
                       <td className="py-3 px-4 font-semibold text-gray-900">
@@ -443,7 +443,7 @@ export default function Quotations() {
                     </tr>
                     {selectedQuotation.vatAmount > 0 && (
                       <tr>
-                        <td colSpan="3" className="py-3 px-4 text-right font-semibold text-gray-700">
+                        <td colSpan={3} className="py-3 px-4 text-right font-semibold text-gray-700">
                           VAT (15%):
                         </td>
                         <td className="py-3 px-4 font-semibold text-gray-900">
@@ -452,7 +452,7 @@ export default function Quotations() {
                       </tr>
                     )}
                     <tr>
-                      <td colSpan="3" className="py-3 px-4 text-right font-bold text-gray-900">
+                      <td colSpan={3} className="py-3 px-4 text-right font-bold text-gray-900">
                         Total:
                       </td>
                       <td className="py-3 px-4 text-lg font-bold text-primary">
@@ -561,7 +561,7 @@ export default function Quotations() {
             </label>
             <select
               value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
+              onChange={(e: any) => setRejectReason(e.target.value)}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
             >
               <option value="">Select a reason</option>
@@ -578,7 +578,7 @@ export default function Quotations() {
             </label>
             <textarea
               value={rejectComments}
-              onChange={(e) => setRejectComments(e.target.value)}
+              onChange={(e: any) => setRejectComments(e.target.value)}
               rows={3}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary resize-none"
               placeholder="Provide additional details about the rejection..."
@@ -639,7 +639,7 @@ export default function Quotations() {
               <input
                 type="date"
                 value={poFormData.expectedDeliveryDate}
-                onChange={(e) => setPOFormData({ ...poFormData, expectedDeliveryDate: e.target.value })}
+                onChange={(e: any) => setPOFormData({ ...poFormData, expectedDeliveryDate: e.target.value })}
                 min={new Date().toISOString().split('T')[0]}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
                 required
@@ -653,7 +653,7 @@ export default function Quotations() {
                   type="text"
                   placeholder="Street Address"
                   value={poFormData.deliveryAddress.street}
-                  onChange={(e) => setPOFormData({
+                  onChange={(e: any) => setPOFormData({
                     ...poFormData,
                     deliveryAddress: { ...poFormData.deliveryAddress, street: e.target.value }
                   })}
@@ -664,7 +664,7 @@ export default function Quotations() {
                     type="text"
                     placeholder="City"
                     value={poFormData.deliveryAddress.city}
-                    onChange={(e) => setPOFormData({
+                    onChange={(e: any) => setPOFormData({
                       ...poFormData,
                       deliveryAddress: { ...poFormData.deliveryAddress, city: e.target.value }
                     })}
@@ -674,7 +674,7 @@ export default function Quotations() {
                     type="text"
                     placeholder="Province"
                     value={poFormData.deliveryAddress.province}
-                    onChange={(e) => setPOFormData({
+                    onChange={(e: any) => setPOFormData({
                       ...poFormData,
                       deliveryAddress: { ...poFormData.deliveryAddress, province: e.target.value }
                     })}
@@ -685,7 +685,7 @@ export default function Quotations() {
                   type="text"
                   placeholder="Postal Code"
                   value={poFormData.deliveryAddress.postalCode}
-                  onChange={(e) => setPOFormData({
+                  onChange={(e: any) => setPOFormData({
                     ...poFormData,
                     deliveryAddress: { ...poFormData.deliveryAddress, postalCode: e.target.value }
                   })}
@@ -698,7 +698,7 @@ export default function Quotations() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Terms & Conditions</label>
               <textarea
                 value={poFormData.termsAndConditions}
-                onChange={(e) => setPOFormData({ ...poFormData, termsAndConditions: e.target.value })}
+                onChange={(e: any) => setPOFormData({ ...poFormData, termsAndConditions: e.target.value })}
                 rows={3}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary resize-none"
                 placeholder="Additional terms and conditions for this purchase order..."
@@ -709,7 +709,7 @@ export default function Quotations() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
               <textarea
                 value={poFormData.notes}
-                onChange={(e) => setPOFormData({ ...poFormData, notes: e.target.value })}
+                onChange={(e: any) => setPOFormData({ ...poFormData, notes: e.target.value })}
                 rows={2}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary resize-none"
                 placeholder="Internal notes for this purchase order..."

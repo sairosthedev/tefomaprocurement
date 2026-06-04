@@ -9,9 +9,9 @@ import { PROVINCES, BANKS, SUPPLIER_CATEGORIES } from '../../lib/constants';
 
 export default function SupplierProfile() {
   const { showToast } = useToast();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [profile, setProfile] = useState({
+  const [loading, setLoading] = useState<any>(true);
+  const [saving, setSaving] = useState<any>(false);
+  const [profile, setProfile] = useState<any>({
     companyName: '',
     tradingAs: '',
     registrationNumber: '',
@@ -47,7 +47,7 @@ export default function SupplierProfile() {
       if (response.data.success && response.data.data) {
         setProfile(response.data.data);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch profile:', error);
     } finally {
       setLoading(false);
@@ -61,17 +61,17 @@ export default function SupplierProfile() {
       if (response.data.success) {
         showToast('Profile updated successfully', 'success');
       }
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to update profile', 'error');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleCategoryChange = (category) => {
+  const handleCategoryChange = (category: any) => {
     const current = profile.categories || [];
     if (current.includes(category)) {
-      setProfile({ ...profile, categories: current.filter(c => c !== category) });
+      setProfile({ ...profile, categories: current.filter((c: any) => c !== category) });
     } else {
       setProfile({ ...profile, categories: [...current, category] });
     }
@@ -138,7 +138,7 @@ export default function SupplierProfile() {
               <input
                 type="text"
                 value={profile.companyName}
-                onChange={(e) => setProfile({ ...profile, companyName: e.target.value })}
+                onChange={(e: any) => setProfile({ ...profile, companyName: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
@@ -147,7 +147,7 @@ export default function SupplierProfile() {
               <input
                 type="text"
                 value={profile.tradingAs || ''}
-                onChange={(e) => setProfile({ ...profile, tradingAs: e.target.value })}
+                onChange={(e: any) => setProfile({ ...profile, tradingAs: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
@@ -156,7 +156,7 @@ export default function SupplierProfile() {
               <input
                 type="text"
                 value={profile.registrationNumber || ''}
-                onChange={(e) => setProfile({ ...profile, registrationNumber: e.target.value })}
+                onChange={(e: any) => setProfile({ ...profile, registrationNumber: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
@@ -165,7 +165,7 @@ export default function SupplierProfile() {
               <input
                 type="text"
                 value={profile.taxNumber || ''}
-                onChange={(e) => setProfile({ ...profile, taxNumber: e.target.value })}
+                onChange={(e: any) => setProfile({ ...profile, taxNumber: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
@@ -174,7 +174,7 @@ export default function SupplierProfile() {
               <input
                 type="text"
                 value={profile.vatNumber || ''}
-                onChange={(e) => setProfile({ ...profile, vatNumber: e.target.value })}
+                onChange={(e: any) => setProfile({ ...profile, vatNumber: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
@@ -194,7 +194,7 @@ export default function SupplierProfile() {
               <input
                 type="text"
                 value={profile.contactPerson}
-                onChange={(e) => setProfile({ ...profile, contactPerson: e.target.value })}
+                onChange={(e: any) => setProfile({ ...profile, contactPerson: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
@@ -212,7 +212,7 @@ export default function SupplierProfile() {
               <input
                 type="tel"
                 value={profile.phone || ''}
-                onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                onChange={(e: any) => setProfile({ ...profile, phone: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 placeholder="+263 77 123 4567"
               />
@@ -233,7 +233,7 @@ export default function SupplierProfile() {
               <input
                 type="text"
                 value={profile.address?.physical || ''}
-                onChange={(e) => setProfile({ ...profile, address: { ...profile.address, physical: e.target.value } })}
+                onChange={(e: any) => setProfile({ ...profile, address: { ...profile.address, physical: e.target.value } })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
@@ -242,7 +242,7 @@ export default function SupplierProfile() {
               <input
                 type="text"
                 value={profile.address?.city || ''}
-                onChange={(e) => setProfile({ ...profile, address: { ...profile.address, city: e.target.value } })}
+                onChange={(e: any) => setProfile({ ...profile, address: { ...profile.address, city: e.target.value } })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
@@ -250,11 +250,11 @@ export default function SupplierProfile() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Province</label>
               <select
                 value={profile.address?.province || ''}
-                onChange={(e) => setProfile({ ...profile, address: { ...profile.address, province: e.target.value } })}
+                onChange={(e: any) => setProfile({ ...profile, address: { ...profile.address, province: e.target.value } })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               >
                 <option value="">Select Province</option>
-                {PROVINCES.map(province => (
+                {PROVINCES.map((province: any) => (
                   <option key={province} value={province}>{province}</option>
                 ))}
               </select>
@@ -270,7 +270,7 @@ export default function SupplierProfile() {
           </h2>
           
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {SUPPLIER_CATEGORIES.map(category => (
+            {SUPPLIER_CATEGORIES.map((category: any) => (
               <label
                 key={category}
                 className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${
@@ -300,11 +300,11 @@ export default function SupplierProfile() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Bank Name</label>
               <select
                 value={profile.bankDetails?.bankName || ''}
-                onChange={(e) => setProfile({ ...profile, bankDetails: { ...profile.bankDetails, bankName: e.target.value } })}
+                onChange={(e: any) => setProfile({ ...profile, bankDetails: { ...profile.bankDetails, bankName: e.target.value } })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               >
                 <option value="">Select Bank</option>
-                {BANKS.map(bank => (
+                {BANKS.map((bank: any) => (
                   <option key={bank} value={bank}>{bank}</option>
                 ))}
               </select>
@@ -314,7 +314,7 @@ export default function SupplierProfile() {
               <input
                 type="text"
                 value={profile.bankDetails?.accountName || ''}
-                onChange={(e) => setProfile({ ...profile, bankDetails: { ...profile.bankDetails, accountName: e.target.value } })}
+                onChange={(e: any) => setProfile({ ...profile, bankDetails: { ...profile.bankDetails, accountName: e.target.value } })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
@@ -323,7 +323,7 @@ export default function SupplierProfile() {
               <input
                 type="text"
                 value={profile.bankDetails?.accountNumber || ''}
-                onChange={(e) => setProfile({ ...profile, bankDetails: { ...profile.bankDetails, accountNumber: e.target.value } })}
+                onChange={(e: any) => setProfile({ ...profile, bankDetails: { ...profile.bankDetails, accountNumber: e.target.value } })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
@@ -332,7 +332,7 @@ export default function SupplierProfile() {
               <input
                 type="text"
                 value={profile.bankDetails?.branchCode || ''}
-                onChange={(e) => setProfile({ ...profile, bankDetails: { ...profile.bankDetails, branchCode: e.target.value } })}
+                onChange={(e: any) => setProfile({ ...profile, bankDetails: { ...profile.bankDetails, branchCode: e.target.value } })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>

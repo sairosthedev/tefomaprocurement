@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '../lib/constants';
 
-const movementTypes = {
+const movementTypes: any = {
   'stock-in': { label: 'Stock In', color: 'text-green-600 bg-green-100', icon: ArrowDownLeft },
   'stock-out': { label: 'Stock Out', color: 'text-red-600 bg-red-100', icon: ArrowUpRight },
   'adjustment': { label: 'Adjustment', color: 'text-amber-600 bg-amber-100', icon: Package },
@@ -17,10 +17,10 @@ const movementTypes = {
 export default function StockMovements() {
   const { showToast } = useToast();
   const [movements, setMovements] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
-  const [dateRange, setDateRange] = useState('all');
+  const [loading, setLoading] = useState<any>(true);
+  const [searchTerm, setSearchTerm] = useState<any>('');
+  const [typeFilter, setTypeFilter] = useState<any>('');
+  const [dateRange, setDateRange] = useState<any>('all');
 
   useEffect(() => {
     fetchMovements();
@@ -35,7 +35,7 @@ export default function StockMovements() {
       if (response.data.success) {
         setMovements(response.data.data || []);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch movements:', error);
       showToast('Failed to load stock movements', 'error');
       setMovements([]);
@@ -62,7 +62,7 @@ export default function StockMovements() {
             <div>
               <p className="text-sm text-green-600">Stock In</p>
               <p className="text-2xl font-bold text-green-700">
-                {movements.filter(m => m.type === 'stock-in').length}
+                {movements.filter((m: any) => m.type === 'stock-in').length}
               </p>
             </div>
           </div>
@@ -76,7 +76,7 @@ export default function StockMovements() {
             <div>
               <p className="text-sm text-red-600">Stock Out</p>
               <p className="text-2xl font-bold text-red-700">
-                {movements.filter(m => m.type === 'stock-out').length}
+                {movements.filter((m: any) => m.type === 'stock-out').length}
               </p>
             </div>
           </div>
@@ -90,7 +90,7 @@ export default function StockMovements() {
             <div>
               <p className="text-sm text-amber-600">Adjustments</p>
               <p className="text-2xl font-bold text-amber-700">
-                {movements.filter(m => m.type === 'adjustment').length}
+                {movements.filter((m: any) => m.type === 'adjustment').length}
               </p>
             </div>
           </div>
@@ -118,13 +118,13 @@ export default function StockMovements() {
               type="text"
               placeholder="Search by item name, code, or reference..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e: any) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
           <select
             value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
+            onChange={(e: any) => setTypeFilter(e.target.value)}
             className="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
           >
             <option value="">All Types</option>
@@ -135,7 +135,7 @@ export default function StockMovements() {
           </select>
           <select
             value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
+            onChange={(e: any) => setDateRange(e.target.value)}
             className="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
           >
             <option value="all">All Time</option>
@@ -172,7 +172,7 @@ export default function StockMovements() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {movements.map((movement) => {
+                {movements.map((movement: any) => {
                   const typeInfo = movementTypes[movement.type] || movementTypes['adjustment'];
                   const Icon = typeInfo.icon;
                   return (

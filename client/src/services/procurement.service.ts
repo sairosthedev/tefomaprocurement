@@ -1,6 +1,6 @@
 import http from './http';
 
-export const procurementAPI = {
+export const procurementAPI: any = {
   getSuppliers: (params?: any) => http.get('/procurement/suppliers', { params }),
   getSupplier: (id: any) => http.get(`/procurement/suppliers/${id}`),
   createSupplier: (data: any) => http.post('/procurement/suppliers', data),

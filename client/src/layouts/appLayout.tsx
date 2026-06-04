@@ -110,12 +110,12 @@ export function SidebarLayout({ children }: any) {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, logout } = useAuth()
-  const [showLogoutModal, setShowLogoutModal] = useState(false)
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [showLogoutModal, setShowLogoutModal] = useState<any>(false)
+  const [isLoggingOut, setIsLoggingOut] = useState<any>(false)
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
-    await new Promise(resolve => setTimeout(resolve, 800))
+    await new Promise((resolve: any) => setTimeout(resolve, 800))
     logout()
     setIsLoggingOut(false)
     setShowLogoutModal(false)
@@ -171,7 +171,7 @@ export function SidebarLayout({ children }: any) {
           <nav className="flex-1 px-3 flex flex-col gap-0.5 overflow-y-auto">
             {navigation.map((item: any) => {
               // Special handling for My RFQs - also active on submit-quotation page
-              let isActive;
+              let isActive: any;
               if (item.href === '/app/my-rfqs') {
                 isActive = location.pathname.startsWith(item.href) || location.pathname.startsWith('/app/submit-quotation');
               } else if (item.href === '/app') {

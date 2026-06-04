@@ -17,8 +17,8 @@ import {
 } from 'lucide-react';
 
 // Map notification types to icons and colors
-const getNotificationIcon = (type) => {
-  const icons = {
+const getNotificationIcon = (type: any) => {
+  const icons: any = {
     login_successful: CheckCircle,
     supplier_added: CheckCircle,
     supplier_approved: CheckCircle,
@@ -50,8 +50,8 @@ const getNotificationIcon = (type) => {
   return icons[type] || Bell;
 };
 
-const getNotificationColors = (type) => {
-  const colors = {
+const getNotificationColors = (type: any) => {
+  const colors: any = {
     login_successful: { icon: 'text-green-500', bg: 'bg-green-100' },
     supplier_added: { icon: 'text-green-500', bg: 'bg-green-100' },
     supplier_approved: { icon: 'text-green-500', bg: 'bg-green-100' },
@@ -83,10 +83,10 @@ const getNotificationColors = (type) => {
   return colors[type] || { icon: 'text-gray-500', bg: 'bg-gray-100' };
 };
 
-const formatTimeAgo = (date) => {
+const formatTimeAgo = (date: any) => {
   const now = new Date();
   const notificationDate = new Date(date);
-  const diffInSeconds = Math.floor((now - notificationDate) / 1000);
+  const diffInSeconds = Math.floor((now.getTime() - notificationDate.getTime()) / 1000);
   
   if (diffInSeconds < 60) {
     return 'just now';
@@ -107,8 +107,8 @@ const formatTimeAgo = (date) => {
 export default function Notifications() {
   const { showToast } = useToast();
   const [notifications, setNotifications] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [markingAll, setMarkingAll] = useState(false);
+  const [loading, setLoading] = useState<any>(true);
+  const [markingAll, setMarkingAll] = useState<any>(false);
 
   useEffect(() => {
     fetchNotifications();
@@ -121,7 +121,7 @@ export default function Notifications() {
       if (response.data.success) {
         setNotifications(response.data.data || []);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch notifications:', error);
       showToast('Failed to load notifications', 'error');
     } finally {
@@ -129,13 +129,13 @@ export default function Notifications() {
     }
   };
 
-  const handleMarkAsRead = async (id) => {
+  const handleMarkAsRead = async (id: any) => {
     try {
       await notificationsAPI.markAsRead(id);
-      setNotifications(notifications.map(n => 
+      setNotifications(notifications.map((n: any) => 
         n._id === id ? { ...n, read: true, readAt: new Date() } : n
       ));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to mark notification as read:', error);
     }
   };
@@ -144,9 +144,9 @@ export default function Notifications() {
     try {
       setMarkingAll(true);
       await notificationsAPI.markAllAsRead();
-      setNotifications(notifications.map(n => ({ ...n, read: true, readAt: new Date() })));
+      setNotifications(notifications.map((n: any) => ({ ...n, read: true, readAt: new Date() })));
       showToast('All notifications marked as read', 'success');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to mark all as read:', error);
       showToast('Failed to mark all as read', 'error');
     } finally {
@@ -154,7 +154,7 @@ export default function Notifications() {
     }
   };
 
-  const handleNotificationClick = async (notification) => {
+  const handleNotificationClick = async (notification: any) => {
     if (!notification.read) {
       await handleMarkAsRead(notification._id);
     }
@@ -169,7 +169,7 @@ export default function Notifications() {
           <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
           <p className="text-gray-500 mt-1">Stay updated with system activities</p>
         </div>
-        {notifications.filter(n => !n.read).length > 0 && (
+        {notifications.filter((n: any) => !n.read).length > 0 && (
           <button 
             onClick={handleMarkAllAsRead}
             disabled={markingAll}
@@ -199,7 +199,7 @@ export default function Notifications() {
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {notifications.map((notification) => {
+            {notifications.map((notification: any) => {
               const Icon = getNotificationIcon(notification.type);
               const colors = getNotificationColors(notification.type);
               

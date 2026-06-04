@@ -18,7 +18,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 
-const iconMap = {
+const iconMap: any = {
   totalUsers: Users,
   activeUsers: UserCheck,
   totalSuppliers: Users,
@@ -55,7 +55,7 @@ const iconMap = {
   myPOs: ShoppingCart
 };
 
-const colorMap = {
+const colorMap: any = {
   totalUsers: 'bg-blue-500',
   activeUsers: 'bg-green-500',
   totalSuppliers: 'bg-purple-500',
@@ -92,7 +92,7 @@ const colorMap = {
   myPOs: 'bg-emerald-500'
 };
 
-const activityIconMap = {
+const activityIconMap: any = {
   login: CheckCircle,
   create: FileText,
   update: RefreshCw,
@@ -102,7 +102,7 @@ const activityIconMap = {
   login_failed: AlertCircle
 };
 
-const activityColorMap = {
+const activityColorMap: any = {
   login: 'text-green-500',
   create: 'text-blue-500',
   update: 'text-amber-500',
@@ -115,10 +115,10 @@ const activityColorMap = {
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [stats, setStats] = useState({});
+  const [stats, setStats] = useState<any>({});
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
-  const [additionalStats, setAdditionalStats] = useState({});
-  const [loading, setLoading] = useState(true);
+  const [additionalStats, setAdditionalStats] = useState<any>({});
+  const [loading, setLoading] = useState<any>(true);
   const [error, setError] = useState<any>(null);
 
   useEffect(() => {
@@ -135,7 +135,7 @@ export default function Dashboard() {
         setRecentActivity(response.data.data.recentActivity || []);
         setAdditionalStats(response.data.data.additionalStats || {});
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch dashboard data:', err);
       setError('Failed to load dashboard data');
     } finally {
@@ -143,8 +143,8 @@ export default function Dashboard() {
     }
   };
 
-  const getRoleDisplayName = (role) => {
-    const names = {
+  const getRoleDisplayName = (role: any) => {
+    const names: any = {
       admin: 'Administrator',
       procurement_officer: 'Procurement Officer',
       department_head: 'Department Head',
@@ -157,7 +157,7 @@ export default function Dashboard() {
   };
 
   const getQuickActions = () => {
-    const actions = {
+    const actions: any = {
       admin: [
         { label: 'Manage Users', icon: Users, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/users' },
         { label: 'View Suppliers', icon: Users, color: 'bg-purple-50 hover:bg-purple-100 text-purple-700', href: '/app/suppliers' },
@@ -240,7 +240,7 @@ export default function Dashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {Object.entries(stats).map(([key, stat]) => {
+        {Object.entries(stats).map(([key, stat]: any) => {
           const Icon = iconMap[key] || FileText;
           const color = colorMap[key] || 'bg-gray-500';
           return (
@@ -276,7 +276,7 @@ export default function Dashboard() {
                 <p>No recent activity</p>
               </div>
             ) : (
-              recentActivity.map((activity) => {
+              recentActivity.map((activity: any) => {
                 const Icon = activityIconMap[activity.type] || FileText;
                 const iconColor = activityColorMap[activity.type] || 'text-gray-500';
                 return (
@@ -312,7 +312,7 @@ export default function Dashboard() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {Object.entries(getAdditionalStats()).length > 0 ? (
-                Object.entries(getAdditionalStats()).map(([key, stat]) => {
+                Object.entries(getAdditionalStats()).map(([key, stat]: any) => {
                   const Icon = iconMap[key] || FileText;
                   const color = colorMap[key] || 'bg-gray-500';
                   return (
@@ -346,7 +346,7 @@ export default function Dashboard() {
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <h2 className="text-lg font-semibold text-gray-900 mb-6">Quick Actions</h2>
           <div className="space-y-3">
-            {getQuickActions().map((action, index) => {
+            {getQuickActions().map((action: any, index: any) => {
               const Icon = action.icon;
               return (
                 <button

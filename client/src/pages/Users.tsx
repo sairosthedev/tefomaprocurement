@@ -19,7 +19,7 @@ import {
   Users as UsersIcon
 } from 'lucide-react';
 
-const roleColors = {
+const roleColors: any = {
   admin: 'bg-purple-100 text-purple-700',
   procurement_officer: 'bg-blue-100 text-blue-700',
   department_head: 'bg-cyan-100 text-cyan-700',
@@ -29,7 +29,7 @@ const roleColors = {
   supplier: 'bg-gray-100 text-gray-700'
 };
 
-const roleNames = {
+const roleNames: any = {
   admin: 'Admin',
   procurement_officer: 'Procurement Officer',
   department_head: 'Department Head',
@@ -51,16 +51,16 @@ const roleOptions = [
 export default function Users() {
   const [users, setUsers] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState('');
-  const [showModal, setShowModal] = useState(false);
+  const [loading, setLoading] = useState<any>(true);
+  const [search, setSearch] = useState<any>('');
+  const [roleFilter, setRoleFilter] = useState<any>('');
+  const [showModal, setShowModal] = useState<any>(false);
   const [editingUser, setEditingUser] = useState<any>(null);
-  const [saving, setSaving] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [saving, setSaving] = useState<any>(false);
+  const [showPassword, setShowPassword] = useState<any>(false);
   const { addToast } = useToast();
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<any>({
     email: '',
     password: '',
     confirmPassword: '',
@@ -82,7 +82,7 @@ export default function Users() {
       setLoading(true);
       const response = await adminAPI.getUsers({ search, role: roleFilter });
       setUsers(response.data.data || []);
-    } catch (error) {
+    } catch (error: any) {
       addToast('Failed to fetch users', 'error');
     } finally {
       setLoading(false);
@@ -93,7 +93,7 @@ export default function Users() {
     try {
       const response = await adminAPI.getDepartments();
       setDepartments(response.data.data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch departments');
     }
   };
@@ -113,7 +113,7 @@ export default function Users() {
     setShowPassword(false);
   };
 
-  const handleOpenModal = (user = null) => {
+  const handleOpenModal = (user: any = null) => {
     if (user) {
       setEditingUser(user);
       setFormData({
@@ -134,7 +134,7 @@ export default function Users() {
     setShowModal(true);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault();
     
     // Validation
@@ -157,7 +157,7 @@ export default function Users() {
 
     try {
       if (editingUser) {
-        const updateData = {
+        const updateData: any = {
           firstName: formData.firstName,
           lastName: formData.lastName,
           role: formData.role,
@@ -189,21 +189,21 @@ export default function Users() {
       setShowModal(false);
       resetForm();
       fetchUsers();
-    } catch (error) {
+    } catch (error: any) {
       addToast(error.response?.data?.message || 'Failed to save user', 'error');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (user) => {
+  const handleDelete = async (user: any) => {
     if (!confirm(`Are you sure you want to delete ${user.firstName} ${user.lastName}?`)) return;
     
     try {
       await adminAPI.deleteUser(user._id);
       addToast('User deleted successfully', 'success');
       fetchUsers();
-    } catch (error) {
+    } catch (error: any) {
       addToast('Failed to delete user', 'error');
     }
   };
@@ -234,14 +234,14 @@ export default function Users() {
               type="text"
               placeholder="Search users..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e: any) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
             />
           </div>
           <Tabs
             tabs={[
               { value: '', label: 'All Roles', icon: UsersIcon },
-              ...roleOptions.map(role => ({
+              ...roleOptions.map((role: any) => ({
                 value: role.value,
                 label: role.label,
                 icon: Shield
@@ -280,7 +280,7 @@ export default function Users() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {users.map((user) => (
+                {users.map((user: any) => (
                   <tr key={user._id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -363,7 +363,7 @@ export default function Users() {
               <input
                 type="text"
                 value={formData.firstName}
-                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                onChange={(e: any) => setFormData({ ...formData, firstName: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                 required
               />
@@ -373,7 +373,7 @@ export default function Users() {
               <input
                 type="text"
                 value={formData.lastName}
-                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                onChange={(e: any) => setFormData({ ...formData, lastName: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                 required
               />
@@ -385,7 +385,7 @@ export default function Users() {
             <input
               type="email"
               value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              onChange={(e: any) => setFormData({ ...formData, email: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
               required
               disabled={!!editingUser}
@@ -403,7 +403,7 @@ export default function Users() {
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                onChange={(e: any) => setFormData({ ...formData, password: e.target.value })}
                 className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                 required={!editingUser}
                 minLength={6}
@@ -425,7 +425,7 @@ export default function Users() {
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={formData.confirmPassword}
-                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                onChange={(e: any) => setFormData({ ...formData, confirmPassword: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                 required={!!formData.password}
                 placeholder="Confirm password"
@@ -438,11 +438,11 @@ export default function Users() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
               <select
                 value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                onChange={(e: any) => setFormData({ ...formData, role: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
                 required
               >
-                {roleOptions.map(role => (
+                {roleOptions.map((role: any) => (
                   <option key={role.value} value={role.value}>{role.label}</option>
                 ))}
               </select>
@@ -451,11 +451,11 @@ export default function Users() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
               <select
                 value={formData.department}
-                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                onChange={(e: any) => setFormData({ ...formData, department: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
               >
                 <option value="">No Department</option>
-                {departments.map(dept => (
+                {departments.map((dept: any) => (
                   <option key={dept._id} value={dept._id}>{dept.name}</option>
                 ))}
               </select>
@@ -468,7 +468,7 @@ export default function Users() {
               <input
                 type="tel"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                onChange={(e: any) => setFormData({ ...formData, phone: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                 placeholder="+263..."
               />
@@ -477,7 +477,7 @@ export default function Users() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
               <select
                 value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                onChange={(e: any) => setFormData({ ...formData, status: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
               >
                 <option value="active">Active</option>

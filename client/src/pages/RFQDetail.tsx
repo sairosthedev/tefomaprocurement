@@ -16,7 +16,7 @@ import {
   DollarSign
 } from 'lucide-react';
 
-const statusColors = {
+const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
   open: 'bg-blue-100 text-blue-700',
   closed: 'bg-amber-100 text-amber-700',
@@ -29,7 +29,7 @@ export default function RFQDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<any>(true);
   const [rfq, setRfq] = useState<any>(null);
 
   useEffect(() => {
@@ -43,7 +43,7 @@ export default function RFQDetail() {
       if (response.data.success) {
         setRfq(response.data.data);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching RFQ:', error);
       showToast(error.response?.data?.message || 'Failed to load RFQ details', 'error');
     } finally {
@@ -56,7 +56,7 @@ export default function RFQDetail() {
       await procurementAPI.publishRFQ(id);
       showToast('RFQ published successfully', 'success');
       fetchRFQ();
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to publish RFQ', 'error');
     }
   };
@@ -204,7 +204,7 @@ export default function RFQDetail() {
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Requested Items</h3>
             <div className="space-y-3">
-              {rfq.items.map((item, index) => (
+              {rfq.items.map((item: any, index: any) => (
                 <div key={index} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -233,7 +233,7 @@ export default function RFQDetail() {
               Invited Suppliers ({rfq.invitedSuppliers.length})
             </h3>
             <div className="space-y-2">
-              {rfq.invitedSuppliers.map((invitation, index) => (
+              {rfq.invitedSuppliers.map((invitation: any, index: any) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div>
                     <p className="font-medium text-gray-900">

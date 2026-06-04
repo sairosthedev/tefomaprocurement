@@ -5,7 +5,7 @@ const AuthContext = createContext<any>(null);
 
 export function AuthProvider({ children }: any) {
   const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<any>(true);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -16,7 +16,7 @@ export function AuthProvider({ children }: any) {
         try {
           const response = await authAPI.getMe();
           setUser(response.data.user);
-        } catch (error) {
+        } catch (error: any) {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
         }
@@ -45,12 +45,12 @@ export function AuthProvider({ children }: any) {
   };
 
   const updateUser = (updatedData: any) => {
-    const newUser = { ...user, ...updatedData };
+    const newUser: any = { ...user, ...updatedData };
     localStorage.setItem('user', JSON.stringify(newUser));
     setUser(newUser);
   };
 
-  const value = {
+  const value: any = {
     user,
     loading,
     login,

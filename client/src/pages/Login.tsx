@@ -6,12 +6,12 @@ import { Loader2 } from 'lucide-react';
 import Logo from '../components/Logo';
 
 export default function Login() {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<any>({
     email: '',
     password: ''
   });
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState<any>(false);
+  const [isLoading, setIsLoading] = useState<any>(false);
 
   const { login } = useAuth();
   const { showToast } = useToast();
@@ -20,14 +20,14 @@ export default function Login() {
 
   const from = location.state?.from?.pathname || '/app';
 
-  const handleChange = (e) => {
+  const handleChange = (e: any) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault();
     setIsLoading(true);
 
@@ -35,7 +35,7 @@ export default function Login() {
       const user = await login(formData.email, formData.password);
       
       // Redirect based on role
-      const roleRoutes = {
+      const roleRoutes: any = {
         admin: '/app',
         procurement_officer: '/app',
         department_head: '/app',
@@ -46,7 +46,7 @@ export default function Login() {
       };
       
       navigate(roleRoutes[user.role] || from, { replace: true });
-    } catch (err) {
+    } catch (err: any) {
       showToast(err.response?.data?.message || 'Login failed. Please try again.', 'error', 5000);
     } finally {
       setIsLoading(false);

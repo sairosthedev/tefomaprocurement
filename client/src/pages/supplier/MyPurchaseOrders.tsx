@@ -7,7 +7,7 @@ import ViewButton from '../../components/ViewButton';
 import Modal from '../../components/Modal';
 import { formatCurrency } from '../../lib/constants';
 
-const statusColors = {
+const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
   pending_finance: 'bg-amber-100 text-amber-700',
   pending_coo: 'bg-purple-100 text-purple-700',
@@ -29,11 +29,11 @@ export default function MyPurchaseOrders() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<any>(true);
   const [selectedPO, setSelectedPO] = useState<any>(null);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [showAcknowledgeModal, setShowAcknowledgeModal] = useState(false);
-  const [acknowledgeData, setAcknowledgeData] = useState({
+  const [showViewModal, setShowViewModal] = useState<any>(false);
+  const [showAcknowledgeModal, setShowAcknowledgeModal] = useState<any>(false);
+  const [acknowledgeData, setAcknowledgeData] = useState<any>({
     deliveryNoteNumber: '',
     expectedDeliveryDate: ''
   });
@@ -53,7 +53,7 @@ export default function MyPurchaseOrders() {
         console.error('Failed to fetch purchase orders:', response.data.message);
         showToast(response.data.message || 'Failed to load purchase orders', 'error');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch purchase orders:', error);
       showToast(error.response?.data?.message || 'Failed to load purchase orders', 'error');
     } finally {
@@ -61,7 +61,7 @@ export default function MyPurchaseOrders() {
     }
   };
 
-  const openAcknowledgeModal = (po) => {
+  const openAcknowledgeModal = (po: any) => {
     setSelectedPO(po);
     setAcknowledgeData({
       deliveryNoteNumber: '',
@@ -82,7 +82,7 @@ export default function MyPurchaseOrders() {
       setShowAcknowledgeModal(false);
       setAcknowledgeData({ deliveryNoteNumber: '', expectedDeliveryDate: '' });
       fetchMyPurchaseOrders();
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to acknowledge', 'error');
     }
   };
@@ -105,7 +105,7 @@ export default function MyPurchaseOrders() {
             <div>
               <p className="text-sm text-blue-600">New Orders</p>
               <p className="text-2xl font-bold text-blue-700">
-                {purchaseOrders.filter(po => po.status === 'approved' || po.status === 'issued').length}
+                {purchaseOrders.filter((po: any) => po.status === 'approved' || po.status === 'issued').length}
               </p>
             </div>
           </div>
@@ -119,7 +119,7 @@ export default function MyPurchaseOrders() {
             <div>
               <p className="text-sm text-amber-600">In Progress</p>
               <p className="text-2xl font-bold text-amber-700">
-                {purchaseOrders.filter(po => ['issued', 'partially_received'].includes(po.status)).length}
+                {purchaseOrders.filter((po: any) => ['issued', 'partially_received'].includes(po.status)).length}
               </p>
             </div>
           </div>
@@ -133,7 +133,7 @@ export default function MyPurchaseOrders() {
             <div>
               <p className="text-sm text-green-600">Completed</p>
               <p className="text-2xl font-bold text-green-700">
-                {purchaseOrders.filter(po => po.status === 'completed').length}
+                {purchaseOrders.filter((po: any) => po.status === 'completed').length}
               </p>
             </div>
           </div>
@@ -165,7 +165,7 @@ export default function MyPurchaseOrders() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {purchaseOrders.map((po) => (
+                {purchaseOrders.map((po: any) => (
                   <tr key={po._id} className="hover:bg-gray-50">
                     <td className="py-4 px-6">
                       <span className="font-mono text-sm font-medium text-primary">
@@ -268,7 +268,7 @@ export default function MyPurchaseOrders() {
                 <input
                   type="text"
                   value={acknowledgeData.deliveryNoteNumber}
-                  onChange={(e) => setAcknowledgeData({ ...acknowledgeData, deliveryNoteNumber: e.target.value })}
+                  onChange={(e: any) => setAcknowledgeData({ ...acknowledgeData, deliveryNoteNumber: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
                   placeholder="Enter delivery note number if available"
                 />
@@ -281,7 +281,7 @@ export default function MyPurchaseOrders() {
                 <input
                   type="date"
                   value={acknowledgeData.expectedDeliveryDate}
-                  onChange={(e) => setAcknowledgeData({ ...acknowledgeData, expectedDeliveryDate: e.target.value })}
+                  onChange={(e: any) => setAcknowledgeData({ ...acknowledgeData, expectedDeliveryDate: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
                 />
               </div>
@@ -393,7 +393,7 @@ export default function MyPurchaseOrders() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {selectedPO.items?.map((item, index) => (
+                    {selectedPO.items?.map((item: any, index: any) => (
                       <tr key={index}>
                         <td className="py-3 px-4 text-sm font-medium">{item.description}</td>
                         <td className="py-3 px-4 text-sm">{item.quantity} {item.unit}</td>

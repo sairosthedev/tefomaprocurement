@@ -21,7 +21,7 @@ import {
   PackageCheck
 } from 'lucide-react';
 
-const statusColors = {
+const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
   pending_acceptance: 'bg-amber-100 text-amber-700',
   accepted: 'bg-green-100 text-green-700',
@@ -33,7 +33,7 @@ const statusColors = {
   cancelled: 'bg-gray-100 text-gray-500'
 };
 
-const statusLabels = {
+const statusLabels: any = {
   draft: 'Draft',
   pending_acceptance: 'Pending Acceptance',
   accepted: 'Accepted',
@@ -45,7 +45,7 @@ const statusLabels = {
   cancelled: 'Cancelled'
 };
 
-const priorityColors = {
+const priorityColors: any = {
   low: 'bg-gray-100 text-gray-600',
   medium: 'bg-blue-100 text-blue-600',
   high: 'bg-orange-100 text-orange-600',
@@ -57,9 +57,9 @@ export default function RequisitionDetail() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<any>(true);
   const [requisition, setRequisition] = useState<any>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState<any>(false);
 
   const isProcurement = user?.role === 'procurement_officer' || user?.role === 'admin';
   const isDepartment = user?.role === 'department_head' || user?.role === 'admin';
@@ -76,7 +76,7 @@ export default function RequisitionDetail() {
       if (response.data.success) {
         setRequisition(response.data.data);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching requisition:', error);
       showToast(error.response?.data?.message || 'Failed to load requisition details', 'error');
     } finally {
@@ -90,7 +90,7 @@ export default function RequisitionDetail() {
       await departmentAPI.submitRequisition(id);
       showToast('Requisition submitted successfully', 'success');
       fetchRequisition();
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to submit requisition', 'error');
     } finally {
       setSubmitting(false);
@@ -166,7 +166,7 @@ export default function RequisitionDetail() {
             </div>
             <div className="flex items-center gap-3">
               <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[requisition.status]}`}>
-                {statusLabels[requisition.status] || requisition.status?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                {statusLabels[requisition.status] || requisition.status?.replace(/_/g, ' ').replace(/\b\w/g, (l: any) => l.toUpperCase())}
               </span>
               {isDepartment && requisition.status === 'draft' && (
                 <button
@@ -240,7 +240,7 @@ export default function RequisitionDetail() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {requisition.items.map((item, index) => (
+                    {requisition.items.map((item: any, index: any) => (
                       <tr key={index}>
                         <td className="py-3 px-4">
                           <p className="text-sm font-medium text-gray-900">{item.description || item.name}</p>
@@ -264,7 +264,7 @@ export default function RequisitionDetail() {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Status History</h2>
               <div className="space-y-3">
-                {requisition.statusHistory.map((history, index) => (
+                {requisition.statusHistory.map((history: any, index: any) => (
                   <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
                     {history.action === 'accepted' ? (
                       <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />

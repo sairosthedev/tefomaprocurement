@@ -11,10 +11,10 @@ export default function SubmitQuotation() {
   const { showToast } = useToast();
   const rfqId = searchParams.get('rfq');
   
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState<any>(true);
+  const [submitting, setSubmitting] = useState<any>(false);
   const [rfq, setRFQ] = useState<any>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<any>({
     currency: 'USD',
     deliveryDays: 7,
     paymentTerms: 'Net 30',
@@ -40,7 +40,7 @@ export default function SubmitQuotation() {
         setRFQ(rfqData);
         setFormData({
           ...formData,
-          items: rfqData.items.map(item => ({
+          items: rfqData.items.map((item: any) => ({
             itemId: item._id,
             description: item.description,
             quantity: item.quantity,
@@ -51,7 +51,7 @@ export default function SubmitQuotation() {
           }))
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       showToast('Failed to load RFQ details', 'error');
       navigate('/app/my-rfqs');
     } finally {
@@ -59,14 +59,14 @@ export default function SubmitQuotation() {
     }
   };
 
-  const updateItemPrice = (index, field, value) => {
+  const updateItemPrice = (index: any, field: any, value: any) => {
     const newItems = [...formData.items];
     newItems[index][field] = value;
     setFormData({ ...formData, items: newItems });
   };
 
   const calculateTotal = () => {
-    return formData.items.reduce((sum, item) => 
+    return formData.items.reduce((sum: any, item: any) => 
       sum + (item.quantity * (parseFloat(item.unitPrice) || 0)), 0
     );
   };
@@ -74,7 +74,7 @@ export default function SubmitQuotation() {
   const handleSubmit = async () => {
     try {
       // Validate
-      const invalidItems = formData.items.filter(item => !item.unitPrice || item.unitPrice <= 0);
+      const invalidItems = formData.items.filter((item: any) => !item.unitPrice || item.unitPrice <= 0);
       if (invalidItems.length > 0) {
         showToast('Please enter unit price for all items', 'error');
         return;
@@ -88,7 +88,7 @@ export default function SubmitQuotation() {
         paymentTerms: formData.paymentTerms,
         validityPeriod: formData.validityDays,
         notes: formData.notes,
-        items: formData.items.map(item => ({
+        items: formData.items.map((item: any) => ({
           description: item.description,
           quantity: item.quantity,
           unit: item.unit,
@@ -103,7 +103,7 @@ export default function SubmitQuotation() {
 
       showToast('Quotation submitted successfully', 'success');
       navigate('/app/my-rfqs', { replace: true });
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to submit quotation', 'error');
     } finally {
       setSubmitting(false);
@@ -161,10 +161,10 @@ export default function SubmitQuotation() {
             <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
             <select
               value={formData.currency}
-              onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+              onChange={(e: any) => setFormData({ ...formData, currency: e.target.value })}
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
             >
-              {CURRENCIES.map(curr => (
+              {CURRENCIES.map((curr: any) => (
                 <option key={curr.code} value={curr.code}>{curr.code} - {curr.name}</option>
               ))}
             </select>
@@ -175,7 +175,7 @@ export default function SubmitQuotation() {
               type="number"
               min="1"
               value={formData.deliveryDays}
-              onChange={(e) => setFormData({ ...formData, deliveryDays: parseInt(e.target.value) || 1 })}
+              onChange={(e: any) => setFormData({ ...formData, deliveryDays: parseInt(e.target.value) || 1 })}
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
@@ -183,7 +183,7 @@ export default function SubmitQuotation() {
             <label className="block text-sm font-medium text-gray-700 mb-2">Payment Terms</label>
             <select
               value={formData.paymentTerms}
-              onChange={(e) => setFormData({ ...formData, paymentTerms: e.target.value })}
+              onChange={(e: any) => setFormData({ ...formData, paymentTerms: e.target.value })}
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
             >
               <option value="Cash">Cash</option>
@@ -199,7 +199,7 @@ export default function SubmitQuotation() {
               type="number"
               min="1"
               value={formData.validityDays}
-              onChange={(e) => setFormData({ ...formData, validityDays: parseInt(e.target.value) || 1 })}
+              onChange={(e: any) => setFormData({ ...formData, validityDays: parseInt(e.target.value) || 1 })}
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
@@ -220,7 +220,7 @@ export default function SubmitQuotation() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {formData.items.map((item, index) => (
+                {formData.items.map((item: any, index: any) => (
                   <tr key={index}>
                     <td className="py-3 px-4">
                       <p className="text-sm font-medium text-gray-900">{item.description}</p>
@@ -234,7 +234,7 @@ export default function SubmitQuotation() {
                         step="0.01"
                         min="0"
                         value={item.unitPrice}
-                        onChange={(e) => updateItemPrice(index, 'unitPrice', e.target.value)}
+                        onChange={(e: any) => updateItemPrice(index, 'unitPrice', e.target.value)}
                         className="w-28 px-3 py-1.5 border border-gray-200 rounded-lg text-sm"
                         placeholder="0.00"
                       />
@@ -243,7 +243,7 @@ export default function SubmitQuotation() {
                       <input
                         type="text"
                         value={item.brand}
-                        onChange={(e) => updateItemPrice(index, 'brand', e.target.value)}
+                        onChange={(e: any) => updateItemPrice(index, 'brand', e.target.value)}
                         className="w-32 px-3 py-1.5 border border-gray-200 rounded-lg text-sm"
                         placeholder="Brand name"
                       />
@@ -256,7 +256,7 @@ export default function SubmitQuotation() {
               </tbody>
               <tfoot className="bg-gray-50">
                 <tr>
-                  <td colSpan="4" className="py-4 px-4 text-right font-semibold text-gray-700">
+                  <td colSpan={4} className="py-4 px-4 text-right font-semibold text-gray-700">
                     Grand Total:
                   </td>
                   <td className="py-4 px-4 text-lg font-bold text-primary">
@@ -273,7 +273,7 @@ export default function SubmitQuotation() {
           <label className="block text-sm font-medium text-gray-700 mb-2">Additional Notes</label>
           <textarea
             value={formData.notes}
-            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+            onChange={(e: any) => setFormData({ ...formData, notes: e.target.value })}
             rows={3}
             className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
             placeholder="Any additional information about your quotation..."

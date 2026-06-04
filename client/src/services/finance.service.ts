@@ -1,6 +1,6 @@
 import http from './http';
 
-export const financeAPI = {
+export const financeAPI: any = {
   getPendingApprovals: (params?: any) => http.get('/finance/pending-approvals', { params }),
   getPurchaseOrders: (params?: any) => http.get('/finance/purchase-orders', { params }),
   getPurchaseOrder: (id: any) => http.get(`/finance/purchase-orders/${id}`),

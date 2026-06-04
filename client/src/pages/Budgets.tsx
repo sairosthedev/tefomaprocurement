@@ -5,8 +5,8 @@ import { DollarSign, TrendingUp, AlertCircle, Loader2, PieChart } from 'lucide-r
 import { formatCurrency } from '../lib/constants';
 
 export default function Budgets() {
-  const [loading, setLoading] = useState(true);
-  const [budgetData, setBudgetData] = useState({
+  const [loading, setLoading] = useState<any>(true);
+  const [budgetData, setBudgetData] = useState<any>({
     totalBudget: 500000,
     utilized: 125000,
     committed: 75000,
@@ -38,7 +38,7 @@ export default function Budgets() {
           { name: 'HR', budget: 50000, utilized: 0, percentage: 0 }
         ]
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch budget data:', error);
     } finally {
       setLoading(false);
@@ -166,7 +166,7 @@ export default function Budgets() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {budgetData.departments.map((dept, index) => (
+              {budgetData.departments.map((dept: any, index: any) => (
                 <tr key={index} className="hover:bg-gray-50">
                   <td className="py-4 px-6 font-medium text-gray-900">{dept.name}</td>
                   <td className="py-4 px-6 text-gray-600">{formatCurrency(dept.budget)}</td>

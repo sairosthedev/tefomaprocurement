@@ -7,12 +7,12 @@ import Modal from '../components/Modal';
 export default function Departments() {
   const { showToast } = useToast();
   const [departments, setDepartments] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
+  const [loading, setLoading] = useState<any>(true);
+  const [showModal, setShowModal] = useState<any>(false);
   const [editingDepartment, setEditingDepartment] = useState<any>(null);
   const [departmentHeads, setDepartmentHeads] = useState<any[]>([]);
-  const [loadingHeads, setLoadingHeads] = useState(false);
-  const [formData, setFormData] = useState({
+  const [loadingHeads, setLoadingHeads] = useState<any>(false);
+  const [formData, setFormData] = useState<any>({
     name: '',
     code: '',
     description: '',
@@ -31,7 +31,7 @@ export default function Departments() {
       if (response.data.success) {
         setDepartments(response.data.data || []);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch departments:', error);
       showToast('Failed to fetch departments', 'error');
     } finally {
@@ -44,7 +44,7 @@ export default function Departments() {
       setLoadingHeads(true);
       const response = await adminAPI.getUsers({ role: 'department_head' });
       setDepartmentHeads(response.data.data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch department heads:', error);
     } finally {
       setLoadingHeads(false);
@@ -70,12 +70,12 @@ export default function Departments() {
       setEditingDepartment(null);
       setFormData({ name: '', code: '', description: '', head: '' });
       fetchDepartments();
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to save department', 'error');
     }
   };
 
-  const handleEdit = (dept) => {
+  const handleEdit = (dept: any) => {
     setEditingDepartment(dept);
     setFormData({
       name: dept.name,
@@ -86,14 +86,14 @@ export default function Departments() {
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: any) => {
     if (!confirm('Are you sure you want to delete this department?')) return;
     
     try {
       await api.delete(`/admin/departments/${id}`);
       showToast('Department deleted successfully', 'success');
       fetchDepartments();
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to delete department', 'error');
     }
   };
@@ -133,7 +133,7 @@ export default function Departments() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {departments.map((dept) => (
+          {departments.map((dept: any) => (
             <div key={dept._id} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
@@ -199,7 +199,7 @@ export default function Departments() {
             <input
               type="text"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e: any) => setFormData({ ...formData, name: e.target.value })}
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               placeholder="e.g., Finance"
             />
@@ -210,7 +210,7 @@ export default function Departments() {
             <input
               type="text"
               value={formData.code}
-              onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+              onChange={(e: any) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               placeholder="e.g., FIN"
               maxLength={10}
@@ -221,7 +221,7 @@ export default function Departments() {
             <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
             <textarea
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e: any) => setFormData({ ...formData, description: e.target.value })}
               rows={3}
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
               placeholder="Brief description of the department..."
@@ -240,11 +240,11 @@ export default function Departments() {
             ) : (
               <select
                 value={formData.head}
-                onChange={(e) => setFormData({ ...formData, head: e.target.value })}
+                onChange={(e: any) => setFormData({ ...formData, head: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white"
               >
                 <option value="">Select a department head (optional)</option>
-                {departmentHeads.map((user) => (
+                {departmentHeads.map((user: any) => (
                   <option key={user._id} value={user._id}>
                     {user.firstName} {user.lastName} {user.email ? `(${user.email})` : ''}
                   </option>

@@ -6,7 +6,7 @@ import ViewButton from '../../components/ViewButton';
 import Modal from '../../components/Modal';
 import { formatCurrency } from '../../lib/constants';
 
-const statusColors = {
+const statusColors: any = {
   pending: 'bg-yellow-100 text-yellow-700',
   received: 'bg-blue-100 text-blue-700',
   inspected: 'bg-purple-100 text-purple-700',
@@ -18,9 +18,9 @@ const statusColors = {
 export default function MyDeliveries() {
   const { showToast } = useToast();
   const [deliveries, setDeliveries] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<any>(true);
   const [selectedDelivery, setSelectedDelivery] = useState<any>(null);
-  const [showViewModal, setShowViewModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState<any>(false);
 
   useEffect(() => {
     fetchMyDeliveries();
@@ -35,7 +35,7 @@ export default function MyDeliveries() {
       } else {
         showToast(response.data.message || 'Failed to load deliveries', 'error');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch deliveries:', error);
       showToast(error.response?.data?.message || 'Failed to load deliveries', 'error');
     } finally {
@@ -43,7 +43,7 @@ export default function MyDeliveries() {
     }
   };
 
-  const formatStatus = (status) => {
+  const formatStatus = (status: any) => {
     return status?.replace('_', ' ').charAt(0).toUpperCase() + status?.replace('_', ' ').slice(1);
   };
 
@@ -77,7 +77,7 @@ export default function MyDeliveries() {
             <div>
               <p className="text-sm text-yellow-600">Pending</p>
               <p className="text-2xl font-bold text-yellow-700">
-                {deliveries.filter(d => d.status === 'pending').length}
+                {deliveries.filter((d: any) => d.status === 'pending').length}
               </p>
             </div>
           </div>
@@ -91,7 +91,7 @@ export default function MyDeliveries() {
             <div>
               <p className="text-sm text-green-600">Accepted</p>
               <p className="text-2xl font-bold text-green-700">
-                {deliveries.filter(d => d.status === 'accepted').length}
+                {deliveries.filter((d: any) => d.status === 'accepted').length}
               </p>
             </div>
           </div>
@@ -105,7 +105,7 @@ export default function MyDeliveries() {
             <div>
               <p className="text-sm text-purple-600">Under Inspection</p>
               <p className="text-2xl font-bold text-purple-700">
-                {deliveries.filter(d => d.status === 'inspected' || d.status === 'received').length}
+                {deliveries.filter((d: any) => d.status === 'inspected' || d.status === 'received').length}
               </p>
             </div>
           </div>
@@ -119,7 +119,7 @@ export default function MyDeliveries() {
             <div>
               <p className="text-sm text-amber-600">Partial/Rejected</p>
               <p className="text-2xl font-bold text-amber-700">
-                {deliveries.filter(d => d.isPartialDelivery || d.status === 'rejected').length}
+                {deliveries.filter((d: any) => d.isPartialDelivery || d.status === 'rejected').length}
               </p>
             </div>
           </div>
@@ -165,7 +165,7 @@ export default function MyDeliveries() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {deliveries.map((delivery) => (
+                {deliveries.map((delivery: any) => (
                   <tr key={delivery._id} className="hover:bg-gray-50">
                     <td className="py-4 px-6">
                       {delivery.status === 'pending' ? (
@@ -342,7 +342,7 @@ export default function MyDeliveries() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {selectedDelivery.items?.map((item, index) => (
+                    {selectedDelivery.items?.map((item: any, index: any) => (
                       <tr key={index}>
                         <td className="py-3 px-4 text-sm font-medium">{item.description}</td>
                         <td className="py-3 px-4 text-sm text-gray-600">{item.quantityOrdered || '-'}</td>

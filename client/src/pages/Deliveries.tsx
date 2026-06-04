@@ -9,7 +9,7 @@ import ViewButton from '../components/ViewButton';
 import Modal from '../components/Modal';
 import { formatCurrency } from '../lib/constants';
 
-const statusColors = {
+const statusColors: any = {
   pending: 'bg-yellow-100 text-yellow-700',
   received: 'bg-blue-100 text-blue-700',
   inspected: 'bg-purple-100 text-purple-700',
@@ -18,7 +18,7 @@ const statusColors = {
   rejected: 'bg-red-100 text-red-700'
 };
 
-const formatStatus = (status) => {
+const formatStatus = (status: any) => {
   return status?.replace('_', ' ').charAt(0).toUpperCase() + status?.replace('_', ' ').slice(1);
 };
 
@@ -26,17 +26,17 @@ export default function Deliveries() {
   const { showToast } = useToast();
   const [deliveries, setDeliveries] = useState<any[]>([]);
   const [pendingPOs, setPendingPOs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showReceiveModal, setShowReceiveModal] = useState(false);
-  const [showViewModal, setShowViewModal] = useState(false);
+  const [loading, setLoading] = useState<any>(true);
+  const [searchTerm, setSearchTerm] = useState<any>('');
+  const [showReceiveModal, setShowReceiveModal] = useState<any>(false);
+  const [showViewModal, setShowViewModal] = useState<any>(false);
   const [selectedDelivery, setSelectedDelivery] = useState<any>(null);
   const [selectedPO, setSelectedPO] = useState<any>(null);
-  const [receiveData, setReceiveData] = useState({
+  const [receiveData, setReceiveData] = useState<any>({
     deliveryNote: '',
     items: []
   });
-  const [isReceiving, setIsReceiving] = useState(false);
+  const [isReceiving, setIsReceiving] = useState<any>(false);
 
   useEffect(() => {
     fetchData();
@@ -61,18 +61,18 @@ export default function Deliveries() {
         console.warn('Failed to fetch pending deliveries:', posRes.reason?.message);
         setPendingPOs([]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const openReceiveModal = (po) => {
+  const openReceiveModal = (po: any) => {
     setSelectedPO(po);
     setReceiveData({
       deliveryNote: po.pendingDelivery?.deliveryNoteNumber || '',
-      items: po.items.map(item => ({
+      items: po.items.map((item: any) => ({
         _id: item._id,
         description: item.description,
         quantity: item.quantity,
@@ -97,8 +97,8 @@ export default function Deliveries() {
         deliveryNoteNumber: receiveData.deliveryNote,
         deliveryDate: new Date().toISOString(),
         items: receiveData.items
-          .filter(item => item.receivedQuantity > 0) // Only include items with quantity > 0
-          .map(item => ({
+          .filter((item: any) => item.receivedQuantity > 0) // Only include items with quantity > 0
+          .map((item: any) => ({
             poItem: item._id, // The PO item ID
             description: item.description,
             quantityOrdered: item.quantity,
@@ -112,14 +112,14 @@ export default function Deliveries() {
       setShowReceiveModal(false);
       setReceiveData({ deliveryNote: '', items: [] });
       fetchData();
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to receive goods', 'error');
     } finally {
       setIsReceiving(false);
     }
   };
 
-  const updateReceivedQty = (index, qty) => {
+  const updateReceivedQty = (index: any, qty: any) => {
     const newItems = [...receiveData.items];
     newItems[index].receivedQuantity = parseInt(qty) || 0;
     setReceiveData({ ...receiveData, items: newItems });
@@ -148,7 +148,7 @@ export default function Deliveries() {
             </div>
           </div>
           <div className="mt-4 space-y-2">
-            {pendingPOs.slice(0, 3).map(po => (
+            {pendingPOs.slice(0, 3).map((po: any) => (
               <div key={po._id} className="flex items-center justify-between bg-white rounded-xl p-3">
                 <div>
                   <span className="font-mono text-sm font-medium text-primary">{po.poNumber}</span>
@@ -174,7 +174,7 @@ export default function Deliveries() {
             type="text"
             placeholder="Search deliveries by GRV number, PO number, or supplier..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e: any) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
           />
         </div>
@@ -211,7 +211,7 @@ export default function Deliveries() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {deliveries.map((delivery) => (
+                {deliveries.map((delivery: any) => (
                   <tr key={delivery._id} className="hover:bg-gray-50">
                     <td className="py-4 px-6">
                       {delivery.status === 'pending' ? (
@@ -292,7 +292,7 @@ export default function Deliveries() {
               <input
                 type="text"
                 value={receiveData.deliveryNote}
-                onChange={(e) => setReceiveData({ ...receiveData, deliveryNote: e.target.value })}
+                onChange={(e: any) => setReceiveData({ ...receiveData, deliveryNote: e.target.value })}
                 placeholder={selectedPO.pendingDelivery?.deliveryNoteNumber || "Enter supplier's delivery note number"}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
@@ -331,7 +331,7 @@ export default function Deliveries() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {receiveData.items.map((item, index) => (
+                    {receiveData.items.map((item: any, index: any) => (
                       <tr key={index}>
                         <td className="py-3 px-4 text-sm">{item.description}</td>
                         <td className="py-3 px-4 text-sm">{item.quantity} {item.unit}</td>
@@ -341,7 +341,7 @@ export default function Deliveries() {
                             min="0"
                             max={item.quantity - (item.previouslyReceived || 0)}
                             value={item.receivedQuantity}
-                            onChange={(e) => updateReceivedQty(index, e.target.value)}
+                            onChange={(e: any) => updateReceivedQty(index, e.target.value)}
                             className="w-24 px-3 py-1.5 border border-gray-200 rounded-lg text-sm"
                           />
                         </td>
@@ -469,7 +469,7 @@ export default function Deliveries() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {selectedDelivery.items?.map((item, index) => (
+                    {selectedDelivery.items?.map((item: any, index: any) => (
                       <tr key={index}>
                         <td className="py-3 px-4 text-sm">{item.description}</td>
                         <td className="py-3 px-4 text-sm">{item.orderedQuantity} {item.unit}</td>

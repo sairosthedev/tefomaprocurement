@@ -1,6 +1,6 @@
 import http from './http';
 
-export const adminAPI = {
+export const adminAPI: any = {
   getUsers: (params?: any) => http.get('/admin/users', { params }),
   createUser: (data: any) => http.post('/admin/users', data),
   updateUser: (id: any, data: any) => http.put(`/admin/users/${id}`, data),

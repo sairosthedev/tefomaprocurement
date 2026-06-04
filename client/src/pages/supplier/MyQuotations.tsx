@@ -7,7 +7,7 @@ import Modal from '../../components/Modal';
 import { formatCurrency } from '../../lib/constants';
 import confetti from 'canvas-confetti';
 
-const statusColors = {
+const statusColors: any = {
   submitted: 'bg-blue-100 text-blue-700',
   under_review: 'bg-amber-100 text-amber-700',
   accepted: 'bg-green-100 text-green-700',
@@ -18,9 +18,9 @@ const statusColors = {
 export default function MyQuotations() {
   const { showToast } = useToast();
   const [quotations, setQuotations] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<any>(true);
   const [selectedQuotation, setSelectedQuotation] = useState<any>(null);
-  const [showViewModal, setShowViewModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState<any>(false);
 
   useEffect(() => {
     fetchMyQuotations();
@@ -33,7 +33,7 @@ export default function MyQuotations() {
       if (response.data.success) {
         setQuotations(response.data.data || []);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch quotations:', error);
     } finally {
       setLoading(false);
@@ -58,7 +58,7 @@ export default function MyQuotations() {
             <div>
               <p className="text-sm text-blue-600">Submitted</p>
               <p className="text-2xl font-bold text-blue-700">
-                {quotations.filter(q => q.status === 'submitted').length}
+                {quotations.filter((q: any) => q.status === 'submitted').length}
               </p>
             </div>
           </div>
@@ -72,7 +72,7 @@ export default function MyQuotations() {
             <div>
               <p className="text-sm text-amber-600">Under Review</p>
               <p className="text-2xl font-bold text-amber-700">
-                {quotations.filter(q => q.status === 'under_review').length}
+                {quotations.filter((q: any) => q.status === 'under_review').length}
               </p>
             </div>
           </div>
@@ -86,7 +86,7 @@ export default function MyQuotations() {
             <div>
               <p className="text-sm text-green-600">Accepted</p>
               <p className="text-2xl font-bold text-green-700">
-                {quotations.filter(q => q.status === 'accepted' || q.status === 'awarded').length}
+                {quotations.filter((q: any) => q.status === 'accepted' || q.status === 'awarded').length}
               </p>
             </div>
           </div>
@@ -100,7 +100,7 @@ export default function MyQuotations() {
             <div>
               <p className="text-sm text-red-600">Not Awarded</p>
               <p className="text-2xl font-bold text-red-700">
-                {quotations.filter(q => q.status === 'rejected').length}
+                {quotations.filter((q: any) => q.status === 'rejected').length}
               </p>
             </div>
           </div>
@@ -132,7 +132,7 @@ export default function MyQuotations() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {quotations.map((quote) => (
+                {quotations.map((quote: any) => (
                   <tr key={quote._id} className="hover:bg-gray-50">
                     <td className="py-4 px-6">
                       <span className="font-mono text-sm font-medium text-primary">
@@ -270,7 +270,7 @@ export default function MyQuotations() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {selectedQuotation.items?.map((item, index) => (
+                    {selectedQuotation.items?.map((item: any, index: any) => (
                       <tr key={index}>
                         <td className="py-3 px-4 text-sm">
                           <p className="font-medium">{item.description}</p>

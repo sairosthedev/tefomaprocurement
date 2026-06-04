@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import Modal, { ConfirmModal } from '../components/Modal';
 
-const statusColors = {
+const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
   submitted: 'bg-blue-100 text-blue-700',
   under_review: 'bg-purple-100 text-purple-700',
@@ -34,15 +34,15 @@ export default function QuotationDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<any>(true);
   const [quotation, setQuotation] = useState<any>(null);
-  const [showAcceptModal, setShowAcceptModal] = useState(false);
-  const [showRejectModal, setShowRejectModal] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
-  const [rejectComments, setRejectComments] = useState('');
-  const [processing, setProcessing] = useState(false);
-  const [showCreatePOModal, setShowCreatePOModal] = useState(false);
-  const [poFormData, setPOFormData] = useState({
+  const [showAcceptModal, setShowAcceptModal] = useState<any>(false);
+  const [showRejectModal, setShowRejectModal] = useState<any>(false);
+  const [rejectReason, setRejectReason] = useState<any>('');
+  const [rejectComments, setRejectComments] = useState<any>('');
+  const [processing, setProcessing] = useState<any>(false);
+  const [showCreatePOModal, setShowCreatePOModal] = useState<any>(false);
+  const [poFormData, setPOFormData] = useState<any>({
     deliveryAddress: {
       street: '',
       city: '',
@@ -65,7 +65,7 @@ export default function QuotationDetail() {
       if (response.data.success) {
         setQuotation(response.data.data);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching quotation:', error);
       showToast(error.response?.data?.message || 'Failed to load quotation details', 'error');
     } finally {
@@ -80,7 +80,7 @@ export default function QuotationDetail() {
       showToast('Quotation accepted successfully', 'success');
       setShowAcceptModal(false);
       fetchQuotation();
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to accept quotation', 'error');
     } finally {
       setProcessing(false);
@@ -104,7 +104,7 @@ export default function QuotationDetail() {
       setRejectReason('');
       setRejectComments('');
       fetchQuotation();
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to reject quotation', 'error');
     } finally {
       setProcessing(false);
@@ -132,7 +132,7 @@ export default function QuotationDetail() {
         notes: ''
       });
       fetchQuotation();
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to create purchase order', 'error');
     } finally {
       setProcessing(false);
@@ -199,7 +199,7 @@ export default function QuotationDetail() {
             </div>
             <div className="flex items-center gap-3">
               <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[quotation.status]}`}>
-                {quotation.status?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                {quotation.status?.replace(/_/g, ' ').replace(/\b\w/g, (l: any) => l.toUpperCase())}
               </span>
           {quotation.status === 'submitted' && (
             <>
@@ -339,7 +339,7 @@ export default function QuotationDetail() {
                   </tr>
                 </thead>
                 <tbody>
-                  {quotation.items.map((item, index) => (
+                  {quotation.items.map((item: any, index: any) => (
                     <tr key={index} className="border-b border-gray-100">
                       <td className="py-3 px-4">
                         <p className="font-medium text-gray-900">{item.description}</p>
@@ -360,7 +360,7 @@ export default function QuotationDetail() {
                 </tbody>
                 <tfoot>
                   <tr className="bg-gray-50">
-                    <td colSpan="4" className="py-3 px-4 text-right font-semibold text-gray-900">
+                    <td colSpan={4} className="py-3 px-4 text-right font-semibold text-gray-900">
                       Total Amount:
                     </td>
                     <td className="py-3 px-4 text-right font-bold text-lg text-gray-900">
@@ -447,7 +447,7 @@ export default function QuotationDetail() {
             <input
               type="text"
               value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
+              onChange={(e: any) => setRejectReason(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
               placeholder="Enter rejection reason"
             />
@@ -456,7 +456,7 @@ export default function QuotationDetail() {
             <label className="block text-sm font-medium text-gray-700 mb-2">Comments</label>
             <textarea
               value={rejectComments}
-              onChange={(e) => setRejectComments(e.target.value)}
+              onChange={(e: any) => setRejectComments(e.target.value)}
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
               placeholder="Additional comments (optional)"
@@ -502,7 +502,7 @@ export default function QuotationDetail() {
               <input
                 type="text"
                 value={poFormData.deliveryAddress.street}
-                onChange={(e) => setPOFormData({
+                onChange={(e: any) => setPOFormData({
                   ...poFormData,
                   deliveryAddress: { ...poFormData.deliveryAddress, street: e.target.value }
                 })}
@@ -514,7 +514,7 @@ export default function QuotationDetail() {
               <input
                 type="text"
                 value={poFormData.deliveryAddress.city}
-                onChange={(e) => setPOFormData({
+                onChange={(e: any) => setPOFormData({
                   ...poFormData,
                   deliveryAddress: { ...poFormData.deliveryAddress, city: e.target.value }
                 })}
@@ -526,7 +526,7 @@ export default function QuotationDetail() {
               <input
                 type="text"
                 value={poFormData.deliveryAddress.province}
-                onChange={(e) => setPOFormData({
+                onChange={(e: any) => setPOFormData({
                   ...poFormData,
                   deliveryAddress: { ...poFormData.deliveryAddress, province: e.target.value }
                 })}
@@ -538,7 +538,7 @@ export default function QuotationDetail() {
               <input
                 type="text"
                 value={poFormData.deliveryAddress.postalCode}
-                onChange={(e) => setPOFormData({
+                onChange={(e: any) => setPOFormData({
                   ...poFormData,
                   deliveryAddress: { ...poFormData.deliveryAddress, postalCode: e.target.value }
                 })}
@@ -551,7 +551,7 @@ export default function QuotationDetail() {
             <input
               type="date"
               value={poFormData.expectedDeliveryDate}
-              onChange={(e) => setPOFormData({ ...poFormData, expectedDeliveryDate: e.target.value })}
+              onChange={(e: any) => setPOFormData({ ...poFormData, expectedDeliveryDate: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
@@ -559,7 +559,7 @@ export default function QuotationDetail() {
             <label className="block text-sm font-medium text-gray-700 mb-2">Terms & Conditions</label>
             <textarea
               value={poFormData.termsAndConditions}
-              onChange={(e) => setPOFormData({ ...poFormData, termsAndConditions: e.target.value })}
+              onChange={(e: any) => setPOFormData({ ...poFormData, termsAndConditions: e.target.value })}
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
@@ -568,7 +568,7 @@ export default function QuotationDetail() {
             <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
             <textarea
               value={poFormData.notes}
-              onChange={(e) => setPOFormData({ ...poFormData, notes: e.target.value })}
+              onChange={(e: any) => setPOFormData({ ...poFormData, notes: e.target.value })}
               rows={2}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />

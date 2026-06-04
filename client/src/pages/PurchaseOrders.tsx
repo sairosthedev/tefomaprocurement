@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import ViewButton from '../components/ViewButton';
 
-const statusColors = {
+const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
   pending_finance: 'bg-amber-100 text-amber-700',
   pending_coo: 'bg-purple-100 text-purple-700',
@@ -33,7 +33,7 @@ const statusColors = {
   cancelled: 'bg-gray-100 text-gray-700'
 };
 
-const statusIcons = {
+const statusIcons: any = {
   draft: Clock,
   pending_finance: Clock,
   pending_coo: Clock,
@@ -51,9 +51,9 @@ export default function PurchaseOrders() {
   const { showToast } = useToast();
   const { user } = useAuth();
   const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [loading, setLoading] = useState<any>(true);
+  const [search, setSearch] = useState<any>('');
+  const [statusFilter, setStatusFilter] = useState<any>('');
   const [submitting, setSubmitting] = useState<any>(null);
 
   const isFinance = user?.role === 'finance';
@@ -72,7 +72,7 @@ export default function PurchaseOrders() {
         status: statusFilter 
       });
       setOrders(response.data.data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching orders:', error);
       showToast(error.response?.data?.message || 'Failed to fetch purchase orders', 'error');
     } finally {
@@ -81,19 +81,19 @@ export default function PurchaseOrders() {
   };
 
 
-  const formatStatus = (status) => {
-    return status.split('_').map(word => 
+  const formatStatus = (status: any) => {
+    return status.split('_').map((word: any) => 
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
   };
 
-  const handleSubmit = async (poId) => {
+  const handleSubmit = async (poId: any) => {
     try {
       setSubmitting(poId);
       await procurementAPI.submitPurchaseOrder(poId);
       showToast('Purchase order submitted for Finance approval', 'success');
       fetchOrders();
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to submit purchase order', 'error');
     } finally {
       setSubmitting(null);
@@ -128,7 +128,7 @@ export default function PurchaseOrders() {
               type="text"
               placeholder="Search purchase orders..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e: any) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
             />
           </div>
@@ -191,7 +191,7 @@ export default function PurchaseOrders() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {orders.map((order) => {
+                {orders.map((order: any) => {
                   const StatusIcon = statusIcons[order.status] || Clock;
                   return (
                     <tr key={order._id} className="hover:bg-gray-50 transition-colors">

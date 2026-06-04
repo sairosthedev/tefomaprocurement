@@ -22,14 +22,14 @@ import {
   FileText
 } from 'lucide-react';
 
-const statusColors = {
+const statusColors: any = {
   pending: 'bg-amber-100 text-amber-700',
   active: 'bg-green-100 text-green-700',
   suspended: 'bg-gray-100 text-gray-700',
   blacklisted: 'bg-red-100 text-red-700'
 };
 
-const statusIcons = {
+const statusIcons: any = {
   pending: Clock,
   active: CheckCircle,
   suspended: XCircle,
@@ -39,12 +39,12 @@ const statusIcons = {
 export default function Suppliers() {
   const { showToast } = useToast();
   const [suppliers, setSuppliers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
+  const [loading, setLoading] = useState<any>(true);
+  const [search, setSearch] = useState<any>('');
+  const [statusFilter, setStatusFilter] = useState<any>('');
+  const [showAddModal, setShowAddModal] = useState<any>(false);
+  const [submitting, setSubmitting] = useState<any>(false);
+  const [formData, setFormData] = useState<any>({
     companyName: '',
     tradingAs: '',
     registrationNumber: '',
@@ -65,12 +65,12 @@ export default function Suppliers() {
     bankAccountNumber: '',
     bankBranchCode: ''
   });
-  const [showPassword, setShowPassword] = useState(false);
-  const [showOptionalFields, setShowOptionalFields] = useState(false);
-  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
-  const [bulkImportData, setBulkImportData] = useState('');
+  const [showPassword, setShowPassword] = useState<any>(false);
+  const [showOptionalFields, setShowOptionalFields] = useState<any>(false);
+  const [showBulkImportModal, setShowBulkImportModal] = useState<any>(false);
+  const [bulkImportData, setBulkImportData] = useState<any>('');
   const [bulkImportResults, setBulkImportResults] = useState<any>(null);
-  const [importing, setImporting] = useState(false);
+  const [importing, setImporting] = useState<any>(false);
 
   useEffect(() => {
     fetchSuppliers();
@@ -84,22 +84,22 @@ export default function Suppliers() {
         status: statusFilter 
       });
       setSuppliers(response.data.data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching suppliers:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: any) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev: any) => ({
       ...prev,
       [name]: value
     }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault();
     
     // Validate required fields
@@ -118,7 +118,7 @@ export default function Suppliers() {
       
       // Parse categories from comma-separated string
       const categories = formData.categories
-        ? formData.categories.split(',').map(c => c.trim()).filter(c => c)
+        ? formData.categories.split(',').map((c: any) => c.trim()).filter((c: any) => c)
         : [];
 
       const response = await procurementAPI.createSupplier({
@@ -153,7 +153,7 @@ export default function Suppliers() {
         setShowPassword(false);
         fetchSuppliers();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating supplier:', error);
       showToast(
         error.response?.data?.message || 'Failed to create supplier',
@@ -172,13 +172,13 @@ export default function Suppliers() {
 
     try {
       setImporting(true);
-      let suppliers = [];
+      let suppliers: any[] = [];
 
       // Try to parse as JSON first
       try {
         const parsed = JSON.parse(bulkImportData);
         suppliers = Array.isArray(parsed) ? parsed : [parsed];
-      } catch (e) {
+      } catch (e: any) {
         // If not JSON, try to parse as CSV-like format
         const lines = bulkImportData.trim().split('\n');
         if (lines.length < 2) {
@@ -186,13 +186,13 @@ export default function Suppliers() {
           return;
         }
         
-        const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, ''));
+        const headers = lines[0].split(',').map((h: any) => h.trim().toLowerCase().replace(/\s+/g, ''));
         
         for (let i = 1; i < lines.length; i++) {
           if (!lines[i].trim()) continue;
-          const values = lines[i].split(',').map(v => v.trim());
-          const supplier = {};
-          headers.forEach((header, index) => {
+          const values = lines[i].split(',').map((v: any) => v.trim());
+          const supplier: any = {};
+          headers.forEach((header: any, index: any) => {
             supplier[header] = values[index] || '';
           });
           
@@ -231,7 +231,7 @@ export default function Suppliers() {
         showToast(`Imported ${response.data.data.success.length} suppliers successfully`, 'success');
         fetchSuppliers();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Bulk import error:', error);
       showToast(
         error.response?.data?.message || 'Failed to import suppliers',
@@ -277,7 +277,7 @@ export default function Suppliers() {
               type="text"
               placeholder="Search suppliers..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e: any) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
             />
           </div>
@@ -340,7 +340,7 @@ export default function Suppliers() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {suppliers.map((supplier) => {
+                {suppliers.map((supplier: any) => {
                   const StatusIcon = statusIcons[supplier.status];
                   return (
                     <tr key={supplier._id} className="hover:bg-gray-50 transition-colors">
@@ -369,7 +369,7 @@ export default function Suppliers() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-wrap gap-1">
-                          {supplier.categories?.slice(0, 2).map((cat, idx) => (
+                          {supplier.categories?.slice(0, 2).map((cat: any, idx: any) => (
                             <span key={idx} className="px-2 py-1 bg-gray-100 rounded-lg text-xs text-gray-600">
                               {cat}
                             </span>
@@ -744,7 +744,7 @@ export default function Suppliers() {
                 </label>
                 <textarea
                   value={bulkImportData}
-                  onChange={(e) => setBulkImportData(e.target.value)}
+                  onChange={(e: any) => setBulkImportData(e.target.value)}
                   placeholder={`JSON Format:
 [
   {
@@ -834,7 +834,7 @@ Company ABC,REG123,John Doe,john@company.com,1234567890`}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {bulkImportResults.success.map((item, idx) => (
+                        {bulkImportResults.success.map((item: any, idx: any) => (
                           <tr key={idx}>
                             <td className="px-3 py-2">{item.companyName}</td>
                             <td className="px-3 py-2">{item.email}</td>
@@ -859,7 +859,7 @@ Company ABC,REG123,John Doe,john@company.com,1234567890`}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-red-100">
-                        {bulkImportResults.failed.map((item, idx) => (
+                        {bulkImportResults.failed.map((item: any, idx: any) => (
                           <tr key={idx}>
                             <td className="px-3 py-2">{item.companyName}</td>
                             <td className="px-3 py-2">{item.email}</td>

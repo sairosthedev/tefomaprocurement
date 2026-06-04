@@ -9,9 +9,9 @@ import { formatCurrency } from '../lib/constants';
 
 export default function Reports() {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<any>(true);
   const [reportData, setReportData] = useState<any>(null);
-  const [dateRange, setDateRange] = useState('month');
+  const [dateRange, setDateRange] = useState<any>('month');
 
   useEffect(() => {
     fetchReportData();
@@ -24,7 +24,7 @@ export default function Reports() {
       if (response.data.success) {
         setReportData(response.data.data);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch report data:', error);
     } finally {
       setLoading(false);
@@ -95,7 +95,7 @@ export default function Reports() {
         <div className="flex items-center gap-3">
           <select
             value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
+            onChange={(e: any) => setDateRange(e.target.value)}
             className="px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
           >
             <option value="week">This Week</option>
@@ -112,7 +112,7 @@ export default function Reports() {
 
       {/* Report Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {getRoleSpecificReports().map((report, index) => {
+        {getRoleSpecificReports().map((report: any, index: any) => {
           const Icon = report.icon;
           return (
             <div
@@ -138,7 +138,7 @@ export default function Reports() {
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-6">Quick Summary</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {Object.entries(reportData.stats).map(([key, stat]) => (
+            {Object.entries(reportData.stats).map(([key, stat]: any) => (
               <div key={key} className="text-center">
                 <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
                 <p className="text-sm text-gray-500 mt-1">{stat.label}</p>

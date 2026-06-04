@@ -8,8 +8,8 @@ import { UNITS_OF_MEASUREMENT } from '../lib/constants';
 export default function CreateRequisition() {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
+  const [loading, setLoading] = useState<any>(false);
+  const [formData, setFormData] = useState<any>({
     title: '',
     description: '',
     urgency: 'normal',
@@ -23,15 +23,15 @@ export default function CreateRequisition() {
     });
   };
 
-  const removeItem = (index) => {
+  const removeItem = (index: any) => {
     if (formData.items.length === 1) return;
     setFormData({
       ...formData,
-      items: formData.items.filter((_, i) => i !== index)
+      items: formData.items.filter((_: any, i: any) => i !== index)
     });
   };
 
-  const updateItem = (index, field, value) => {
+  const updateItem = (index: any, field: any, value: any) => {
     const newItems = [...formData.items];
     newItems[index][field] = value;
     setFormData({ ...formData, items: newItems });
@@ -48,7 +48,7 @@ export default function CreateRequisition() {
         return;
       }
       
-      const validItems = formData.items.filter(item => item.description.trim());
+      const validItems = formData.items.filter((item: any) => item.description.trim());
       if (validItems.length === 0) {
         showToast('Please add at least one item', 'error');
         setLoading(false);
@@ -68,7 +68,7 @@ export default function CreateRequisition() {
         );
         navigate('/app/requisitions');
       }
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to save requisition', 'error');
     } finally {
       setLoading(false);
@@ -101,7 +101,7 @@ export default function CreateRequisition() {
             <input
               type="text"
               value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              onChange={(e: any) => setFormData({ ...formData, title: e.target.value })}
               placeholder="e.g., Office Supplies for Q1"
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
@@ -111,7 +111,7 @@ export default function CreateRequisition() {
             <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
             <textarea
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e: any) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Provide additional details..."
               rows={3}
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
@@ -122,7 +122,7 @@ export default function CreateRequisition() {
             <label className="block text-sm font-medium text-gray-700 mb-2">Urgency</label>
             <select
               value={formData.urgency}
-              onChange={(e) => setFormData({ ...formData, urgency: e.target.value })}
+              onChange={(e: any) => setFormData({ ...formData, urgency: e.target.value })}
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
             >
               <option value="normal">Normal</option>
@@ -148,7 +148,7 @@ export default function CreateRequisition() {
           </div>
 
           <div className="space-y-4">
-            {formData.items.map((item, index) => (
+            {formData.items.map((item: any, index: any) => (
               <div key={index} className="bg-gray-50 rounded-xl p-4">
                 <div className="flex items-start gap-4">
                   <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -157,7 +157,7 @@ export default function CreateRequisition() {
                       <input
                         type="text"
                         value={item.description}
-                        onChange={(e) => updateItem(index, 'description', e.target.value)}
+                        onChange={(e: any) => updateItem(index, 'description', e.target.value)}
                         placeholder="e.g., A4 Paper"
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
                       />
@@ -168,7 +168,7 @@ export default function CreateRequisition() {
                         type="number"
                         min="1"
                         value={item.quantity}
-                        onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                        onChange={(e: any) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
                       />
                     </div>
@@ -176,10 +176,10 @@ export default function CreateRequisition() {
                       <label className="block text-xs text-gray-500 mb-1">Unit</label>
                       <select
                         value={item.unit}
-                        onChange={(e) => updateItem(index, 'unit', e.target.value)}
+                        onChange={(e: any) => updateItem(index, 'unit', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
                       >
-                        {UNITS_OF_MEASUREMENT.map(unit => (
+                        {UNITS_OF_MEASUREMENT.map((unit: any) => (
                           <option key={unit} value={unit}>{unit}</option>
                         ))}
                       </select>
@@ -189,7 +189,7 @@ export default function CreateRequisition() {
                       <input
                         type="text"
                         value={item.specification}
-                        onChange={(e) => updateItem(index, 'specification', e.target.value)}
+                        onChange={(e: any) => updateItem(index, 'specification', e.target.value)}
                         placeholder="e.g., 80gsm white"
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
                       />

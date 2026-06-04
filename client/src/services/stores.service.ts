@@ -1,6 +1,6 @@
 import http from './http';
 
-export const storesAPI = {
+export const storesAPI: any = {
   receiveGoods: (data: any) => http.post('/stores/deliveries', data),
   getDeliveries: (params?: any) => http.get('/stores/deliveries', { params }),
   getInventory: (params?: any) => http.get('/stores/inventory', { params }),

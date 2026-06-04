@@ -9,7 +9,7 @@ import {
 import ViewButton from '../../components/ViewButton';
 import Modal from '../../components/Modal';
 
-const statusColors = {
+const statusColors: any = {
   open: 'bg-green-100 text-green-700',
   closed: 'bg-gray-100 text-gray-700',
   submitted: 'bg-blue-100 text-blue-700',
@@ -18,8 +18,8 @@ const statusColors = {
 };
 
 // Simple Confetti Component
-const Confetti = ({ show }) => {
-  const canvasRef = useRef(null);
+const Confetti = ({ show }: any) => {
+  const canvasRef = useRef<any>(null);
 
   useEffect(() => {
     if (!show) return;
@@ -31,7 +31,7 @@ const Confetti = ({ show }) => {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    const confetti = [];
+    const confetti: any[] = [];
     const colors = ['#10b981', '#34d399', '#6ee7b7', '#a7f3d0', '#d1fae5', '#fbbf24', '#fcd34d', '#fde68a'];
 
     // Create confetti pieces
@@ -48,11 +48,11 @@ const Confetti = ({ show }) => {
       });
     }
 
-    let animationId;
+    let animationId: any;
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      confetti.forEach((c, i) => {
+      confetti.forEach((c: any, i: any) => {
         ctx.beginPath();
         ctx.lineWidth = c.r;
         ctx.strokeStyle = c.color;
@@ -112,10 +112,10 @@ export default function MyRFQs() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [rfqs, setRFQs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<any>(true);
   const [selectedRFQ, setSelectedRFQ] = useState<any>(null);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
+  const [showViewModal, setShowViewModal] = useState<any>(false);
+  const [showConfetti, setShowConfetti] = useState<any>(false);
 
   useEffect(() => {
     fetchMyRFQs();
@@ -128,7 +128,7 @@ export default function MyRFQs() {
       if (response.data.success) {
         setRFQs(response.data.data || []);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch RFQs:', error);
       showToast('Failed to load RFQs', 'error');
     } finally {
@@ -136,10 +136,10 @@ export default function MyRFQs() {
     }
   };
 
-  const getRemainingTime = (deadline) => {
+  const getRemainingTime = (deadline: any) => {
     const now = new Date();
     const end = new Date(deadline);
-    const diff = end - now;
+    const diff = end.getTime() - now.getTime();
     
     if (diff <= 0) return { text: 'Closed', urgent: false };
     
@@ -169,7 +169,7 @@ export default function MyRFQs() {
             <div>
               <p className="text-sm text-green-600">Open RFQs</p>
               <p className="text-2xl font-bold text-green-700">
-                {rfqs.filter(r => r.status === 'open' && !r.hasSubmitted).length}
+                {rfqs.filter((r: any) => r.status === 'open' && !r.hasSubmitted).length}
               </p>
             </div>
           </div>
@@ -183,7 +183,7 @@ export default function MyRFQs() {
             <div>
               <p className="text-sm text-blue-600">Submitted</p>
               <p className="text-2xl font-bold text-blue-700">
-                {rfqs.filter(r => r.hasSubmitted && r.quotationStatus !== 'accepted').length}
+                {rfqs.filter((r: any) => r.hasSubmitted && r.quotationStatus !== 'accepted').length}
               </p>
             </div>
           </div>
@@ -197,7 +197,7 @@ export default function MyRFQs() {
             <div>
               <p className="text-sm text-emerald-600">Accepted</p>
               <p className="text-2xl font-bold text-emerald-700">
-                {rfqs.filter(r => r.quotationStatus === 'accepted').length}
+                {rfqs.filter((r: any) => r.quotationStatus === 'accepted').length}
               </p>
             </div>
           </div>
@@ -211,7 +211,7 @@ export default function MyRFQs() {
             <div>
               <p className="text-sm text-amber-600">Closing Soon</p>
               <p className="text-2xl font-bold text-amber-700">
-                {rfqs.filter(r => {
+                {rfqs.filter((r: any) => {
                   const remaining = getRemainingTime(r.submissionDeadline);
                   return remaining.urgent && r.status === 'open';
                 }).length}
@@ -247,7 +247,7 @@ export default function MyRFQs() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {rfqs.map((rfq) => {
+                {rfqs.map((rfq: any) => {
                   const remaining = getRemainingTime(rfq.submissionDeadline);
                   const canSubmit = rfq.status === 'open' && !rfq.hasSubmitted && remaining.text !== 'Closed';
                   
@@ -381,7 +381,7 @@ export default function MyRFQs() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {selectedRFQ.items?.map((item, index) => (
+                    {selectedRFQ.items?.map((item: any, index: any) => (
                       <tr key={index}>
                         <td className="py-3 px-4 text-sm">{index + 1}</td>
                         <td className="py-3 px-4 text-sm font-medium">{item.description}</td>

@@ -7,26 +7,26 @@ import { User, Mail, Phone, Building2, Shield, Save, Loader2, Key, Eye, EyeOff }
 export default function Profile() {
   const { user, updateUser } = useAuth();
   const { showToast } = useToast();
-  const [loading, setLoading] = useState(false);
-  const [showPasswordSection, setShowPasswordSection] = useState(false);
-  const [formData, setFormData] = useState({
+  const [loading, setLoading] = useState<any>(false);
+  const [showPasswordSection, setShowPasswordSection] = useState<any>(false);
+  const [formData, setFormData] = useState<any>({
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
     email: user?.email || '',
     phone: user?.phone || ''
   });
-  const [passwordData, setPasswordData] = useState({
+  const [passwordData, setPasswordData] = useState<any>({
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
   });
-  const [showPasswords, setShowPasswords] = useState({
+  const [showPasswords, setShowPasswords] = useState<any>({
     current: false,
     new: false,
     confirm: false
   });
 
-  const handleUpdateProfile = async (e) => {
+  const handleUpdateProfile = async (e: any) => {
     e.preventDefault();
     try {
       setLoading(true);
@@ -40,14 +40,14 @@ export default function Profile() {
         updateUser(response.data.data);
         showToast('Profile updated successfully', 'success');
       }
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to update profile', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChangePassword = async (e) => {
+  const handleChangePassword = async (e: any) => {
     e.preventDefault();
     
     if (passwordData.newPassword !== passwordData.confirmPassword) {
@@ -70,15 +70,15 @@ export default function Profile() {
       showToast('Password changed successfully', 'success');
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setShowPasswordSection(false);
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to change password', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const getRoleDisplayName = (role) => {
-    const names = {
+  const getRoleDisplayName = (role: any) => {
+    const names: any = {
       admin: 'System Administrator',
       procurement_officer: 'Procurement Officer',
       department_head: 'Department Head',
@@ -125,7 +125,7 @@ export default function Profile() {
               <input
                 type="text"
                 value={formData.firstName}
-                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                onChange={(e: any) => setFormData({ ...formData, firstName: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
@@ -137,7 +137,7 @@ export default function Profile() {
               <input
                 type="text"
                 value={formData.lastName}
-                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                onChange={(e: any) => setFormData({ ...formData, lastName: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
@@ -162,7 +162,7 @@ export default function Profile() {
               <input
                 type="tel"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                onChange={(e: any) => setFormData({ ...formData, phone: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 placeholder="+263 77 123 4567"
               />
@@ -200,7 +200,7 @@ export default function Profile() {
                 <input
                   type={showPasswords.current ? 'text' : 'password'}
                   value={passwordData.currentPassword}
-                  onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                  onChange={(e: any) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary pr-10"
                 />
                 <button
@@ -218,7 +218,7 @@ export default function Profile() {
                 <input
                   type={showPasswords.new ? 'text' : 'password'}
                   value={passwordData.newPassword}
-                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                  onChange={(e: any) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary pr-10"
                 />
                 <button
@@ -236,7 +236,7 @@ export default function Profile() {
                 <input
                   type={showPasswords.confirm ? 'text' : 'password'}
                   value={passwordData.confirmPassword}
-                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                  onChange={(e: any) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary pr-10"
                 />
                 <button

@@ -1,6 +1,6 @@
 import http from './http';
 
-export const supplierAPI = {
+export const supplierAPI: any = {
   getProfile: () => http.get('/supplier/profile'),
   updateProfile: (data: any) => http.put('/supplier/profile', data),
   getMyRFQs: (params?: any) => http.get('/supplier/rfqs', { params }),

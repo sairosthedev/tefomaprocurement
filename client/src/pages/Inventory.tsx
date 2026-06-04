@@ -12,14 +12,14 @@ import { formatCurrency, UNITS_OF_MEASUREMENT } from '../lib/constants';
 export default function Inventory() {
   const { showToast } = useToast();
   const [inventory, setInventory] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const [showLowStock, setShowLowStock] = useState(false);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showViewModal, setShowViewModal] = useState(false);
+  const [loading, setLoading] = useState<any>(true);
+  const [searchTerm, setSearchTerm] = useState<any>('');
+  const [categoryFilter, setCategoryFilter] = useState<any>('');
+  const [showLowStock, setShowLowStock] = useState<any>(false);
+  const [showAddModal, setShowAddModal] = useState<any>(false);
+  const [showViewModal, setShowViewModal] = useState<any>(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<any>({
     itemCode: '',
     name: '',
     description: '',
@@ -47,7 +47,7 @@ export default function Inventory() {
       if (response.data.success) {
         setInventory(response.data.data || []);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch inventory:', error);
     } finally {
       setLoading(false);
@@ -75,12 +75,12 @@ export default function Inventory() {
         unitPrice: 0
       });
       fetchInventory();
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to add item', 'error');
     }
   };
 
-  const lowStockCount = inventory.filter(inv => {
+  const lowStockCount = inventory.filter((inv: any) => {
     const item = inv.item || {};
     return inv.quantityOnHand <= (item.reorderLevel || 0);
   }).length;
@@ -143,7 +143,7 @@ export default function Inventory() {
             <div>
               <p className="text-sm text-gray-500">Stock Value</p>
               <p className="text-2xl font-bold text-gray-900">
-                {formatCurrency(inventory.reduce((sum, inv) => 
+                {formatCurrency(inventory.reduce((sum: any, inv: any) => 
                   sum + (inv.totalValue || 0), 0
                 ))}
               </p>
@@ -159,7 +159,7 @@ export default function Inventory() {
             <div>
               <p className="text-sm text-gray-500">Categories</p>
               <p className="text-2xl font-bold text-gray-900">
-                {new Set(inventory.map(inv => inv.item?.category).filter(Boolean)).size}
+                {new Set(inventory.map((inv: any) => inv.item?.category).filter(Boolean)).size}
               </p>
             </div>
           </div>
@@ -175,13 +175,13 @@ export default function Inventory() {
               type="text"
               placeholder="Search by name or item code..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e: any) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
           <select
             value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
+            onChange={(e: any) => setCategoryFilter(e.target.value)}
             className="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
           >
             <option value="">All Categories</option>
@@ -221,7 +221,7 @@ export default function Inventory() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {inventory.map((inv) => {
+                {inventory.map((inv: any) => {
                   const item = inv.item || {};
                   const isLowStock = inv.quantityOnHand <= (item.reorderLevel || 0);
                   return (
@@ -287,7 +287,7 @@ export default function Inventory() {
               <input
                 type="text"
                 value={formData.itemCode}
-                onChange={(e) => setFormData({ ...formData, itemCode: e.target.value })}
+                onChange={(e: any) => setFormData({ ...formData, itemCode: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
                 placeholder="Auto-generated if empty"
               />
@@ -296,7 +296,7 @@ export default function Inventory() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
               <select
                 value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                onChange={(e: any) => setFormData({ ...formData, category: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
               >
                 <option value="">Select Category</option>
@@ -314,7 +314,7 @@ export default function Inventory() {
             <input
               type="text"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e: any) => setFormData({ ...formData, name: e.target.value })}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
               placeholder="e.g., A4 Paper"
             />
@@ -324,7 +324,7 @@ export default function Inventory() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
             <textarea
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e: any) => setFormData({ ...formData, description: e.target.value })}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-none"
               rows={2}
             />
@@ -335,10 +335,10 @@ export default function Inventory() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
               <select
                 value={formData.unit}
-                onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                onChange={(e: any) => setFormData({ ...formData, unit: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
               >
-                {UNITS_OF_MEASUREMENT.map(unit => (
+                {UNITS_OF_MEASUREMENT.map((unit: any) => (
                   <option key={unit} value={unit}>{unit}</option>
                 ))}
               </select>
@@ -350,7 +350,7 @@ export default function Inventory() {
                 step="0.01"
                 min="0"
                 value={formData.unitPrice}
-                onChange={(e) => setFormData({ ...formData, unitPrice: parseFloat(e.target.value) || 0 })}
+                onChange={(e: any) => setFormData({ ...formData, unitPrice: parseFloat(e.target.value) || 0 })}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
               />
             </div>
@@ -363,7 +363,7 @@ export default function Inventory() {
                 type="number"
                 min="0"
                 value={formData.currentQuantity}
-                onChange={(e) => setFormData({ ...formData, currentQuantity: parseInt(e.target.value) || 0 })}
+                onChange={(e: any) => setFormData({ ...formData, currentQuantity: parseInt(e.target.value) || 0 })}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
               />
             </div>
@@ -373,7 +373,7 @@ export default function Inventory() {
                 type="number"
                 min="0"
                 value={formData.reorderLevel}
-                onChange={(e) => setFormData({ ...formData, reorderLevel: parseInt(e.target.value) || 0 })}
+                onChange={(e: any) => setFormData({ ...formData, reorderLevel: parseInt(e.target.value) || 0 })}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
               />
             </div>

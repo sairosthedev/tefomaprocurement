@@ -9,7 +9,7 @@ import {
 import ViewButton from '../components/ViewButton';
 import Modal from '../components/Modal';
 
-const statusColors = {
+const statusColors: any = {
   pending: 'bg-amber-100 text-amber-700',
   approved: 'bg-green-100 text-green-700',
   issued: 'bg-blue-100 text-blue-700',
@@ -22,16 +22,16 @@ export default function StoreRequisitions() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const [requisitions, setRequisitions] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [showApproveModal, setShowApproveModal] = useState(false);
-  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [loading, setLoading] = useState<any>(true);
+  const [searchTerm, setSearchTerm] = useState<any>('');
+  const [showCreateModal, setShowCreateModal] = useState<any>(false);
+  const [showViewModal, setShowViewModal] = useState<any>(false);
+  const [showApproveModal, setShowApproveModal] = useState<any>(false);
+  const [showRejectModal, setShowRejectModal] = useState<any>(false);
   const [selectedRequisition, setSelectedRequisition] = useState<any>(null);
-  const [actionComment, setActionComment] = useState('');
-  const [actionLoading, setActionLoading] = useState(false);
-  const [formData, setFormData] = useState({
+  const [actionComment, setActionComment] = useState<any>('');
+  const [actionLoading, setActionLoading] = useState<any>(false);
+  const [formData, setFormData] = useState<any>({
     items: [{ itemCode: '', description: '', quantity: 1 }]
   });
 
@@ -51,7 +51,7 @@ export default function StoreRequisitions() {
       if (response.data.success) {
         setRequisitions(response.data.data || []);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch store requisitions:', error);
       showToast('Failed to fetch store requisitions', 'error');
     } finally {
@@ -61,7 +61,7 @@ export default function StoreRequisitions() {
 
   const handleCreate = async () => {
     try {
-      const validItems = formData.items.filter(item => item.description.trim());
+      const validItems = formData.items.filter((item: any) => item.description.trim());
       if (validItems.length === 0) {
         showToast('Please add at least one item', 'error');
         return;
@@ -72,7 +72,7 @@ export default function StoreRequisitions() {
       setShowCreateModal(false);
       setFormData({ items: [{ itemCode: '', description: '', quantity: 1 }] });
       fetchRequisitions();
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to create requisition', 'error');
     }
   };
@@ -90,7 +90,7 @@ export default function StoreRequisitions() {
       setActionComment('');
       setSelectedRequisition(null);
       fetchRequisitions();
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to approve requisition', 'error');
     } finally {
       setActionLoading(false);
@@ -113,19 +113,19 @@ export default function StoreRequisitions() {
       setActionComment('');
       setSelectedRequisition(null);
       fetchRequisitions();
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to reject requisition', 'error');
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleIssue = async (id) => {
+  const handleIssue = async (id: any) => {
     try {
       await storesAPI.issueStock(id, {});
       showToast('Items issued successfully', 'success');
       fetchRequisitions();
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to issue items', 'error');
     }
   };
@@ -137,7 +137,7 @@ export default function StoreRequisitions() {
     });
   };
 
-  const updateItem = (index, field, value) => {
+  const updateItem = (index: any, field: any, value: any) => {
     const newItems = [...formData.items];
     newItems[index][field] = value;
     setFormData({ ...formData, items: newItems });
@@ -172,7 +172,7 @@ export default function StoreRequisitions() {
             type="text"
             placeholder="Search requisitions..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e: any) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
           />
         </div>
@@ -204,7 +204,7 @@ export default function StoreRequisitions() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {requisitions.map((req) => (
+                {requisitions.map((req: any) => (
                   <tr key={req._id} className="hover:bg-gray-50">
                     <td className="py-4 px-6">
                       <span className="font-mono text-sm font-medium text-primary">
@@ -283,7 +283,7 @@ export default function StoreRequisitions() {
         title="Request from Store"
       >
         <div className="space-y-4">
-          {formData.items.map((item, index) => (
+          {formData.items.map((item: any, index: any) => (
             <div key={index} className="bg-gray-50 rounded-xl p-4">
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-2">
@@ -291,7 +291,7 @@ export default function StoreRequisitions() {
                   <input
                     type="text"
                     value={item.description}
-                    onChange={(e) => updateItem(index, 'description', e.target.value)}
+                    onChange={(e: any) => updateItem(index, 'description', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
                     placeholder="e.g., A4 Paper"
                   />
@@ -302,7 +302,7 @@ export default function StoreRequisitions() {
                     type="number"
                     min="1"
                     value={item.quantity}
-                    onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                    onChange={(e: any) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
                   />
                 </div>
@@ -377,7 +377,7 @@ export default function StoreRequisitions() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {selectedRequisition.items?.map((item, index) => (
+                    {selectedRequisition.items?.map((item: any, index: any) => (
                       <tr key={index}>
                         <td className="py-3 px-4 text-sm">
                           {item.item?.name || item.item?.description || item.description || 'N/A'}
@@ -413,7 +413,7 @@ export default function StoreRequisitions() {
             <label className="block text-sm text-gray-700 mb-2">Comments (optional)</label>
             <textarea
               value={actionComment}
-              onChange={(e) => setActionComment(e.target.value)}
+              onChange={(e: any) => setActionComment(e.target.value)}
               rows={3}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
               placeholder="Add any comments about this approval..."
@@ -472,7 +472,7 @@ export default function StoreRequisitions() {
             <label className="block text-sm text-gray-700 mb-2">Rejection Reason <span className="text-red-500">*</span></label>
             <textarea
               value={actionComment}
-              onChange={(e) => setActionComment(e.target.value)}
+              onChange={(e: any) => setActionComment(e.target.value)}
               rows={3}
               required
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
