@@ -79,7 +79,7 @@ const submitQuotation = async (req: Request, res: Response): Promise<any> => {
 
     // Calculate totals
     const subtotal = items.reduce((sum: any, item: any) => sum + item.totalPrice, 0);
-    const vatAmount = items.some(item => !item.vatIncluded) ? subtotal * 0.15 : 0;
+    const vatAmount = items.some((item: any) => !item.vatIncluded) ? subtotal * 0.15 : 0;
     const totalAmount = subtotal + vatAmount;
 
     // Generate quotation number

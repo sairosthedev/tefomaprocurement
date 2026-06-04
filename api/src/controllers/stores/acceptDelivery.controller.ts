@@ -148,7 +148,9 @@ const acceptDelivery = async (req: Request, res: Response): Promise<any> => {
     if (status === 'accepted' && po.purchaseRequisition) {
       // Refresh PO to get latest status
       const updatedPO = await PurchaseOrder.findById(po._id);
-      
+      if (!updatedPO) {
+        // PO removed between accept and refresh — skip requisition completion check
+      } else {
       const allDeliveries = await Delivery.find({
         purchaseOrder: updatedPO._id,
         isDeleted: false
@@ -188,6 +190,7 @@ const acceptDelivery = async (req: Request, res: Response): Promise<any> => {
             req
           });
         }
+      }
       }
     }
 

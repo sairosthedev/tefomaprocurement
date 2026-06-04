@@ -7,13 +7,13 @@ const getStoreRequisitions = async (req: Request, res: Response): Promise<any> =
   try {
     const { search, status, site, page = 1, limit = 20 } = req.query as Record<string, any>;
 
-    let query = {
+    let query: any = {
       isDeleted: false
     };
 
     try {
       query = { ...query, ...buildSiteFilter(req.user, site) };
-    } catch (err) {
+    } catch (err: any) {
       return res.status(err.statusCode || 403).json({ success: false, message: err.message });
     }
     

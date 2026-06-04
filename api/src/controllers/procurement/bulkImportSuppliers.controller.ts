@@ -14,7 +14,7 @@ const bulkImportSuppliers = async (req: Request, res: Response): Promise<any> =>
       });
     }
 
-    const results = {
+    const results: { success: any[]; failed: any[] } = {
       success: [],
       failed: []
     };
@@ -117,7 +117,7 @@ const bulkImportSuppliers = async (req: Request, res: Response): Promise<any> =>
           email,
           tempPassword
         });
-      } catch (err) {
+      } catch (err: any) {
         results.failed.push({
           companyName: supplier.companyName || 'Unknown',
           email: supplier.email || 'Unknown',

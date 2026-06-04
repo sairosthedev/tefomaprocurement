@@ -15,7 +15,7 @@ const getMyDeliveries = async (req: Request, res: Response): Promise<any> => {
 
     const { status, page = 1, limit = 20 } = req.query as Record<string, any>;
     
-    const query = { 
+    const query: any = { 
       supplier: profile._id,
       isDeleted: false
     };

@@ -1,5 +1,4 @@
 import type { Request, Response } from 'express';
-import type { Request, Response } from 'express';
 import { SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 

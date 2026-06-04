@@ -37,7 +37,7 @@ const getQuotationById = async (req: Request, res: Response): Promise<any> => {
       isDeleted: false
     }).select('poNumber status');
 
-    const quotationData = quotation.toObject();
+    const quotationData: any = quotation.toObject();
     if (existingPO) {
       quotationData.existingPurchaseOrder = {
         poNumber: existingPO.poNumber,

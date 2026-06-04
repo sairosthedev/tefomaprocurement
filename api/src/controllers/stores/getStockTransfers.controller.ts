@@ -6,7 +6,7 @@ import { canAccessAllSites, userSiteId } from '../../lib/siteScope.js';
 const getStockTransfers = async (req: Request, res: Response): Promise<any> => {
   try {
     const { status, site: querySite, page = 1, limit = 20 } = req.query as Record<string, any>;
-    const query = { isDeleted: false };
+    const query: any = { isDeleted: false };
 
     if (status) query.status = status;
 

@@ -35,12 +35,12 @@ const getRFQById = async (req: Request, res: Response): Promise<any> => {
       status: { $in: ['submitted', 'under_review', 'accepted', 'rejected'] },
       isDeleted: false
     });
-    rfq.bidCount = bidCount;
+    (rfq as any).bidCount = bidCount;
 
     // Sealed bids: while the RFQ is ongoing, expose the COUNT only — never the
     // bid values, line items, or per-supplier quote references. Admins exempt.
     if (req.user!.role !== 'admin' && isRfqSealed(rfq)) {
-      rfq.bidsSealed = true;
+      (rfq as any).bidsSealed = true;
       rfq.invitedSuppliers = (rfq.invitedSuppliers || []).map((inv) => ({
         ...inv,
         quotation: undefined,

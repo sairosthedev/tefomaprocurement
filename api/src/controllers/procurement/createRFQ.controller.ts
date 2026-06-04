@@ -68,7 +68,7 @@ const createRFQ = async (req: Request, res: Response): Promise<any> => {
     // (Suppliers are already validated above, so we can safely publish)
     const rfqStatus = requestedStatus === 'open' ? 'open' : 'draft';
     
-    const rfqData = {
+    const rfqData: any = {
       rfqNumber,
       title,
       description,

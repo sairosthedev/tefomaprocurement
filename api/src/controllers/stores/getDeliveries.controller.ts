@@ -6,7 +6,7 @@ const getDeliveries = async (req: Request, res: Response): Promise<any> => {
   try {
     const { status, supplierId, page = 1, limit = 20 } = req.query as Record<string, any>;
     
-    const query = { isDeleted: false };
+    const query: any = { isDeleted: false };
     
     if (status) query.status = status;
     if (supplierId) query.supplier = supplierId;

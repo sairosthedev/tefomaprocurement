@@ -6,11 +6,11 @@ const getMovements = async (req: Request, res: Response): Promise<any> => {
   try {
     const { search, type, range, page = 1, limit = 50 } = req.query as Record<string, any>;
     
-    const query = { isDeleted: false };
+    const query: any = { isDeleted: false };
     
     // Filter by type (map frontend types to backend types)
     if (type) {
-      const typeMap = {
+      const typeMap: any = {
         'stock-in': 'receipt',
         'stock-out': 'issue',
         'adjustment': 'adjustment',
@@ -69,7 +69,7 @@ const getMovements = async (req: Request, res: Response): Promise<any> => {
     ]);
 
     // Manually populate reference documents based on type
-    const documentIdsByType = {
+    const documentIdsByType: any = {
       grv: [],
       store_requisition: []
     };
@@ -106,7 +106,7 @@ const getMovements = async (req: Request, res: Response): Promise<any> => {
     // Transform transactions to match frontend expectations
     const movements = transactions.map(t => {
       // Map backend types to frontend types
-      const typeMap = {
+      const typeMap: any = {
         'receipt': 'stock-in',
         'issue': 'stock-out',
         'adjustment': 'adjustment',

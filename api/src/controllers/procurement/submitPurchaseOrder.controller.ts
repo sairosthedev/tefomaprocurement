@@ -26,10 +26,10 @@ const submitPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
     po.status = 'pending_approvals';
     po.financeApproved = false;
     po.cooApproved = false;
-    po.financeApprovedBy = null;
-    po.financeApprovedAt = null;
-    po.cooApprovedBy = null;
-    po.cooApprovedAt = null;
+    (po as any).financeApprovedBy = null;
+    (po as any).financeApprovedAt = null;
+    (po as any).cooApprovedBy = null;
+    (po as any).cooApprovedAt = null;
     (po as any).approvalHistory.push({
       action: 'submitted',
       by: req.user!._id,

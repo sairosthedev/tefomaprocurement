@@ -7,10 +7,10 @@ const getInventory = async (req: Request, res: Response): Promise<any> => {
   try {
     const { search, belowReorderLevel, site, page = 1, limit = 50 } = req.query as Record<string, any>;
 
-    let query = { isDeleted: false };
+    let query: any = { isDeleted: false };
     try {
       query = { ...query, ...buildSiteFilter(req.user, site) };
-    } catch (err) {
+    } catch (err: any) {
       return res.status(err.statusCode || 403).json({ success: false, message: err.message });
     }
 

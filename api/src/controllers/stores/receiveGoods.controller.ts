@@ -32,8 +32,8 @@ const receiveGoods = async (req: Request, res: Response): Promise<any> => {
 
     // Check if all items are fully received
     let allReceived = true;
-    items.forEach(item => {
-      const poItem = po.items.id(item.poItem);
+    items.forEach((item: any) => {
+      const poItem = (po.items as any).id(item.poItem);
       if (poItem) {
         const newTotal = (poItem.quantityReceived || 0) + item.quantityReceived;
         if (newTotal < poItem.quantity) {
@@ -88,7 +88,7 @@ const receiveGoods = async (req: Request, res: Response): Promise<any> => {
 
     // Update PO quantities and update inventory
     for (const item of items) {
-      const poItem = po.items.id(item.poItem);
+      const poItem = (po.items as any).id(item.poItem);
       if (!poItem) continue;
 
       // Update PO item quantity received

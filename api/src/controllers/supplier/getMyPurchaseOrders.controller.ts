@@ -15,7 +15,7 @@ const getMyPurchaseOrders = async (req: Request, res: Response): Promise<any> =>
 
     const { status, page = 1, limit = 20 } = req.query as Record<string, any>;
     
-    const query = { 
+    const query: any = { 
       supplier: profile._id,
       isDeleted: false
     };
@@ -45,9 +45,9 @@ const getMyPurchaseOrders = async (req: Request, res: Response): Promise<any> =>
     
     // Add acknowledgment status to each order
     const ordersWithAcknowledgment = orders.map(order => {
-      const orderObj = order.toObject();
+      const orderObj: any = order.toObject();
       const isAcknowledged = order.approvalHistory?.some(
-        h => h.action === 'acknowledged' && h.by.toString() === req.user!._id.toString()
+        (h: any) => h.action === 'acknowledged' && String(h.by) === String((req.user as any)._id)
       );
       orderObj.isAcknowledged = isAcknowledged || false;
       return orderObj;

@@ -44,7 +44,7 @@ const createStockTransfer = async (req: Request, res: Response): Promise<any> =>
       }
     }
 
-    const transferItems = items.map((row) => ({
+    const transferItems = items.map((row: any) => ({
       item: row.itemId || row.item,
       quantityRequested: parseInt(row.quantity, 10),
       notes: row.notes

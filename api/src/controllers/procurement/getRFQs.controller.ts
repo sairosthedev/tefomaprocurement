@@ -6,7 +6,7 @@ const getRFQs = async (req: Request, res: Response): Promise<any> => {
   try {
     const { status, search, page = 1, limit = 20 } = req.query as Record<string, any>;
     
-    const query = { isDeleted: false };
+    const query: any = { isDeleted: false };
     
     if (status) query.status = status;
     if (search) {
@@ -44,7 +44,7 @@ const getRFQs = async (req: Request, res: Response): Promise<any> => {
       ]);
       const countMap = new Map(counts.map((c) => [c._id.toString(), c.count]));
       rfqs.forEach((r) => {
-        r.bidCount = countMap.get(r._id.toString()) || 0;
+        (r as any).bidCount = countMap.get(r._id.toString()) || 0;
       });
     }
 

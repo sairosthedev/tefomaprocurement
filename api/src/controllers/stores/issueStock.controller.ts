@@ -46,7 +46,7 @@ const issueStock = async (req: Request, res: Response): Promise<any> => {
         const pendingQty = reqItem.quantityRequested - (reqItem.quantityIssued || 0);
         if (pendingQty > 0) {
           itemsToIssue.push({
-            itemId: reqItem._id.toString(),
+            itemId: (reqItem as any)._id.toString(),
             quantity: pendingQty
           });
         }
@@ -76,7 +76,7 @@ const issueStock = async (req: Request, res: Response): Promise<any> => {
 
     // Process each item
     for (const issueItem of itemsToIssue) {
-      const reqItem = requisition.items.id(issueItem.itemId);
+      const reqItem = (requisition.items as any).id(issueItem.itemId);
       if (!reqItem) {
         continue;
       }

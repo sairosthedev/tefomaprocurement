@@ -42,7 +42,7 @@ const acknowledgePurchaseOrder = async (req: Request, res: Response): Promise<an
 
     // Check if already acknowledged
     const alreadyAcknowledged = po.approvalHistory.some(
-      h => h.action === 'acknowledged' && h.by.toString() === req.user!._id.toString()
+      (h: any) => h.action === 'acknowledged' && String(h.by) === String((req.user as any)._id)
     );
 
     if (alreadyAcknowledged) {
@@ -84,7 +84,7 @@ const acknowledgePurchaseOrder = async (req: Request, res: Response): Promise<an
 
     if (!existingDelivery) {
       // Create delivery items from PO items
-      const deliveryItems = po.items.map(item => ({
+      const deliveryItems = po.items.map((item: any) => ({
         poItem: item._id,
         description: item.description,
         quantityOrdered: item.quantity,

@@ -67,7 +67,7 @@ const createSupplier = async (req: Request, res: Response): Promise<any> => {
     
     if (existingSupplier) {
       console.log('Existing supplier found:', {
-        email: existingSupplier.email,
+        email: (existingSupplier as any).email,
         id: existingSupplier._id,
         userId: existingSupplier.user?._id,
         userDeleted: existingSupplier.user?.isDeleted
@@ -168,7 +168,7 @@ const createSupplier = async (req: Request, res: Response): Promise<any> => {
       data: {
         id: supplierProfile._id,
         companyName: supplierProfile.companyName,
-        email: supplierProfile.email,
+        email: (supplierProfile as any).email,
         status: supplierProfile.status,
         password: userPassword // Return the password used
       }

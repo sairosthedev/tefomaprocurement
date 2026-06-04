@@ -36,13 +36,13 @@ const receiveStockTransfer = async (req: Request, res: Response): Promise<any> =
     const linesToReceive =
       items?.length > 0
         ? items
-        : transfer.items.map((row) => ({
+        : transfer.items.map((row: any) => ({
             itemId: row._id.toString(),
             quantity: (row.quantityShipped || 0) - (row.quantityReceived || 0)
           }));
 
     for (const line of linesToReceive) {
-      const row = transfer.items.id(line.itemId);
+      const row = (transfer.items as any).id(line.itemId);
       if (!row) continue;
 
       const qty = line.quantity ?? (row.quantityShipped || 0) - (row.quantityReceived || 0);

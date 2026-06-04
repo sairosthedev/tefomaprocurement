@@ -6,7 +6,7 @@ const getSuppliers = async (req: Request, res: Response): Promise<any> => {
   try {
     const { status, search, category, page = 1, limit = 20 } = req.query as Record<string, any>;
     
-    const query = { isDeleted: false };
+    const query: any = { isDeleted: false };
     
     if (status) query.status = status;
     if (category) query.categories = category;

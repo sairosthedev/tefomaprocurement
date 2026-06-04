@@ -6,7 +6,7 @@ const getPendingRequisitions = async (req: Request, res: Response): Promise<any>
   try {
     const { status, search } = req.query as Record<string, any>;
 
-    const query = { isDeleted: false };
+    const query: any = { isDeleted: false };
     
     // Default to pending_acceptance for the requisitions page
     if (status) {
@@ -50,7 +50,7 @@ const getPendingRequisitions = async (req: Request, res: Response): Promise<any>
       .lean();
 
     // Also find POs linked via RFQ -> quotation -> PO chain
-    let rfqLinkedPOs = [];
+    let rfqLinkedPOs: any[] = [];
     if (rfqIds.length > 0) {
       const quotations = await Quotation.find({
         rfq: { $in: rfqIds },
@@ -83,7 +83,7 @@ const getPendingRequisitions = async (req: Request, res: Response): Promise<any>
     });
     
     // Fetch all quotations for RFQs linked to these requisitions
-    let allQuotations = [];
+    let allQuotations: any[] = [];
     if (rfqIds.length > 0) {
       allQuotations = await Quotation.find({
         rfq: { $in: rfqIds },
@@ -96,7 +96,7 @@ const getPendingRequisitions = async (req: Request, res: Response): Promise<any>
     }
 
     // Create a map of RFQ ID to quotations for lookup
-    const rfqToQuotationsMap = {};
+    const rfqToQuotationsMap: any = {};
     allQuotations.forEach(q => {
       const rfqId = q.rfq?.toString();
       if (rfqId) {
@@ -108,7 +108,7 @@ const getPendingRequisitions = async (req: Request, res: Response): Promise<any>
     });
 
     // Also create a map of RFQ ID to quotation IDs for PO lookup
-    const rfqToQuotationMap = {};
+    const rfqToQuotationMap: any = {};
     allQuotations.forEach(q => {
       const rfqId = q.rfq?.toString();
       if (rfqId) {
