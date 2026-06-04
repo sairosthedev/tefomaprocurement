@@ -10,15 +10,17 @@
     "client"
   ],
   "scripts": {
-    "dev": "concurrently -n api,client -c blue,magenta \"npm run dev -w api\" \"npm run dev -w client\"",
-    "dev:api": "npm run dev -w api",
-    "dev:client": "npm run dev -w client",
-    "build": "npm run build -w client",
+    "dev": "npm run build -w @fosssil/shared && concurrently -n api,client -c blue,magenta \"npm run dev -w api\" \"npm run dev -w client\"",
+    "dev:api": "npm run build -w @fosssil/shared && npm run dev -w api",
+    "dev:client": "npm run build -w @fosssil/shared && npm run dev -w client",
+    "build": "npm run build -w @fosssil/shared && npm run build -w api && npm run build -w client",
+    "build:shared": "npm run build -w @fosssil/shared",
     "start": "npm run start -w api",
     "seed": "npm run seed -w api",
     "migrate:sites": "npm run migrate:sites -w api",
-    "format": "prettier --write \"**/*.{js,jsx,json,md,css}\"",
-    "format:check": "prettier --check \"**/*.{js,jsx,json,md,css}\"",
+    "typecheck": "npm run typecheck -w @fosssil/shared && npm run typecheck -w api && npm run typecheck -w client",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
     "install:all": "npm install",
     "ngrok": "powershell -ExecutionPolicy Bypass -File ./scripts/start-ngrok.ps1"
   },

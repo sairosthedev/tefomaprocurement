@@ -1,0 +1,22 @@
+import express from 'express';
+import controllers from '../controllers/index.js';
+import { protect, authorize } from '../middleware/index.js';
+
+const { department } = controllers;
+const router = express.Router();
+
+// All routes require department_head role
+router.use(protect);
+router.use(authorize('department_head', 'admin'));
+
+// Requisitions
+router.post('/requisitions', department.createRequisition);
+router.get('/requisitions', department.getRequisitions);
+router.get('/requisitions/:id', department.getRequisitionById);
+router.put('/requisitions/:id/submit', department.submitRequisition);
+
+// Store Requisitions
+router.post('/store-requisitions', department.createStoreRequisition);
+router.get('/store-requisitions', department.getStoreRequisitions);
+
+export default router;
