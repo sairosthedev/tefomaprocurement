@@ -7,6 +7,13 @@ const getMe = async (req: Request, res: Response): Promise<any> => {
       .populate('department', 'name code')
       .populate('homeSite', 'code name type hasLocalStore');
 
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
     let supplierProfile = null;
     if (user.role === 'supplier') {
       supplierProfile = await SupplierProfile.findOne({ user: user._id });

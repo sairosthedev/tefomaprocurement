@@ -16,24 +16,23 @@ const approveRequisition = async (req: Request, res: Response): Promise<any> => 
       });
     }
 
-    if (requisition.status !== 'pending_approval') {
+    if (requisition.status !== 'pending_acceptance') {
       return res.status(400).json({
         success: false,
-        message: 'Requisition is not pending approval'
+        message: 'Requisition is not pending acceptance'
       });
     }
 
     // Verify department head is approving their department's requisition
-    if (requisition.department.toString() !== req.user!.department?.toString()) {
+    if (requisition.department?.toString() !== req.user!.department?.toString()) {
       return res.status(403).json({
         success: false,
         message: 'You can only approve requisitions from your department'
       });
     }
 
-    (requisition as any).status = 'approved';
-    (requisition as any).approvalHistory.push({
-      action: 'approved',
+    requisition.statusHistory.push({
+      action: 'submitted',
       by: req.user!._id,
       role: req.user!.role,
       comments: comments || 'Approved by department head'
@@ -47,7 +46,7 @@ const approveRequisition = async (req: Request, res: Response): Promise<any> => 
       entityId: requisition._id,
       user: req.user,
       description: `Approved requisition: ${requisition.requisitionNumber}`,
-      newData: { status: 'approved' },
+      newData: { departmentHeadApproved: true },
       req
     });
 
