@@ -8,15 +8,73 @@ export interface IContactPerson {
   isPrimary: boolean;
 }
 
+export interface IClientReferral {
+  clientName: string;
+  contactPerson?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  projectDescription?: string;
+}
+
+export interface IKysChecklist {
+  cr14Directors?: boolean;
+  cr6Address?: boolean;
+  taxClearance?: boolean;
+  nssaCompliance?: boolean;
+  necRegistration?: boolean;
+  industryLicences?: boolean;
+  isoCertification?: boolean;
+  companyProfile?: boolean;
+  clientReferrals?: boolean;
+  auditedFinancials?: boolean;
+  bankReferences?: boolean;
+  paymentTerms?: boolean;
+  liquidityRatios?: boolean;
+  warranties?: boolean;
+  afterSalesSupport?: boolean;
+  sampleTesting?: boolean;
+  safetyRecords?: boolean;
+  environmentalPolicy?: boolean;
+  insuranceCoverage?: boolean;
+  disasterPreparedness?: boolean;
+  completedAt?: Date;
+  completedBy?: mongoose.Types.ObjectId | any;
+  verifiedAt?: Date;
+  verifiedBy?: mongoose.Types.ObjectId | any;
+}
+
 export interface IComplianceDocument {
-  documentType: 'tax_clearance' | 'registration_certificate' | 'bee_certificate' | 'insurance' | 'bank_confirmation' | 'other';
+  documentType:
+    | 'tax_clearance'
+    | 'registration_certificate'
+    | 'bee_certificate'
+    | 'insurance'
+    | 'bank_confirmation'
+    | 'company_registration_cr14'
+    | 'registered_address_cr6'
+    | 'nssa_compliance'
+    | 'nec_registration'
+    | 'industry_licence'
+    | 'iso_certification'
+    | 'company_profile'
+    | 'client_referral'
+    | 'audited_financials'
+    | 'bank_reference'
+    | 'environmental_policy'
+    | 'safety_records'
+    | 'disaster_preparedness'
+    | 'other';
   fileName: string;
   filePath: string;
+  mimeType?: string;
+  fileSize?: number;
+  uploadedBy?: mongoose.Types.ObjectId | any;
   expiryDate?: Date;
   uploadedAt: Date;
   verified: boolean;
   verifiedBy?: mongoose.Types.ObjectId | any;
   verifiedAt?: Date;
+  notes?: string;
 }
 
 export interface ISupplierProfile extends Document {
@@ -43,7 +101,12 @@ export interface ISupplierProfile extends Document {
   };
   categories: string[];
   complianceDocuments: IComplianceDocument[];
-  status: 'pending' | 'active' | 'suspended' | 'blacklisted';
+  kysChecklist: IKysChecklist;
+  clientReferrals: IClientReferral[];
+  kysComplete: boolean;
+  lastEvaluationAt?: Date;
+  nextEvaluationDue?: Date;
+  status: 'pending' | 'active' | 'suspended' | 'blacklisted' | 'dormant';
   blacklistReason?: string;
   blacklistedBy?: mongoose.Types.ObjectId | any;
   blacklistedAt?: Date;
@@ -66,17 +129,62 @@ const ContactPersonSchema = new Schema<IContactPerson>({
 const ComplianceDocumentSchema = new Schema<IComplianceDocument>({
   documentType: {
     type: String,
-    enum: ['tax_clearance', 'registration_certificate', 'bee_certificate', 'insurance', 'bank_confirmation', 'other'],
+    enum: [
+      'tax_clearance', 'registration_certificate', 'bee_certificate', 'insurance', 'bank_confirmation',
+      'company_registration_cr14', 'registered_address_cr6', 'nssa_compliance', 'nec_registration',
+      'industry_licence', 'iso_certification', 'company_profile', 'client_referral',
+      'audited_financials', 'bank_reference', 'environmental_policy', 'safety_records',
+      'disaster_preparedness', 'other'
+    ],
     required: true
   },
   fileName: { type: String, required: true },
   filePath: { type: String, required: true },
+  mimeType: String,
+  fileSize: Number,
+  uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   expiryDate: Date,
   uploadedAt: { type: Date, default: Date.now },
   verified: { type: Boolean, default: false },
   verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  verifiedAt: Date
+  verifiedAt: Date,
+  notes: String
 });
+
+const ClientReferralSchema = new Schema<IClientReferral>({
+  clientName: { type: String, required: true },
+  contactPerson: String,
+  contactEmail: String,
+  contactPhone: String,
+  projectDescription: String
+}, { _id: true });
+
+const KysChecklistSchema = new Schema<IKysChecklist>({
+  cr14Directors: Boolean,
+  cr6Address: Boolean,
+  taxClearance: Boolean,
+  nssaCompliance: Boolean,
+  necRegistration: Boolean,
+  industryLicences: Boolean,
+  isoCertification: Boolean,
+  companyProfile: Boolean,
+  clientReferrals: Boolean,
+  auditedFinancials: Boolean,
+  bankReferences: Boolean,
+  paymentTerms: Boolean,
+  liquidityRatios: Boolean,
+  warranties: Boolean,
+  afterSalesSupport: Boolean,
+  sampleTesting: Boolean,
+  safetyRecords: Boolean,
+  environmentalPolicy: Boolean,
+  insuranceCoverage: Boolean,
+  disasterPreparedness: Boolean,
+  completedAt: Date,
+  completedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  verifiedAt: Date,
+  verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+}, { _id: false });
 
 const SupplierProfileSchema = new Schema<ISupplierProfile>({
   user: {
@@ -112,7 +220,7 @@ const SupplierProfileSchema = new Schema<ISupplierProfile>({
     city: String,
     province: String,
     postalCode: String,
-    country: { type: String, default: 'South Africa' }
+    country: { type: String, default: 'Zimbabwe' }
   },
   contactPersons: [ContactPersonSchema],
   bankDetails: {
@@ -127,9 +235,14 @@ const SupplierProfileSchema = new Schema<ISupplierProfile>({
     trim: true
   }],
   complianceDocuments: [ComplianceDocumentSchema],
+  kysChecklist: { type: KysChecklistSchema, default: () => ({}) },
+  clientReferrals: [ClientReferralSchema],
+  kysComplete: { type: Boolean, default: false },
+  lastEvaluationAt: Date,
+  nextEvaluationDue: Date,
   status: {
     type: String,
-    enum: ['pending', 'active', 'suspended', 'blacklisted'],
+    enum: ['pending', 'active', 'suspended', 'blacklisted', 'dormant'],
     default: 'pending'
   },
   blacklistReason: String,
