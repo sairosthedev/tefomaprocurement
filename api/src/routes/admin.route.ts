@@ -27,4 +27,7 @@ router.get('/sites', admin.getSites);
 router.put('/sites/:id', admin.updateSite);
 router.delete('/sites/:id', admin.deleteSite);
 
+// Audit logs
+router.get('/audit-logs', admin.getAuditLogs);
+
 export default router;
