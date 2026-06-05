@@ -5,11 +5,14 @@ const getRequisitionById = async (req: Request, res: Response): Promise<any> => 
   try {
     const { id } = req.params;
 
-    const requisition: any = await PurchaseRequisition.findOne({
-      _id: id,
-      department: req.user!.department,
-      isDeleted: false
-    })
+    const scope: any = { _id: id, isDeleted: false };
+    if (req.user!.role === 'end_user') {
+      scope.requestedBy = req.user!._id;
+    } else {
+      scope.department = req.user!.department;
+    }
+
+    const requisition: any = await PurchaseRequisition.findOne(scope)
       .populate('department', 'name code')
       .populate('requestedBy', 'firstName lastName email')
       .populate('processedBy', 'firstName lastName')

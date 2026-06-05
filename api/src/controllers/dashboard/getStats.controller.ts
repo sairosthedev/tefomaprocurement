@@ -113,6 +113,35 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
         };
         break;
 
+      case 'end_user': {
+        const myReqs = await PurchaseRequisition.countDocuments({
+          requestedBy: req.user!._id,
+          isDeleted: false
+        });
+        const myDrafts = await PurchaseRequisition.countDocuments({
+          requestedBy: req.user!._id,
+          status: 'draft',
+          isDeleted: false
+        });
+        const myPendingHod = await PurchaseRequisition.countDocuments({
+          requestedBy: req.user!._id,
+          status: 'pending_hod',
+          isDeleted: false
+        });
+        const myFulfilled = await PurchaseRequisition.countDocuments({
+          requestedBy: req.user!._id,
+          status: { $in: ['fulfilled', 'completed', 'ordered'] },
+          isDeleted: false
+        });
+        stats = {
+          myRequisitions: { value: myReqs, label: 'My Requisitions' },
+          drafts: { value: myDrafts, label: 'Drafts' },
+          pendingApproval: { value: myPendingHod, label: 'Awaiting HOD Approval' },
+          fulfilled: { value: myFulfilled, label: 'Fulfilled' }
+        };
+        break;
+      }
+
       case 'supplier':
         const supplierProfileForStats = await SupplierProfile.findOne({ user: req.user!._id });
         if (supplierProfileForStats) {

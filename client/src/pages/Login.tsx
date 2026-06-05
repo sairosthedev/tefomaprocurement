@@ -39,6 +39,7 @@ export default function Login() {
         admin: '/app',
         procurement_officer: '/app',
         department_head: '/app',
+        end_user: '/app',
         finance: '/app',
         coo: '/app',
         stores_officer: '/app',

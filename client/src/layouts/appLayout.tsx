@@ -22,10 +22,12 @@ import {
   Building2,
   FileCheck,
   DollarSign,
+  CreditCard,
   TrendingUp,
   Send,
   Archive,
-  Settings
+  Settings,
+  ShieldCheck
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
@@ -46,9 +48,17 @@ const roleNavigation: any = {
   
   department_head: [
     { name: "Dashboard", href: "/app", icon: LayoutDashboard },
+    { name: "Approvals", href: "/app/approvals", icon: CheckSquare },
     { name: "My Requisitions", href: "/app/requisitions", icon: ClipboardList },
     { name: "Store Requisitions", href: "/app/store-requisitions", icon: Package },
     { name: "Reports", href: "/app/reports", icon: BarChart3 },
+    { name: "Notifications", href: "/app/notifications", icon: Bell },
+    { name: "Profile", href: "/app/profile", icon: UserCircle },
+  ],
+
+  end_user: [
+    { name: "Dashboard", href: "/app", icon: LayoutDashboard },
+    { name: "My Requisitions", href: "/app/requisitions", icon: ClipboardList },
     { name: "Notifications", href: "/app/notifications", icon: Bell },
     { name: "Profile", href: "/app/profile", icon: UserCircle },
   ],
@@ -68,6 +78,8 @@ const roleNavigation: any = {
   finance: [
     { name: "Dashboard", href: "/app", icon: LayoutDashboard },
     { name: "Approvals", href: "/app/approvals", icon: CheckSquare },
+    { name: "Invoices", href: "/app/invoices", icon: FileText },
+    { name: "Payments", href: "/app/payments", icon: CreditCard },
     { name: "Budgets", href: "/app/budgets", icon: DollarSign },
     { name: "Purchase Orders", href: "/app/purchase-orders", icon: ShoppingCart },
     { name: "Reports", href: "/app/reports", icon: BarChart3 },
@@ -86,6 +98,7 @@ const roleNavigation: any = {
   
   stores_officer: [
     { name: "Dashboard", href: "/app", icon: LayoutDashboard },
+    { name: "PR Stores Review", href: "/app/stores-pr-review", icon: ClipboardList },
     { name: "Deliveries (GRV)", href: "/app/deliveries", icon: Truck },
     { name: "Inventory", href: "/app/inventory", icon: Package },
     { name: "Store Requisitions", href: "/app/store-requisitions", icon: ClipboardList },
@@ -100,7 +113,9 @@ const roleNavigation: any = {
     { name: "My RFQs", href: "/app/my-rfqs", icon: FileSearch },
     { name: "My Submitted Quotations", href: "/app/my-submitted-quotations", icon: FileText },
     { name: "My Purchase Orders", href: "/app/my-purchase-orders", icon: ShoppingCart },
+    { name: "My Invoices", href: "/app/my-invoices", icon: FileText },
     { name: "Deliveries", href: "/app/my-deliveries", icon: Truck },
+    { name: "KYS Documents", href: "/app/my-kys", icon: ShieldCheck },
     { name: "My Profile", href: "/app/supplier-profile", icon: Building2 },
     { name: "Notifications", href: "/app/notifications", icon: Bell },
   ],
@@ -130,6 +145,7 @@ export function SidebarLayout({ children }: any) {
       admin: 'System Administrator',
       procurement_officer: 'Procurement Officer',
       department_head: 'Department Head',
+      end_user: 'End User',
       finance: 'Finance Manager',
       coo: 'Chief Operating Officer',
       stores_officer: 'Stores Officer',

@@ -5,7 +5,7 @@ import { createAuditLog } from '../../middleware/index.js';
 
 const register = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { email, password, firstName, lastName, role, phone, companyDetails } = req.body;
+    const { email, password, firstName, lastName, role, phone, department, companyDetails } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -24,7 +24,8 @@ const register = async (req: Request, res: Response): Promise<any> => {
       lastName,
       role: role || 'supplier', // Default to supplier for public registration
       phone,
-      status: role === 'supplier' ? 'active' : 'active'
+      department: role === 'end_user' ? department || undefined : undefined,
+      status: 'active'
     });
 
     // If supplier, create supplier profile
