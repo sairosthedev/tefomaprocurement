@@ -1,14 +1,6 @@
 {
   "version": 2,
-  "installCommand": "cd .. && npm install && npm run build -w @fosssil/shared && npm run build -w api",
-  "builds": [
-    {
-      "src": "dist/vercel.js",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["dist/**", "node_modules/@fosssil/**"]
-      }
-    }
-  ],
-  "routes": [{ "src": "/(.*)", "dest": "/dist/vercel.js" }]
+  "installCommand": "cd .. && npm install && npm run build -w @fosssil/shared",
+  "builds": [{ "src": "src/vercel.ts", "use": "@vercel/node" }],
+  "routes": [{ "src": "/(.*)", "dest": "src/vercel.ts" }]
 }
