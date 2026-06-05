@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
-
 import { PurchaseOrder } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { requiresCooApproval } from '../../services/poApprovalFlow.service.js';
 
 const submitPurchaseOrder = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -22,19 +22,23 @@ const submitPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       });
     }
 
-    // Set status to pending_approvals for parallel Finance and COO approvals
-    po.status = 'pending_approvals';
+    // FC-HQ-P-07 §6.3.12 — sequential: Procurement → HOD → Finance → COO (if > USD 5k)
+    po.status = 'pending_hod';
+    po.hodApproved = false;
     po.financeApproved = false;
     po.cooApproved = false;
-    (po as any).financeApprovedBy = null;
-    (po as any).financeApprovedAt = null;
-    (po as any).cooApprovedBy = null;
-    (po as any).cooApprovedAt = null;
-    (po as any).approvalHistory.push({
+    po.requiresCooApproval = requiresCooApproval(po.totalAmount);
+    po.hodApprovedBy = undefined;
+    po.hodApprovedAt = undefined;
+    po.financeApprovedBy = undefined;
+    po.financeApprovedAt = undefined;
+    po.cooApprovedBy = undefined;
+    po.cooApprovedAt = undefined;
+    po.approvalHistory.push({
       action: 'submitted',
       by: req.user!._id,
       role: req.user!.role,
-      comments: 'Submitted for Finance and COO approval'
+      comments: 'Submitted for HOD approval (FC-HQ-P-07 §6.3.12)'
     });
 
     await po.save();
@@ -44,14 +48,16 @@ const submitPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       entity: 'PurchaseOrder',
       entityId: po._id,
       user: req.user,
-      description: `Submitted PO: ${po.poNumber} for Finance and COO approval`,
-      newData: { status: 'pending_approvals' },
+      description: `Submitted PO: ${po.poNumber} for HOD approval`,
+      newData: { status: 'pending_hod', requiresCooApproval: po.requiresCooApproval },
       req
     });
 
     res.status(200).json({
       success: true,
-      message: 'Purchase order submitted for Finance and COO approval',
+      message: po.requiresCooApproval
+        ? 'Purchase order submitted. Awaiting HOD → Finance → COO approval (amount ≥ USD 5,000).'
+        : 'Purchase order submitted. Awaiting HOD → Finance approval.',
       data: po
     });
   } catch (error: any) {

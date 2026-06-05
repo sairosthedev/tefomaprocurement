@@ -22,8 +22,9 @@ import ViewButton from '../components/ViewButton';
 
 const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
+  pending_hod: 'bg-purple-100 text-purple-700',
   pending_finance: 'bg-amber-100 text-amber-700',
-  pending_coo: 'bg-purple-100 text-purple-700',
+  pending_coo: 'bg-indigo-100 text-indigo-700',
   pending_approvals: 'bg-blue-100 text-blue-700',
   approved: 'bg-blue-100 text-blue-700',
   rejected: 'bg-red-100 text-red-700',

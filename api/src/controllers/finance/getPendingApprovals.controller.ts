@@ -7,7 +7,8 @@ const getPendingApprovals = async (req: Request, res: Response): Promise<any> =>
 
     // Get POs that are pending approvals and Finance hasn't approved yet
     const query = {
-      status: 'pending_approvals',
+      status: { $in: ['pending_finance', 'pending_approvals'] },
+      hodApproved: true,
       financeApproved: false,
       isDeleted: false
     };

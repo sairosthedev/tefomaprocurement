@@ -10,14 +10,16 @@ import Modal from '../components/Modal';
 import { formatCurrency } from '../lib/constants';
 
 const statusColors: any = {
+  pending_hod: 'bg-purple-100 text-purple-700',
   pending_finance: 'bg-amber-100 text-amber-700',
-  pending_coo: 'bg-purple-100 text-purple-700',
+  pending_coo: 'bg-indigo-100 text-indigo-700',
   pending_approvals: 'bg-blue-100 text-blue-700',
   approved: 'bg-green-100 text-green-700',
   rejected: 'bg-red-100 text-red-700'
 };
 
 const statusLabels: any = {
+  pending_hod: 'Awaiting HOD',
   pending_finance: 'Awaiting Finance',
   pending_coo: 'Awaiting COO',
   pending_approvals: 'Pending Approvals',
@@ -45,6 +47,9 @@ export default function Approvals() {
       let endpoint = '';
       
       switch (user?.role) {
+        case 'department_head':
+          endpoint = '/department/pending-po-approvals';
+          break;
         case 'finance':
           endpoint = '/finance/pending-approvals';
           break;
@@ -52,8 +57,7 @@ export default function Approvals() {
           endpoint = '/coo/pending-approvals';
           break;
         case 'admin':
-          // Admin can see all pending POs
-          endpoint = '/procurement/purchase-orders?status=pending_approvals';
+          endpoint = '/finance/pending-approvals';
           break;
         default:
           endpoint = '/finance/pending-approvals';
@@ -77,6 +81,9 @@ export default function Approvals() {
       let endpoint = '';
       
       switch (user?.role) {
+        case 'department_head':
+          endpoint = `/department/purchase-orders/${selectedItem._id}/approve`;
+          break;
         case 'finance':
         case 'admin':
           endpoint = `/finance/purchase-orders/${selectedItem._id}/approve`;
@@ -136,10 +143,12 @@ export default function Approvals() {
 
   const getTitle = () => {
     switch (user?.role) {
+      case 'department_head':
+        return 'HOD Approval';
       case 'finance':
         return 'Finance Approval';
       case 'coo':
-        return 'Executive Approval';
+        return 'COO Authorization';
       default:
         return 'Purchase Order Approvals';
     }
@@ -147,10 +156,12 @@ export default function Approvals() {
 
   const getDescription = () => {
     switch (user?.role) {
+      case 'department_head':
+        return 'Approve purchase orders before Finance review (FC-HQ-P-07 §6.3.12)';
       case 'finance':
         return 'Review and approve purchase orders for payment authorization';
       case 'coo':
-        return 'Final approval for high-value purchase orders';
+        return 'Authorize purchase orders above USD 5,000';
       default:
         return 'Review pending purchase orders';
     }

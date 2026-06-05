@@ -16,4 +16,12 @@ router.get('/purchase-orders/:id', finance.getPurchaseOrderById);
 router.put('/purchase-orders/:id/approve', finance.approvePurchaseOrder);
 router.put('/purchase-orders/:id/reject', finance.rejectPurchaseOrder);
 
+// Accounts payable
+router.get('/invoices', finance.getInvoices);
+router.get('/invoices/:id', finance.getInvoiceById);
+router.put('/invoices/:id/approve', finance.approveInvoice);
+router.put('/invoices/:id/reject', finance.rejectInvoice);
+router.get('/payments', finance.getPayments);
+router.post('/payments', finance.createPayment);
+
 export default router;
