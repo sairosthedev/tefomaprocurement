@@ -1,4 +1,5 @@
 import mongoose, { Schema, type Document } from 'mongoose';
+import { requiresCooApproval } from '../services/poApprovalFlow.service.js';
 
 export interface IPOItem {
   description: string;
@@ -12,7 +13,7 @@ export interface IPOItem {
 }
 
 export interface IApprovalHistory {
-  action: 'created' | 'submitted' | 'finance_approved' | 'finance_rejected' | 'coo_approved' | 'coo_rejected' | 'issued' | 'acknowledged';
+  action: 'created' | 'submitted' | 'hod_approved' | 'hod_rejected' | 'finance_approved' | 'finance_rejected' | 'coo_approved' | 'coo_rejected' | 'issued' | 'acknowledged';
   by: mongoose.Types.ObjectId | any;
   role?: string;
   comments?: string;
@@ -40,7 +41,11 @@ export interface IPurchaseOrder extends Document {
   expectedDeliveryDate?: Date;
   paymentTerms?: string;
   termsAndConditions?: string;
-  status: 'draft' | 'pending_finance' | 'pending_coo' | 'pending_approvals' | 'approved' | 'rejected' | 'issued' | 'partially_received' | 'completed' | 'cancelled';
+  status: 'draft' | 'pending_hod' | 'pending_finance' | 'pending_coo' | 'pending_approvals' | 'approved' | 'rejected' | 'issued' | 'partially_received' | 'completed' | 'cancelled';
+  hodApproved: boolean;
+  hodApprovedBy?: mongoose.Types.ObjectId | any;
+  hodApprovedAt?: Date;
+  requiresCooApproval: boolean;
   financeApproved: boolean;
   financeApprovedBy?: mongoose.Types.ObjectId | any;
   financeApprovedAt?: Date;
@@ -51,6 +56,8 @@ export interface IPurchaseOrder extends Document {
   issuedAt?: Date;
   issuedBy?: mongoose.Types.ObjectId | any;
   version: number;
+  totalInvoiced: number;
+  totalPaid: number;
   notes?: string;
   isDeleted: boolean;
   createdAt: Date;
@@ -88,7 +95,7 @@ const POItemSchema = new Schema<IPOItem>({
 const ApprovalHistorySchema = new Schema<IApprovalHistory>({
   action: {
     type: String,
-    enum: ['created', 'submitted', 'finance_approved', 'finance_rejected', 'coo_approved', 'coo_rejected', 'issued', 'acknowledged'],
+    enum: ['created', 'submitted', 'hod_approved', 'hod_rejected', 'finance_approved', 'finance_rejected', 'coo_approved', 'coo_rejected', 'issued', 'acknowledged'],
     required: true
   },
   by: {
@@ -161,8 +168,21 @@ const PurchaseOrderSchema = new Schema<IPurchaseOrder>({
   termsAndConditions: String,
   status: {
     type: String,
-    enum: ['draft', 'pending_finance', 'pending_coo', 'pending_approvals', 'approved', 'rejected', 'issued', 'partially_received', 'completed', 'cancelled'],
+    enum: ['draft', 'pending_hod', 'pending_finance', 'pending_coo', 'pending_approvals', 'approved', 'rejected', 'issued', 'partially_received', 'completed', 'cancelled'],
     default: 'draft'
+  },
+  hodApproved: {
+    type: Boolean,
+    default: false
+  },
+  hodApprovedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  hodApprovedAt: Date,
+  requiresCooApproval: {
+    type: Boolean,
+    default: false
   },
   financeApproved: {
     type: Boolean,
@@ -192,6 +212,14 @@ const PurchaseOrderSchema = new Schema<IPurchaseOrder>({
     type: Number,
     default: 1
   },
+  totalInvoiced: {
+    type: Number,
+    default: 0
+  },
+  totalPaid: {
+    type: Number,
+    default: 0
+  },
   notes: String,
   isDeleted: {
     type: Boolean,
@@ -208,6 +236,9 @@ PurchaseOrderSchema.pre('save', async function(next) {
     const year = new Date().getFullYear();
     this.poNumber = `PO-${year}-${String(count + 1).padStart(5, '0')}`;
   }
+
+  // FC-HQ-P-07 §6.3.11 — COO required above USD 5,000
+  this.requiresCooApproval = requiresCooApproval(this.totalAmount);
 
   // Calculate pending quantities
   this.items.forEach((item: any) => {
