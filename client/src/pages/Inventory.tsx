@@ -7,7 +7,8 @@ import {
 } from 'lucide-react';
 import ViewButton from '../components/ViewButton';
 import Modal from '../components/Modal';
-import { formatCurrency, UNITS_OF_MEASUREMENT } from '../lib/constants';
+import { CategorySelect } from '../components/CategorySelect';
+import { formatCurrency, UNITS_OF_MEASUREMENT, getCategoryName } from '../lib/constants';
 
 export default function Inventory() {
   const { showToast } = useToast();
@@ -236,7 +237,9 @@ export default function Inventory() {
                         <p className="text-sm text-gray-500 truncate max-w-xs">{item.description || ''}</p>
                       </td>
                       <td className="py-4 px-6">
-                        <span className="text-sm text-gray-600">{item.category || '-'}</span>
+                        <span className="text-sm text-gray-600" title={item.category || ''}>
+                          {item.category ? getCategoryName(item.category) : '-'}
+                        </span>
                       </td>
                       <td className="py-4 px-6">
                         <span className={`text-sm font-semibold ${isLowStock ? 'text-red-600' : 'text-gray-900'}`}>
@@ -294,18 +297,12 @@ export default function Inventory() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-              <select
+              <CategorySelect
                 value={formData.category}
-                onChange={(e: any) => setFormData({ ...formData, category: e.target.value })}
+                onChange={(code) => setFormData({ ...formData, category: code })}
+                placeholder="Select Category"
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
-              >
-                <option value="">Select Category</option>
-                <option value="Office Supplies">Office Supplies</option>
-                <option value="IT Equipment">IT Equipment</option>
-                <option value="Furniture">Furniture</option>
-                <option value="Cleaning">Cleaning</option>
-                <option value="Stationery">Stationery</option>
-              </select>
+              />
             </div>
           </div>
 
@@ -413,7 +410,7 @@ export default function Inventory() {
               </div>
               <div>
                 <label className="text-sm text-gray-500">Category</label>
-                <p className="text-gray-900">{selectedItem.item?.category || '-'}</p>
+                <p className="text-gray-900">{selectedItem.item?.category ? getCategoryName(selectedItem.item.category) : '-'}</p>
               </div>
               <div>
                 <label className="text-sm text-gray-500">Current Stock</label>

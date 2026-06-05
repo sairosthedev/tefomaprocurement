@@ -4,12 +4,21 @@ import { SupplierProfile } from '../../models/index.js';
 
 const getSuppliers = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { status, search, category, page = 1, limit = 20 } = req.query as Record<string, any>;
+    const { status, search, category, categories, page = 1, limit = 20 } = req.query as Record<string, any>;
     
     const query: any = { isDeleted: false };
     
     if (status) query.status = status;
-    if (category) query.categories = category;
+    // `category` matches a single code; `categories` matches any of several codes
+    // (comma-separated string or array) — used to find suppliers for an RFQ's items.
+    if (categories) {
+      const codes = Array.isArray(categories)
+        ? categories
+        : String(categories).split(',').map((c) => c.trim()).filter(Boolean);
+      if (codes.length > 0) query.categories = { $in: codes };
+    } else if (category) {
+      query.categories = category;
+    }
     if (search) {
       query.$or = [
         { companyName: { $regex: search, $options: 'i' } },

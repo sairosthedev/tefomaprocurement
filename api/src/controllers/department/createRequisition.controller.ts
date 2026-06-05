@@ -37,6 +37,7 @@ const createRequisition = async (req: Request, res: Response): Promise<any> => {
       const line: any = {
         item: item.item || item.itemId,
         description: item.description,
+        category: item.category,
         specification: item.specification || item.specifications,
         quantity: item.quantity || 1,
         unit: item.unit || 'Each',
@@ -83,7 +84,7 @@ const createRequisition = async (req: Request, res: Response): Promise<any> => {
       priority: mappedPriority,
       requiredDate: requiredDate ? new Date(requiredDate) : undefined,
       notes,
-      status: status === 'pending' ? 'pending_acceptance' : 'draft'
+      status: status === 'pending' ? 'pending_hod' : 'draft'
     });
 
     await createAuditLog({

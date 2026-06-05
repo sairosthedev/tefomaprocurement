@@ -2,6 +2,7 @@ import mongoose, { Schema, type Document } from 'mongoose';
 
 export interface IRFQItem {
   description: string;
+  categoryName?: string;
   specifications?: string;
   quantity: number;
   unit: string;
@@ -14,6 +15,36 @@ export interface IInvitedSupplier {
   responded: boolean;
   respondedAt?: Date;
   quotation?: mongoose.Types.ObjectId | any;
+}
+
+export interface IQuotationWaiver {
+  waived: boolean;
+  reason: string;
+  waiverType?:
+    | 'service_agreement'
+    | 'single_source'
+    | 'approved_contract'
+    | 'no_quotes'
+    | 'unique_product'
+    | 'coo_directed'
+    | 'custom_manufacture'
+    | 'coo_instruction'
+    | 'other';
+  approvedBy?: mongoose.Types.ObjectId | any;
+  approvedAt?: Date;
+}
+
+export interface IHodQuotationSelection {
+  quotation: mongoose.Types.ObjectId | any;
+  justification: string;
+  approvedBy: mongoose.Types.ObjectId | any;
+  approvedAt?: Date;
+}
+
+export interface IPmQuotationAuthorization {
+  quotation: mongoose.Types.ObjectId | any;
+  authorizedBy: mongoose.Types.ObjectId | any;
+  authorizedAt?: Date;
 }
 
 export interface IRFQ extends Document {
@@ -33,6 +64,9 @@ export interface IRFQ extends Document {
   publishedAt?: Date;
   closedAt?: Date;
   selectedQuotation?: mongoose.Types.ObjectId | any;
+  quotationWaiver?: IQuotationWaiver;
+  hodSelection?: IHodQuotationSelection;
+  pmAuthorization?: IPmQuotationAuthorization;
   notes?: string;
   isDeleted: boolean;
   createdAt: Date;
@@ -44,6 +78,7 @@ const RFQItemSchema = new Schema<IRFQItem>({
     type: String,
     required: true
   },
+  categoryName: { type: String, trim: true }, // canonical supplier-category code
   specifications: String,
   quantity: {
     type: Number,
@@ -122,6 +157,30 @@ const RFQSchema = new Schema<IRFQ>({
   selectedQuotation: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Quotation'
+  },
+  quotationWaiver: {
+    waived: { type: Boolean, default: false },
+    reason: String,
+    waiverType: {
+      type: String,
+      enum: [
+        'service_agreement', 'single_source', 'approved_contract', 'no_quotes',
+        'unique_product', 'coo_directed', 'custom_manufacture', 'coo_instruction', 'other'
+      ]
+    },
+    approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    approvedAt: Date
+  },
+  hodSelection: {
+    quotation: { type: mongoose.Schema.Types.ObjectId, ref: 'Quotation' },
+    justification: String,
+    approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    approvedAt: Date
+  },
+  pmAuthorization: {
+    quotation: { type: mongoose.Schema.Types.ObjectId, ref: 'Quotation' },
+    authorizedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    authorizedAt: Date
   },
   notes: String,
   isDeleted: {
