@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import Tabs from '../components/Tabs';
 import Modal from '../components/Modal';
+import { CategoryMultiSelect } from '../components/CategorySelect';
+import { getCategoryName } from '../lib/constants';
 import { 
   Search, 
   Filter, 
@@ -37,6 +40,7 @@ const statusIcons: any = {
 };
 
 export default function Suppliers() {
+  const navigate = useNavigate();
   const { showToast } = useToast();
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [loading, setLoading] = useState<any>(true);
@@ -59,7 +63,7 @@ export default function Suppliers() {
     city: '',
     province: '',
     postalCode: '',
-    categories: '',
+    categories: [] as string[],
     bankName: '',
     bankAccountName: '',
     bankAccountNumber: '',
@@ -71,6 +75,11 @@ export default function Suppliers() {
   const [bulkImportData, setBulkImportData] = useState<any>('');
   const [bulkImportResults, setBulkImportResults] = useState<any>(null);
   const [importing, setImporting] = useState<any>(false);
+  const [showViewModal, setShowViewModal] = useState<any>(false);
+  const [selectedSupplier, setSelectedSupplier] = useState<any>(null);
+  const [actionLoading, setActionLoading] = useState<any>(false);
+  const [pendingAction, setPendingAction] = useState<any>(null);
+  const [actionReason, setActionReason] = useState<any>('');
 
   useEffect(() => {
     fetchSuppliers();
@@ -89,6 +98,93 @@ export default function Suppliers() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const openViewModal = (supplier: any) => {
+    setSelectedSupplier(supplier);
+    setPendingAction(null);
+    setActionReason('');
+    setShowViewModal(true);
+  };
+
+  const closeViewModal = () => {
+    if (actionLoading) return;
+    setShowViewModal(false);
+    setSelectedSupplier(null);
+    setPendingAction(null);
+    setActionReason('');
+  };
+
+  const refreshSelected = (updated: any) => {
+    setSelectedSupplier(updated);
+    setSuppliers((prev: any[]) =>
+      prev.map((s: any) => (s._id === updated._id ? { ...s, ...updated } : s))
+    );
+  };
+
+  const runApprove = async () => {
+    if (!selectedSupplier) return;
+    try {
+      setActionLoading(true);
+      const res = await procurementAPI.approveSupplier(selectedSupplier._id);
+      showToast('Supplier approved', 'success');
+      refreshSelected(res.data.data);
+      setPendingAction(null);
+      setActionReason('');
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to approve supplier', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const runSetStatus = async (status: string) => {
+    if (!selectedSupplier) return;
+    try {
+      setActionLoading(true);
+      const res = await procurementAPI.setSupplierStatus(selectedSupplier._id, {
+        status,
+        reason: actionReason || undefined
+      });
+      showToast(res.data.message || 'Supplier status updated', 'success');
+      refreshSelected(res.data.data);
+      setPendingAction(null);
+      setActionReason('');
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to update supplier', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const runBlacklist = async () => {
+    if (!selectedSupplier) return;
+    if (!actionReason.trim()) {
+      showToast('A reason is required to blacklist a supplier', 'error');
+      return;
+    }
+    try {
+      setActionLoading(true);
+      const res = await procurementAPI.blacklistSupplier(selectedSupplier._id, {
+        reason: actionReason
+      });
+      showToast('Supplier blacklisted', 'success');
+      refreshSelected(res.data.data);
+      setPendingAction(null);
+      setActionReason('');
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to blacklist supplier', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const confirmPendingAction = () => {
+    if (pendingAction === 'suspend') return runSetStatus('suspended');
+    if (pendingAction === 'reactivate') return runSetStatus('active');
+    if (pendingAction === 'dormant') return runSetStatus('dormant');
+    if (pendingAction === 'blacklist') return runBlacklist();
+    if (pendingAction === 'approve') return runApprove();
   };
 
   const handleInputChange = (e: any) => {
@@ -116,10 +212,8 @@ export default function Suppliers() {
     try {
       setSubmitting(true);
       
-      // Parse categories from comma-separated string
-      const categories = formData.categories
-        ? formData.categories.split(',').map((c: any) => c.trim()).filter((c: any) => c)
-        : [];
+      // Categories are stored as canonical category codes
+      const categories: string[] = Array.isArray(formData.categories) ? formData.categories : [];
 
       const response = await procurementAPI.createSupplier({
         ...formData,
@@ -144,7 +238,7 @@ export default function Suppliers() {
           city: '',
           province: '',
           postalCode: '',
-          categories: '',
+          categories: [] as string[],
           bankName: '',
           bankAccountName: '',
           bankAccountNumber: '',
@@ -370,8 +464,8 @@ export default function Suppliers() {
                       <td className="px-6 py-4">
                         <div className="flex flex-wrap gap-1">
                           {supplier.categories?.slice(0, 2).map((cat: any, idx: any) => (
-                            <span key={idx} className="px-2 py-1 bg-gray-100 rounded-lg text-xs text-gray-600">
-                              {cat}
+                            <span key={idx} className="px-2 py-1 bg-gray-100 rounded-lg text-xs text-gray-600" title={cat}>
+                              {getCategoryName(cat)}
                             </span>
                           ))}
                           {supplier.categories?.length > 2 && (
@@ -391,9 +485,23 @@ export default function Suppliers() {
                         {new Date(supplier.createdAt).toLocaleDateString('en-ZA')}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                          <MoreVertical className="h-5 w-5 text-gray-400" />
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openViewModal(supplier)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-primary rounded-lg hover:bg-primary/90"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            View
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/app/suppliers/${supplier._id}/kys`)}
+                            className="px-3 py-1.5 text-xs font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/5"
+                          >
+                            KYS
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -425,7 +533,7 @@ export default function Suppliers() {
               city: '',
               province: '',
               postalCode: '',
-              categories: '',
+              categories: [] as string[],
               bankName: '',
               bankAccountName: '',
               bankAccountNumber: '',
@@ -599,15 +707,17 @@ export default function Suppliers() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Categories</label>
-                  <input
-                    type="text"
-                    name="categories"
-                    value={formData.categories}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Electronics, Office Supplies"
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Categories of Supply
+                  </label>
+                  <CategoryMultiSelect
+                    value={Array.isArray(formData.categories) ? formData.categories : []}
+                    onChange={(codes) => setFormData((prev: any) => ({ ...prev, categories: codes }))}
+                    placeholder="Select categories this supplier provides…"
                   />
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Used to match suppliers to RFQs by category.
+                  </p>
                 </div>
 
                 <div>
@@ -888,6 +998,231 @@ Company ABC,REG123,John Doe,john@company.com,1234567890`}
             </div>
           )}
         </div>
+      </Modal>
+
+      {/* Supplier Detail / Actions Modal */}
+      <Modal
+        isOpen={showViewModal}
+        onClose={closeViewModal}
+        title="Supplier Details"
+        size="xl"
+      >
+        {selectedSupplier && (() => {
+          const s = selectedSupplier;
+          const StatusIcon = statusIcons[s.status] || Clock;
+          const checklist = s.kysChecklist || {};
+          const checklistKeys = Object.keys(checklist).filter(
+            (k: string) => typeof checklist[k] === 'boolean'
+          );
+          const ticked = checklistKeys.filter((k: string) => checklist[k]).length;
+          const docCount = Array.isArray(s.complianceDocuments) ? s.complianceDocuments.length : 0;
+          return (
+            <div className="space-y-5">
+              {/* Header */}
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 bg-primary/10 rounded-xl flex items-center justify-center">
+                    <Building2 className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold text-gray-900">{s.companyName}</p>
+                    {s.tradingAs && <p className="text-sm text-gray-500">Trading as {s.tradingAs}</p>}
+                  </div>
+                </div>
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${statusColors[s.status]}`}>
+                  <StatusIcon className="h-3.5 w-3.5" />
+                  {s.status.charAt(0).toUpperCase() + s.status.slice(1)}
+                </span>
+              </div>
+
+              {/* Details grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Registration No.</p>
+                  <p className="text-gray-900">{s.registrationNumber || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Tax / VAT</p>
+                  <p className="text-gray-900">{s.taxNumber || '-'}{s.vatNumber ? ` / ${s.vatNumber}` : ''}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Contact</p>
+                  <p className="text-gray-900 flex items-center gap-2"><Mail className="h-4 w-4 text-gray-400" />{s.user?.email || '-'}</p>
+                  <p className="text-gray-900 flex items-center gap-2 mt-1"><Phone className="h-4 w-4 text-gray-400" />{s.user?.phone || s.phone || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Address</p>
+                  <p className="text-gray-900">
+                    {[s.physicalAddress, s.city, s.province, s.postalCode].filter(Boolean).join(', ') || '-'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Bank</p>
+                  <p className="text-gray-900">
+                    {s.bankingDetails?.bankName || s.bankName || '-'}
+                    {(s.bankingDetails?.accountNumber || s.bankAccountNumber) ? ` · ${s.bankingDetails?.accountNumber || s.bankAccountNumber}` : ''}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Registered</p>
+                  <p className="text-gray-900">{new Date(s.createdAt).toLocaleDateString('en-ZA')}</p>
+                </div>
+              </div>
+
+              {/* Categories */}
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Categories</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {s.categories?.length ? (
+                    s.categories.map((cat: any, idx: any) => (
+                      <span key={idx} className="px-2 py-1 bg-gray-100 rounded-lg text-xs text-gray-600" title={cat}>
+                        {getCategoryName(cat)}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-sm text-gray-400">No categories</span>
+                  )}
+                </div>
+              </div>
+
+              {/* KYS summary */}
+              <div className="flex items-center justify-between gap-4 p-4 bg-gray-50 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <FileText className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">
+                      KYS {s.kysComplete ? 'Verified' : 'Incomplete'}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {ticked}/{checklistKeys.length} checklist items · {docCount} document{docCount === 1 ? '' : 's'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/app/suppliers/${s._id}/kys`)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/5"
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  View KYS
+                </button>
+              </div>
+
+              {s.status === 'blacklisted' && s.blacklistReason && (
+                <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">
+                  <span className="font-medium">Blacklist reason: </span>{s.blacklistReason}
+                </div>
+              )}
+
+              {/* Reason input when an action needs confirmation */}
+              {pendingAction && (
+                <div className="p-4 border border-gray-200 rounded-xl space-y-3">
+                  <p className="text-sm font-medium text-gray-900">
+                    {pendingAction === 'suspend' && 'Suspend this supplier?'}
+                    {pendingAction === 'reactivate' && 'Reactivate this supplier?'}
+                    {pendingAction === 'dormant' && 'Mark this supplier as dormant?'}
+                    {pendingAction === 'blacklist' && 'Blacklist this supplier?'}
+                    {pendingAction === 'approve' && 'Approve and activate this supplier?'}
+                  </p>
+                  {(pendingAction === 'suspend' || pendingAction === 'blacklist') && (
+                    <textarea
+                      value={actionReason}
+                      onChange={(e: any) => setActionReason(e.target.value)}
+                      rows={3}
+                      placeholder={pendingAction === 'blacklist' ? 'Reason for blacklisting (required)' : 'Reason for suspension (required)'}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  )}
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setPendingAction(null); setActionReason(''); }}
+                      disabled={actionLoading}
+                      className="px-3 py-1.5 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={confirmPendingAction}
+                      disabled={actionLoading}
+                      className={`inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium text-white rounded-lg disabled:opacity-50 ${
+                        pendingAction === 'blacklist' ? 'bg-red-600 hover:bg-red-700' : 'bg-primary hover:bg-primary/90'
+                      }`}
+                    >
+                      {actionLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                      Confirm
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Action buttons */}
+              {!pendingAction && (
+                <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
+                  {s.status === 'pending' && (
+                    <button
+                      type="button"
+                      onClick={() => setPendingAction('approve')}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      Approve & Activate
+                    </button>
+                  )}
+                  {s.status === 'active' && (
+                    <button
+                      type="button"
+                      onClick={() => setPendingAction('suspend')}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50"
+                    >
+                      <XCircle className="h-4 w-4" />
+                      Suspend
+                    </button>
+                  )}
+                  {(s.status === 'suspended' || s.status === 'dormant') && (
+                    <button
+                      type="button"
+                      onClick={() => setPendingAction('reactivate')}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-green-700 border border-green-300 rounded-lg hover:bg-green-50"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      Reactivate
+                    </button>
+                  )}
+                  {s.status === 'active' && (
+                    <button
+                      type="button"
+                      onClick={() => setPendingAction('dormant')}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    >
+                      <Clock className="h-4 w-4" />
+                      Mark Dormant
+                    </button>
+                  )}
+                  {s.status !== 'blacklisted' && (
+                    <button
+                      type="button"
+                      onClick={() => setPendingAction('blacklist')}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-red-700 border border-red-300 rounded-lg hover:bg-red-50"
+                    >
+                      <XCircle className="h-4 w-4" />
+                      Blacklist
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/app/suppliers/${s._id}/kys`)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 ml-auto"
+                  >
+                    <FileText className="h-4 w-4" />
+                    Manage KYS
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </Modal>
     </div>
   );
