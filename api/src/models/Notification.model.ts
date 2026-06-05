@@ -27,7 +27,12 @@ export type NotificationType =
   | 'low_stock'
   | 'rfq_deadline_approaching'
   | 'supplier_added'
-  | 'supplier_approved';
+  | 'supplier_approved'
+  | 'supplier_status_change'
+  | 'invoice_submitted'
+  | 'invoice_approved'
+  | 'invoice_rejected'
+  | 'invoice_paid';
 
 export interface INotification extends Document {
   recipient: mongoose.Types.ObjectId | any;
@@ -81,7 +86,12 @@ const NotificationSchema = new Schema<INotification>({
       'low_stock',
       'rfq_deadline_approaching',
       'supplier_added',
-      'supplier_approved'
+      'supplier_approved',
+      'supplier_status_change',
+      'invoice_submitted',
+      'invoice_approved',
+      'invoice_rejected',
+      'invoice_paid'
     ]
   },
   title: {
