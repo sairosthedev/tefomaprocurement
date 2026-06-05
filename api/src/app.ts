@@ -1,6 +1,7 @@
-import express, { type Express, type Request, type Response } from 'express';
+import express, { type Express, type Request, type Response, type NextFunction } from 'express';
 import cors from 'cors';
 
+import connectToDatabase from './config/db.js';
 import routes from './routes/index.js';
 import { notFoundHandler, errorHandler } from './middleware/index.js';
 
@@ -29,6 +30,22 @@ export function createApp(): Express {
       timestamp: new Date().toISOString()
     });
   });
+
+  // On Vercel (serverless), connect to MongoDB before API routes. /health stays
+  // available without a DB connection so deploy health checks still pass.
+  if (process.env.VERCEL) {
+    app.use('/api', async (_req: Request, res: Response, next: NextFunction) => {
+      try {
+        await connectToDatabase();
+        next();
+      } catch {
+        res.status(503).json({
+          success: false,
+          message: 'Database connection failed'
+        });
+      }
+    });
+  }
 
   app.use('/api', routes);
 

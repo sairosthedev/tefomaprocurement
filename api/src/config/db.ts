@@ -18,7 +18,10 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
   }
 
   cached = mongoose
-    .connect(mongoURI)
+    .connect(mongoURI, {
+      serverSelectionTimeoutMS: 10_000,
+      bufferCommands: false
+    })
     .then((m) => {
       console.log(`📦 MongoDB connected: ${m.connection.host}`);
       return m;
