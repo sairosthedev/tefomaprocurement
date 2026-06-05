@@ -12,5 +12,8 @@ export const storesAPI: any = {
   createTransfer: (data: any) => http.post('/stores/transfers', data),
   approveTransfer: (id: any) => http.put(`/stores/transfers/${id}/approve`),
   shipTransfer: (id: any, data: any) => http.put(`/stores/transfers/${id}/ship`, data),
-  receiveTransfer: (id: any, data: any) => http.put(`/stores/transfers/${id}/receive`, data)
+  receiveTransfer: (id: any, data: any) => http.put(`/stores/transfers/${id}/receive`, data),
+  getPendingPurchaseRequisitions: () => http.get('/stores/purchase-requisitions/pending'),
+  fulfillPurchaseRequisition: (id: any, data?: any) => http.put(`/stores/purchase-requisitions/${id}/fulfill`, data),
+  forwardPurchaseRequisition: (id: any, data?: any) => http.put(`/stores/purchase-requisitions/${id}/forward`, data)
 };

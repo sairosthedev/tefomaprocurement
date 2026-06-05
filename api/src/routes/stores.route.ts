@@ -21,6 +21,11 @@ router.get('/inventory', stores.getInventory);
 // Stock Movements
 router.get('/movements', stores.getMovements);
 
+// Purchase requisitions — stores gate (FC-HQ-P-07 §6.3.1–6.3.2)
+router.get('/purchase-requisitions/pending', stores.getPendingPurchaseRequisitions);
+router.put('/purchase-requisitions/:id/fulfill', stores.fulfillRequisitionFromStock);
+router.put('/purchase-requisitions/:id/forward', stores.forwardRequisitionToProcurement);
+
 // Store Requisitions
 router.get('/requisitions', stores.getStoreRequisitions);
 router.put('/requisitions/:id/approve', stores.approveStoreRequisition);
