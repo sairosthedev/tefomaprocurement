@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 
-import { createApp } from './src/app.js';
-import { connectToDatabase } from './src/config/db.js';
+import { createApp } from './app.js';
+import { connectToDatabase } from './config/db.js';
 
 /**
  * Vercel serverless entry point.
@@ -22,7 +22,10 @@ export default async function handler(
   } catch {
     res.statusCode = 503;
     res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Access-Control-Allow-Origin', (req.headers.origin as string) || '*');
+    res.setHeader(
+      'Access-Control-Allow-Origin',
+      (req.headers.origin as string) || '*'
+    );
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.end(
       JSON.stringify({ success: false, message: 'Database connection failed' })
