@@ -13,6 +13,10 @@ router.use(authorize('supplier'));
 router.get('/profile', supplier.getMyProfile);
 router.put('/profile', supplier.updateProfile);
 
+// KYS compliance documents (self-service upload — FC-HQ-P-07 §6.2.3)
+router.post('/kys/documents', supplier.uploadKysDocument);
+router.delete('/kys/documents/:docId', supplier.deleteKysDocument);
+
 // RFQs
 router.get('/rfqs', supplier.getMyRFQs);
 router.get('/rfqs/:id', supplier.getRFQById);
@@ -27,5 +31,9 @@ router.put('/purchase-orders/:id/acknowledge', supplier.acknowledgePurchaseOrder
 
 // Deliveries
 router.get('/deliveries', supplier.getMyDeliveries);
+
+// Invoices
+router.get('/invoices', supplier.getMyInvoices);
+router.post('/invoices', supplier.submitInvoice);
 
 export default router;

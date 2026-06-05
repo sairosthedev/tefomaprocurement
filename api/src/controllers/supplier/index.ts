@@ -7,15 +7,23 @@ import getMyQuotations from './getMyQuotations.controller.js';
 import getMyPurchaseOrders from './getMyPurchaseOrders.controller.js';
 import acknowledgePurchaseOrder from './acknowledgePurchaseOrder.controller.js';
 import getMyDeliveries from './getMyDeliveries.controller.js';
+import submitInvoice from './submitInvoice.controller.js';
+import getMyInvoices from './getMyInvoices.controller.js';
+import uploadKysDocument from './uploadKysDocument.controller.js';
+import deleteKysDocument from './deleteKysDocument.controller.js';
 
 export default {
   getMyProfile,
   updateProfile,
+  uploadKysDocument,
+  deleteKysDocument,
   getMyRFQs,
   getRFQById,
   submitQuotation,
   getMyQuotations,
   getMyPurchaseOrders,
   acknowledgePurchaseOrder,
-  getMyDeliveries
+  getMyDeliveries,
+  submitInvoice,
+  getMyInvoices
 };

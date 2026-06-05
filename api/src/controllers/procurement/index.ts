@@ -2,6 +2,7 @@ import getSuppliers from './getSuppliers.controller.js';
 import getSupplierById from './getSupplierById.controller.js';
 import approveSupplier from './approveSupplier.controller.js';
 import blacklistSupplier from './blacklistSupplier.controller.js';
+import setSupplierStatus from './setSupplierStatus.controller.js';
 import createSupplier from './createSupplier.controller.js';
 import bulkImportSuppliers from './bulkImportSuppliers.controller.js';
 import createRFQ from './createRFQ.controller.js';
@@ -22,19 +23,40 @@ import getRequisitionById from './getRequisitionById.controller.js';
 import acceptRequisition from './acceptRequisition.controller.js';
 import rejectRequisition from './rejectRequisition.controller.js';
 import updateRequisitionStatus from './updateRequisitionStatus.controller.js';
+import updateKysChecklist from './updateKysChecklist.controller.js';
+import verifyKys from './verifyKys.controller.js';
+import uploadSupplierDocument from './uploadSupplierDocument.controller.js';
+import deleteSupplierDocument from './deleteSupplierDocument.controller.js';
+import createSupplierEvaluation from './createSupplierEvaluation.controller.js';
+import getSupplierEvaluations from './getSupplierEvaluations.controller.js';
+import secApproveEvaluation from './secApproveEvaluation.controller.js';
+import getEvaluationsDue from './getEvaluationsDue.controller.js';
+import authorizeQuotation from './authorizeQuotation.controller.js';
+import approveQuotationWaiver from './approveQuotationWaiver.controller.js';
 
 export default {
   getSuppliers,
   getSupplierById,
   approveSupplier,
   blacklistSupplier,
+  setSupplierStatus,
   createSupplier,
   bulkImportSuppliers,
+  updateKysChecklist,
+  verifyKys,
+  uploadSupplierDocument,
+  deleteSupplierDocument,
+  createSupplierEvaluation,
+  getSupplierEvaluations,
+  secApproveEvaluation,
+  getEvaluationsDue,
   createRFQ,
   getRFQs,
   getRFQById,
   publishRFQ,
   closeRFQ,
+  authorizeQuotation,
+  approveQuotationWaiver,
   getQuotations,
   getQuotationById,
   acceptQuotation,
