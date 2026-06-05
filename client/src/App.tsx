@@ -20,6 +20,7 @@ import AuditLogs from './pages/AuditLogs';
 
 // Procurement Pages
 import Suppliers from './pages/Suppliers';
+import SupplierKys from './pages/SupplierKys';
 import RFQs from './pages/RFQs';
 import RFQDetail from './pages/RFQDetail';
 import CreateRFQ from './pages/CreateRFQ';
@@ -33,10 +34,14 @@ import Requisitions from './pages/Requisitions';
 import RequisitionDetail from './pages/RequisitionDetail';
 import CreateRequisition from './pages/CreateRequisition';
 import StoreRequisitions from './pages/StoreRequisitions';
+import StoresPrReview from './pages/StoresPrReview';
 import Approvals from './pages/Approvals';
 
 // Finance Pages
 import Budgets from './pages/Budgets';
+import Invoices from './pages/Invoices';
+import InvoiceDetail from './pages/InvoiceDetail';
+import Payments from './pages/Payments';
 
 // Stores Pages
 import Deliveries from './pages/Deliveries';
@@ -51,6 +56,9 @@ import MySubmittedQuotations from './pages/supplier/MySubmittedQuotations';
 import MyPurchaseOrders from './pages/supplier/MyPurchaseOrders';
 import MyDeliveries from './pages/supplier/MyDeliveries';
 import SupplierProfile from './pages/supplier/SupplierProfile';
+import MyKys from './pages/supplier/MyKys';
+import MyInvoices from './pages/supplier/MyInvoices';
+import SubmitInvoice from './pages/supplier/SubmitInvoice';
 
 function AppLayout({ children, allowedRoles }: any) {
   return (
@@ -122,6 +130,11 @@ function App() {
                 <Suppliers />
               </AppLayout>
             } />
+            <Route path="/app/suppliers/:id/kys" element={
+              <AppLayout allowedRoles={['admin', 'procurement_officer']}>
+                <SupplierKys />
+              </AppLayout>
+            } />
             <Route path="/app/rfqs" element={
               <AppLayout allowedRoles={['admin', 'procurement_officer']}>
                 <RFQs />
@@ -160,17 +173,17 @@ function App() {
 
             {/* Department Head Routes */}
             <Route path="/app/requisitions" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer', 'department_head']}>
+              <AppLayout allowedRoles={['admin', 'procurement_officer', 'department_head', 'end_user']}>
                 <Requisitions />
               </AppLayout>
             } />
             <Route path="/app/requisitions/:id" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer', 'department_head']}>
+              <AppLayout allowedRoles={['admin', 'procurement_officer', 'department_head', 'end_user']}>
                 <RequisitionDetail />
               </AppLayout>
             } />
             <Route path="/app/requisitions/create" element={
-              <AppLayout allowedRoles={['department_head']}>
+              <AppLayout allowedRoles={['department_head', 'end_user', 'admin']}>
                 <CreateRequisition />
               </AppLayout>
             } />
@@ -180,7 +193,7 @@ function App() {
               </AppLayout>
             } />
             <Route path="/app/approvals" element={
-              <AppLayout allowedRoles={['finance', 'coo', 'admin']}>
+              <AppLayout allowedRoles={['finance', 'coo', 'department_head', 'admin']}>
                 <Approvals />
               </AppLayout>
             } />
@@ -191,8 +204,28 @@ function App() {
                 <Budgets />
               </AppLayout>
             } />
+            <Route path="/app/invoices" element={
+              <AppLayout allowedRoles={['admin', 'finance']}>
+                <Invoices />
+              </AppLayout>
+            } />
+            <Route path="/app/invoices/:id" element={
+              <AppLayout allowedRoles={['admin', 'finance']}>
+                <InvoiceDetail />
+              </AppLayout>
+            } />
+            <Route path="/app/payments" element={
+              <AppLayout allowedRoles={['admin', 'finance']}>
+                <Payments />
+              </AppLayout>
+            } />
 
             {/* Stores Routes */}
+            <Route path="/app/stores-pr-review" element={
+              <AppLayout allowedRoles={['stores_officer', 'admin']}>
+                <StoresPrReview />
+              </AppLayout>
+            } />
             <Route path="/app/deliveries" element={
               <AppLayout allowedRoles={['stores_officer']}>
                 <Deliveries />
@@ -243,6 +276,21 @@ function App() {
             <Route path="/app/supplier-profile" element={
               <AppLayout allowedRoles={['supplier']}>
                 <SupplierProfile />
+              </AppLayout>
+            } />
+            <Route path="/app/my-kys" element={
+              <AppLayout allowedRoles={['supplier']}>
+                <MyKys />
+              </AppLayout>
+            } />
+            <Route path="/app/my-invoices" element={
+              <AppLayout allowedRoles={['supplier']}>
+                <MyInvoices />
+              </AppLayout>
+            } />
+            <Route path="/app/submit-invoice" element={
+              <AppLayout allowedRoles={['supplier']}>
+                <SubmitInvoice />
               </AppLayout>
             } />
 

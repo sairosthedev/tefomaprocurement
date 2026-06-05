@@ -6,10 +6,14 @@ const getRequisitions = async (req: Request, res: Response): Promise<any> => {
   try {
     const { status, page = 1, limit = 20 } = req.query as any;
 
-    const query: any = {
-      department: req.user!.department,
-      isDeleted: false
-    };
+    const query: any = { isDeleted: false };
+
+    // End users only see their own requisitions; HOD/admin see the department's
+    if (req.user!.role === 'end_user') {
+      query.requestedBy = req.user!._id;
+    } else {
+      query.department = req.user!.department;
+    }
 
     if (status) query.status = status;
 

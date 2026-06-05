@@ -6,7 +6,7 @@ export interface IUser extends Document {
   password: string;
   firstName: string;
   lastName: string;
-  role: 'department_head' | 'procurement_officer' | 'supplier' | 'finance' | 'coo' | 'stores_officer' | 'admin';
+  role: 'end_user' | 'department_head' | 'procurement_officer' | 'supplier' | 'finance' | 'coo' | 'stores_officer' | 'admin';
   department?: mongoose.Types.ObjectId | any;
   homeSite?: mongoose.Types.ObjectId | any;
   phone?: string;
@@ -47,7 +47,7 @@ const UserSchema = new Schema<IUser>({
   },
   role: {
     type: String,
-    enum: ['department_head', 'procurement_officer', 'supplier', 'finance', 'coo', 'stores_officer', 'admin'],
+    enum: ['end_user', 'department_head', 'procurement_officer', 'supplier', 'finance', 'coo', 'stores_officer', 'admin'],
     required: [true, 'Role is required']
   },
   department: {

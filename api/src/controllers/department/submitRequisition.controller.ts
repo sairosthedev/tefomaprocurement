@@ -23,21 +23,25 @@ const submitRequisition = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    // Ensure the user owns this requisition
-    if (requisition.requestedBy.toString() !== req.user!._id.toString()) {
+    // Ensure the user owns this requisition (admins may submit on behalf)
+    if (
+      req.user!.role !== 'admin' &&
+      requisition.requestedBy.toString() !== req.user!._id.toString()
+    ) {
       return res.status(403).json({
         success: false,
         message: 'You can only submit your own requisitions'
       });
     }
 
-    (requisition as any).status = 'pending_acceptance';
-    (requisition as any).statusHistory = requisition.statusHistory || [];
-    (requisition as any).statusHistory.push({
+    // End user submits → Department Head approval first (FC-HQ-P-07 §6.3.2)
+    requisition.status = 'pending_hod';
+    requisition.statusHistory = requisition.statusHistory || [];
+    requisition.statusHistory.push({
       action: 'submitted',
       by: req.user!._id,
       role: req.user!.role,
-      comments: 'Submitted for procurement acceptance'
+      comments: 'Submitted for Department Head approval'
     });
 
     await requisition.save();
@@ -48,33 +52,33 @@ const submitRequisition = async (req: Request, res: Response): Promise<any> => {
       entityId: requisition._id,
       user: req.user,
       description: `Submitted requisition: ${requisition.requisitionNumber}`,
-      newData: { status: 'pending_acceptance' },
+      newData: { status: 'pending_hod' },
       req
     });
 
-    // Notify procurement officers
-    await notifyUsersByRole('procurement_officer', {
-      type: 'requisition_submitted',
-      title: 'New Requisition Submitted',
-      message: `Requisition ${requisition.requisitionNumber} has been submitted and requires your review.`,
-      entity: 'PurchaseRequisition',
-      entityId: requisition._id,
-      relatedUser: req.user!._id
-    });
-
-    // Notify department head for approval
-    await notifyUsersByDepartment(requisition.department, {
-      type: 'requisition_submitted',
-      title: 'Requisition Pending Approval',
-      message: `Requisition ${requisition.requisitionNumber} requires your approval.`,
-      entity: 'PurchaseRequisition',
-      entityId: requisition._id,
-      relatedUser: req.user!._id
-    }, req.user!._id);
+    if (requisition.department) {
+      await notifyUsersByDepartment(requisition.department, {
+        type: 'requisition_submitted',
+        title: 'Requisition pending your approval',
+        message: `Requisition ${requisition.requisitionNumber} requires Department Head approval.`,
+        entity: 'PurchaseRequisition',
+        entityId: requisition._id,
+        relatedUser: req.user!._id
+      }, req.user!._id);
+    } else {
+      await notifyUsersByRole('department_head', {
+        type: 'requisition_submitted',
+        title: 'Requisition pending approval',
+        message: `Requisition ${requisition.requisitionNumber} requires Department Head approval.`,
+        entity: 'PurchaseRequisition',
+        entityId: requisition._id,
+        relatedUser: req.user!._id
+      });
+    }
 
     res.status(200).json({
       success: true,
-      message: 'Requisition submitted for acceptance',
+      message: 'Requisition submitted for Department Head approval',
       data: requisition
     });
   } catch (error) {

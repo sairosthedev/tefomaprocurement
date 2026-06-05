@@ -148,6 +148,7 @@ export default function Dashboard() {
       admin: 'Administrator',
       procurement_officer: 'Procurement Officer',
       department_head: 'Department Head',
+      end_user: 'End User',
       finance: 'Finance Manager',
       coo: 'Chief Operating Officer',
       stores_officer: 'Stores Officer',
@@ -186,9 +187,13 @@ export default function Dashboard() {
         { label: 'Stock Alerts', icon: AlertCircle, color: 'bg-red-50 hover:bg-red-100 text-red-700', href: '/app/inventory' }
       ],
       department_head: [
-        { label: 'Create Requisition', icon: FileText, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/requisitions' },
+        { label: 'Create Requisition', icon: FileText, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/requisitions/create' },
         { label: 'My Requisitions', icon: FileSearch, color: 'bg-blue-50 hover:bg-blue-100 text-blue-700', href: '/app/requisitions' },
         { label: 'View Reports', icon: TrendingUp, color: 'bg-green-50 hover:bg-green-100 text-green-700', href: '/app' }
+      ],
+      end_user: [
+        { label: 'Create Requisition', icon: FileText, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/requisitions/create' },
+        { label: 'My Requisitions', icon: FileSearch, color: 'bg-blue-50 hover:bg-blue-100 text-blue-700', href: '/app/requisitions' }
       ]
     };
     return actions[user?.role] || actions.admin;

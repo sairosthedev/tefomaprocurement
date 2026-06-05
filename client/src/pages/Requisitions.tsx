@@ -14,6 +14,9 @@ import Modal from '../components/Modal';
 
 const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
+  pending_hod: 'bg-amber-100 text-amber-700',
+  stores_review: 'bg-cyan-100 text-cyan-700',
+  fulfilled: 'bg-emerald-100 text-emerald-700',
   pending_acceptance: 'bg-amber-100 text-amber-700',
   accepted: 'bg-green-100 text-green-700',
   rejected: 'bg-red-100 text-red-700',
@@ -26,6 +29,9 @@ const statusColors: any = {
 
 const statusLabels: any = {
   draft: 'Draft',
+  pending_hod: 'Pending HOD Approval',
+  stores_review: 'Stores Review',
+  fulfilled: 'Fulfilled from Stock',
   pending_acceptance: 'Pending Acceptance',
   accepted: 'Accepted',
   rejected: 'Rejected',
@@ -60,6 +66,7 @@ export default function Requisitions() {
   const [submittingId, setSubmittingId] = useState<any>(null);
 
   const isProcurement = user?.role === 'procurement_officer' || user?.role === 'admin';
+  const isDeptHead = user?.role === 'department_head' || user?.role === 'admin';
 
   useEffect(() => {
     fetchRequisitions();
@@ -88,7 +95,7 @@ export default function Requisitions() {
     try {
       setSubmittingId(id);
       await api.put(`/department/requisitions/${id}/submit`);
-      showToast('Requisition submitted for acceptance', 'success');
+      showToast('Requisition submitted for Department Head approval', 'success');
       fetchRequisitions();
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to submit', 'error');
@@ -131,20 +138,30 @@ export default function Requisitions() {
   };
 
   const handleAction = async () => {
-    if (actionType === 'reject' && !actionComment.trim()) {
+    const isReject = actionType === 'reject' || actionType === 'hod_reject';
+    if (isReject && !actionComment.trim()) {
       showToast('Please provide a reason for rejection', 'error');
       return;
     }
 
     try {
       setActionLoading(true);
-      const endpoint = `/procurement/requisitions/${selectedRequisition._id}/${actionType}`;
+      // HOD approval gate uses the department endpoints; procurement uses its own
+      const endpointMap: any = {
+        approve: `/department/requisitions/${selectedRequisition._id}/approve`,
+        hod_reject: `/department/requisitions/${selectedRequisition._id}/reject`,
+        accept: `/procurement/requisitions/${selectedRequisition._id}/accept`,
+        reject: `/procurement/requisitions/${selectedRequisition._id}/reject`
+      };
+      const endpoint = endpointMap[actionType];
       await api.put(endpoint, { 
         comments: actionComment,
         reason: actionComment 
       });
       showToast(
-        actionType === 'accept' ? 'Requisition accepted' : 'Requisition rejected', 
+        actionType === 'approve' ? 'Requisition approved and sent to stores'
+          : actionType === 'accept' ? 'Requisition accepted'
+          : 'Requisition rejected',
         'success'
       );
       setShowActionModal(false);
@@ -449,6 +466,26 @@ export default function Requisitions() {
                                   <span>Submit</span>
                                 </>
                               )}
+                            </button>
+                          </>
+                        )}
+
+                        {/* HOD Approval Gate (FC-HQ-P-07 §6.3.2) */}
+                        {isDeptHead && !isProcurement && req.status === 'pending_hod' && (
+                          <>
+                            <button
+                              onClick={() => openActionModal(req, 'approve')}
+                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                              title="Approve & send to stores"
+                            >
+                              <Check className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => openActionModal(req, 'hod_reject')}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Reject"
+                            >
+                              <X className="h-4 w-4" />
                             </button>
                           </>
                         )}
@@ -861,27 +898,33 @@ export default function Requisitions() {
       <Modal
         isOpen={showActionModal}
         onClose={() => setShowActionModal(false)}
-        title={actionType === 'accept' ? 'Accept Requisition' : 'Reject Requisition'}
+        title={
+          actionType === 'approve' ? 'Approve Requisition'
+            : actionType === 'accept' ? 'Accept Requisition'
+            : 'Reject Requisition'
+        }
       >
         <div className="space-y-4">
           <div className="p-4 bg-gray-50 rounded-xl">
             <p className="text-sm text-gray-600">
-              {actionType === 'accept' 
+              {actionType === 'approve'
+                ? 'You are about to approve this requisition. It will be forwarded to Stores for an availability check.'
+                : actionType === 'accept'
                 ? 'You are about to accept this requisition. It will be available for RFQ creation.'
-                : 'You are about to reject this requisition. The department will be notified.'}
+                : 'You are about to reject this requisition. The requester will be notified.'}
             </p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              {actionType === 'accept' ? 'Comments (Optional)' : 'Reason for Rejection (Required)'}
+              {actionType === 'approve' || actionType === 'accept' ? 'Comments (Optional)' : 'Reason for Rejection (Required)'}
             </label>
             <textarea
               value={actionComment}
               onChange={(e: any) => setActionComment(e.target.value)}
               rows={3}
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              placeholder={actionType === 'accept' ? 'Add any comments...' : 'Please provide a reason...'}
+              placeholder={actionType === 'approve' || actionType === 'accept' ? 'Add any comments...' : 'Please provide a reason...'}
             />
           </div>
 
@@ -896,13 +939,15 @@ export default function Requisitions() {
               onClick={handleAction}
               disabled={actionLoading}
               className={`flex-1 py-2.5 text-white rounded-xl font-medium ${
-                actionType === 'accept' 
+                actionType === 'approve' || actionType === 'accept'
                   ? 'bg-primary hover:bg-primary-dark' 
                   : 'bg-red-600 hover:bg-red-700'
               } disabled:opacity-50`}
             >
               {actionLoading ? (
                 <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+              ) : actionType === 'approve' ? (
+                'Approve'
               ) : actionType === 'accept' ? (
                 'Accept'
               ) : (
