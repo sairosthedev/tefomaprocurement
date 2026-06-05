@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 
+import { isValidCategoryCode } from '@fosssil/shared';
 import { User, SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 
@@ -77,9 +78,20 @@ const bulkImportSuppliers = async (req: Request, res: Response): Promise<any> =>
         });
 
         // Parse categories if it's a string
-        let parsedCategories = categories;
+        let parsedCategories: string[] = Array.isArray(categories) ? categories : [];
         if (typeof categories === 'string') {
           parsedCategories = categories.split(',').map(c => c.trim()).filter(c => c);
+        }
+
+        // Reject rows referencing unknown category codes
+        const invalidCategories = parsedCategories.filter((c) => !isValidCategoryCode(c));
+        if (invalidCategories.length > 0) {
+          results.failed.push({
+            companyName,
+            email,
+            reason: `Invalid category code(s): ${invalidCategories.join(', ')}`
+          });
+          continue;
         }
 
         // Create supplier profile
@@ -99,7 +111,7 @@ const bulkImportSuppliers = async (req: Request, res: Response): Promise<any> =>
             province,
             postalCode
           },
-          categories: parsedCategories || [],
+          categories: parsedCategories,
           bankDetails: {
             bankName,
             accountName: bankAccountName,

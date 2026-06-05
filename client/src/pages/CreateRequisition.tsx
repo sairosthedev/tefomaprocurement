@@ -4,6 +4,7 @@ import { useToast } from '../components/Toast';
 import api from '../lib/api';
 import { Plus, Trash2, Save, Send, ArrowLeft, Package, Loader2 } from 'lucide-react';
 import { UNITS_OF_MEASUREMENT } from '../lib/constants';
+import { CategorySelect } from '../components/CategorySelect';
 
 export default function CreateRequisition() {
   const navigate = useNavigate();
@@ -13,13 +14,13 @@ export default function CreateRequisition() {
     title: '',
     description: '',
     urgency: 'normal',
-    items: [{ description: '', quantity: 1, unit: 'Each', specification: '' }]
+    items: [{ description: '', category: '', quantity: 1, unit: 'Each', specification: '' }]
   });
 
   const addItem = () => {
     setFormData({
       ...formData,
-      items: [...formData.items, { description: '', quantity: 1, unit: 'Each', specification: '' }]
+      items: [...formData.items, { description: '', category: '', quantity: 1, unit: 'Each', specification: '' }]
     });
   };
 
@@ -51,6 +52,14 @@ export default function CreateRequisition() {
       const validItems = formData.items.filter((item: any) => item.description.trim());
       if (validItems.length === 0) {
         showToast('Please add at least one item', 'error');
+        setLoading(false);
+        return;
+      }
+
+      // Every requested item must fall under a category
+      const uncategorized = validItems.filter((item: any) => !item.category);
+      if (uncategorized.length > 0) {
+        showToast('Please select a category for every item', 'error');
         setLoading(false);
         return;
       }
@@ -159,6 +168,17 @@ export default function CreateRequisition() {
                         value={item.description}
                         onChange={(e: any) => updateItem(index, 'description', e.target.value)}
                         placeholder="e.g., A4 Paper"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-xs text-gray-500 mb-1">
+                        Category <span className="text-red-500">*</span>
+                      </label>
+                      <CategorySelect
+                        value={item.category || ''}
+                        onChange={(code) => updateItem(index, 'category', code)}
+                        placeholder="Select category"
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
                       />
                     </div>

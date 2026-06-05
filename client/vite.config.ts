@@ -20,7 +20,9 @@ export default defineConfig({
       include: [/node_modules/, /packages[\\/]shared/]
     }
   },
+  // Do not pre-bundle the workspace package — it changes often and a stale
+  // .vite/deps cache causes "does not provide an export named …" errors.
   optimizeDeps: {
-    include: ['@fosssil/shared']
+    exclude: ['@fosssil/shared']
   }
 });

@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 
+import { isValidCategoryCode } from '@fosssil/shared';
 import { User, SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { createNotification } from '../../services/notification.service.js';
@@ -34,6 +35,16 @@ const createSupplier = async (req: Request, res: Response): Promise<any> => {
       return res.status(400).json({
         success: false,
         message: 'Company name, email, first name, last name, and registration number are required'
+      });
+    }
+
+    // Validate category codes against the canonical taxonomy
+    const categoryList: string[] = Array.isArray(categories) ? categories : [];
+    const invalidCategories = categoryList.filter((c) => !isValidCategoryCode(c));
+    if (invalidCategories.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid supplier category code(s): ${invalidCategories.join(', ')}`
       });
     }
 
@@ -121,16 +132,16 @@ const createSupplier = async (req: Request, res: Response): Promise<any> => {
         province,
         postalCode
       },
-      categories: categories || [],
+      categories: categoryList,
       bankDetails: {
         bankName,
         accountName: bankAccountName,
         accountNumber: bankAccountNumber,
         branchCode: bankBranchCode
       },
-      status: 'active', // Pre-approved when added by procurement (using 'active' instead of 'approved')
-      approvedBy: req.user!._id,
-      approvedAt: new Date()
+      // FC-HQ-P-07 §6.2.3 — supplier stays pending until KYS documents are
+      // collected and verified; only then can they be activated/invited.
+      status: 'pending'
     });
 
     await createAuditLog({
@@ -148,7 +159,7 @@ const createSupplier = async (req: Request, res: Response): Promise<any> => {
       recipient: user._id,
       type: 'supplier_added',
       title: 'Welcome to FosssilProcure',
-      message: `Your supplier account for ${companyName} has been created. You can now log in and access your supplier dashboard.`,
+      message: `Your supplier account for ${companyName} has been created. Please log in and upload your KYS compliance documents so your account can be verified and activated.`,
       entity: 'SupplierProfile',
       entityId: supplierProfile._id,
       relatedUser: req.user!._id,
@@ -164,7 +175,7 @@ const createSupplier = async (req: Request, res: Response): Promise<any> => {
 
     res.status(201).json({
       success: true,
-      message: 'Supplier created successfully',
+      message: 'Supplier created. Pending KYS verification before activation.',
       data: {
         id: supplierProfile._id,
         companyName: supplierProfile.companyName,
