@@ -1,6 +1,6 @@
-# FosssilProcure
+# fossilProcure
 
-MERN-stack monorepo for the FosssilProcure procurement system.
+MERN-stack monorepo for the fossilProcure procurement system.
 
 - **api/** — Express 4 + Mongoose, layered architecture (routes → controllers → services → models)
 - **client/** — React 18 + Vite + Tailwind, services-based data layer
@@ -9,7 +9,7 @@ MERN-stack monorepo for the FosssilProcure procurement system.
 ## Repository layout
 
 ```
-fosssilProcure/
+fossilProcure/
 ├── api/                        # Express API
 │   └── src/
 │       ├── app.js              # Pure factory that builds the Express app
@@ -36,7 +36,7 @@ fosssilProcure/
 │       └── lib/                # Front-end utilities + constants re-exports
 │
 ├── packages/
-│   └── shared/                 # @fosssil/shared — cross-package constants
+│   └── shared/                 # @fossil/shared — cross-package constants
 │       └── src/constants/      # roles, currencies, statuses, regions, catalog
 │
 ├── scripts/                    # Root-level ops scripts (ngrok, etc.)
@@ -62,14 +62,14 @@ fosssilProcure/
 
 ### Shared package
 
-- **`@fosssil/shared`** (in `packages/shared/`) exports domain enums and constants (roles, statuses, currencies, Zimbabwe provinces/banks, units, supplier categories) as **plain CommonJS** so both Node (api) and Vite (client) can consume the exact same source of truth.
+- **`@fossil/shared`** (in `packages/shared/`) exports domain enums and constants (roles, statuses, currencies, Zimbabwe provinces/banks, units, supplier categories) as **plain CommonJS** so both Node (api) and Vite (client) can consume the exact same source of truth.
 
 ```js
 // api
-const { USER_ROLES, RFQ_STATUS } = require('@fosssil/shared');
+const { USER_ROLES, RFQ_STATUS } = require('@fossil/shared');
 
 // client
-import { USER_ROLES, RFQ_STATUS, formatCurrency } from '@fosssil/shared';
+import { USER_ROLES, RFQ_STATUS, formatCurrency } from '@fossil/shared';
 ```
 
 ## Quick start

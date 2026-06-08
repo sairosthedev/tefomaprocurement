@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { SupplierProfile } from '../../models/index.js';
-import { computeKysCompletion } from '@fosssil/shared';
+import { computeKysCompletion } from '@fossil/shared';
 import { createAuditLog } from '../../middleware/index.js';
 
 const verifyKys = async (req: Request, res: Response): Promise<any> => {

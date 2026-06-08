@@ -17,7 +17,7 @@ import sitesRoutes from './sites.route.js';
 router.get('/', (req, res) => {
   res.json({
     success: true,
-    message: 'FosssilProcure API is running',
+    message: 'fossilProcure API is running',
     version: '1.0.0'
   });
 });

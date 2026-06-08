@@ -70,6 +70,10 @@ const login = async (req: Request, res: Response): Promise<any> => {
       { expiresIn: process.env.JWT_EXPIRE || '7d' } as SignOptions
     );
 
+    // Populate department (name/code) so the client can resolve the user's
+    // effective access (e.g. the head of the Procurement department).
+    await user.populate('department', 'name code');
+
     // Get supplier profile if user is a supplier
     let supplierProfile = null;
     if (user.role === 'supplier') {

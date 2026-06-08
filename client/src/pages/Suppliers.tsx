@@ -29,14 +29,16 @@ const statusColors: any = {
   pending: 'bg-amber-100 text-amber-700',
   active: 'bg-green-100 text-green-700',
   suspended: 'bg-gray-100 text-gray-700',
-  blacklisted: 'bg-red-100 text-red-700'
+  blacklisted: 'bg-red-100 text-red-700',
+  dormant: 'bg-gray-100 text-gray-700'
 };
 
 const statusIcons: any = {
   pending: Clock,
   active: CheckCircle,
   suspended: XCircle,
-  blacklisted: XCircle
+  blacklisted: XCircle,
+  dormant: Clock
 };
 
 export default function Suppliers() {
@@ -132,10 +134,28 @@ export default function Suppliers() {
       setPendingAction(null);
       setActionReason('');
     } catch (error: any) {
+      // KYS not complete — send the officer to the document page to finish it.
+      if (error.response?.data?.data?.requiresKys) {
+        showToast('KYS documents are incomplete. Redirecting to the KYS page to upload them.', 'error');
+        setPendingAction(null);
+        navigate(`/app/suppliers/${selectedSupplier._id}/kys`);
+        return;
+      }
       showToast(error.response?.data?.message || 'Failed to approve supplier', 'error');
     } finally {
       setActionLoading(false);
     }
+  };
+
+  // Gate activation on KYS completeness. If the supplier still has outstanding
+  // KYS documents, redirect to the KYS page instead of opening the confirm step.
+  const startApprove = (supplier: any) => {
+    if (!supplier?.kysComplete) {
+      showToast('Upload the required KYS documents before activating this supplier.', 'error');
+      navigate(`/app/suppliers/${supplier._id}/kys`);
+      return;
+    }
+    setPendingAction('approve');
   };
 
   const runSetStatus = async (status: string) => {
@@ -435,7 +455,7 @@ export default function Suppliers() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {suppliers.map((supplier: any) => {
-                  const StatusIcon = statusIcons[supplier.status];
+                  const StatusIcon = statusIcons[supplier.status] || Clock;
                   return (
                     <tr key={supplier._id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
@@ -1163,7 +1183,7 @@ Company ABC,REG123,John Doe,john@company.com,1234567890`}
                   {s.status === 'pending' && (
                     <button
                       type="button"
-                      onClick={() => setPendingAction('approve')}
+                      onClick={() => startApprove(s)}
                       className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90"
                     >
                       <CheckCircle className="h-4 w-4" />

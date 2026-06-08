@@ -1,4 +1,4 @@
-# FosssilProcure — Development Report
+# fossilProcure — Development Report
 
 **Developer:** sairosthedev (`macdonaldsairos@gmail.com`)
 **Prepared for:** Collins (management review)

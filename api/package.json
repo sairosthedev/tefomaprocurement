@@ -1,21 +1,22 @@
 {
   "name": "api",
   "version": "1.0.0",
-  "description": "Express API for FosssilProcure",
+  "description": "Express API for fossilProcure",
   "type": "module",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "prebuild": "tsc -p ../packages/shared",
     "build": "tsc",
-    "vercel-build": "cd .. && npm run build -w @fosssil/shared",
+    "vercel-build": "cd .. && npm run build -w @fossil/shared",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "seed": "tsx src/scripts/seed.ts",
+    "seed:ict-suppliers": "tsx src/scripts/seed-ict-suppliers.ts",
     "migrate:sites": "tsx src/scripts/migrate-sites.ts"
   },
   "dependencies": {
-    "@fosssil/shared": "*",
+    "@fossil/shared": "*",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",

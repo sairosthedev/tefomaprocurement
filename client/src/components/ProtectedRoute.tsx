@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { isProcurementHead } from '@fossil/shared';
 import { Loader2 } from 'lucide-react';
 
 export function ProtectedRoute({ children, allowedRoles }: any) {
@@ -22,7 +23,12 @@ export function ProtectedRoute({ children, allowedRoles }: any) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  // A procurement department head also has procurement_officer capabilities.
+  const effectiveRoles = isProcurementHead(user)
+    ? [user.role, 'procurement_officer']
+    : [user.role];
+
+  if (allowedRoles && !effectiveRoles.some((r: string) => allowedRoles.includes(r))) {
     return <Navigate to="/unauthorized" replace />;
   }
 

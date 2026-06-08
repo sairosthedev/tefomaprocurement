@@ -1,4 +1,4 @@
-# Ngrok Setup Guide for FosssilProcure
+# Ngrok Setup Guide for fossilProcure
 
 This guide will help you expose your local development server to the internet using ngrok.
 

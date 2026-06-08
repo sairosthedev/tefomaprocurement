@@ -9,6 +9,7 @@ const getPurchaseOrderById = async (req: Request, res: Response): Promise<any> =
       .populate('supplier', 'companyName contactEmail contactPhone address')
       .populate('createdBy', 'firstName lastName email')
       .populate('quotation', 'quotationNumber currency submittedAt')
+      .populate('hodApprovedBy', 'firstName lastName')
       .populate('financeApprovedBy', 'firstName lastName')
       .populate('cooApprovedBy', 'firstName lastName')
       .populate('purchaseRequisition', 'requisitionNumber title department')

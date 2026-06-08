@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { procurementAPI } from '../lib/api';
+import { procurementAPI, departmentAPI } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { formatCurrency } from '../lib/constants';
+import { isProcurementHead } from '@fossil/shared';
 import { 
   ArrowLeft, 
   FileText, 
@@ -17,7 +19,10 @@ import {
   Phone,
   ShoppingCart,
   Send,
-  Package
+  Package,
+  ShieldCheck,
+  UserCheck,
+  Circle
 } from 'lucide-react';
 import Modal, { ConfirmModal } from '../components/Modal';
 
@@ -30,12 +35,31 @@ const statusColors: any = {
   expired: 'bg-amber-100 text-amber-700'
 };
 
+/** HOD selection is done by the head of the department that raised the requisition. */
+function canUserHodSelect(user: any, compliance: any): boolean {
+  if (user?.role === 'admin') return true;
+  if (user?.role !== 'department_head') return false;
+
+  const reqDeptId = compliance?.requestingDepartment?.id;
+  const userDeptId = user?.department?._id || user?.department;
+
+  // RFQ not linked to a department requisition — any department head may select.
+  if (!reqDeptId) return true;
+
+  return Boolean(userDeptId && String(userDeptId) === String(reqDeptId));
+}
+
 export default function QuotationDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { showToast } = useToast();
   const [loading, setLoading] = useState<any>(true);
   const [quotation, setQuotation] = useState<any>(null);
+  const [sealedInfo, setSealedInfo] = useState<any>(null);
+  const [closingRfq, setClosingRfq] = useState<any>(false);
+  const [hodJustification, setHodJustification] = useState<any>('');
+  const [authorizing, setAuthorizing] = useState<any>(false);
   const [showAcceptModal, setShowAcceptModal] = useState<any>(false);
   const [showRejectModal, setShowRejectModal] = useState<any>(false);
   const [rejectReason, setRejectReason] = useState<any>('');
@@ -61,15 +85,71 @@ export default function QuotationDetail() {
   const fetchQuotation = async () => {
     try {
       setLoading(true);
+      setSealedInfo(null);
       const response = await procurementAPI.getQuotation(id);
       if (response.data.success) {
         setQuotation(response.data.data);
       }
     } catch (error: any) {
       console.error('Error fetching quotation:', error);
+      if (error.response?.data?.sealed) {
+        setSealedInfo(error.response.data);
+        setQuotation(null);
+        return;
+      }
       showToast(error.response?.data?.message || 'Failed to load quotation details', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCloseRfq = async () => {
+    if (!sealedInfo?.rfqId) return;
+    try {
+      setClosingRfq(true);
+      const res = await procurementAPI.closeRFQ(sealedInfo.rfqId);
+      showToast(res.data.message || 'RFQ closed — bids are now visible', 'success');
+      await fetchQuotation();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to close RFQ', 'error');
+    } finally {
+      setClosingRfq(false);
+    }
+  };
+
+  const handleHodSelect = async () => {
+    if (!hodJustification.trim()) {
+      showToast('A selection justification is required (FC-HQ-P-07 §6.3.4)', 'error');
+      return;
+    }
+    try {
+      setAuthorizing(true);
+      await departmentAPI.hodSelectQuotation(quotation.rfq._id, {
+        quotationId: quotation._id,
+        justification: hodJustification.trim()
+      });
+      showToast('Quotation selected. Awaiting Procurement Manager authorization.', 'success');
+      setHodJustification('');
+      fetchQuotation();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to select quotation', 'error');
+    } finally {
+      setAuthorizing(false);
+    }
+  };
+
+  const handlePmAuthorize = async () => {
+    try {
+      setAuthorizing(true);
+      await procurementAPI.authorizeQuotation(quotation.rfq._id, {
+        quotationId: quotation._id
+      });
+      showToast('Quotation authorized. Ready for acceptance.', 'success');
+      fetchQuotation();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to authorize quotation', 'error');
+    } finally {
+      setAuthorizing(false);
     }
   };
 
@@ -149,6 +229,55 @@ export default function QuotationDetail() {
     );
   }
 
+  if (sealedInfo) {
+    return (
+      <div className="p-8 max-w-2xl mx-auto">
+        <button
+          onClick={() => navigate('/app/quotations')}
+          className="flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors mb-6"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Quotations
+        </button>
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-8 text-center">
+          <Clock className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+          <h1 className="text-xl font-bold text-gray-900 mb-2">Bid is sealed</h1>
+          <p className="text-sm text-amber-800 mb-2">
+            {sealedInfo.message}
+          </p>
+          {sealedInfo.rfqNumber && (
+            <p className="text-sm text-gray-600 mb-6">
+              RFQ: <span className="font-mono font-medium">{sealedInfo.rfqNumber}</span>
+              {sealedInfo.submissionDeadline && (
+                <> · Deadline: {new Date(sealedInfo.submissionDeadline).toLocaleString('en-ZA')}</>
+              )}
+            </p>
+          )}
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              type="button"
+              onClick={handleCloseRfq}
+              disabled={closingRfq}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 disabled:opacity-50"
+            >
+              {closingRfq ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+              Close RFQ &amp; Reveal Bids
+            </button>
+            {sealedInfo.rfqId && (
+              <button
+                type="button"
+                onClick={() => navigate(`/app/rfqs/${sealedInfo.rfqId}`)}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 border border-amber-300 text-amber-800 rounded-xl font-medium hover:bg-amber-100"
+              >
+                View RFQ
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!quotation) {
     return (
       <div className="p-8">
@@ -201,11 +330,17 @@ export default function QuotationDetail() {
               <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[quotation.status]}`}>
                 {quotation.status?.replace(/_/g, ' ').replace(/\b\w/g, (l: any) => l.toUpperCase())}
               </span>
-          {quotation.status === 'submitted' && (
+          {(quotation.status === 'submitted' || quotation.status === 'under_review') && (
             <>
               <button
                 onClick={() => setShowAcceptModal(true)}
-                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+                disabled={!quotation.compliance?.fullyAuthorized}
+                title={
+                  quotation.compliance?.fullyAuthorized
+                    ? 'Accept this quotation'
+                    : 'Complete HOD selection and Procurement Manager authorization first'
+                }
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-4 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <CheckCircle className="h-4 w-4" />
                 Accept
@@ -241,6 +376,148 @@ export default function QuotationDetail() {
           </div>
         </div>
       </div>
+
+      {/* Acceptance compliance workflow (FC-HQ-P-07 §5.1.2 / §6.3.4) */}
+      {quotation.compliance && quotation.status !== 'accepted' && quotation.status !== 'rejected' && (
+        (() => {
+          const c = quotation.compliance;
+          const role = user?.role;
+          const procurementHead = isProcurementHead(user);
+          const canHodSelect = canUserHodSelect(user, c);
+          const canPmAuthorize = role === 'procurement_officer' || role === 'admin' || procurementHead;
+          const reqDeptName = c.requestingDepartment?.name;
+          const missingSteps: string[] = [];
+          if (!c.minQuotationsMet) missingSteps.push('at least 3 quotations (or a waiver)');
+          if (!c.hodSelected) {
+            missingSteps.push(
+              reqDeptName
+                ? `HOD selection by the ${reqDeptName} department head`
+                : 'HOD selection with justification'
+            );
+          }
+          if (!c.pmAuthorized) missingSteps.push('Procurement Manager authorization');
+          const Step = ({ done, title, children }: any) => (
+            <div className="flex gap-3">
+              <div className="mt-0.5">
+                {done ? (
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                ) : (
+                  <Circle className="h-5 w-5 text-gray-300" />
+                )}
+              </div>
+              <div className="flex-1">
+                <p className={`text-sm font-medium ${done ? 'text-gray-900' : 'text-gray-700'}`}>{title}</p>
+                {children}
+              </div>
+            </div>
+          );
+          return (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-primary" />
+                Acceptance Authorization
+              </h2>
+              <p className="text-xs text-gray-500 mb-3">
+                FC-HQ-P-07 §5.1.2 / §6.3.4 — complete every step below before Accept is enabled.
+              </p>
+              {!c.fullyAuthorized && missingSteps.length > 0 && (
+                <div className="mb-5 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+                  <span className="font-medium">Accept is blocked until: </span>
+                  {missingSteps.join(' → ')}
+                </div>
+              )}
+
+              <div className="space-y-5">
+                <Step
+                  done={c.minQuotationsMet}
+                  title={`Minimum 3 competitive quotations${c.waived ? ' (waived)' : ''}`}
+                >
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {c.quotationCount} quotation{c.quotationCount === 1 ? '' : 's'} on this RFQ
+                    {!c.minQuotationsMet && ' — need at least 3 or an approved waiver'}
+                  </p>
+                </Step>
+
+                <Step
+                  done={c.hodSelected}
+                  title={
+                    reqDeptName
+                      ? `HOD selection — ${reqDeptName} department`
+                      : 'HOD selection with justification'
+                  }
+                >
+                  {c.hodSelected ? (
+                    <p className="text-xs text-gray-500 mt-0.5">Justification: {c.hodJustification}</p>
+                  ) : canHodSelect ? (
+                    <div className="mt-2 space-y-2">
+                      <textarea
+                        value={hodJustification}
+                        onChange={(e: any) => setHodJustification(e.target.value)}
+                        rows={2}
+                        placeholder="Justification for selecting this quotation (required)"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleHodSelect}
+                        disabled={authorizing || !c.minQuotationsMet}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        {authorizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCheck className="h-4 w-4" />}
+                        Select as HOD
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-amber-600 mt-0.5">
+                      {reqDeptName
+                        ? `Waiting for the ${reqDeptName} department head to select this quotation with a justification.`
+                        : 'Waiting for the requesting department head to select this quotation.'}
+                      {procurementHead && reqDeptName && (
+                        <span className="block mt-1 text-gray-500">
+                          As Head of Procurement you authorize in step 3 after that department&apos;s HOD completes step 2.
+                        </span>
+                      )}
+                    </p>
+                  )}
+                </Step>
+
+                <Step done={c.pmAuthorized} title="Procurement Manager authorization">
+                  {c.pmAuthorized ? (
+                    <p className="text-xs text-gray-500 mt-0.5">Authorized.</p>
+                  ) : canPmAuthorize ? (
+                    <div className="mt-2 space-y-2">
+                      {!c.hodSelected && (
+                        <p className="text-xs text-amber-600">
+                          Complete HOD selection (step 2) before you can authorize here.
+                        </p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handlePmAuthorize}
+                        disabled={authorizing || !c.hodSelected}
+                        title={!c.hodSelected ? 'HOD must select this quotation first' : 'Authorize as Procurement Manager'}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        {authorizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                        Authorize as Procurement Manager
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-amber-600 mt-0.5">Awaiting Procurement Manager authorization.</p>
+                  )}
+                </Step>
+              </div>
+
+              {c.fullyAuthorized && (
+                <div className="mt-5 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700 flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4" />
+                  Fully authorized — you can now accept this quotation.
+                </div>
+              )}
+            </div>
+          );
+        })()
+      )}
 
       {/* Details */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">

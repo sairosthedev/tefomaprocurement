@@ -30,3 +30,43 @@ export const USER_ROLE_OPTIONS: readonly RoleOption[] = Object.freeze([
   { value: USER_ROLES.STORES_OFFICER, label: 'Stores Officer' },
   { value: USER_ROLES.SUPPLIER, label: 'Supplier' }
 ]);
+
+/**
+ * Recognised identifiers for the Procurement department. A department_head
+ * whose department matches one of these is treated as the head of procurement
+ * (a.k.a. Procurement Manager) and is granted procurement capabilities,
+ * including authorizing quotations for acceptance (FC-HQ-P-07 §5.1.2).
+ */
+export const PROCUREMENT_DEPARTMENT_CODES: readonly string[] = Object.freeze([
+  'PROC',
+  'PROCUREMENT'
+]);
+
+/**
+ * Returns true if the given department (by code or name) is the Procurement
+ * department. Accepts a populated department object or a plain string.
+ */
+export function isProcurementDepartment(
+  department: { code?: string | null; name?: string | null } | string | null | undefined
+): boolean {
+  if (!department) return false;
+  if (typeof department === 'string') {
+    return /procurement|^proc$/i.test(department.trim());
+  }
+  const code = (department.code || '').trim().toUpperCase();
+  if (code && PROCUREMENT_DEPARTMENT_CODES.includes(code)) return true;
+  const name = (department.name || '').trim();
+  return /procurement/i.test(name);
+}
+
+/**
+ * True when a user is the head of the Procurement department: a department_head
+ * whose department is Procurement. Such a user gets procurement_officer-level
+ * access and is the designated quotation authorizer.
+ */
+export function isProcurementHead(
+  user: { role?: string | null; department?: any } | null | undefined
+): boolean {
+  if (!user || user.role !== USER_ROLES.DEPARTMENT_HEAD) return false;
+  return isProcurementDepartment(user.department);
+}

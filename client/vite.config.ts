@@ -13,7 +13,7 @@ export default defineConfig({
     }
   },
   build: {
-    // @fosssil/shared is a CommonJS workspace package. Rollup's commonjs
+    // @fossil/shared is a CommonJS workspace package. Rollup's commonjs
     // plugin only processes `node_modules/**` by default, so we extend it
     // to cover the linked workspace path as well.
     commonjsOptions: {
@@ -23,6 +23,6 @@ export default defineConfig({
   // Do not pre-bundle the workspace package — it changes often and a stale
   // .vite/deps cache causes "does not provide an export named …" errors.
   optimizeDeps: {
-    exclude: ['@fosssil/shared']
+    exclude: ['@fossil/shared']
   }
 });

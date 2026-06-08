@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supplierAPI } from '../../lib/api';
-import { KYS_DOCUMENT_REQUIREMENTS } from '@fosssil/shared';
+import { KYS_DOCUMENT_REQUIREMENTS } from '@fossil/shared';
 import { useToast } from '../../components/Toast';
 import KysDocuments from '../../components/KysDocuments';
 import { Loader2, ShieldCheck, AlertCircle, CheckCircle } from 'lucide-react';

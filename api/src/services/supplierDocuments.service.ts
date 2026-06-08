@@ -2,7 +2,7 @@ import {
   computeKysCompletion,
   getChecklistKeyForDocType,
   isKnownKysDocumentType
-} from '@fosssil/shared';
+} from '@fossil/shared';
 import type { ISupplierProfile } from '../models/SupplierProfile.model.js';
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5MB per document

@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 
+import { computeKysCompletion } from '@fossil/shared';
 import { SupplierProfile, User } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { createNotification } from '../../services/notification.service.js';
@@ -18,10 +19,28 @@ const approveSupplier = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
+    // FC-HQ-P-07 §6.2.3 — a supplier cannot be approved/activated until all
+    // required KYS documents have been captured. Signal `requiresKys` so the
+    // client can redirect the officer to the KYS document page to complete it.
+    const completion = computeKysCompletion(supplier.kysChecklist as Record<string, boolean>);
+    if (!completion.isComplete) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot activate this supplier yet: KYS is incomplete (${completion.requiredComplete}/${completion.requiredTotal} required items). Upload the required documents first.`,
+        data: { requiresKys: true, completion }
+      });
+    }
+
     const previousStatus = supplier.status;
     supplier.status = 'active';
     supplier.approvedBy = req.user!._id;
     supplier.approvedAt = new Date();
+    supplier.kysComplete = true;
+    // Approving implies the officer has verified the captured KYS documents.
+    if (!supplier.kysChecklist.verifiedAt) {
+      supplier.kysChecklist.verifiedBy = req.user!._id;
+      supplier.kysChecklist.verifiedAt = new Date();
+    }
     if (notes) supplier.notes = notes;
 
     await supplier.save();
@@ -57,7 +76,7 @@ const approveSupplier = async (req: Request, res: Response): Promise<any> => {
       if (user && user.email) {
         await sendEmailNotification({
           emailTo: user.email,
-          subject: 'Supplier Account Approved - FosssilProcure',
+          subject: 'Supplier Account Approved - fossilProcure',
           headingText: 'Your Supplier Account Has Been Approved!',
           subText: `Congratulations! Your supplier account for ${supplier.companyName} has been approved. You can now receive RFQ invitations, submit quotations, and manage your orders through the supplier dashboard.`,
           subSubText: supplier.notes ? `Notes: ${supplier.notes}` : null,

@@ -30,6 +30,7 @@ export default function RFQDetail() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [loading, setLoading] = useState<any>(true);
+  const [closing, setClosing] = useState<any>(false);
   const [rfq, setRfq] = useState<any>(null);
 
   useEffect(() => {
@@ -60,6 +61,26 @@ export default function RFQDetail() {
       showToast(error.response?.data?.message || 'Failed to publish RFQ', 'error');
     }
   };
+
+  const handleClose = async () => {
+    if (!window.confirm('Close this RFQ and reveal submitted bids for evaluation? Suppliers will no longer be able to submit.')) {
+      return;
+    }
+    try {
+      setClosing(true);
+      const res = await procurementAPI.closeRFQ(id);
+      showToast(res.data.message || 'RFQ closed — bids are now visible', 'success');
+      fetchRFQ();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to close RFQ', 'error');
+    } finally {
+      setClosing(false);
+    }
+  };
+
+  const bidsAreSealed = rfq?.status === 'open' && (
+    !rfq?.submissionDeadline || new Date(rfq.submissionDeadline) > new Date()
+  );
 
   if (loading) {
     return (
@@ -129,6 +150,16 @@ export default function RFQDetail() {
                 >
                   <Send className="h-4 w-4" />
                   Publish RFQ
+                </button>
+              )}
+              {rfq.status === 'open' && (
+                <button
+                  onClick={handleClose}
+                  disabled={closing}
+                  className="px-4 py-2.5 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                >
+                  {closing ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                  Close RFQ & Reveal Bids
                 </button>
               )}
             </div>
@@ -225,6 +256,16 @@ export default function RFQDetail() {
           </div>
         )}
 
+        {bidsAreSealed && (
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+            <p className="font-medium">Bids are sealed</p>
+            <p className="mt-1 text-amber-700">
+              Supplier quotations stay hidden until the submission deadline passes or you close this RFQ.
+              Use <strong>Close RFQ &amp; Reveal Bids</strong> above once all invited suppliers have responded.
+            </p>
+          </div>
+        )}
+
         {/* Invited Suppliers */}
         {rfq.invitedSuppliers && rfq.invitedSuppliers.length > 0 && (
           <div>
@@ -246,13 +287,17 @@ export default function RFQDetail() {
                       </span>
                     )}
                   </div>
-                  {invitation.quotation && (
-                    <a
-                      href={`/app/quotations/${invitation.quotation._id}`}
+                  {invitation.quotation && !bidsAreSealed && (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/app/quotations/${invitation.quotation._id}`)}
                       className="text-sm text-primary hover:underline"
                     >
                       View Quotation
-                    </a>
+                    </button>
+                  )}
+                  {invitation.quotation && bidsAreSealed && (
+                    <span className="text-xs text-amber-600 font-medium">Bid sealed</span>
                   )}
                 </div>
               ))}

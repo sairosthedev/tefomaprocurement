@@ -104,8 +104,24 @@ export default function Quotations() {
       setShowViewModal(true);
     } catch (error: any) {
       console.error('Error fetching quotation details:', error);
-      showToast('Failed to load quotation details', 'error');
+      if (error.response?.data?.sealed) {
+        const rfqId = error.response.data.rfqId;
+        showToast(error.response.data.message || 'This bid is sealed', 'error');
+        if (rfqId) navigate(`/app/rfqs/${rfqId}`);
+        return;
+      }
+      showToast(error.response?.data?.message || 'Failed to load quotation details', 'error');
     }
+  };
+
+  const openQuotation = (quotation: any) => {
+    if (quotation.isSealed) {
+      const rfqId = quotation.rfq?._id;
+      showToast('This bid is sealed. Close the RFQ to reveal it for evaluation.', 'error');
+      if (rfqId) navigate(`/app/rfqs/${rfqId}`);
+      return;
+    }
+    navigate(`/app/quotations/${quotation._id}`);
   };
 
   const handleAccept = async () => {
@@ -286,13 +302,21 @@ export default function Quotations() {
                         {quotation.rfq?.rfqNumber}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
-                        {quotation.supplier?.companyName}
+                        {quotation.isSealed ? (
+                          <span className="text-amber-600 font-medium">Sealed bid</span>
+                        ) : (
+                          quotation.supplier?.companyName
+                        )}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-1 font-semibold text-gray-900">
-                          <DollarSign className="h-4 w-4 text-gray-400" />
-                          {formatCurrency(quotation.totalAmount, quotation.currency || 'USD')}
-                        </div>
+                        {quotation.isSealed ? (
+                          <span className="text-xs font-medium text-amber-600">Hidden until RFQ closes</span>
+                        ) : (
+                          <div className="flex items-center gap-1 font-semibold text-gray-900">
+                            <DollarSign className="h-4 w-4 text-gray-400" />
+                            {formatCurrency(quotation.totalAmount, quotation.currency || 'USD')}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
                         <div className="flex items-center gap-1">
@@ -308,7 +332,8 @@ export default function Quotations() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <ViewButton
-                          onClick={() => navigate(`/app/quotations/${quotation._id}`)}
+                          onClick={() => openQuotation(quotation)}
+                          text={quotation.isSealed ? 'Sealed' : 'View'}
                         />
                       </td>
                     </tr>

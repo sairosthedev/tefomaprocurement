@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { computeKysCompletion, getChecklistKeyForDocType } from '@fosssil/shared';
+import { computeKysCompletion, getChecklistKeyForDocType } from '@fossil/shared';
 import { SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 

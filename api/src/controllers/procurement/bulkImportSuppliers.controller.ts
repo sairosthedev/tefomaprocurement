@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 
-import { isValidCategoryCode } from '@fosssil/shared';
+import { isValidCategoryCode } from '@fossil/shared';
 import { User, SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 

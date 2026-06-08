@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const DEFAULT_API_URL = 'https://fosssil-procure-api.vercel.app/api';
+const DEFAULT_API_URL = 'https://fossil-procure-api.vercel.app/api';
 
 const baseURL = import.meta.env.VITE_API_URL || DEFAULT_API_URL;
 

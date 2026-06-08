@@ -1,4 +1,4 @@
-# FosssilProcure: Integrated Procurement & Stores Management System
+# fossilProcure: Integrated Procurement & Stores Management System
 ## Business Overview & System Documentation
 
 **Prepared for:** Fossil Contracting  
@@ -23,7 +23,7 @@
 
 ## 🎯 Executive Summary
 
-**FosssilProcure** is a comprehensive, cloud-based procurement and stores management system designed to transform Fossil Contracting's procurement operations from manual, paper-based processes to a fully digital, transparent, and auditable workflow.
+**fossilProcure** is a comprehensive, cloud-based procurement and stores management system designed to transform Fossil Contracting's procurement operations from manual, paper-based processes to a fully digital, transparent, and auditable workflow.
 
 ### Key Highlights
 
@@ -100,9 +100,9 @@
 
 ## 💡 Proposed Solution
 
-### FosssilProcure: Digital Transformation Platform
+### fossilProcure: Digital Transformation Platform
 
-FosssilProcure is a comprehensive MERN stack (MongoDB, Express.js, React, Node.js) web application that digitizes and automates the entire procurement and stores management lifecycle.
+fossilProcure is a comprehensive MERN stack (MongoDB, Express.js, React, Node.js) web application that digitizes and automates the entire procurement and stores management lifecycle.
 
 ### Core Solution Components
 
@@ -722,8 +722,8 @@ FosssilProcure is a comprehensive MERN stack (MongoDB, Express.js, React, Node.j
 
 ### 🚀 Deployment Status
 
-- **Frontend:** Deployed on Vercel (`https://fosssilprocure.vercel.app`)
-- **Backend API:** Deployed on Vercel (`https://fosssil-procure-api.vercel.app`)
+- **Frontend:** Deployed on Vercel (`https://fossilprocure.vercel.app`)
+- **Backend API:** Deployed on Vercel (`https://fossil-procure-api.vercel.app`)
 - **Database:** MongoDB Atlas (Cloud)
 - **Email Service:** Resend (Configured)
 

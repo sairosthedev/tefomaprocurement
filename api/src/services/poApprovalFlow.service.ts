@@ -1,5 +1,5 @@
 import type { IPurchaseOrder } from '../models/PurchaseOrder.model.js';
-import { COO_APPROVAL_THRESHOLD_USD } from '@fosssil/shared';
+import { COO_APPROVAL_THRESHOLD_USD } from '@fossil/shared';
 
 export function requiresCooApproval(totalAmount: number, currency = 'USD'): boolean {
   // Procedure §6.3.11 — COO for amounts above USD 5,000

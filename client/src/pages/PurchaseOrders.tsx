@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { procurementAPI, financeAPI } from '../lib/api';
+import { procurementAPI, financeAPI, cooAPI } from '../lib/api';
 import { formatCurrency } from '../lib/constants';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
@@ -58,16 +58,18 @@ export default function PurchaseOrders() {
   const [submitting, setSubmitting] = useState<any>(null);
 
   const isFinance = user?.role === 'finance';
+  const isCoo = user?.role === 'coo';
 
   useEffect(() => {
     fetchOrders();
-  }, [search, statusFilter, isFinance]);
+  }, [search, statusFilter, isFinance, isCoo]);
 
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      // Use Finance API if user is Finance, otherwise use Procurement API
-      const apiToUse = isFinance ? financeAPI : procurementAPI;
+      // Each approving role reads from its own scoped endpoint; procurement
+      // (officers/admin/procurement head) uses the procurement endpoint.
+      const apiToUse = isFinance ? financeAPI : isCoo ? cooAPI : procurementAPI;
       const response = await apiToUse.getPurchaseOrders({ 
         search, 
         status: statusFilter 

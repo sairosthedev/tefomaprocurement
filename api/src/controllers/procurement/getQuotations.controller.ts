@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 
-import { Quotation, RFQ } from '../../models/index.js';
+import { Quotation } from '../../models/index.js';
+import { isRfqSealed } from '../../lib/rfqVisibility.js';
 
 const getQuotations = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -14,38 +15,11 @@ const getQuotations = async (req: Request, res: Response): Promise<any> => {
       query.quotationNumber = { $regex: search, $options: 'i' };
     }
 
-    // Sealed bids: hide quotations belonging to RFQs that are still ongoing
-    // (open and before deadline). Admins are exempt for oversight.
-    if (req.user!.role !== 'admin') {
-      const sealedRfqs = await RFQ.find({
-        status: 'open',
-        submissionDeadline: { $gt: new Date() },
-        isDeleted: false
-      }).select('_id');
-
-      if (sealedRfqs.length > 0) {
-        query.rfq = query.rfq
-          ? query.rfq
-          : { $nin: sealedRfqs.map((r) => r._id) };
-
-        // If a specific sealed RFQ was requested, return nothing.
-        if (rfqId && sealedRfqs.some((r) => r._id.toString() === rfqId.toString())) {
-          return res.status(200).json({
-            success: true,
-            data: [],
-            pagination: { page: parseInt(page), limit: parseInt(limit), total: 0, pages: 0 },
-            sealed: true,
-            message: 'Bids are sealed until the RFQ submission deadline passes or the RFQ is closed.'
-          });
-        }
-      }
-    }
-
     const skip = (page - 1) * limit;
     
     const [quotations, total] = await Promise.all([
       Quotation.find(query)
-        .populate('rfq', 'rfqNumber title')
+        .populate('rfq', 'rfqNumber title status submissionDeadline')
         .populate('supplier', 'companyName')
         .populate('submittedBy', 'firstName lastName')
         .sort({ createdAt: -1 })
@@ -54,9 +28,25 @@ const getQuotations = async (req: Request, res: Response): Promise<any> => {
       Quotation.countDocuments(query)
     ]);
 
+    const isAdmin = req.user!.role === 'admin';
+    const data = quotations.map((quotation: any) => {
+      const obj = quotation.toObject();
+      const sealed = !isAdmin && isRfqSealed(obj.rfq);
+      if (!sealed) return { ...obj, isSealed: false };
+      return {
+        ...obj,
+        isSealed: true,
+        totalAmount: null,
+        items: [],
+        supplier: obj.supplier
+          ? { ...obj.supplier, companyName: 'Sealed bid' }
+          : { companyName: 'Sealed bid' }
+      };
+    });
+
     res.status(200).json({
       success: true,
-      data: quotations,
+      data,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),

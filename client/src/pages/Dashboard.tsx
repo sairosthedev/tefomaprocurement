@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { isProcurementHead } from '@fossil/shared';
 import api from '../lib/api';
 import { 
   FileText, 
@@ -52,7 +53,12 @@ const iconMap: any = {
   departmentRequisitions: FileText,
   myQuotations: FileText,
   submittedQuotations: FileText,
-  myPOs: ShoppingCart
+  myPOs: ShoppingCart,
+  pendingPoApprovals: Clock,
+  inProgressRequisitions: TrendingUp,
+  draftRequisitions: FileText,
+  pendingAcceptance: Clock,
+  completedRequisitions: CheckCircle
 };
 
 const colorMap: any = {
@@ -89,7 +95,12 @@ const colorMap: any = {
   departmentRequisitions: 'bg-indigo-500',
   myQuotations: 'bg-indigo-500',
   submittedQuotations: 'bg-blue-500',
-  myPOs: 'bg-emerald-500'
+  myPOs: 'bg-emerald-500',
+  pendingPoApprovals: 'bg-amber-500',
+  inProgressRequisitions: 'bg-blue-500',
+  draftRequisitions: 'bg-gray-500',
+  pendingAcceptance: 'bg-amber-500',
+  completedRequisitions: 'bg-green-500'
 };
 
 const activityIconMap: any = {
@@ -143,7 +154,11 @@ export default function Dashboard() {
     }
   };
 
+  const procurementHead = isProcurementHead(user);
+  const effectiveRole = procurementHead ? 'procurement_officer' : user?.role;
+
   const getRoleDisplayName = (role: any) => {
+    if (procurementHead) return 'Head of Procurement';
     const names: any = {
       admin: 'Administrator',
       procurement_officer: 'Procurement Officer',
@@ -196,7 +211,7 @@ export default function Dashboard() {
         { label: 'My Requisitions', icon: FileSearch, color: 'bg-blue-50 hover:bg-blue-100 text-blue-700', href: '/app/requisitions' }
       ]
     };
-    return actions[user?.role] || actions.admin;
+    return actions[effectiveRole] || actions.admin;
   };
 
   const getAdditionalStats = () => {

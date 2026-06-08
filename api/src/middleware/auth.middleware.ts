@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
+import { isProcurementHead } from '@fossil/shared';
 import { User } from '../models/index.js';
 
 interface DecodedToken {
@@ -32,7 +33,9 @@ export const protect = async (
       process.env.JWT_SECRET || 'your-secret-key'
     ) as DecodedToken;
 
-    const user = await User.findById(decoded.id).select('-password');
+    const user = await User.findById(decoded.id)
+      .select('-password')
+      .populate('department', 'name code');
 
     if (!user) {
       return res.status(401).json({
@@ -70,3 +73,20 @@ export const authorize =
     }
     next();
   };
+
+/**
+ * Authorize procurement actions. Allows procurement officers and admins, plus
+ * the head of the Procurement department (a department_head whose department is
+ * Procurement) — see FC-HQ-P-07 §5.1.2. The procurement head therefore gains
+ * procurement_officer-level access, including quotation authorization.
+ */
+export const authorizeProcurement: RequestHandler = (req, res, next) => {
+  const role = req.user?.role;
+  if (role === 'procurement_officer' || role === 'admin' || isProcurementHead(req.user)) {
+    return next();
+  }
+  return res.status(403).json({
+    success: false,
+    message: `Role '${role}' is not authorized to access this route`
+  });
+};

@@ -1,10 +1,10 @@
-# FosssilProcure System
+# fossilProcure System
 ## Presentation Slides - Business Overview
 
 ---
 
 ## Slide 1: Title Slide
-# **FosssilProcure**
+# **fossilProcure**
 ### Integrated Procurement & Stores Management System
 
 **Digitizing Procurement for Fossil Contracting**
@@ -15,7 +15,7 @@
 ---
 
 ## Slide 2: Executive Summary
-# **What is FosssilProcure?**
+# **What is fossilProcure?**
 
 A comprehensive **digital procurement and inventory management platform** that:
 
@@ -73,7 +73,7 @@ A comprehensive **digital procurement and inventory management platform** that:
 ---
 
 ## Slide 5: The Solution
-# **FosssilProcure: Our Proposed System**
+# **fossilProcure: Our Proposed System**
 
 ### A Complete Digital Transformation
 
@@ -464,7 +464,7 @@ A comprehensive **digital procurement and inventory management platform** that:
 
 ---
 
-## Slide 23: Why Choose FosssilProcure?
+## Slide 23: Why Choose fossilProcure?
 # **Competitive Advantages**
 
 ### ✅ **Complete Solution**
@@ -522,7 +522,7 @@ A comprehensive **digital procurement and inventory management platform** that:
 ## Slide 25: Questions & Discussion
 # **Thank You**
 
-### **FosssilProcure**
+### **fossilProcure**
 *Integrated Procurement & Stores Management System*
 
 **Questions?**  
@@ -534,7 +534,7 @@ A comprehensive **digital procurement and inventory management platform** that:
 # **Get in Touch**
 
 ### Project Information:
-- **System:** FosssilProcure
+- **System:** fossilProcure
 - **Version:** 1.0.0
 - **Status:** Production Ready
 - **Deployment:** Vercel Cloud

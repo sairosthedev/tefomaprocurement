@@ -1,7 +1,7 @@
 # FC-HQ-P-07 Procedure Compliance Report
 
 **Document:** Central Procurement Procedure Rev 9.0 (25.11.2025)  
-**System:** FosssilProcure  
+**System:** fossilProcure  
 **Generated:** 2026-06-04
 
 This report maps each major section of FC-HQ-P-07 to the current system implementation status.

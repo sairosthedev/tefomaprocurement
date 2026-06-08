@@ -124,10 +124,10 @@ const sendEmailNotification = async ({
     }
 
     // Replace company name if exists
-    const companyName = process.env.COMPANY_NAME || 'FosssilProcure';
+    const companyName = process.env.COMPANY_NAME || 'fossilProcure';
     emailHtml = emailHtml.replace(/{companyName}/g, companyName);
 
-    const fromEmail = process.env.EMAIL_FROM || 'notifications@fosssilprocure.com';
+    const fromEmail = process.env.EMAIL_FROM || 'notifications@fossilprocure.com';
 
     const email = await resendClient.emails.send({
       from: fromEmail,
@@ -218,9 +218,9 @@ const getEmailContentForNotification = (notification: any): any => {
   const contentMap: Record<string, any> = {
     // Login
     login_successful: {
-      subject: 'Successful Login - FosssilProcure',
+      subject: 'Successful Login - fossilProcure',
       headingText: 'Successful Login',
-      subText: 'You have successfully logged into your FosssilProcure account.',
+      subText: 'You have successfully logged into your fossilProcure account.',
       subSubText: notification.metadata?.ipAddress ? `IP Address: ${notification.metadata.ipAddress}` : null,
       actionButtonText: 'View Dashboard',
       actionButtonLink: `${appUrl}`
@@ -228,15 +228,15 @@ const getEmailContentForNotification = (notification: any): any => {
 
     // Supplier
     supplier_added: {
-      subject: 'Welcome to FosssilProcure - Supplier Account Created',
-      headingText: `Welcome to FosssilProcure!`,
-      subText: `You have been added as a supplier to the FosssilProcure procurement system. ${notification.metadata?.companyName ? `Your company ${notification.metadata.companyName} has been registered.` : 'Your supplier account has been created.'}\n\nPlease sign in to complete your company profile setup. You will need to submit your company details, compliance documents, and banking information before you can receive RFQ invitations.`,
+      subject: 'Welcome to fossilProcure - Supplier Account Created',
+      headingText: `Welcome to fossilProcure!`,
+      subText: `You have been added as a supplier to the fossilProcure procurement system. ${notification.metadata?.companyName ? `Your company ${notification.metadata.companyName} has been registered.` : 'Your supplier account has been created.'}\n\nPlease sign in to complete your company profile setup. You will need to submit your company details, compliance documents, and banking information before you can receive RFQ invitations.`,
       subSubText: notification.metadata?.password ? `Your login credentials:\nEmail: ${notification.metadata.email}\nTemporary Password: ${notification.metadata.password}\n\nImportant: After signing in, please complete your company profile and submit all required documentation.` : null,
       actionButtonText: 'Sign In & Complete Profile',
       actionButtonLink: `${baseUrl}/login`
     },
     supplier_approved: {
-      subject: 'Supplier Account Approved - FosssilProcure',
+      subject: 'Supplier Account Approved - fossilProcure',
       headingText: 'Your Supplier Account Has Been Approved!',
       subText: notification.message,
       actionButtonText: 'Access Supplier Dashboard',

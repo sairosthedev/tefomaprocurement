@@ -1,13 +1,14 @@
 import express from 'express';
 import controllers from '../controllers/index.js';
-import { protect, authorize } from '../middleware/index.js';
+import { protect, authorizeProcurement } from '../middleware/index.js';
 
 const { procurement } = controllers;
 const router = express.Router();
 
-// All routes require procurement officer or admin role
+// Procurement officers, admins, and the head of the Procurement department
+// (FC-HQ-P-07 §5.1.2) may access these routes.
 router.use(protect);
-router.use(authorize('procurement_officer', 'admin'));
+router.use(authorizeProcurement);
 
 // Suppliers
 router.get('/suppliers', procurement.getSuppliers);

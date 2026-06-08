@@ -33,7 +33,7 @@ async function mergeInventoryInto(target: any, source: any): Promise<void> {
 }
 
 async function migrate(): Promise<void> {
-  const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/fosssil-procure';
+  const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/fossil-procure';
   await mongoose.connect(mongoUri);
   console.log('Connected to MongoDB');
 

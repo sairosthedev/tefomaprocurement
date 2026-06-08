@@ -218,8 +218,51 @@ export default function PurchaseOrderDetail() {
 
         {/* Approval Status */}
         <div className="border-t pt-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Approval Status</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Approval Status</h3>
+            {po.status === 'approved' || po.status === 'issued' || po.status === 'partially_received' || po.status === 'completed' ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                <CheckCircle className="h-3.5 w-3.5" /> Fully Approved
+              </span>
+            ) : po.status === 'rejected' ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                <XCircle className="h-3.5 w-3.5" /> Rejected
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                <Clock className="h-3.5 w-3.5" /> In approval
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* HOD */}
+            <div className={`p-4 rounded-lg ${po.hodApproved ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
+              <div className="flex items-center gap-2 mb-2">
+                {po.hodApproved ? (
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                ) : (
+                  <Clock className="h-5 w-5 text-amber-600" />
+                )}
+                <span className="font-medium text-gray-900">1. HOD Approval</span>
+              </div>
+              {po.hodApproved ? (
+                <div>
+                  <p className="text-sm text-green-700">Approved</p>
+                  {po.hodApprovedBy && (
+                    <p className="text-xs text-gray-600 mt-1">
+                      By: {po.hodApprovedBy.firstName} {po.hodApprovedBy.lastName}
+                    </p>
+                  )}
+                  {po.hodApprovedAt && (
+                    <p className="text-xs text-gray-600">On: {new Date(po.hodApprovedAt).toLocaleDateString()}</p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-amber-700">Pending</p>
+              )}
+            </div>
+
+            {/* Finance */}
             <div className={`p-4 rounded-lg ${po.financeApproved ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
               <div className="flex items-center gap-2 mb-2">
                 {po.financeApproved ? (
@@ -227,7 +270,7 @@ export default function PurchaseOrderDetail() {
                 ) : (
                   <Clock className="h-5 w-5 text-amber-600" />
                 )}
-                <span className="font-medium text-gray-900">Finance Approval</span>
+                <span className="font-medium text-gray-900">2. Finance Approval</span>
               </div>
               {po.financeApproved ? (
                 <div>
@@ -238,23 +281,31 @@ export default function PurchaseOrderDetail() {
                     </p>
                   )}
                   {po.financeApprovedAt && (
-                    <p className="text-xs text-gray-600">
-                      On: {new Date(po.financeApprovedAt).toLocaleDateString()}
-                    </p>
+                    <p className="text-xs text-gray-600">On: {new Date(po.financeApprovedAt).toLocaleDateString()}</p>
                   )}
                 </div>
               ) : (
                 <p className="text-sm text-amber-700">Pending</p>
               )}
             </div>
-            <div className={`p-4 rounded-lg ${po.cooApproved ? 'bg-green-50 border border-green-200' : 'bg-purple-50 border border-purple-200'}`}>
+
+            {/* COO — only when required (≥ USD 5,000) */}
+            <div className={`p-4 rounded-lg ${
+              po.cooApproved
+                ? 'bg-green-50 border border-green-200'
+                : po.requiresCooApproval
+                ? 'bg-purple-50 border border-purple-200'
+                : 'bg-gray-50 border border-gray-200'
+            }`}>
               <div className="flex items-center gap-2 mb-2">
                 {po.cooApproved ? (
                   <CheckCircle className="h-5 w-5 text-green-600" />
-                ) : (
+                ) : po.requiresCooApproval ? (
                   <Clock className="h-5 w-5 text-purple-600" />
+                ) : (
+                  <CheckCircle className="h-5 w-5 text-gray-400" />
                 )}
-                <span className="font-medium text-gray-900">COO Approval</span>
+                <span className="font-medium text-gray-900">3. COO Authorization</span>
               </div>
               {po.cooApproved ? (
                 <div>
@@ -265,13 +316,13 @@ export default function PurchaseOrderDetail() {
                     </p>
                   )}
                   {po.cooApprovedAt && (
-                    <p className="text-xs text-gray-600">
-                      On: {new Date(po.cooApprovedAt).toLocaleDateString()}
-                    </p>
+                    <p className="text-xs text-gray-600">On: {new Date(po.cooApprovedAt).toLocaleDateString()}</p>
                   )}
                 </div>
-              ) : (
+              ) : po.requiresCooApproval ? (
                 <p className="text-sm text-purple-700">Pending</p>
+              ) : (
+                <p className="text-sm text-gray-500">Not required (below USD 5,000)</p>
               )}
             </div>
           </div>

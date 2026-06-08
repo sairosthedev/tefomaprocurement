@@ -30,6 +30,7 @@ import {
   ShieldCheck
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { isProcurementHead } from '@fossil/shared'
 
 // Role-based navigation configuration
 const roleNavigation: any = {
@@ -65,6 +66,21 @@ const roleNavigation: any = {
   
   procurement_officer: [
     { name: "Dashboard", href: "/app", icon: LayoutDashboard },
+    { name: "Requisitions", href: "/app/requisitions", icon: ClipboardList },
+    { name: "RFQs", href: "/app/rfqs", icon: FileSearch },
+    { name: "Quotations", href: "/app/quotations", icon: FileText },
+    { name: "Purchase Orders", href: "/app/purchase-orders", icon: ShoppingCart },
+    { name: "Suppliers", href: "/app/suppliers", icon: Users },
+    { name: "Reports", href: "/app/reports", icon: BarChart3 },
+    { name: "Notifications", href: "/app/notifications", icon: Bell },
+    { name: "Profile", href: "/app/profile", icon: UserCircle },
+  ],
+
+  // Head of the Procurement department: full procurement access plus the
+  // department-head approval queue (FC-HQ-P-07 §5.1.2).
+  procurement_head: [
+    { name: "Dashboard", href: "/app", icon: LayoutDashboard },
+    { name: "Approvals", href: "/app/approvals", icon: CheckSquare },
     { name: "Requisitions", href: "/app/requisitions", icon: ClipboardList },
     { name: "RFQs", href: "/app/rfqs", icon: FileSearch },
     { name: "Quotations", href: "/app/quotations", icon: FileText },
@@ -137,10 +153,15 @@ export function SidebarLayout({ children }: any) {
     navigate('/login')
   }
 
-  // Get navigation items for current user's role
-  const navigation = roleNavigation[user?.role] || roleNavigation.admin
+  // Get navigation items for current user's role. The procurement department
+  // head gets a combined procurement + approvals menu.
+  const procurementHead = isProcurementHead(user)
+  const navigation = procurementHead
+    ? roleNavigation.procurement_head
+    : roleNavigation[user?.role] || roleNavigation.admin
 
   const getRoleDisplayName = (role: any) => {
+    if (procurementHead) return 'Head of Procurement'
     const names: any = {
       admin: 'System Administrator',
       procurement_officer: 'Procurement Officer',

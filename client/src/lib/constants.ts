@@ -16,7 +16,7 @@ import {
   UNITS_OF_MEASUREMENT,
   UNIT_OPTIONS,
   USER_ROLE_OPTIONS
-} from '@fosssil/shared';
+} from '@fossil/shared';
 
 export {
   CURRENCIES,

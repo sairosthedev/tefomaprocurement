@@ -1,6 +1,6 @@
 import { Quotation } from '../models/index.js';
 import type { IRFQ } from '../models/RFQ.model.js';
-import { MIN_QUOTATIONS_REQUIRED } from '@fosssil/shared';
+import { MIN_QUOTATIONS_REQUIRED } from '@fossil/shared';
 
 export async function countSubmittedQuotations(rfqId: string): Promise<number> {
   return Quotation.countDocuments({

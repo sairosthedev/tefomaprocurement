@@ -1,25 +1,47 @@
 import type { Request, Response } from 'express';
+import { isProcurementHead } from '@fossil/shared';
 import { User, SupplierProfile, RFQ, Quotation, PurchaseOrder, Inventory, PurchaseRequisition, AuditLog } from '../../models/index.js';
+
+/** Build a department-scoped filter for requisition queries. */
+function deptRequisitionFilter(user: Request['user']) {
+  const base: Record<string, unknown> = { isDeleted: false };
+  if (user?.department) {
+    base.department = user.department;
+  } else if (user?._id) {
+    base.requestedBy = user._id;
+  }
+  return base;
+}
 
 const getStats = async (req: Request, res: Response): Promise<any> => {
   try {
-    const userRole = req.user!.role;
+    // The head of the Procurement department operates as a procurement officer
+    // for dashboard purposes (FC-HQ-P-07 §5.1.2).
+    const userRole = isProcurementHead(req.user) ? 'procurement_officer' : req.user!.role;
     let stats: any = {};
     let recentActivity: any[] = [];
 
-    // Base stats for all roles
-    const activeSuppliers = await SupplierProfile.countDocuments({ status: 'approved' });
-    const totalRFQs = await RFQ.countDocuments();
-    const openRFQs = await RFQ.countDocuments({ status: { $in: ['draft', 'published'] } });
-    const totalQuotations = await Quotation.countDocuments();
-    const pendingQuotations = await Quotation.countDocuments({ status: 'submitted' });
-    const totalPOs = await PurchaseOrder.countDocuments();
-    const pendingPOs = await PurchaseOrder.countDocuments({ status: { $in: ['pending_finance', 'pending_coo', 'pending_approvals'] } });
-    const approvedPOs = await PurchaseOrder.countDocuments({ status: 'approved' });
+    // Shared counts — use the actual status values from the models
+    const activeSuppliers = await SupplierProfile.countDocuments({ status: 'active', isDeleted: false });
+    const totalRFQs = await RFQ.countDocuments({ isDeleted: false });
+    const openRFQs = await RFQ.countDocuments({ status: { $in: ['draft', 'open'] }, isDeleted: false });
+    const totalQuotations = await Quotation.countDocuments({ isDeleted: false });
+    const pendingQuotations = await Quotation.countDocuments({ status: 'submitted', isDeleted: false });
+    const totalPOs = await PurchaseOrder.countDocuments({ isDeleted: false });
+    const pendingPOs = await PurchaseOrder.countDocuments({
+      status: { $in: ['pending_hod', 'pending_finance', 'pending_coo', 'pending_approvals'] },
+      isDeleted: false
+    });
+    const approvedPOs = await PurchaseOrder.countDocuments({
+      status: { $in: ['approved', 'issued', 'partially_received', 'completed'] },
+      isDeleted: false
+    });
+
+    const deptFilter = deptRequisitionFilter(req.user);
 
     // Role-specific stats
     switch (userRole) {
-      case 'admin':
+      case 'admin': {
         const totalUsers = await User.countDocuments({ isDeleted: false });
         const activeUsers = await User.countDocuments({ isDeleted: false, status: 'active' });
         stats = {
@@ -29,6 +51,7 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
           totalPOs: { value: totalPOs, label: 'Purchase Orders' }
         };
         break;
+      }
 
       case 'procurement_officer':
         stats = {
@@ -39,17 +62,19 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
         };
         break;
 
-      case 'finance':
+      case 'finance': {
         const pendingFinanceApproval = await PurchaseOrder.countDocuments({
           status: 'pending_approvals',
-          financeApproved: false
+          financeApproved: false,
+          isDeleted: false
         });
         const financeApproved = await PurchaseOrder.countDocuments({
-          status: { $in: ['pending_coo', 'approved', 'sent'] },
-          financeApproved: true
+          status: { $in: ['pending_coo', 'approved', 'issued', 'partially_received', 'completed'] },
+          financeApproved: true,
+          isDeleted: false
         });
         const totalPOValue = await PurchaseOrder.aggregate([
-          { $match: { status: { $in: ['approved', 'sent', 'delivered'] } } },
+          { $match: { status: { $in: ['approved', 'issued', 'partially_received', 'completed'] }, isDeleted: false } },
           { $group: { _id: null, total: { $sum: '$totalAmount' } } }
         ]);
         stats = {
@@ -59,36 +84,41 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
           totalPOs: { value: totalPOs, label: 'All Purchase Orders' }
         };
         break;
+      }
 
-      case 'coo':
+      case 'coo': {
         const pendingCOOApproval = await PurchaseOrder.countDocuments({
-          status: 'pending_approvals',
-          cooApproved: false
+          status: { $in: ['pending_coo', 'pending_approvals'] },
+          cooApproved: false,
+          isDeleted: false
         });
-        const cooApproved = await PurchaseOrder.countDocuments({
-          cooApproved: true
+        const cooApprovedCount = await PurchaseOrder.countDocuments({
+          cooApproved: true,
+          isDeleted: false
         });
         const majorPOValue = await PurchaseOrder.aggregate([
-          { $match: { status: 'pending_coo' } },
+          { $match: { status: 'pending_coo', isDeleted: false } },
           { $group: { _id: null, total: { $sum: '$totalAmount' } } }
         ]);
         stats = {
           pendingApproval: { value: pendingCOOApproval, label: 'Pending Approval' },
-          approved: { value: cooApproved, label: 'Approved by COO' },
+          approved: { value: cooApprovedCount, label: 'Approved by COO' },
           pendingValue: { value: `$${(majorPOValue[0]?.total || 0).toLocaleString()}`, label: 'Pending Value' },
           totalPOs: { value: totalPOs, label: 'All Purchase Orders' }
         };
         break;
+      }
 
-      case 'stores_officer':
-        // Count low stock items (items with quantityOnHand <= 5 as a threshold)
-        // Note: For accurate reorderLevel check, would need to populate Item, but using threshold for performance
+      case 'stores_officer': {
         const lowStockItems = await Inventory.countDocuments({
           quantityOnHand: { $lte: 5 },
           isDeleted: false
         });
         const totalItems = await Inventory.countDocuments({ isDeleted: false });
-        const pendingDeliveries = await PurchaseOrder.countDocuments({ status: 'sent' });
+        const pendingDeliveries = await PurchaseOrder.countDocuments({
+          status: { $in: ['issued', 'partially_received'] },
+          isDeleted: false
+        });
         stats = {
           totalItems: { value: totalItems, label: 'Inventory Items' },
           lowStock: { value: lowStockItems, label: 'Low Stock Items' },
@@ -96,42 +126,40 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
           purchaseOrders: { value: approvedPOs, label: 'Approved POs' }
         };
         break;
+      }
 
-      case 'department_head':
-        const myRequisitions = await PurchaseRequisition.countDocuments({
-          requestedBy: req.user!._id
+      case 'department_head': {
+        const departmentRequisitions = await PurchaseRequisition.countDocuments(deptFilter);
+        const pendingHodApproval = await PurchaseRequisition.countDocuments({
+          ...deptFilter,
+          status: 'pending_hod'
         });
-        const pendingRequisitions = await PurchaseRequisition.countDocuments({
-          status: 'pending_acceptance',
-          department: req.user!.department
+        const hodApprovedRequisitions = await PurchaseRequisition.countDocuments({
+          ...deptFilter,
+          status: { $in: ['stores_review', 'fulfilled', 'pending_acceptance', 'accepted', 'sourcing', 'quoted', 'ordered', 'completed'] }
+        });
+        const pendingPoApprovals = await PurchaseOrder.countDocuments({
+          isDeleted: false,
+          status: { $in: ['pending_hod', 'pending_approvals'] },
+          hodApproved: false
         });
         stats = {
-          myRequisitions: { value: myRequisitions, label: 'My Requisitions' },
-          pendingApproval: { value: pendingRequisitions, label: 'Pending Approval' },
-          openRFQs: { value: openRFQs, label: 'Active RFQs' },
-          purchaseOrders: { value: totalPOs, label: 'Purchase Orders' }
+          departmentRequisitions: { value: departmentRequisitions, label: 'Dept. Requisitions' },
+          pendingApproval: { value: pendingHodApproval, label: 'Awaiting My Approval' },
+          approvedRequisitions: { value: hodApprovedRequisitions, label: 'Approved' },
+          pendingPoApprovals: { value: pendingPoApprovals, label: 'POs Pending Approval' }
         };
         break;
+      }
 
       case 'end_user': {
-        const myReqs = await PurchaseRequisition.countDocuments({
-          requestedBy: req.user!._id,
-          isDeleted: false
-        });
-        const myDrafts = await PurchaseRequisition.countDocuments({
-          requestedBy: req.user!._id,
-          status: 'draft',
-          isDeleted: false
-        });
-        const myPendingHod = await PurchaseRequisition.countDocuments({
-          requestedBy: req.user!._id,
-          status: 'pending_hod',
-          isDeleted: false
-        });
+        const userFilter = { requestedBy: req.user!._id, isDeleted: false };
+        const myReqs = await PurchaseRequisition.countDocuments(userFilter);
+        const myDrafts = await PurchaseRequisition.countDocuments({ ...userFilter, status: 'draft' });
+        const myPendingHod = await PurchaseRequisition.countDocuments({ ...userFilter, status: 'pending_hod' });
         const myFulfilled = await PurchaseRequisition.countDocuments({
-          requestedBy: req.user!._id,
-          status: { $in: ['fulfilled', 'completed', 'ordered'] },
-          isDeleted: false
+          ...userFilter,
+          status: { $in: ['fulfilled', 'completed', 'ordered'] }
         });
         stats = {
           myRequisitions: { value: myReqs, label: 'My Requisitions' },
@@ -142,8 +170,8 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
         break;
       }
 
-      case 'supplier':
-        const supplierProfileForStats = await SupplierProfile.findOne({ user: req.user!._id });
+      case 'supplier': {
+        const supplierProfileForStats = await SupplierProfile.findOne({ user: req.user!._id, isDeleted: false });
         if (supplierProfileForStats) {
           const myQuotations = await Quotation.countDocuments({
             supplier: supplierProfileForStats._id,
@@ -178,6 +206,7 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
           };
         }
         break;
+      }
 
       default:
         stats = {
@@ -204,89 +233,98 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
       entity: log.entity
     }));
 
-    // Get pending items count for quick reference
     const pendingItems = {
       rfqs: openRFQs,
       quotations: pendingQuotations,
       purchaseOrders: pendingPOs
     };
 
-    // Get additional stats for non-admin roles (to display in place of Recent Activity)
+    // Additional stats for non-admin roles
     let additionalStats: any = {};
     if (userRole !== 'admin') {
       switch (userRole) {
-        case 'procurement_officer':
-          const totalQuotationsForProcurement = await Quotation.countDocuments();
-          const approvedQuotations = await Quotation.countDocuments({ status: 'accepted' });
+        case 'procurement_officer': {
+          const approvedQuotations = await Quotation.countDocuments({ status: 'accepted', isDeleted: false });
+          const pendingAcceptance = await PurchaseRequisition.countDocuments({
+            status: 'pending_acceptance',
+            isDeleted: false
+          });
           additionalStats = {
-            totalQuotations: { value: totalQuotationsForProcurement, label: 'Total Quotations' },
+            totalQuotations: { value: totalQuotations, label: 'Total Quotations' },
             approvedQuotations: { value: approvedQuotations, label: 'Approved Quotations' },
             totalRFQs: { value: totalRFQs, label: 'Total RFQs' },
-            approvedPOs: { value: approvedPOs, label: 'Approved POs' }
+            pendingAcceptance: { value: pendingAcceptance, label: 'Awaiting Acceptance' }
           };
           break;
+        }
 
-        case 'finance':
+        case 'finance': {
           const pendingFinanceValue = await PurchaseOrder.aggregate([
-            { $match: { status: 'pending_approvals', financeApproved: false } },
+            { $match: { status: 'pending_approvals', financeApproved: false, isDeleted: false } },
             { $group: { _id: null, total: { $sum: '$totalAmount' } } }
           ]);
           const monthlyPOValue = await PurchaseOrder.aggregate([
             {
               $match: {
-                status: { $in: ['approved', 'sent', 'delivered'] },
+                status: { $in: ['approved', 'issued', 'partially_received', 'completed'] },
+                isDeleted: false,
                 createdAt: { $gte: new Date(new Date().setMonth(new Date().getMonth() - 1)) }
               }
             },
             { $group: { _id: null, total: { $sum: '$totalAmount' } } }
           ]);
-          const financeApprovedForAdditional = await PurchaseOrder.countDocuments({
-            status: { $in: ['pending_coo', 'approved', 'sent'] },
-            financeApproved: true
+          const financeApprovedCount = await PurchaseOrder.countDocuments({
+            status: { $in: ['pending_coo', 'approved', 'issued', 'partially_received', 'completed'] },
+            financeApproved: true,
+            isDeleted: false
           });
           additionalStats = {
             pendingValue: { value: `$${(pendingFinanceValue[0]?.total || 0).toLocaleString()}`, label: 'Pending Value' },
             monthlyValue: { value: `$${(monthlyPOValue[0]?.total || 0).toLocaleString()}`, label: 'Monthly PO Value' },
-            approvedPOs: { value: financeApprovedForAdditional, label: 'Finance Approved' },
+            approvedPOs: { value: financeApprovedCount, label: 'Finance Approved' },
             totalPOs: { value: totalPOs, label: 'All Purchase Orders' }
           };
           break;
+        }
 
-        case 'coo':
+        case 'coo': {
           const pendingCOOValue = await PurchaseOrder.aggregate([
-            { $match: { status: 'pending_approvals', cooApproved: false } },
+            { $match: { status: { $in: ['pending_coo', 'pending_approvals'] }, cooApproved: false, isDeleted: false } },
             { $group: { _id: null, total: { $sum: '$totalAmount' } } }
           ]);
           const majorPOs = await PurchaseOrder.countDocuments({
             status: 'pending_coo',
-            totalAmount: { $gte: 50000 } // Major POs (assuming threshold)
+            totalAmount: { $gte: 50000 },
+            isDeleted: false
           });
-          const cooApproved = await PurchaseOrder.countDocuments({
-            cooApproved: true
-          });
+          const cooApprovedCount = await PurchaseOrder.countDocuments({ cooApproved: true, isDeleted: false });
           additionalStats = {
             pendingValue: { value: `$${(pendingCOOValue[0]?.total || 0).toLocaleString()}`, label: 'Pending Value' },
             majorPOs: { value: majorPOs, label: 'Major POs Pending' },
-            cooApproved: { value: cooApproved, label: 'COO Approved' },
+            cooApproved: { value: cooApprovedCount, label: 'COO Approved' },
             totalPOs: { value: totalPOs, label: 'All Purchase Orders' }
           };
           break;
+        }
 
-        case 'stores_officer':
+        case 'stores_officer': {
           const totalInventoryValue = await Inventory.aggregate([
             { $match: { isDeleted: false } },
             { $group: { _id: null, total: { $sum: '$totalValue' } } }
           ]);
-          // Count items needing reorder (using threshold of 5, same as lowStock calculation)
           const itemsNeedingReorder = await Inventory.countDocuments({
             quantityOnHand: { $lte: 5 },
             isDeleted: false
           });
           const receivedThisMonth = await PurchaseOrder.countDocuments({
-            status: 'delivered',
-            createdAt: { $gte: new Date(new Date().setMonth(new Date().getMonth() - 1)) }
+            status: 'completed',
+            isDeleted: false,
+            updatedAt: { $gte: new Date(new Date().setMonth(new Date().getMonth() - 1)) }
           });
-          const pendingDeliveriesForStores = await PurchaseOrder.countDocuments({ status: 'sent' });
+          const pendingDeliveriesForStores = await PurchaseOrder.countDocuments({
+            status: { $in: ['issued', 'partially_received'] },
+            isDeleted: false
+          });
           additionalStats = {
             inventoryValue: { value: `$${(totalInventoryValue[0]?.total || 0).toLocaleString()}`, label: 'Inventory Value' },
             itemsNeedingReorder: { value: itemsNeedingReorder, label: 'Items Needing Reorder' },
@@ -294,33 +332,56 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
             pendingDeliveries: { value: pendingDeliveriesForStores, label: 'Pending Deliveries' }
           };
           break;
+        }
 
-        case 'department_head':
-          const approvedRequisitions = await PurchaseRequisition.countDocuments({
-            requestedBy: req.user!._id,
-            status: { $in: ['accepted', 'sourcing', 'quoted', 'ordered', 'completed'] }
-          });
+        case 'department_head': {
           const rejectedRequisitions = await PurchaseRequisition.countDocuments({
-            requestedBy: req.user!._id,
+            ...deptFilter,
             status: 'rejected'
           });
-          const departmentRequisitions = await PurchaseRequisition.countDocuments({
-            department: req.user!.department
+          const inProgressRequisitions = await PurchaseRequisition.countDocuments({
+            ...deptFilter,
+            status: { $in: ['stores_review', 'pending_acceptance', 'accepted', 'sourcing', 'quoted', 'ordered'] }
           });
-          const pendingRequisitions = await PurchaseRequisition.countDocuments({
-            status: 'pending_acceptance',
-            department: req.user!.department
+          const draftRequisitions = await PurchaseRequisition.countDocuments({
+            ...deptFilter,
+            status: 'draft'
+          });
+          const pendingHodApproval = await PurchaseRequisition.countDocuments({
+            ...deptFilter,
+            status: 'pending_hod'
           });
           additionalStats = {
-            approvedRequisitions: { value: approvedRequisitions, label: 'Approved Requisitions' },
-            rejectedRequisitions: { value: rejectedRequisitions, label: 'Rejected Requisitions' },
-            departmentRequisitions: { value: departmentRequisitions, label: 'Dept. Requisitions' },
-            pendingApproval: { value: pendingRequisitions, label: 'Pending Approval' }
+            rejectedRequisitions: { value: rejectedRequisitions, label: 'Rejected' },
+            inProgressRequisitions: { value: inProgressRequisitions, label: 'In Progress' },
+            draftRequisitions: { value: draftRequisitions, label: 'Drafts' },
+            pendingApproval: { value: pendingHodApproval, label: 'Awaiting My Approval' }
           };
           break;
+        }
 
-        default: // supplier or other roles
-          const supplierProfileForAdditional = await SupplierProfile.findOne({ user: req.user!._id });
+        case 'end_user': {
+          const userFilter = { requestedBy: req.user!._id, isDeleted: false };
+          const rejected = await PurchaseRequisition.countDocuments({ ...userFilter, status: 'rejected' });
+          const inProgress = await PurchaseRequisition.countDocuments({
+            ...userFilter,
+            status: { $in: ['stores_review', 'pending_acceptance', 'accepted', 'sourcing', 'quoted', 'ordered'] }
+          });
+          const completed = await PurchaseRequisition.countDocuments({
+            ...userFilter,
+            status: { $in: ['fulfilled', 'completed'] }
+          });
+          additionalStats = {
+            rejectedRequisitions: { value: rejected, label: 'Rejected' },
+            inProgressRequisitions: { value: inProgress, label: 'In Progress' },
+            completedRequisitions: { value: completed, label: 'Completed' },
+            openRFQs: { value: openRFQs, label: 'Active RFQs' }
+          };
+          break;
+        }
+
+        default: {
+          const supplierProfileForAdditional = await SupplierProfile.findOne({ user: req.user!._id, isDeleted: false });
           if (supplierProfileForAdditional) {
             const myQuotationsAdditional = await Quotation.countDocuments({
               supplier: supplierProfileForAdditional._id,
@@ -354,6 +415,7 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
               suppliers: { value: activeSuppliers, label: 'Active Suppliers' }
             };
           }
+        }
       }
     }
 
@@ -375,7 +437,6 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
   }
 };
 
-// Helper function to get relative time
 function getTimeAgo(date: any): string {
   const seconds = Math.floor(((new Date() as any) - (new Date(date) as any)) / 1000);
 

@@ -1,4 +1,4 @@
-# FosssilProcure — System Improvement Proposal
+# fossilProcure — System Improvement Proposal
 
 **Prepared for:** Collins Jimu
 **Prepared by:** Macdonald Sairos
@@ -153,4 +153,4 @@ Please indicate approval for the work to proceed:
 
 ---
 
-*Prepared regarding the FosssilProcure Integrated Procurement & Stores Management System for Fossil Contracting.*
+*Prepared regarding the fossilProcure Integrated Procurement & Stores Management System for Fossil Contracting.*
