@@ -15,6 +15,8 @@ const getRequisitionById = async (req: Request, res: Response): Promise<any> => 
     const requisition: any = await PurchaseRequisition.findOne(scope)
       .populate('department', 'name code')
       .populate('requestedBy', 'firstName lastName email')
+      .populate('hodApprovedBy', 'firstName lastName')
+      .populate('storesReviewedBy', 'firstName lastName')
       .populate('processedBy', 'firstName lastName')
       .populate({
         path: 'rfq',

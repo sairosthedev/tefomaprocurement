@@ -1,89 +1,85 @@
-import React from 'react';
-
-const Logo = ({ 
+const Logo = ({
   variant = 'default', // 'default', 'compact', 'icon'
   className = '',
-  showText = true 
+  showText = true
 }: any) => {
-  // Logo image paths
-  const logoImage = '/fossilLogo.png';
-  const logoIcon = '/fossilLogo.png'; // Use same logo for icon variant
-  
+  const logoImage = '/tefomaLogo.png';
+
+  const Fallback = ({ size = 'text-xl' }: { size?: string }) => (
+    <div className="flex items-center gap-2">
+      <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
+        <span className={`${size} font-bold text-primary`}>TC</span>
+      </div>
+      {showText && <div className="text-xl font-bold text-gray-900">TEFOMA CONSTRUCTION</div>}
+    </div>
+  );
+
   if (variant === 'icon') {
-    // Just the logo icon
     return (
       <div className={`flex items-center justify-center ${className}`}>
-        <img 
-          src={logoIcon || logoImage} 
-          alt="Fossil Contracting Logo" 
-          className="h-10 w-auto object-contain"
-          onError={(e: any) => {
-            // Fallback if image doesn't exist
-            e.target.style.display = 'none';
-            const fallback = e.target.nextSibling;
-            if (fallback) {
-              fallback.style.display = 'block';
-            }
-          }}
-        />
-        <div style={{ display: 'none' }} className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center">
-          <span className="text-lg font-bold text-primary">FC</span>
+        <div className="bg-white rounded-lg p-1.5 inline-flex">
+          <img
+            src={logoImage}
+            alt="Tefoma Construction"
+            className="h-10 w-auto object-contain"
+            onError={(e: any) => {
+              e.target.style.display = 'none';
+              const fallback = e.target.nextSibling;
+              if (fallback) fallback.style.display = 'flex';
+            }}
+          />
+          <div style={{ display: 'none' }} className="h-10 w-10 bg-primary/10 rounded-lg items-center justify-center">
+            <span className="text-lg font-bold text-primary">TC</span>
+          </div>
         </div>
       </div>
     );
   }
 
   if (variant === 'compact') {
-    // Compact version for sidebar
+    // Sidebar version — the sidebar is dark, so seat the logo on a clean white
+    // card for contrast. Full width with a subtle shadow looks more polished.
     return (
-      <div className={`flex items-center gap-3 ${className}`}>
-        <img 
-          src={logoImage} 
-          alt="Fossil Contracting" 
-          className="h-14 w-auto object-contain flex-shrink-0"
-          onError={(e: any) => {
-            e.target.style.display = 'none';
-            const fallback = e.target.nextSibling;
-            if (fallback) {
-              fallback.style.display = 'flex';
-            }
-          }}
-        />
-        {showText && (
-          <div className="flex flex-col">
-            <span className="text-base font-bold text-white leading-tight">FossilProcure</span>
-            <span className="text-xs text-gray-300 leading-tight">fossilapps</span>
+      <div className={`w-full ${className}`}>
+        <div className="bg-white rounded-xl px-4 py-3 shadow-sm flex items-center justify-center">
+          <img
+            src={logoImage}
+            alt="Tefoma Construction"
+            className="h-11 w-auto object-contain"
+            onError={(e: any) => {
+              e.target.style.display = 'none';
+              const fallback = e.target.nextSibling;
+              if (fallback) fallback.style.display = 'flex';
+            }}
+          />
+          <div style={{ display: 'none' }} className="items-center">
+            <span className="text-lg font-bold text-primary">TEFOMA</span>
           </div>
+        </div>
+        {showText && (
+          <p className="text-[11px] font-medium uppercase tracking-wider text-gray-300 text-center mt-2">
+            Procurement Portal
+          </p>
         )}
       </div>
     );
   }
 
-  // Default full logo
+  // Default full logo (light backgrounds: login, register, unauthorized)
   return (
     <div className={`flex items-center justify-center ${className}`}>
-      <img 
-        src={logoImage} 
-        alt="Fossil Contracting Logo" 
+      <img
+        src={logoImage}
+        alt="Tefoma Construction"
         className="h-16 w-auto object-contain max-w-full"
         onError={(e: any) => {
           e.target.style.display = 'none';
           const fallback = e.target.nextSibling;
-          if (fallback) {
-            fallback.style.display = 'flex';
-          }
+          if (fallback) fallback.style.display = 'flex';
         }}
       />
-      {/* Fallback if image doesn't exist */}
-      <div style={{ display: 'none' }} className="flex items-center gap-2">
-        <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
-          <span className="text-xl font-bold text-primary">FC</span>
-        </div>
-        {showText && (
-          <div>
-            <div className="text-xl font-bold text-gray-900">FOSSIL CONTRACTING</div>
-          </div>
-        )}
+      <div style={{ display: 'none' }}>
+        <Fallback />
       </div>
     </div>
   );

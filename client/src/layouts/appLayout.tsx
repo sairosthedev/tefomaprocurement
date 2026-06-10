@@ -182,7 +182,7 @@ export function SidebarLayout({ children }: any) {
         <div className="flex flex-col h-full py-6">
           {/* Logo/Brand */}
           <div className="px-4 mb-6">
-            <Link to="/app" className="flex items-center hover:opacity-90 transition-opacity">
+            <Link to="/app" className="block hover:opacity-90 transition-opacity">
               <Logo variant="compact" showText={true} className="text-white" />
             </Link>
           </div>

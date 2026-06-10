@@ -3,7 +3,7 @@ import { SUPPLIER_CATEGORY_GROUPS, getCategoryName } from '../lib/constants';
 import { ChevronDown, X, Search, Check } from 'lucide-react';
 
 /**
- * Single category picker rendered as a native grouped <select>.
+ * Single category picker rendered as a searchable, grouped dropdown.
  * Stores the category CODE, shows the NAME (grouped by section).
  */
 export function CategorySelect({
@@ -19,27 +19,114 @@ export function CategorySelect({
   placeholder?: string;
   className?: string;
 }) {
-  return (
-    <select
-      value={value || ''}
-      onChange={(e) => onChange(e.target.value)}
-      required={required}
-      className={
-        className ||
-        'w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none'
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
       }
-    >
-      <option value="">{placeholder}</option>
-      {SUPPLIER_CATEGORY_GROUPS.map((group) => (
-        <optgroup key={group.section} label={group.section}>
-          {group.options.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </optgroup>
-      ))}
-    </select>
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const filteredGroups = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return SUPPLIER_CATEGORY_GROUPS;
+    return SUPPLIER_CATEGORY_GROUPS.map((group) => ({
+      section: group.section,
+      options: group.options.filter(
+        (o) =>
+          o.label.toLowerCase().includes(q) ||
+          o.value.toLowerCase().includes(q) ||
+          group.section.toLowerCase().includes(q)
+      )
+    })).filter((g) => g.options.length > 0);
+  }, [query]);
+
+  const select = (code: string) => {
+    onChange(code);
+    setOpen(false);
+    setQuery('');
+  };
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={
+          className ||
+          'w-full flex items-center justify-between px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white'
+        }
+      >
+        <span className={value ? 'text-gray-900' : 'text-gray-500'}>
+          {value ? getCategoryName(value) : placeholder}
+        </span>
+        <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform shrink-0 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {/* Keep a hidden input so native `required` validation still works */}
+      {required && (
+        <input
+          tabIndex={-1}
+          aria-hidden="true"
+          required
+          value={value || ''}
+          onChange={() => {}}
+          className="absolute opacity-0 h-0 w-0 pointer-events-none"
+        />
+      )}
+
+      {open && (
+        <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-80 overflow-hidden flex flex-col">
+          <div className="p-2 border-b border-gray-100 sticky top-0 bg-white">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+              <input
+                autoFocus
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search categories…"
+                className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+          </div>
+          <div className="overflow-y-auto">
+            {filteredGroups.length === 0 && (
+              <p className="px-3 py-4 text-sm text-gray-400 text-center">No matches</p>
+            )}
+            {filteredGroups.map((group) => (
+              <div key={group.section}>
+                <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400 bg-gray-50 sticky top-0">
+                  {group.section}
+                </p>
+                {group.options.map((opt) => {
+                  const selected = value === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => select(opt.value)}
+                      className="w-full flex items-center justify-between gap-2 px-3 py-2 text-sm text-left hover:bg-gray-50"
+                    >
+                      <span className={selected ? 'text-primary font-medium' : 'text-gray-700'}>
+                        {opt.label}
+                        <span className="text-gray-300 ml-1">· {opt.value}</span>
+                      </span>
+                      {selected && <Check className="h-4 w-4 text-primary shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

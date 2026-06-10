@@ -64,6 +64,7 @@ export default function Requisitions() {
   const [actionComment, setActionComment] = useState<any>('');
   const [actionLoading, setActionLoading] = useState<any>(false);
   const [submittingId, setSubmittingId] = useState<any>(null);
+  const [removingItemId, setRemovingItemId] = useState<any>(null);
 
   const isProcurement = user?.role === 'procurement_officer' || user?.role === 'admin';
   const isDeptHead = user?.role === 'department_head' || user?.role === 'admin';
@@ -179,6 +180,40 @@ export default function Requisitions() {
     setActionType(type);
     setActionComment('');
     setShowActionModal(true);
+  };
+
+  // An approver can drop line items they don't want purchased before approving.
+  const canEditItems =
+    selectedRequisition &&
+    ((selectedRequisition.status === 'pending_hod' && isDeptHead) ||
+      (selectedRequisition.status === 'pending_acceptance' && isProcurement));
+
+  const handleRemoveItem = async (item: any) => {
+    if (!selectedRequisition) return;
+    if ((selectedRequisition.items?.length || 0) <= 1) {
+      showToast('Cannot remove the last item. Reject the requisition instead if nothing is needed.', 'error');
+      return;
+    }
+    const label = item.description || item.name || 'this item';
+    if (!window.confirm(`Remove "${label}" from this requisition? It will not be purchased.`)) {
+      return;
+    }
+
+    try {
+      setRemovingItemId(item._id);
+      // pending_acceptance is owned by procurement; everything else routes via department.
+      const base = selectedRequisition.status === 'pending_acceptance' ? '/procurement' : '/department';
+      const response = await api.delete(`${base}/requisitions/${selectedRequisition._id}/items/${item._id}`);
+      if (response.data.success) {
+        showToast(response.data.message || 'Item removed', 'success');
+        setSelectedRequisition(response.data.data);
+        fetchRequisitions();
+      }
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to remove item', 'error');
+    } finally {
+      setRemovingItemId(null);
+    }
   };
 
   return (
@@ -822,7 +857,14 @@ export default function Requisitions() {
             </div>
 
             <div>
-              <label className="text-sm text-gray-500 mb-2 block">Items</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm text-gray-500">Items</label>
+                {canEditItems && (
+                  <span className="text-xs text-gray-400">
+                    Remove any item you don't want purchased before approving.
+                  </span>
+                )}
+              </div>
               <div className="border border-gray-200 rounded-xl overflow-hidden">
                 <table className="w-full">
                   <thead className="bg-gray-50">
@@ -830,14 +872,34 @@ export default function Requisitions() {
                       <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Item</th>
                       <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Quantity</th>
                       <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Specification</th>
+                      {canEditItems && (
+                        <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600">Action</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {selectedRequisition.items?.map((item: any, index: any) => (
-                      <tr key={index}>
+                      <tr key={item._id || index}>
                         <td className="py-3 px-4 text-sm">{item.description || item.name}</td>
                         <td className="py-3 px-4 text-sm">{item.quantity} {item.unit}</td>
                         <td className="py-3 px-4 text-sm text-gray-500">{item.specification || item.specifications || '-'}</td>
+                        {canEditItems && (
+                          <td className="py-3 px-4 text-right">
+                            <button
+                              onClick={() => handleRemoveItem(item)}
+                              disabled={removingItemId === item._id || (selectedRequisition.items?.length || 0) <= 1}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              title={(selectedRequisition.items?.length || 0) <= 1 ? 'At least one item is required' : 'Remove this item'}
+                            >
+                              {removingItemId === item._id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-3.5 w-3.5" />
+                              )}
+                              Remove
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

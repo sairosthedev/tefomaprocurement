@@ -186,7 +186,7 @@ export default function Register() {
             <div>
               <h1 className="text-2xl font-bold">Supplier Registration</h1>
               <p className="text-white/80 text-sm mt-1">
-                Register your company to become a supplier for Fossil Contracting
+                Register your company to become a supplier for Tefoma Construction
               </p>
             </div>
           </div>

@@ -65,7 +65,7 @@ export default function Login() {
               <Logo variant="default" />
             </div>
             <div className="space-y-2">
-              <h1 className="text-2xl font-bold text-gray-900">Welcome to FossilProcure</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Welcome to Tefoma Procurement</h1>
               <p className="text-gray-600">Log in to your account to continue</p>
             </div>
           </div>

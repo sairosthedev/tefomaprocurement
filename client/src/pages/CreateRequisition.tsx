@@ -12,15 +12,16 @@ export default function CreateRequisition() {
   const [loading, setLoading] = useState<any>(false);
   const [formData, setFormData] = useState<any>({
     title: '',
+    workOrder: '',
     description: '',
     urgency: 'normal',
-    items: [{ description: '', category: '', quantity: 1, unit: 'Each', specification: '' }]
+    items: [{ description: '', category: '', quantity: 1, unit: 'Each', package: '', specification: '' }]
   });
 
   const addItem = () => {
     setFormData({
       ...formData,
-      items: [...formData.items, { description: '', category: '', quantity: 1, unit: 'Each', specification: '' }]
+      items: [...formData.items, { description: '', category: '', quantity: 1, unit: 'Each', package: '', specification: '' }]
     });
   };
 
@@ -66,7 +67,15 @@ export default function CreateRequisition() {
 
       const response = await api.post('/department/requisitions', {
         ...formData,
-        items: validItems,
+        justification: formData.description,
+        items: validItems.map((item: any) => ({
+          description: item.description,
+          category: item.category,
+          package: item.package,
+          quantity: item.quantity,
+          unit: item.unit,
+          specification: item.specification
+        })),
         status: submit ? 'pending' : 'draft'
       });
 
@@ -95,8 +104,8 @@ export default function CreateRequisition() {
           <ArrowLeft className="h-4 w-4" />
           Back to Requisitions
         </button>
-        <h1 className="text-2xl font-bold text-gray-900">Create New Requisition</h1>
-        <p className="text-gray-500 mt-1">Request items for your department</p>
+        <h1 className="text-2xl font-bold text-gray-900">Internal Requisition</h1>
+        <p className="text-gray-500 mt-1">Request items for your department — digital IR form</p>
       </div>
 
       {/* Form */}
@@ -124,6 +133,17 @@ export default function CreateRequisition() {
               placeholder="Provide additional details..."
               rows={3}
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Work Order</label>
+            <input
+              type="text"
+              value={formData.workOrder}
+              onChange={(e: any) => setFormData({ ...formData, workOrder: e.target.value })}
+              placeholder="Job / project reference"
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
 
@@ -158,71 +178,88 @@ export default function CreateRequisition() {
 
           <div className="space-y-4">
             {formData.items.map((item: any, index: any) => (
-              <div key={index} className="bg-gray-50 rounded-xl p-4">
-                <div className="flex items-start gap-4">
-                  <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="md:col-span-2">
-                      <label className="block text-xs text-gray-500 mb-1">Item Description</label>
-                      <input
-                        type="text"
-                        value={item.description}
-                        onChange={(e: any) => updateItem(index, 'description', e.target.value)}
-                        placeholder="e.g., A4 Paper"
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-xs text-gray-500 mb-1">
-                        Category <span className="text-red-500">*</span>
-                      </label>
-                      <CategorySelect
-                        value={item.category || ''}
-                        onChange={(code) => updateItem(index, 'category', code)}
-                        placeholder="Select category"
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Quantity</label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={item.quantity}
-                        onChange={(e: any) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Unit</label>
-                      <select
-                        value={item.unit}
-                        onChange={(e: any) => updateItem(index, 'unit', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                      >
-                        {UNITS_OF_MEASUREMENT.map((unit: any) => (
-                          <option key={unit} value={unit}>{unit}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="md:col-span-4">
-                      <label className="block text-xs text-gray-500 mb-1">Specification (optional)</label>
-                      <input
-                        type="text"
-                        value={item.specification}
-                        onChange={(e: any) => updateItem(index, 'specification', e.target.value)}
-                        placeholder="e.g., 80gsm white"
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                      />
-                    </div>
-                  </div>
+              <div key={index} className="bg-gray-50 rounded-xl border border-gray-100 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                    Item {index + 1}
+                  </span>
                   <button
                     type="button"
                     onClick={() => removeItem(index)}
-                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors mt-6"
+                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                     disabled={formData.items.length === 1}
+                    title="Remove item"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
+                </div>
+
+                <div className="grid grid-cols-12 gap-3">
+                  <div className="col-span-12 md:col-span-6">
+                    <label className="block text-xs text-gray-500 mb-1">Details</label>
+                    <input
+                      type="text"
+                      value={item.description}
+                      onChange={(e: any) => updateItem(index, 'description', e.target.value)}
+                      placeholder="e.g., A4 Paper"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    />
+                  </div>
+                  <div className="col-span-12 md:col-span-6">
+                    <label className="block text-xs text-gray-500 mb-1">
+                      Category <span className="text-red-500">*</span>
+                    </label>
+                    <CategorySelect
+                      value={item.category || ''}
+                      onChange={(code) => updateItem(index, 'category', code)}
+                      placeholder="Select category"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white flex items-center justify-between"
+                    />
+                  </div>
+
+                  <div className="col-span-4 md:col-span-4">
+                    <label className="block text-xs text-gray-500 mb-1">Package</label>
+                    <input
+                      type="text"
+                      value={item.package}
+                      onChange={(e: any) => updateItem(index, 'package', e.target.value)}
+                      placeholder="e.g. Box"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    />
+                  </div>
+                  <div className="col-span-4 md:col-span-4">
+                    <label className="block text-xs text-gray-500 mb-1">Quantity</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={item.quantity}
+                      onChange={(e: any) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    />
+                  </div>
+                  <div className="col-span-4 md:col-span-4">
+                    <label className="block text-xs text-gray-500 mb-1">Unit</label>
+                    <select
+                      value={item.unit}
+                      onChange={(e: any) => updateItem(index, 'unit', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white"
+                    >
+                      {UNITS_OF_MEASUREMENT.map((unit: any) => (
+                        <option key={unit} value={unit}>{unit}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="col-span-12">
+                    <label className="block text-xs text-gray-500 mb-1">Specification (optional)</label>
+                    <input
+                      type="text"
+                      value={item.specification}
+                      onChange={(e: any) => updateItem(index, 'specification', e.target.value)}
+                      placeholder="e.g., 80gsm white"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    />
+                  </div>
                 </div>
               </div>
             ))}

@@ -3,6 +3,14 @@ import { PurchaseRequisition } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { createNotification } from '../../services/notification.service.js';
 
+// `req.user.department` is populated by the protect middleware, so it may be a
+// document rather than a raw ObjectId. Normalize either shape to a hex id.
+const toIdString = (value: any): string | undefined => {
+  if (!value) return undefined;
+  if (typeof value === 'object' && value._id) return value._id.toString();
+  return value.toString();
+};
+
 const rejectRequisition = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
@@ -25,7 +33,7 @@ const rejectRequisition = async (req: Request, res: Response): Promise<any> => {
 
     if (
       req.user!.role !== 'admin' &&
-      requisition.department?.toString() !== req.user!.department?.toString()
+      toIdString(requisition.department) !== toIdString(req.user!.department)
     ) {
       return res.status(403).json({
         success: false,

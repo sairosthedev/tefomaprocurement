@@ -12,7 +12,7 @@ export interface IStoreTransaction extends Document {
   unitCost?: number;
   totalValue?: number;
   reference?: {
-    type?: 'grv' | 'store_requisition' | 'adjustment' | 'transfer' | 'stock_transfer';
+    type?: 'grv' | 'store_requisition' | 'purchase_requisition' | 'adjustment' | 'transfer' | 'stock_transfer';
     document?: mongoose.Types.ObjectId | any;
   };
   department?: mongoose.Types.ObjectId | any;
@@ -67,7 +67,7 @@ const StoreTransactionSchema = new Schema<IStoreTransaction>({
   reference: {
     type: {
       type: String,
-      enum: ['grv', 'store_requisition', 'adjustment', 'transfer', 'stock_transfer']
+      enum: ['grv', 'store_requisition', 'purchase_requisition', 'adjustment', 'transfer', 'stock_transfer']
     },
     document: {
       type: mongoose.Schema.Types.ObjectId,

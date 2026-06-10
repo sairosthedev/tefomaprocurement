@@ -12,6 +12,8 @@ export interface IStoreAvailability {
 
 export interface IRequisitionItem {
   item?: mongoose.Types.ObjectId | any;
+  /** PACKAGE column on the paper IR form (e.g. box, carton, unit pack). */
+  package?: string;
   description: string;
   category?: string;
   specification?: string;
@@ -20,11 +22,12 @@ export interface IRequisitionItem {
   unit: string;
   estimatedUnitPrice?: number;
   estimatedTotalPrice?: number;
+  quantityFulfilledFromStock?: number;
   storeAvailability?: IStoreAvailability;
 }
 
 export interface IStatusHistory {
-  action: 'submitted' | 'hod_approved' | 'stores_reviewed' | 'fulfilled_from_stock' | 'forwarded_to_procurement' | 'accepted' | 'rejected' | 'returned' | 'rfq_created' | 'po_created';
+  action: 'submitted' | 'hod_approved' | 'stores_reviewed' | 'fulfilled_from_stock' | 'forwarded_to_procurement' | 'accepted' | 'rejected' | 'returned' | 'rfq_created' | 'po_created' | 'item_removed';
   by: mongoose.Types.ObjectId | any;
   role?: string;
   comments?: string;
@@ -34,6 +37,10 @@ export interface IStatusHistory {
 export interface IPurchaseRequisition extends Document {
   requisitionNumber: string;
   title: string;
+  /** WORK ORDER on the paper IR form — job / project reference. */
+  workOrder?: string;
+  /** STORES ISSUE NO — assigned when stock is issued from stores. */
+  storesIssueNumber?: string;
   site?: mongoose.Types.ObjectId | any;
   department?: mongoose.Types.ObjectId | any;
   requestedBy: mongoose.Types.ObjectId | any;
@@ -62,6 +69,7 @@ const RequisitionItemSchema = new Schema<IRequisitionItem>({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Item'
   },
+  package: { type: String, trim: true },
   description: {
     type: String,
     required: true
@@ -80,6 +88,8 @@ const RequisitionItemSchema = new Schema<IRequisitionItem>({
   },
   estimatedUnitPrice: Number,
   estimatedTotalPrice: Number,
+  // How much of this line was issued from existing stock during stores review.
+  quantityFulfilledFromStock: { type: Number, default: 0 },
   storeAvailability: {
     available: { type: Boolean, default: false },
     quantityAvailable: { type: Number, default: 0 },
@@ -98,7 +108,7 @@ const RequisitionItemSchema = new Schema<IRequisitionItem>({
 const StatusHistorySchema = new Schema<IStatusHistory>({
   action: {
     type: String,
-    enum: ['submitted', 'hod_approved', 'stores_reviewed', 'fulfilled_from_stock', 'forwarded_to_procurement', 'accepted', 'rejected', 'returned', 'rfq_created', 'po_created'],
+    enum: ['submitted', 'hod_approved', 'stores_reviewed', 'fulfilled_from_stock', 'forwarded_to_procurement', 'accepted', 'rejected', 'returned', 'rfq_created', 'po_created', 'item_removed'],
     required: true
   },
   by: {
@@ -125,6 +135,8 @@ const PurchaseRequisitionSchema = new Schema<IPurchaseRequisition>({
     required: [true, 'Title is required'],
     trim: true
   },
+  workOrder: { type: String, trim: true },
+  storesIssueNumber: { type: String, trim: true, unique: true, sparse: true },
   site: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Site'

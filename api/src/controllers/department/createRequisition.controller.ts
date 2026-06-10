@@ -11,6 +11,7 @@ const createRequisition = async (req: Request, res: Response): Promise<any> => {
   try {
     const {
       title,
+      workOrder,
       description, // Used as justification
       urgency, // Maps to priority
       items,
@@ -36,6 +37,7 @@ const createRequisition = async (req: Request, res: Response): Promise<any> => {
     for (const item of items || []) {
       const line: any = {
         item: item.item || item.itemId,
+        package: item.package,
         description: item.description,
         category: item.category,
         specification: item.specification || item.specifications,
@@ -76,6 +78,7 @@ const createRequisition = async (req: Request, res: Response): Promise<any> => {
     const requisition = await PurchaseRequisition.create({
       requisitionNumber,
       title: title || 'Untitled Requisition',
+      workOrder: workOrder?.trim() || undefined,
       site: siteId,
       department: req.user!.department || null,
       requestedBy: req.user!._id,

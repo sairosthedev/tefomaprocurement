@@ -6,6 +6,7 @@ export type NotificationType =
   | 'requisition_approved'
   | 'requisition_rejected'
   | 'requisition_accepted'
+  | 'requisition_updated'
   | 'requisition_rejected_procurement'
   | 'rfq_published'
   | 'quotation_submitted'
@@ -65,6 +66,7 @@ const NotificationSchema = new Schema<INotification>({
       'requisition_approved',
       'requisition_rejected',
       'requisition_accepted',
+      'requisition_updated',
       'requisition_rejected_procurement',
       'rfq_published',
       'quotation_submitted',

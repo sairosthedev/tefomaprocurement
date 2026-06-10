@@ -9,6 +9,7 @@ router.use(protect);
 
 // Requisitions — end users raise/manage their own; HOD/admin manage the department's
 const requester = authorize('end_user', 'department_head', 'admin');
+router.get('/catalog-items', requester, department.searchCatalogItems);
 router.post('/requisitions', requester, department.createRequisition);
 router.get('/requisitions', requester, department.getRequisitions);
 router.get('/requisitions/:id', requester, department.getRequisitionById);
@@ -18,6 +19,9 @@ router.put('/requisitions/:id/submit', requester, department.submitRequisition);
 const hod = authorize('department_head', 'admin');
 router.put('/requisitions/:id/approve', hod, department.approveRequisition);
 router.put('/requisitions/:id/reject', hod, department.rejectRequisition);
+// Approver may drop unwanted line items or adjust quantities before approving (FC-HQ-P-07 §6.3.2)
+router.patch('/requisitions/:id/items/:itemId', hod, department.updateRequisitionItem);
+router.delete('/requisitions/:id/items/:itemId', hod, department.removeRequisitionItem);
 
 // Store Requisitions
 router.post('/store-requisitions', hod, department.createStoreRequisition);

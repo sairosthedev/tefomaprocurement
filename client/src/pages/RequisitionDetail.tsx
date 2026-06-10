@@ -18,11 +18,18 @@ import {
   User,
   Send,
   Truck,
-  PackageCheck
+  PackageCheck,
+  Trash2,
+  Pencil,
+  Check,
+  X
 } from 'lucide-react';
 
 const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
+  pending_hod: 'bg-amber-100 text-amber-700',
+  stores_review: 'bg-cyan-100 text-cyan-700',
+  fulfilled: 'bg-emerald-100 text-emerald-700',
   pending_acceptance: 'bg-amber-100 text-amber-700',
   accepted: 'bg-green-100 text-green-700',
   rejected: 'bg-red-100 text-red-700',
@@ -35,6 +42,9 @@ const statusColors: any = {
 
 const statusLabels: any = {
   draft: 'Draft',
+  pending_hod: 'Pending HOD Approval',
+  stores_review: 'Stores Review',
+  fulfilled: 'Fulfilled from Stock',
   pending_acceptance: 'Pending Acceptance',
   accepted: 'Accepted',
   rejected: 'Rejected',
@@ -60,9 +70,19 @@ export default function RequisitionDetail() {
   const [loading, setLoading] = useState<any>(true);
   const [requisition, setRequisition] = useState<any>(null);
   const [submitting, setSubmitting] = useState<any>(false);
+  const [removingItemId, setRemovingItemId] = useState<any>(null);
+  const [editingItemId, setEditingItemId] = useState<any>(null);
+  const [editQty, setEditQty] = useState<any>('');
+  const [savingQty, setSavingQty] = useState<any>(false);
 
   const isProcurement = user?.role === 'procurement_officer' || user?.role === 'admin';
   const isDepartment = user?.role === 'department_head' || user?.role === 'admin';
+
+  // An approver may drop line items they don't want purchased before approving.
+  const canEditItems =
+    requisition &&
+    ((requisition.status === 'pending_hod' && isDepartment) ||
+      (requisition.status === 'pending_acceptance' && isProcurement));
 
   useEffect(() => {
     fetchRequisition();
@@ -94,6 +114,73 @@ export default function RequisitionDetail() {
       showToast(error.response?.data?.message || 'Failed to submit requisition', 'error');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleRemoveItem = async (item: any) => {
+    if (!requisition) return;
+    if ((requisition.items?.length || 0) <= 1) {
+      showToast('Cannot remove the last item. Reject the requisition instead if nothing is needed.', 'error');
+      return;
+    }
+    const label = item.description || item.name || 'this item';
+    if (!window.confirm(`Remove "${label}" from this requisition? It will not be purchased.`)) {
+      return;
+    }
+
+    try {
+      setRemovingItemId(item._id);
+      // pending_acceptance is owned by procurement; everything else routes via department.
+      const base = requisition.status === 'pending_acceptance' ? '/procurement' : '/department';
+      const response = await api.delete(`${base}/requisitions/${requisition._id}/items/${item._id}`);
+      if (response.data.success) {
+        showToast(response.data.message || 'Item removed', 'success');
+        fetchRequisition();
+      }
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to remove item', 'error');
+    } finally {
+      setRemovingItemId(null);
+    }
+  };
+
+  const startEditQty = (item: any) => {
+    setEditingItemId(item._id);
+    setEditQty(String(item.quantity ?? ''));
+  };
+
+  const cancelEditQty = () => {
+    setEditingItemId(null);
+    setEditQty('');
+  };
+
+  const handleSaveQty = async (item: any) => {
+    if (!requisition) return;
+    const qty = Number(editQty);
+    if (!Number.isFinite(qty) || qty < 1) {
+      showToast('Quantity must be a whole number of at least 1.', 'error');
+      return;
+    }
+    if (Math.floor(qty) === item.quantity) {
+      cancelEditQty();
+      return;
+    }
+
+    try {
+      setSavingQty(true);
+      const base = requisition.status === 'pending_acceptance' ? '/procurement' : '/department';
+      const response = await api.patch(`${base}/requisitions/${requisition._id}/items/${item._id}`, {
+        quantity: Math.floor(qty)
+      });
+      if (response.data.success) {
+        showToast(response.data.message || 'Quantity updated', 'success');
+        cancelEditQty();
+        fetchRequisition();
+      }
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to update quantity', 'error');
+    } finally {
+      setSavingQty(false);
     }
   };
 
@@ -185,28 +272,38 @@ export default function RequisitionDetail() {
             </div>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white/90 rounded-xl p-4 backdrop-blur-sm">
-              <p className="text-xs text-gray-600 mb-1">Items</p>
-              <p className="text-2xl font-bold text-gray-900">{requisition.items?.length || 0}</p>
-            </div>
-            <div className="bg-white/90 rounded-xl p-4 backdrop-blur-sm">
-              <p className="text-xs text-gray-600 mb-1">Department</p>
-              <p className="text-sm font-semibold text-gray-900">{requisition.department?.name || 'N/A'}</p>
-            </div>
-            <div className="bg-white/90 rounded-xl p-4 backdrop-blur-sm">
-              <p className="text-xs text-gray-600 mb-1">Priority</p>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${priorityColors[requisition.priority] || priorityColors.medium}`}>
-                {requisition.priority || 'Medium'}
-              </span>
-            </div>
-            <div className="bg-white/90 rounded-xl p-4 backdrop-blur-sm">
-              <p className="text-xs text-gray-600 mb-1">Date</p>
+          {/* IR header — mirrors paper Internal Requisition form */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="bg-white/90 rounded-xl p-3 backdrop-blur-sm">
+              <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">Date</p>
               <p className="text-sm font-semibold text-gray-900 flex items-center gap-1">
-                <Calendar className="h-4 w-4" />
+                <Calendar className="h-3.5 w-3.5" />
                 {new Date(requisition.createdAt).toLocaleDateString('en-ZA')}
               </p>
+            </div>
+            <div className="bg-white/90 rounded-xl p-3 backdrop-blur-sm">
+              <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">Work Order</p>
+              <p className="text-sm font-semibold text-gray-900">{requisition.workOrder || '—'}</p>
+            </div>
+            <div className="bg-white/90 rounded-xl p-3 backdrop-blur-sm">
+              <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">Stores Issue No.</p>
+              <p className="text-sm font-semibold text-gray-900">{requisition.storesIssueNumber || '—'}</p>
+            </div>
+            <div className="bg-white/90 rounded-xl p-3 backdrop-blur-sm">
+              <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">Requested By</p>
+              <p className="text-sm font-semibold text-gray-900">
+                {requisition.requestedBy?.firstName} {requisition.requestedBy?.lastName}
+              </p>
+            </div>
+            <div className="bg-white/90 rounded-xl p-3 backdrop-blur-sm">
+              <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">Dept</p>
+              <p className="text-sm font-semibold text-gray-900">{requisition.department?.name || '—'}</p>
+            </div>
+            <div className="bg-white/90 rounded-xl p-3 backdrop-blur-sm">
+              <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">Priority</p>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${priorityColors[requisition.priority] || priorityColors.medium}`}>
+                {requisition.priority || 'Medium'}
+              </span>
             </div>
           </div>
         </div>
@@ -219,9 +316,9 @@ export default function RequisitionDetail() {
           {/* Description */}
           {(requisition.description || requisition.justification) && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Description</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Justification</h2>
               <p className="text-sm text-gray-700 leading-relaxed">
-                {requisition.justification || requisition.description || 'No description provided'}
+                {requisition.justification || requisition.description || 'No justification provided'}
               </p>
             </div>
           )}
@@ -229,28 +326,110 @@ export default function RequisitionDetail() {
           {/* Items */}
           {requisition.items && requisition.items.length > 0 && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Requested Items</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">Line Items</h2>
+                {canEditItems && (
+                  <span className="text-xs text-gray-400">
+                    Remove any item you don't want purchased before approving.
+                  </span>
+                )}
+              </div>
               <div className="border border-gray-200 rounded-xl overflow-hidden">
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Item</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Quantity</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Specification</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Package</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Details</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Units</th>
+                      <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600">Qty Req.</th>
+                      <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600">Qty Delivered</th>
+                      {canEditItems && (
+                        <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600">Action</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {requisition.items.map((item: any, index: any) => (
-                      <tr key={index}>
+                      <tr key={item._id || index}>
+                        <td className="py-3 px-4 text-sm text-gray-600">{item.package || '—'}</td>
                         <td className="py-3 px-4">
                           <p className="text-sm font-medium text-gray-900">{item.description || item.name}</p>
+                          {(item.specification || item.specifications) && (
+                            <p className="text-xs text-gray-400 mt-0.5">{item.specification || item.specifications}</p>
+                          )}
                         </td>
-                        <td className="py-3 px-4">
-                          <p className="text-sm text-gray-900">{item.quantity} {item.unit}</p>
+                        <td className="py-3 px-4 text-sm text-gray-600">{item.unit}</td>
+                        <td className="py-3 px-4 text-right">
+                          {canEditItems && editingItemId === item._id ? (
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="number"
+                                min={1}
+                                step={1}
+                                autoFocus
+                                value={editQty}
+                                onChange={(e) => setEditQty(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSaveQty(item);
+                                  if (e.key === 'Escape') cancelEditQty();
+                                }}
+                                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary"
+                              />
+                              <span className="text-xs text-gray-500">{item.unit}</span>
+                              <button
+                                onClick={() => handleSaveQty(item)}
+                                disabled={savingQty}
+                                className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg disabled:opacity-50"
+                                title="Save"
+                              >
+                                {savingQty ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                              </button>
+                              <button
+                                onClick={cancelEditQty}
+                                disabled={savingQty}
+                                className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg disabled:opacity-50"
+                                title="Cancel"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-end gap-2">
+                              <p className="text-sm text-gray-900">{item.quantity}</p>
+                              {canEditItems && (
+                                <button
+                                  onClick={() => startEditQty(item)}
+                                  className="p-1 text-gray-400 hover:text-primary hover:bg-gray-100 rounded transition-colors"
+                                  title="Edit quantity"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </td>
-                        <td className="py-3 px-4">
-                          <p className="text-sm text-gray-500">{item.specification || item.specifications || '-'}</p>
+                        <td className="py-3 px-4 text-right">
+                          <p className="text-sm font-medium text-emerald-700">
+                            {(item.quantityFulfilledFromStock ?? 0) > 0 ? item.quantityFulfilledFromStock : '—'}
+                          </p>
                         </td>
+                        {canEditItems && (
+                          <td className="py-3 px-4 text-right">
+                            <button
+                              onClick={() => handleRemoveItem(item)}
+                              disabled={removingItemId === item._id || requisition.items.length <= 1}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              title={requisition.items.length <= 1 ? 'At least one item is required' : 'Remove this item'}
+                            >
+                              {removingItemId === item._id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-3.5 w-3.5" />
+                              )}
+                              Remove
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -291,6 +470,51 @@ export default function RequisitionDetail() {
 
         {/* Right Column - Status Cards */}
         <div className="space-y-6">
+          {/* Approvals — paper IR "Approved By" / "Authorised By" */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h3 className="font-semibold text-gray-900 mb-4">Approvals</h3>
+            <div className="space-y-4">
+              <div className="p-3 rounded-lg bg-gray-50">
+                <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-1">Approved By (HOD)</p>
+                {requisition.hodApprovedBy ? (
+                  <>
+                    <p className="text-sm font-medium text-gray-900">
+                      {requisition.hodApprovedBy.firstName} {requisition.hodApprovedBy.lastName}
+                    </p>
+                    {requisition.hodApprovedAt && (
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {new Date(requisition.hodApprovedAt).toLocaleDateString('en-ZA')}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm text-amber-600">Pending</p>
+                )}
+              </div>
+              <div className="p-3 rounded-lg bg-gray-50">
+                <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-1">Authorised By (Stores / Procurement)</p>
+                {requisition.storesReviewedBy ? (
+                  <>
+                    <p className="text-sm font-medium text-gray-900">
+                      {requisition.storesReviewedBy.firstName} {requisition.storesReviewedBy.lastName}
+                    </p>
+                    {requisition.storesReviewedAt && (
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {new Date(requisition.storesReviewedAt).toLocaleDateString('en-ZA')}
+                      </p>
+                    )}
+                  </>
+                ) : requisition.processedBy ? (
+                  <p className="text-sm font-medium text-gray-900">
+                    {requisition.processedBy.firstName} {requisition.processedBy.lastName}
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-400">—</p>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Purchase Order Status */}
           {requisition.purchaseOrder && (
             <div className="bg-blue-50 rounded-2xl p-6 border border-blue-200">

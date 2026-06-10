@@ -2,7 +2,7 @@ import express from 'express';
 import controllers from '../controllers/index.js';
 import { protect, authorizeProcurement } from '../middleware/index.js';
 
-const { procurement } = controllers;
+const { procurement, department } = controllers;
 const router = express.Router();
 
 // Procurement officers, admins, and the head of the Procurement department
@@ -32,6 +32,9 @@ router.get('/requisitions', procurement.getPendingRequisitions);
 router.get('/requisitions/:id', procurement.getRequisitionById);
 router.put('/requisitions/:id/accept', procurement.acceptRequisition);
 router.put('/requisitions/:id/reject', procurement.rejectRequisition);
+// Procurement may drop unwanted line items or adjust quantities before accepting
+router.patch('/requisitions/:id/items/:itemId', department.updateRequisitionItem);
+router.delete('/requisitions/:id/items/:itemId', department.removeRequisitionItem);
 router.put('/requisitions/:id/sourcing', procurement.updateRequisitionStatus);
 router.put('/requisitions/:id/status', procurement.updateRequisitionStatus);
 

@@ -16,6 +16,7 @@ import receiveStockTransfer from './receiveStockTransfer.controller.js';
 import getPendingPurchaseRequisitions from './getPendingPurchaseRequisitions.controller.js';
 import fulfillRequisitionFromStock from './fulfillRequisitionFromStock.controller.js';
 import forwardRequisitionToProcurement from './forwardRequisitionToProcurement.controller.js';
+import autoProcessRequisition from './autoProcessRequisition.controller.js';
 
 export default {
   receiveGoods,
@@ -35,5 +36,6 @@ export default {
   receiveStockTransfer,
   getPendingPurchaseRequisitions,
   fulfillRequisitionFromStock,
-  forwardRequisitionToProcurement
+  forwardRequisitionToProcurement,
+  autoProcessRequisition
 };

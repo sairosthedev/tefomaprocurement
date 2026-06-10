@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "installCommand": "cd .. && npm install && npm run build -w @fossil/shared",
+  "installCommand": "npm install && npm run build --prefix shared",
   "builds": [{ "src": "src/vercel.ts", "use": "@vercel/node" }],
   "routes": [{ "src": "/(.*)", "dest": "src/vercel.ts" }]
 }
