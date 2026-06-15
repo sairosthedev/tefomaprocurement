@@ -6,7 +6,10 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { SidebarLayout } from './layouts/appLayout';
 
 // Shared Pages
+import Home from './pages/Home';
 import Login from './pages/Login';
+import SupplierLogin from './pages/SupplierLogin';
+import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Notifications from './pages/Notifications';
 import Unauthorized from './pages/Unauthorized';
@@ -75,8 +78,10 @@ function App() {
         <ToastProvider>
           <Routes>
             {/* Public Routes */}
-            <Route path="/" element={<Login />} />
+            <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/supplier/login" element={<SupplierLogin />} />
+            <Route path="/register" element={<Register />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
 
             {/* Dashboard - All authenticated users */}
@@ -294,9 +299,6 @@ function App() {
               </AppLayout>
             } />
 
-            {/* Redirect root to login */}
-            <Route path="/" element={<Navigate to="/login" replace />} />
-            
             {/* Catch all - redirect to app */}
             <Route path="*" element={<Navigate to="/app" replace />} />
           </Routes>

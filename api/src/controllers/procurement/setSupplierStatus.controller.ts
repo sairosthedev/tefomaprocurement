@@ -42,10 +42,10 @@ const setSupplierStatus = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    if (status === 'active' && !supplier.kysComplete) {
+    if (status === 'active' && !supplier.kysComplete && !supplier.kysExempt) {
       return res.status(400).json({
         success: false,
-        message: 'Cannot activate supplier until KYS verification is complete'
+        message: 'Cannot activate supplier until KYS verification is complete, or apply a KYS override'
       });
     }
 

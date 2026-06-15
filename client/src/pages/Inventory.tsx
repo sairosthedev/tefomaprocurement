@@ -1,14 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { useToast } from '../components/Toast';
 import api from '../lib/api';
 import { 
   Search, Package, AlertTriangle, TrendingDown, 
-  TrendingUp, Loader2, Edit, Plus
+  TrendingUp, Loader2, Edit, Plus, Upload, Download, FileSpreadsheet, XCircle
 } from 'lucide-react';
 import ViewButton from '../components/ViewButton';
 import Modal from '../components/Modal';
 import { CategorySelect } from '../components/CategorySelect';
 import { formatCurrency, UNITS_OF_MEASUREMENT, getCategoryName } from '../lib/constants';
+
+// Map a spreadsheet row (any header casing/variant) to our canonical fields.
+const TEMPLATE_HEADERS = ['code', 'name', 'description', 'category', 'unit', 'reorderLevel', 'quantity', 'unitPrice'];
+
+const COLUMN_ALIASES: Record<string, string> = {
+  code: 'code', itemcode: 'code', 'item code': 'code', sku: 'code',
+  name: 'name', item: 'name', 'item name': 'name', itemname: 'name',
+  description: 'description', desc: 'description', details: 'description',
+  category: 'category', cat: 'category',
+  unit: 'unit', uom: 'unit', units: 'unit',
+  reorderlevel: 'reorderLevel', reorder: 'reorderLevel', 'reorder level': 'reorderLevel', min: 'reorderLevel', minimum: 'reorderLevel',
+  quantity: 'quantity', qty: 'quantity', 'on hand': 'quantity', onhand: 'quantity', stock: 'quantity', opening: 'quantity', 'opening balance': 'quantity',
+  unitprice: 'unitPrice', 'unit price': 'unitPrice', price: 'unitPrice', cost: 'unitPrice', 'unit cost': 'unitPrice'
+};
+
+function mapRow(raw: Record<string, any>): Record<string, any> {
+  const mapped: Record<string, any> = {};
+  for (const key of Object.keys(raw)) {
+    const canonical = COLUMN_ALIASES[key.trim().toLowerCase()];
+    if (canonical && raw[key] !== undefined && raw[key] !== null && String(raw[key]).trim() !== '') {
+      mapped[canonical] = typeof raw[key] === 'string' ? raw[key].trim() : raw[key];
+    }
+  }
+  return mapped;
+}
 
 export default function Inventory() {
   const { showToast } = useToast();
@@ -30,6 +56,13 @@ export default function Inventory() {
     currentQuantity: 0,
     unitPrice: 0
   });
+  const [showImportModal, setShowImportModal] = useState<any>(false);
+  const [importRows, setImportRows] = useState<any[]>([]);
+  const [importFileName, setImportFileName] = useState<any>('');
+  const [importing, setImporting] = useState<any>(false);
+  const [importResult, setImportResult] = useState<any>(null);
+  const [parseError, setParseError] = useState<any>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchInventory();
@@ -81,6 +114,73 @@ export default function Inventory() {
     }
   };
 
+  const downloadTemplate = () => {
+    const example = [
+      {
+        code: 'ITEM-000001',
+        name: 'A4 Paper',
+        description: '80gsm white printing paper',
+        category: 'Office Supplies',
+        unit: 'box',
+        reorderLevel: 10,
+        quantity: 50,
+        unitPrice: 4.5
+      }
+    ];
+    const ws = XLSX.utils.json_to_sheet(example, { header: TEMPLATE_HEADERS });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Inventory');
+    XLSX.writeFile(wb, 'inventory-import-template.xlsx');
+  };
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setParseError('');
+    setImportResult(null);
+    setImportFileName(file.name);
+    try {
+      const buffer = await file.arrayBuffer();
+      const wb = XLSX.read(buffer, { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rawRows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' });
+      const rows = rawRows.map(mapRow).filter((r) => r.name || r.code);
+      if (rows.length === 0) {
+        setParseError('No valid rows found. Make sure your file has a "name" column.');
+        setImportRows([]);
+        return;
+      }
+      setImportRows(rows);
+    } catch (err: any) {
+      setParseError('Could not read this file. Use the .xlsx or .csv template.');
+      setImportRows([]);
+    }
+  };
+
+  const doImport = async () => {
+    if (importRows.length === 0) return;
+    try {
+      setImporting(true);
+      const res = await api.post('/stores/inventory/bulk', { items: importRows });
+      setImportResult(res.data);
+      showToast(res.data.message || 'Import complete', res.data.summary?.failed ? 'info' : 'success');
+      fetchInventory();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Import failed', 'error');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const resetImport = () => {
+    setShowImportModal(false);
+    setImportRows([]);
+    setImportFileName('');
+    setImportResult(null);
+    setParseError('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const lowStockCount = inventory.filter((inv: any) => {
     const item = inv.item || {};
     return inv.quantityOnHand <= (item.reorderLevel || 0);
@@ -94,13 +194,22 @@ export default function Inventory() {
           <h1 className="text-2xl font-bold text-gray-900">Inventory Management</h1>
           <p className="text-gray-500 mt-1">View and manage stock levels</p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors"
-        >
-          <Plus className="h-5 w-5" />
-          Add Item
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 border border-primary text-primary rounded-xl font-medium hover:bg-primary/5 transition-colors"
+          >
+            <Upload className="h-5 w-5" />
+            Import Excel
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors"
+          >
+            <Plus className="h-5 w-5" />
+            Add Item
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -439,6 +548,149 @@ export default function Inventory() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Bulk Import Modal */}
+      <Modal
+        isOpen={showImportModal}
+        onClose={resetImport}
+        title="Bulk Import Inventory"
+      >
+        <div className="space-y-4">
+          {!importResult && (
+            <>
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-800">
+                <p className="font-medium mb-1">How it works</p>
+                <p className="text-blue-700">
+                  Upload an Excel/CSV with columns: <span className="font-mono text-xs">code, name, description, category, unit, reorderLevel, quantity, unitPrice</span>.
+                  Existing items (matched by code or name) are updated; new ones are created. Quantity sets the opening stock balance.
+                </p>
+                <button
+                  onClick={downloadTemplate}
+                  className="mt-3 inline-flex items-center gap-1.5 text-primary font-medium hover:underline"
+                >
+                  <Download className="h-4 w-4" /> Download template
+                </button>
+              </div>
+
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={handleFile}
+                  className="hidden"
+                  id="inventory-import-file"
+                />
+                <label
+                  htmlFor="inventory-import-file"
+                  className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-300 rounded-xl py-8 cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
+                >
+                  <FileSpreadsheet className="h-8 w-8 text-gray-400" />
+                  <span className="text-sm font-medium text-gray-700">
+                    {importFileName || 'Click to choose an Excel or CSV file'}
+                  </span>
+                  <span className="text-xs text-gray-400">.xlsx, .xls or .csv</span>
+                </label>
+              </div>
+
+              {parseError && (
+                <p className="text-sm text-red-600 flex items-center gap-1.5">
+                  <XCircle className="h-4 w-4" /> {parseError}
+                </p>
+              )}
+
+              {importRows.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-2">
+                    Preview — {importRows.length} row{importRows.length > 1 ? 's' : ''}
+                  </p>
+                  <div className="border border-gray-200 rounded-xl overflow-hidden max-h-56 overflow-y-auto">
+                    <table className="w-full text-xs">
+                      <thead className="bg-gray-50 sticky top-0">
+                        <tr>
+                          <th className="text-left py-2 px-3 font-semibold text-gray-600">Name</th>
+                          <th className="text-left py-2 px-3 font-semibold text-gray-600">Category</th>
+                          <th className="text-left py-2 px-3 font-semibold text-gray-600">Unit</th>
+                          <th className="text-right py-2 px-3 font-semibold text-gray-600">Qty</th>
+                          <th className="text-right py-2 px-3 font-semibold text-gray-600">Price</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {importRows.slice(0, 50).map((r: any, i: number) => (
+                          <tr key={i}>
+                            <td className="py-1.5 px-3 text-gray-900">{r.name || r.code}</td>
+                            <td className="py-1.5 px-3 text-gray-500">{r.category || '—'}</td>
+                            <td className="py-1.5 px-3 text-gray-500">{r.unit || 'each'}</td>
+                            <td className="py-1.5 px-3 text-right text-gray-900">{r.quantity ?? '—'}</td>
+                            <td className="py-1.5 px-3 text-right text-gray-900">{r.unitPrice ?? '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {importRows.length > 50 && (
+                    <p className="text-xs text-gray-400 mt-1">Showing first 50 of {importRows.length} rows.</p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {importResult && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-green-50 rounded-xl p-3 text-center">
+                  <p className="text-2xl font-bold text-green-600">{importResult.summary?.created || 0}</p>
+                  <p className="text-xs text-gray-500">Created</p>
+                </div>
+                <div className="bg-blue-50 rounded-xl p-3 text-center">
+                  <p className="text-2xl font-bold text-blue-600">{importResult.summary?.updated || 0}</p>
+                  <p className="text-xs text-gray-500">Updated</p>
+                </div>
+                <div className="bg-red-50 rounded-xl p-3 text-center">
+                  <p className="text-2xl font-bold text-red-600">{importResult.summary?.failed || 0}</p>
+                  <p className="text-xs text-gray-500">Failed</p>
+                </div>
+              </div>
+              {importResult.results?.some((r: any) => r.status === 'failed') && (
+                <div className="border border-red-100 rounded-xl overflow-hidden max-h-40 overflow-y-auto">
+                  <table className="w-full text-xs">
+                    <tbody className="divide-y divide-red-50">
+                      {importResult.results
+                        .filter((r: any) => r.status === 'failed')
+                        .map((r: any, i: number) => (
+                          <tr key={i} className="bg-red-50/40">
+                            <td className="py-1.5 px-3 text-gray-700">Row {r.row}: {r.name}</td>
+                            <td className="py-1.5 px-3 text-red-600">{r.message}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <button
+              onClick={resetImport}
+              className="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 rounded-lg"
+            >
+              {importResult ? 'Close' : 'Cancel'}
+            </button>
+            {!importResult && (
+              <button
+                onClick={doImport}
+                disabled={importing || importRows.length === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                Import {importRows.length > 0 ? `${importRows.length} rows` : ''}
+              </button>
+            )}
+          </div>
+        </div>
       </Modal>
     </div>
   );

@@ -22,7 +22,8 @@ import {
   Eye,
   EyeOff,
   Upload,
-  FileText
+  FileText,
+  ShieldCheck
 } from 'lucide-react';
 
 const statusColors: any = {
@@ -124,21 +125,28 @@ export default function Suppliers() {
     );
   };
 
-  const runApprove = async () => {
+  const runApprove = async (overrideKys = false) => {
     if (!selectedSupplier) return;
+    if (overrideKys && !actionReason.trim()) {
+      showToast('A reason is required to activate without KYS', 'error');
+      return;
+    }
     try {
       setActionLoading(true);
-      const res = await procurementAPI.approveSupplier(selectedSupplier._id);
-      showToast('Supplier approved', 'success');
+      const res = await procurementAPI.approveSupplier(selectedSupplier._id, {
+        overrideKys,
+        reason: overrideKys ? actionReason.trim() : undefined
+      });
+      showToast(
+        overrideKys ? 'Supplier activated without KYS (override applied)' : 'Supplier approved',
+        'success'
+      );
       refreshSelected(res.data.data);
       setPendingAction(null);
       setActionReason('');
     } catch (error: any) {
-      // KYS not complete — send the officer to the document page to finish it.
       if (error.response?.data?.data?.requiresKys) {
-        showToast('KYS documents are incomplete. Redirecting to the KYS page to upload them.', 'error');
-        setPendingAction(null);
-        navigate(`/app/suppliers/${selectedSupplier._id}/kys`);
+        showToast('KYS documents are incomplete. Complete KYS or use the override option.', 'error');
         return;
       }
       showToast(error.response?.data?.message || 'Failed to approve supplier', 'error');
@@ -147,15 +155,18 @@ export default function Suppliers() {
     }
   };
 
-  // Gate activation on KYS completeness. If the supplier still has outstanding
-  // KYS documents, redirect to the KYS page instead of opening the confirm step.
   const startApprove = (supplier: any) => {
-    if (!supplier?.kysComplete) {
-      showToast('Upload the required KYS documents before activating this supplier.', 'error');
-      navigate(`/app/suppliers/${supplier._id}/kys`);
+    if (supplier?.kysComplete || supplier?.kysExempt) {
+      setPendingAction('approve');
       return;
     }
-    setPendingAction('approve');
+    showToast('Complete KYS first, or use Activate without KYS if this supplier is exempt.', 'error');
+    navigate(`/app/suppliers/${supplier._id}/kys`);
+  };
+
+  const startApproveOverride = () => {
+    setActionReason('');
+    setPendingAction('approveOverride');
   };
 
   const runSetStatus = async (status: string) => {
@@ -204,7 +215,8 @@ export default function Suppliers() {
     if (pendingAction === 'reactivate') return runSetStatus('active');
     if (pendingAction === 'dormant') return runSetStatus('dormant');
     if (pendingAction === 'blacklist') return runBlacklist();
-    if (pendingAction === 'approve') return runApprove();
+    if (pendingAction === 'approve') return runApprove(false);
+    if (pendingAction === 'approveOverride') return runApprove(true);
   };
 
   const handleInputChange = (e: any) => {
@@ -1111,10 +1123,16 @@ Company ABC,REG123,John Doe,john@company.com,1234567890`}
                   <FileText className="h-5 w-5 text-primary" />
                   <div>
                     <p className="text-sm font-medium text-gray-900">
-                      KYS {s.kysComplete ? 'Verified' : 'Incomplete'}
+                      {s.kysExempt
+                        ? 'KYS Exempt (override applied)'
+                        : s.kysComplete
+                          ? 'KYS Verified'
+                          : 'KYS Incomplete'}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {ticked}/{checklistKeys.length} checklist items · {docCount} document{docCount === 1 ? '' : 's'}
+                      {s.kysExempt && s.kysExemptReason
+                        ? s.kysExemptReason
+                        : `${ticked}/${checklistKeys.length} checklist items · ${docCount} document${docCount === 1 ? '' : 's'}`}
                     </p>
                   </div>
                 </div>
@@ -1127,6 +1145,12 @@ Company ABC,REG123,John Doe,john@company.com,1234567890`}
                   View KYS
                 </button>
               </div>
+
+              {s.kysExempt && s.kysExemptReason && (
+                <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-sm text-amber-800">
+                  <span className="font-medium">KYS override: </span>{s.kysExemptReason}
+                </div>
+              )}
 
               {s.status === 'blacklisted' && s.blacklistReason && (
                 <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">
@@ -1143,13 +1167,20 @@ Company ABC,REG123,John Doe,john@company.com,1234567890`}
                     {pendingAction === 'dormant' && 'Mark this supplier as dormant?'}
                     {pendingAction === 'blacklist' && 'Blacklist this supplier?'}
                     {pendingAction === 'approve' && 'Approve and activate this supplier?'}
+                    {pendingAction === 'approveOverride' && 'Activate this supplier without KYS?'}
                   </p>
-                  {(pendingAction === 'suspend' || pendingAction === 'blacklist') && (
+                  {(pendingAction === 'suspend' || pendingAction === 'blacklist' || pendingAction === 'approveOverride') && (
                     <textarea
                       value={actionReason}
                       onChange={(e: any) => setActionReason(e.target.value)}
                       rows={3}
-                      placeholder={pendingAction === 'blacklist' ? 'Reason for blacklisting (required)' : 'Reason for suspension (required)'}
+                      placeholder={
+                        pendingAction === 'blacklist'
+                          ? 'Reason for blacklisting (required)'
+                          : pendingAction === 'approveOverride'
+                            ? 'Reason for KYS override (required) — e.g. existing trusted supplier, one-off engagement'
+                            : 'Reason for suspension (required)'
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                     />
                   )}
@@ -1165,9 +1196,13 @@ Company ABC,REG123,John Doe,john@company.com,1234567890`}
                     <button
                       type="button"
                       onClick={confirmPendingAction}
-                      disabled={actionLoading}
+                      disabled={actionLoading || (pendingAction === 'approveOverride' && !actionReason.trim())}
                       className={`inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium text-white rounded-lg disabled:opacity-50 ${
-                        pendingAction === 'blacklist' ? 'bg-red-600 hover:bg-red-700' : 'bg-primary hover:bg-primary/90'
+                        pendingAction === 'blacklist'
+                          ? 'bg-red-600 hover:bg-red-700'
+                          : pendingAction === 'approveOverride'
+                            ? 'bg-amber-600 hover:bg-amber-700'
+                            : 'bg-primary hover:bg-primary/90'
                       }`}
                     >
                       {actionLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
@@ -1181,14 +1216,24 @@ Company ABC,REG123,John Doe,john@company.com,1234567890`}
               {!pendingAction && (
                 <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
                   {s.status === 'pending' && (
-                    <button
-                      type="button"
-                      onClick={() => startApprove(s)}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90"
-                    >
-                      <CheckCircle className="h-4 w-4" />
-                      Approve & Activate
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => startApprove(s)}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                        Approve & Activate
+                      </button>
+                      <button
+                        type="button"
+                        onClick={startApproveOverride}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-amber-800 border border-amber-300 rounded-lg hover:bg-amber-50"
+                      >
+                        <ShieldCheck className="h-4 w-4" />
+                        Activate without KYS
+                      </button>
+                    </>
                   )}
                   {s.status === 'active' && (
                     <button

@@ -157,7 +157,7 @@ export default function Approvals() {
   const getDescription = () => {
     switch (user?.role) {
       case 'department_head':
-        return 'Approve purchase orders before Finance review (FC-HQ-P-07 §6.3.12)';
+        return 'Approve purchase orders before Finance review';
       case 'finance':
         return 'Review and approve purchase orders for payment authorization';
       case 'coo':

@@ -34,7 +34,7 @@ const hodReviewEvaluation = async (req: Request, res: Response): Promise<any> =>
       entity: 'SupplierEvaluation',
       entityId: evaluation._id,
       user: req.user,
-      description: `HOD reviewed supplier evaluation (FC-HQ-P-07 §6.2.4)`,
+      description: `HOD reviewed supplier evaluation`,
       req
     });
 

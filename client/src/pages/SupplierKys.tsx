@@ -93,6 +93,8 @@ export default function SupplierKys() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [step, setStep] = useState(0);
+  const [overrideReason, setOverrideReason] = useState('');
+  const [showOverrideConfirm, setShowOverrideConfirm] = useState(false);
 
   useEffect(() => {
     if (id) load();
@@ -164,6 +166,27 @@ export default function SupplierKys() {
     }
   };
 
+  const verifyOverride = async () => {
+    if (!overrideReason.trim()) {
+      showToast('A reason is required to activate without KYS', 'error');
+      return;
+    }
+    try {
+      setSaving(true);
+      await procurementAPI.verifyKys(id, {
+        approveForActivation: true,
+        overrideKys: true,
+        reason: overrideReason.trim()
+      });
+      showToast('Supplier activated without KYS (override applied)', 'success');
+      navigate('/app/suppliers');
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Override activation failed', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-20">
@@ -189,7 +212,7 @@ export default function SupplierKys() {
               <ShieldCheck className="h-6 w-6 text-primary" />
               KYS — {supplier?.companyName}
             </h1>
-            <p className="text-gray-500 text-sm mt-1">FC-HQ-P-07 §6.2.3 Know Your Supplier</p>
+            <p className="text-gray-500 text-sm mt-1">Know Your Supplier (KYS)</p>
           </div>
           <span
             className={`text-xs font-semibold px-2 py-1 rounded-full whitespace-nowrap ${
@@ -266,6 +289,8 @@ export default function SupplierKys() {
             isComplete={isComplete}
             isVerified={isVerified}
             status={supplier?.status}
+            kysExempt={supplier?.kysExempt}
+            kysExemptReason={supplier?.kysExemptReason}
           />
         ) : (
           <div className="space-y-6">
@@ -332,17 +357,59 @@ export default function SupplierKys() {
           <span className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-green-700">
             <CheckCircle className="h-4 w-4" /> Supplier active
           </span>
+        ) : showOverrideConfirm ? (
+          <div className="flex flex-col items-end gap-2 w-full max-w-md ml-auto">
+            <textarea
+              value={overrideReason}
+              onChange={(e) => setOverrideReason(e.target.value)}
+              rows={3}
+              placeholder="Reason for KYS override (required)"
+              className="w-full px-3 py-2 border border-amber-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-200"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowOverrideConfirm(false);
+                  setOverrideReason('');
+                }}
+                disabled={saving}
+                className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={verifyOverride}
+                disabled={saving || !overrideReason.trim()}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                Confirm Override
+              </button>
+            </div>
+          </div>
         ) : (
-          <button
-            type="button"
-            onClick={verify}
-            disabled={saving || !isComplete}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50"
-            title={!isComplete ? 'Complete all required items first' : 'Verify KYS and activate supplier'}
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-            Verify KYS & Activate
-          </button>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowOverrideConfirm(true)}
+              disabled={saving}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-amber-800 border border-amber-300 rounded-lg hover:bg-amber-50 disabled:opacity-50"
+            >
+              Activate without KYS
+            </button>
+            <button
+              type="button"
+              onClick={verify}
+              disabled={saving || !isComplete}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50"
+              title={!isComplete ? 'Complete all required items first' : 'Verify KYS and activate supplier'}
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+              Verify KYS & Activate
+            </button>
+          </div>
         )}
       </div>
     </div>
@@ -354,13 +421,17 @@ function ReviewStep({
   required,
   isComplete,
   isVerified,
-  status
+  status,
+  kysExempt,
+  kysExemptReason
 }: {
   checklist: Record<string, boolean>;
   required: readonly { key: string; label: string }[];
   isComplete: boolean;
   isVerified: boolean;
   status?: string;
+  kysExempt?: boolean;
+  kysExemptReason?: string;
 }) {
   const missing = required.filter((i) => !checklist[i.key]);
 
@@ -374,9 +445,15 @@ function ReviewStep({
         <p className={`text-sm font-medium ${isComplete ? 'text-green-700' : 'text-amber-700'}`}>
           {isComplete
             ? 'All required KYS items are complete. You can verify and activate this supplier.'
-            : `${missing.length} required item${missing.length === 1 ? '' : 's'} still outstanding.`}
+            : `${missing.length} required item${missing.length === 1 ? '' : 's'} still outstanding. Use Activate without KYS if this supplier is exempt from the full checklist.`}
         </p>
       </div>
+
+      {kysExempt && kysExemptReason && (
+        <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-sm text-amber-800">
+          <span className="font-medium">KYS override applied: </span>{kysExemptReason}
+        </div>
+      )}
 
       {missing.length > 0 && (
         <div className="bg-white rounded-xl shadow">

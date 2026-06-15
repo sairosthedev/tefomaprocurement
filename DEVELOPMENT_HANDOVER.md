@@ -3,7 +3,7 @@
 **Developer:** sairosthedev (`macdonaldsairos@gmail.com`)
 **Prepared for:** Collins (management review)
 **Date:** 4 June 2026
-**Procedure reference:** Central Procurement Procedure Rev 9.0 (FC-HQ-P-07)
+**Procedure reference:** Central Procurement Procedure Rev 9.0
 **System:** MERN monorepo — `api/` (Express + MongoDB), `client/` (React), `packages/shared/` (shared constants)
 
 ---
@@ -33,12 +33,12 @@ This report has three parts:
 
 ---
 
-## 2. Accounts Payable — invoices, 3-way match, payments (Procedure §6.6.1, §6.3.15)
+## 2. Accounts Payable — invoices, 3-way match, payments
 
 **What I did:** Built a complete supplier-billing module.
 
 **What it does, step by step:**
-1. A supplier submits an **invoice against a specific Purchase Order** (they cannot invoice for something with no PO — this enforces §6.8.1 "no payment without a PO").
+1. A supplier submits an **invoice against a specific Purchase Order** (they cannot invoice for something with no PO — this enforces the "no payment without a PO" rule).
 2. The system runs a **three-way match** comparing three things:
    - what was **ordered** (PO quantities and prices),
    - what was **received** (goods receipted at stores), and
@@ -51,12 +51,12 @@ This report has three parts:
 
 ---
 
-## 3. Know Your Supplier (KYS) onboarding & documents (Procedure §6.2.3)
+## 3. Know Your Supplier (KYS) onboarding & documents
 
 **What I did:** Turned supplier onboarding into a controlled, document-backed process.
 
 **What it does:**
-- Encoded the **full §6.2.3 checklist (19 items, a–s)** — CR14, CR6, tax clearance, NSSA, NEC, ISO, company profile, 3 client referrals, audited financials, bank references, warranties, after-sales support, safety, environmental policy, insurance, disaster preparedness, etc. — each tagged as **mandatory or optional** with its procedure clause.
+- Encoded the **full KYS checklist (19 items, a–s)** — CR14, CR6, tax clearance, NSSA, NEC, ISO, company profile, 3 client referrals, audited financials, bank references, warranties, after-sales support, safety, environmental policy, insurance, disaster preparedness, etc. — each tagged as **mandatory or optional**.
 - **New suppliers now start as `pending`, not active.** A supplier can only become **`active`** once their KYS is verified. (Previously suppliers were created active with no vetting — this was a compliance hole I closed.)
 - Suppliers can **upload their own KYS documents**, and procurement can **upload on their behalf**. Each uploaded document **automatically ticks** the checklist item it satisfies and recomputes whether KYS is complete.
 - Documents are stored safely (max 5 MB each), the latest upload of a type replaces the old one, and **verified documents cannot be deleted**.
@@ -93,7 +93,7 @@ This report has three parts:
 
 ---
 
-## 6. Sequential Purchase Order approval chain (Procedure §6.3.11–6.3.12)
+## 6. Sequential Purchase Order approval chain
 
 **What I did:** Implemented the required ordered sign-off for purchase orders.
 
@@ -106,7 +106,7 @@ This report has three parts:
 
 ---
 
-## 7. Supplier evaluation & SEC approval (Procedure §6.2.4–6.2.6)
+## 7. Supplier evaluation & SEC approval
 
 **What I did:** Built a formal supplier evaluation record.
 
@@ -119,7 +119,7 @@ This report has three parts:
 
 ---
 
-## 8. Stores gate + three-quote rule with waiver (Procedure §6.3.1–6.3.6)
+## 8. Stores gate + three-quote rule with waiver
 
 **What I did:** Enforced the "check stores first" and "get three quotes" rules.
 
@@ -181,21 +181,21 @@ These are gaps I identified against Rev 9 while building, and improvements I sug
 
 1. **Budget commitment on requisition.** When a requisition is submitted/approved, reserve the money against a department budget so we can’t over-commit spend. *(Biggest control gap right now.)*
 2. **Commit & push the Part 2 work** so the codebase, deployment, and history match what’s been built.
-3. **PO / requisition cancellation workflows (§6.4–6.5).** We have a "cancelled" status but no proper cancellation process (who can cancel, reasons, downstream effects).
+3. **PO / requisition cancellation workflows.** We have a "cancelled" status but no proper cancellation process (who can cancel, reasons, downstream effects).
 
 ### Medium priority
 
 4. **RFQ detail screen for HOD/PM.** The backend for HOD selection, PM authorisation, and waiver exists, but the on-screen experience for these steps should be finished so users aren’t doing it through workarounds.
-5. **SLA / deadline tracking (§6.1).** The procedure sets timeframes (sourcing in 2 days, approvals per role, payment days). I suggest tracking these and flagging overdue items.
-6. **Email the PO PDF to suppliers (§6.3.14).** Currently we notify in-app; suppliers should also receive the official PO document by email.
+5. **SLA / deadline tracking.** The policy sets timeframes (sourcing in 2 days, approvals per role, payment days). I suggest tracking these and flagging overdue items.
+6. **Email the PO PDF to suppliers.** Currently we notify in-app; suppliers should also receive the official PO document by email.
 
 ### Lower priority / compliance completeness
 
-7. **Supplier site-visit / field-vetting records (§5.5).**
-8. **MSDS handling for hazardous materials at receiving (§6.6.3).**
-9. **Receiving attendance sign-off — MT, Security, SHEQ (§6.8.5).**
-10. **Non-conforming goods return tracking (5-day rule)** and department-rep quality sign-off on deliveries (§6.6.2, §6.6.7–6.6.9).
-11. **Quarterly supplier review meetings (§5.7)** — we track the due date; a meeting/minutes record would complete it.
+7. **Supplier site-visit / field-vetting records.**
+8. **MSDS handling for hazardous materials at receiving.**
+9. **Receiving attendance sign-off — MT, Security, SHEQ.**
+10. **Non-conforming goods return tracking (5-day rule)** and department-rep quality sign-off on deliveries.
+11. **Quarterly supplier review meetings** — we track the due date; a meeting/minutes record would complete it.
 
 ---
 

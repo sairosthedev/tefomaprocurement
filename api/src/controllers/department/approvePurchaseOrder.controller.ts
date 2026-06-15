@@ -33,7 +33,7 @@ const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> =
       action: 'hod_approved',
       by: req.user!._id,
       role: req.user!.role,
-      comments: comments || 'Approved by HOD (FC-HQ-P-07 §6.3.12)'
+      comments: comments || 'Approved by HOD'
     });
 
     await po.save();

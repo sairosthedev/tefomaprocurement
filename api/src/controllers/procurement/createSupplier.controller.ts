@@ -139,7 +139,7 @@ const createSupplier = async (req: Request, res: Response): Promise<any> => {
         accountNumber: bankAccountNumber,
         branchCode: bankBranchCode
       },
-      // FC-HQ-P-07 §6.2.3 — supplier stays pending until KYS documents are
+      // Supplier stays pending until KYS documents are
       // collected and verified; only then can they be activated/invited.
       status: 'pending'
     });

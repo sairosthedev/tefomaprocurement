@@ -237,7 +237,7 @@ PurchaseOrderSchema.pre('save', async function(next) {
     this.poNumber = `PO-${year}-${String(count + 1).padStart(5, '0')}`;
   }
 
-  // FC-HQ-P-07 §6.3.11 — COO required above USD 5,000
+  // COO required above USD 5,000
   this.requiresCooApproval = requiresCooApproval(this.totalAmount);
 
   // Calculate pending quantities

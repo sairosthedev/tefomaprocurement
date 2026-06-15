@@ -62,7 +62,7 @@ const getQuotationById = async (req: Request, res: Response): Promise<any> => {
       };
     }
 
-    // FC-HQ-P-07 §5.1.2 / §6.3.4 — surface the acceptance compliance chain so
+    // Surface the acceptance compliance chain so
     // the UI can guide the user through HOD selection and PM authorization.
     const rfq = quotation.rfq as any;
     const qid = String(quotation._id);

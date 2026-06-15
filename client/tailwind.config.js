@@ -8,10 +8,20 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Original deep green theme.
         primary: {
           DEFAULT: '#193019',
           light: '#234523',
           dark: '#0f1a0f',
+        },
+        // Accent palette sampled from the Tefoma Construction logo.
+        brand: {
+          blue: '#1473BA',
+          'blue-dark': '#0F5C95',
+          green: '#1F9D43',
+          'green-dark': '#15782F',
+          amber: '#F7A40C',
+          'amber-dark': '#D98A00',
         },
       },
       animation: {

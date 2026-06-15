@@ -9,7 +9,7 @@ import { sendEmailNotification } from '../../services/email.service.js';
 const approveSupplier = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
-    const { notes } = req.body;
+    const { notes, overrideKys, reason } = req.body;
 
     const supplier = await SupplierProfile.findById(id).populate('user');
     if (!supplier || supplier.isDeleted) {
@@ -19,14 +19,24 @@ const approveSupplier = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    // FC-HQ-P-07 §6.2.3 — a supplier cannot be approved/activated until all
-    // required KYS documents have been captured. Signal `requiresKys` so the
-    // client can redirect the officer to the KYS document page to complete it.
     const completion = computeKysCompletion(supplier.kysChecklist as Record<string, boolean>);
-    if (!completion.isComplete) {
+
+    if (overrideKys) {
+      if (!reason?.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: 'A reason is required to activate a supplier without KYS'
+        });
+      }
+
+      supplier.kysExempt = true;
+      supplier.kysExemptReason = reason.trim();
+      supplier.kysExemptBy = req.user!._id;
+      supplier.kysExemptAt = new Date();
+    } else if (!completion.isComplete && !supplier.kysExempt) {
       return res.status(400).json({
         success: false,
-        message: `Cannot activate this supplier yet: KYS is incomplete (${completion.requiredComplete}/${completion.requiredTotal} required items). Upload the required documents first.`,
+        message: `Cannot activate this supplier yet: KYS is incomplete (${completion.requiredComplete}/${completion.requiredTotal} required items). Upload the required documents first, or use the KYS override.`,
         data: { requiresKys: true, completion }
       });
     }
@@ -35,12 +45,15 @@ const approveSupplier = async (req: Request, res: Response): Promise<any> => {
     supplier.status = 'active';
     supplier.approvedBy = req.user!._id;
     supplier.approvedAt = new Date();
-    supplier.kysComplete = true;
-    // Approving implies the officer has verified the captured KYS documents.
-    if (!supplier.kysChecklist.verifiedAt) {
-      supplier.kysChecklist.verifiedBy = req.user!._id;
-      supplier.kysChecklist.verifiedAt = new Date();
+
+    if (!overrideKys) {
+      supplier.kysComplete = true;
+      if (!supplier.kysChecklist.verifiedAt) {
+        supplier.kysChecklist.verifiedBy = req.user!._id;
+        supplier.kysChecklist.verifiedAt = new Date();
+      }
     }
+
     if (notes) supplier.notes = notes;
 
     await supplier.save();
@@ -50,13 +63,18 @@ const approveSupplier = async (req: Request, res: Response): Promise<any> => {
       entity: 'SupplierProfile',
       entityId: supplier._id,
       user: req.user,
-      description: `Approved supplier: ${supplier.companyName}`,
+      description: overrideKys
+        ? `Activated supplier without KYS override: ${supplier.companyName}. Reason: ${reason.trim()}`
+        : `Approved supplier: ${supplier.companyName}`,
       previousData: { status: previousStatus },
-      newData: { status: 'active' },
+      newData: {
+        status: 'active',
+        kysExempt: supplier.kysExempt,
+        overrideKys: !!overrideKys
+      },
       req
     });
 
-    // Create notification for the supplier
     if (supplier.user) {
       await createNotification({
         recipient: supplier.user._id,
@@ -69,10 +87,9 @@ const approveSupplier = async (req: Request, res: Response): Promise<any> => {
         metadata: { companyName: supplier.companyName }
       });
 
-      // Send approval email to supplier
       const baseUrl = process.env.CLIENT_URL || 'http://localhost:5173';
       const user = await User.findById(supplier.user._id).select('email firstName lastName');
-      
+
       if (user && user.email) {
         await sendEmailNotification({
           emailTo: user.email,
@@ -82,7 +99,7 @@ const approveSupplier = async (req: Request, res: Response): Promise<any> => {
           subSubText: supplier.notes ? `Notes: ${supplier.notes}` : null,
           actionButtonText: 'Access Supplier Dashboard',
           actionButtonLink: `${baseUrl}/app`
-        }).catch(err => {
+        }).catch((err) => {
           console.error('Failed to send approval email to supplier:', err);
         });
       }
@@ -90,7 +107,9 @@ const approveSupplier = async (req: Request, res: Response): Promise<any> => {
 
     res.status(200).json({
       success: true,
-      message: 'Supplier approved successfully',
+      message: overrideKys
+        ? 'Supplier activated without KYS (override applied)'
+        : 'Supplier approved successfully',
       data: supplier
     });
   } catch (error: any) {

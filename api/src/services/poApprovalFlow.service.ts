@@ -2,7 +2,7 @@ import type { IPurchaseOrder } from '../models/PurchaseOrder.model.js';
 import { COO_APPROVAL_THRESHOLD_USD } from '@fossil/shared';
 
 export function requiresCooApproval(totalAmount: number, currency = 'USD'): boolean {
-  // Procedure §6.3.11 — COO for amounts above USD 5,000
+  // COO for amounts above USD 5,000
   if (currency.toUpperCase() !== 'USD') {
     // Non-USD: apply threshold as-is until multi-currency rules are defined
     return totalAmount >= COO_APPROVAL_THRESHOLD_USD;

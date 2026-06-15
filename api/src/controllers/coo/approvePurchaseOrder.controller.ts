@@ -47,7 +47,7 @@ const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> =
       action: 'coo_approved',
       by: req.user!._id,
       role: 'coo',
-      comments: comments || 'Authorized by COO (FC-HQ-P-07 §6.3.11)'
+      comments: comments || 'Authorized by COO'
     });
 
     await po.save();

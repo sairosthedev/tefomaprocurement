@@ -74,3 +74,8 @@ button[type="submit"].bg-primary:hover,
 button.bg-primary[type="submit"]:hover {
   background-color: #0f1a0f !important;
 }
+
+/* Tri-colour brand accent bar (blue → green → amber), echoes the logo swoosh */
+.brand-accent-bar {
+  background: linear-gradient(90deg, #1473BA 0%, #1473BA 33%, #1F9D43 33%, #1F9D43 66%, #F7A40C 66%, #F7A40C 100%);
+}

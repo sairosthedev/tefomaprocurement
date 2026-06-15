@@ -48,7 +48,7 @@ const approveRequisition = async (req: Request, res: Response): Promise<any> => 
       });
     }
 
-    // HOD approval → forward to stores review (FC-HQ-P-07 §6.3.2–6.3.3)
+    // HOD approval → forward to stores review
     requisition.status = 'stores_review';
     requisition.hodApprovedBy = req.user!._id;
     requisition.hodApprovedAt = new Date();

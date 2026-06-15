@@ -22,7 +22,7 @@ const submitPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       });
     }
 
-    // FC-HQ-P-07 §6.3.12 — sequential: Procurement → HOD → Finance → COO (if > USD 5k)
+    // Sequential: Procurement → HOD → Finance → COO (if > USD 5k)
     po.status = 'pending_hod';
     po.hodApproved = false;
     po.financeApproved = false;
@@ -38,7 +38,7 @@ const submitPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       action: 'submitted',
       by: req.user!._id,
       role: req.user!.role,
-      comments: 'Submitted for HOD approval (FC-HQ-P-07 §6.3.12)'
+      comments: 'Submitted for HOD approval'
     });
 
     await po.save();

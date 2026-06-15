@@ -12,7 +12,7 @@ const hodSelectQuotation = async (req: Request, res: Response): Promise<any> => 
     if (!quotationId || !justification?.trim()) {
       return res.status(400).json({
         success: false,
-        message: 'Quotation ID and selection justification are required (FC-HQ-P-07 §6.3.4)'
+        message: 'Quotation ID and selection justification are required'
       });
     }
 
@@ -57,7 +57,7 @@ const hodSelectQuotation = async (req: Request, res: Response): Promise<any> => 
     await notifyUsersByRole('procurement_officer', {
       type: 'quotation_submitted',
       title: 'HOD selected quotation — PM authorization required',
-      message: `RFQ ${rfq.rfqNumber}: HOD selected a quote. Procurement Manager authorization required (§5.1.2).`,
+      message: `RFQ ${rfq.rfqNumber}: HOD selected a quote. Procurement Manager authorization required.`,
       entity: 'RFQ',
       entityId: rfq._id,
       relatedUser: req.user!._id

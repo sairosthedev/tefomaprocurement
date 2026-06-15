@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { authAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { Loader2, Eye, EyeOff, Building2, ArrowLeft } from 'lucide-react';
 import Logo from '../components/Logo';
+import { CategoryMultiSelect } from '../components/CategorySelect';
+import { PROVINCES, COUNTRIES, BANKS, ACCOUNT_TYPES } from '../lib/constants';
 
 export default function Register() {
   const [step, setStep] = useState<any>(1);
@@ -30,44 +32,35 @@ export default function Register() {
     city: '',
     province: '',
     postalCode: '',
-    country: 'South Africa',
+    country: '',
+    countryOther: '',
     // Bank details
     bankName: '',
     accountNumber: '',
     branchCode: '',
     accountType: 'current',
     // Categories
-    categories: []
+    categories: [] as string[]
   });
-
-  const categoryOptions = [
-    'Office Supplies',
-    'IT Equipment',
-    'Construction Materials',
-    'Vehicles & Parts',
-    'Electrical Equipment',
-    'Plumbing Supplies',
-    'Safety Equipment',
-    'Cleaning Supplies',
-    'Furniture',
-    'Catering & Food',
-    'Professional Services',
-    'Other'
-  ];
 
   const handleChange = (e: any) => {
     const { name, value } = e.target;
-    setFormData((prev: any) => ({ ...prev, [name]: value }));
+    setFormData((prev: any) => {
+      const next = { ...prev, [name]: value };
+      if (name === 'country') {
+        next.province = '';
+        if (value !== 'Other') next.countryOther = '';
+        if (value !== 'Zimbabwe') next.bankName = '';
+      }
+      return next;
+    });
   };
 
-  const toggleCategory = (category: any) => {
-    setFormData((prev: any) => ({
-      ...prev,
-      categories: prev.categories.includes(category)
-        ? prev.categories.filter((c: any) => c !== category)
-        : [...prev.categories, category]
-    }));
-  };
+  const resolvedCountry = () => (
+    formData.country === 'Other' ? formData.countryOther.trim() : formData.country
+  );
+
+  const isZimbabwe = formData.country === 'Zimbabwe';
 
   const validateStep = () => {
     if (step === 1) {
@@ -84,10 +77,22 @@ export default function Register() {
         return false;
       }
     }
-    
+
     if (step === 2) {
       if (!formData.companyName || !formData.registrationNumber) {
         showToast('Company name and registration number are required', 'error', 4000);
+        return false;
+      }
+    }
+
+    if (step === 3) {
+      const country = resolvedCountry();
+      if (!formData.country) {
+        showToast('Please select your country', 'error', 4000);
+        return false;
+      }
+      if (formData.country === 'Other' && !country) {
+        showToast('Please enter your country name', 'error', 4000);
         return false;
       }
     }
@@ -119,7 +124,7 @@ export default function Register() {
         lastName: formData.lastName,
         phone: formData.phone,
         role: 'supplier',
-        supplierProfile: {
+        companyDetails: {
           companyName: formData.companyName,
           tradingName: formData.tradingName,
           registrationNumber: formData.registrationNumber,
@@ -129,7 +134,7 @@ export default function Register() {
             city: formData.city,
             province: formData.province,
             postalCode: formData.postalCode,
-            country: formData.country
+            country: resolvedCountry()
           },
           bankDetails: {
             bankName: formData.bankName,
@@ -162,10 +167,10 @@ export default function Register() {
             You'll receive an email once your account is activated.
           </p>
           <Link
-            to="/login"
+            to="/supplier/login"
             className="inline-flex items-center justify-center w-full px-4 py-3 bg-primary hover:bg-primary-dark text-white font-medium rounded-xl transition-colors"
           >
-            Go to Login
+            Go to Supplier Login
           </Link>
         </div>
       </div>
@@ -177,9 +182,9 @@ export default function Register() {
       <div className="w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden">
         {/* Header */}
         <div className="bg-primary px-8 py-6 text-white">
-          <Link to="/login" className="inline-flex items-center gap-2 text-white/80 hover:text-white text-sm mb-4">
+          <Link to="/" className="inline-flex items-center gap-2 text-white/80 hover:text-white text-sm mb-4">
             <ArrowLeft className="h-4 w-4" />
-            Back to Login
+            Back
           </Link>
           <div className="flex items-center gap-4 mb-4">
             <Logo variant="icon" className="text-white" />
@@ -351,26 +356,12 @@ export default function Register() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Product/Service Categories</label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {categoryOptions.map((cat: any) => (
-                    <label
-                      key={cat}
-                      className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${
-                        formData.categories.includes(cat)
-                          ? 'bg-primary/10 border-primary text-primary'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={formData.categories.includes(cat)}
-                        onChange={() => toggleCategory(cat)}
-                        className="sr-only"
-                      />
-                      <span className="text-sm">{cat}</span>
-                    </label>
-                  ))}
-                </div>
+                <CategoryMultiSelect
+                  value={formData.categories}
+                  onChange={(codes) => setFormData((prev: any) => ({ ...prev, categories: codes }))}
+                  placeholder="Select categories your company supplies…"
+                  placement="top"
+                />
               </div>
             </div>
           )}
@@ -401,24 +392,31 @@ export default function Register() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Province</label>
-                  <select
-                    name="province"
-                    value={formData.province}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
-                  >
-                    <option value="">Select Province</option>
-                    <option value="Gauteng">Gauteng</option>
-                    <option value="Western Cape">Western Cape</option>
-                    <option value="KwaZulu-Natal">KwaZulu-Natal</option>
-                    <option value="Eastern Cape">Eastern Cape</option>
-                    <option value="Free State">Free State</option>
-                    <option value="Limpopo">Limpopo</option>
-                    <option value="Mpumalanga">Mpumalanga</option>
-                    <option value="North West">North West</option>
-                    <option value="Northern Cape">Northern Cape</option>
-                  </select>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {isZimbabwe ? 'Province' : 'State / Province / Region'}
+                  </label>
+                  {isZimbabwe ? (
+                    <select
+                      name="province"
+                      value={formData.province}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
+                    >
+                      <option value="">Select Province</option>
+                      {PROVINCES.map((province: string) => (
+                        <option key={province} value={province}>{province}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      name="province"
+                      value={formData.province}
+                      onChange={handleChange}
+                      placeholder="e.g. California, Gauteng, Ontario"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    />
+                  )}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -433,17 +431,35 @@ export default function Register() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
-                  <input
-                    type="text"
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Country *</label>
+                  <select
                     name="country"
                     value={formData.country}
                     onChange={handleChange}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                    disabled
-                  />
+                    required
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
+                  >
+                    <option value="">Select Country</option>
+                    {COUNTRIES.map((country: string) => (
+                      <option key={country} value={country}>{country}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
+              {formData.country === 'Other' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Country Name *</label>
+                  <input
+                    type="text"
+                    name="countryOther"
+                    value={formData.countryOther}
+                    onChange={handleChange}
+                    placeholder="Enter your country"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    required
+                  />
+                </div>
+              )}
             </div>
           )}
 
@@ -456,24 +472,28 @@ export default function Register() {
               </p>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Bank Name</label>
-                <select
-                  name="bankName"
-                  value={formData.bankName}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
-                >
-                  <option value="">Select Bank</option>
-                  <option value="ABSA">ABSA</option>
-                  <option value="Capitec">Capitec</option>
-                  <option value="FNB">First National Bank</option>
-                  <option value="Nedbank">Nedbank</option>
-                  <option value="Standard Bank">Standard Bank</option>
-                  <option value="Investec">Investec</option>
-                  <option value="African Bank">African Bank</option>
-                  <option value="TymeBank">TymeBank</option>
-                  <option value="Discovery Bank">Discovery Bank</option>
-                  <option value="Other">Other</option>
-                </select>
+                {isZimbabwe ? (
+                  <select
+                    name="bankName"
+                    value={formData.bankName}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
+                  >
+                    <option value="">Select Bank</option>
+                    {BANKS.map((bank: string) => (
+                      <option key={bank} value={bank}>{bank}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    name="bankName"
+                    value={formData.bankName}
+                    onChange={handleChange}
+                    placeholder="Enter your bank name"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                  />
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -487,7 +507,9 @@ export default function Register() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Branch Code</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {isZimbabwe ? 'Branch Code' : 'Branch / SWIFT / Routing Code'}
+                  </label>
                   <input
                     type="text"
                     name="branchCode"
@@ -505,9 +527,9 @@ export default function Register() {
                   onChange={handleChange}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
                 >
-                  <option value="current">Current / Cheque</option>
-                  <option value="savings">Savings</option>
-                  <option value="transmission">Transmission</option>
+                  {ACCOUNT_TYPES.map((type: { value: string; label: string }) => (
+                    <option key={type.value} value={type.value}>{type.label}</option>
+                  ))}
                 </select>
               </div>
             </div>

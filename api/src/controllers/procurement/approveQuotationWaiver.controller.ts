@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { RFQ } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 
-/** FC-HQ-P-07 §6.3.5 — waiver when fewer than 3 quotations */
+/** Waiver when fewer than 3 quotations */
 const approveQuotationWaiver = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;

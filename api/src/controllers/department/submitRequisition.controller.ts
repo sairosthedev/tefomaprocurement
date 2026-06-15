@@ -34,7 +34,7 @@ const submitRequisition = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    // End user submits → Department Head approval first (FC-HQ-P-07 §6.3.2)
+    // End user submits → Department Head approval first
     requisition.status = 'pending_hod';
     requisition.statusHistory = requisition.statusHistory || [];
     requisition.statusHistory.push({

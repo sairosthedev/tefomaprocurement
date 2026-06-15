@@ -505,7 +505,7 @@ export default function Requisitions() {
                           </>
                         )}
 
-                        {/* HOD Approval Gate (FC-HQ-P-07 §6.3.2) */}
+                        {/* HOD Approval Gate */}
                         {isDeptHead && !isProcurement && req.status === 'pending_hod' && (
                           <>
                             <button

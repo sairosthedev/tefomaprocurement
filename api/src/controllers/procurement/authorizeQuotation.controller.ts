@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { RFQ, Quotation } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 
-/** FC-HQ-P-07 §5.1.2 — Procurement Manager authorizes the quotation */
+/** Procurement Manager authorizes the quotation */
 const authorizeQuotation = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;

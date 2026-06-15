@@ -1,10 +1,10 @@
-# FC-HQ-P-07 Procedure Compliance Report
+# Procurement Compliance Report
 
 **Document:** Central Procurement Procedure Rev 9.0 (25.11.2025)  
 **System:** fossilProcure  
 **Generated:** 2026-06-04
 
-This report maps each major section of FC-HQ-P-07 to the current system implementation status.
+This report maps major procurement policy areas to the current system implementation status.
 
 ---
 
@@ -12,14 +12,14 @@ This report maps each major section of FC-HQ-P-07 to the current system implemen
 
 | Status | Meaning |
 |--------|---------|
-| ✅ Implemented | Matches procedure intent in code |
-| 🟡 Partial | Exists but incomplete vs procedure |
+| ✅ Implemented | Matches policy intent in code |
+| 🟡 Partial | Exists but incomplete vs policy |
 | ❌ Missing | Not implemented |
 | ➖ N/A | Out of system scope (e.g. petty cash) |
 
 ---
 
-## §5 Responsibility & Authority
+## Responsibility & Authority
 
 | Ref | Requirement | Status | System location |
 |-----|-------------|--------|-----------------|
@@ -32,7 +32,7 @@ This report maps each major section of FC-HQ-P-07 to the current system implemen
 
 ---
 
-## §6.2 Supplier Selection & Evaluation
+## Supplier Selection & Evaluation
 
 | Ref | Requirement | Status | System location |
 |-----|-------------|--------|-----------------|
@@ -42,11 +42,11 @@ This report maps each major section of FC-HQ-P-07 to the current system implemen
 | 6.2.4 | Evaluation criteria (credit, pricing, quality…) | ✅ Implemented | `SupplierEvaluation.scores`, `SUPPLIER_EVALUATION_CRITERIA` |
 | 6.2.5 | Approved suppliers list | ✅ Implemented | Suppliers with `status: active` after SEC |
 | 6.2.6 | Re-evaluation when SEC determines | 🟡 Partial | `evaluationType: re_evaluation`; manual trigger only |
-| 6.2.7 | Blacklist reasons | ✅ Implemented | `blacklistSupplier` + reasons align with procedure |
+| 6.2.7 | Blacklist reasons | ✅ Implemented | `blacklistSupplier` + reasons align with policy |
 
 ---
 
-## §6.3 Procurement Process
+## Procurement Process
 
 | Ref | Requirement | Status | System location |
 |-----|-------------|--------|-----------------|
@@ -64,7 +64,7 @@ This report maps each major section of FC-HQ-P-07 to the current system implemen
 
 ---
 
-## §6.4–6.5 Cancellations
+## Cancellations
 
 | Ref | Requirement | Status |
 |-----|-------------|--------|
@@ -73,7 +73,7 @@ This report maps each major section of FC-HQ-P-07 to the current system implemen
 
 ---
 
-## §6.6 Receiving
+## Receiving
 
 | Ref | Requirement | Status | System location |
 |-----|-------------|--------|-----------------|
@@ -85,7 +85,7 @@ This report maps each major section of FC-HQ-P-07 to the current system implemen
 
 ---
 
-## §6.8 Compliance / Prohibited Practices
+## Compliance / Prohibited Practices
 
 | Ref | Requirement | Status |
 |-----|-------------|--------|
@@ -95,9 +95,9 @@ This report maps each major section of FC-HQ-P-07 to the current system implemen
 
 ---
 
-## §6.1 Timelines (SLA)
+## Timelines (SLA)
 
-| Process | Procedure SLA | Status |
+| Process | Policy SLA | Status |
 |---------|---------------|--------|
 | Sourcing quotations | 2 days | ❌ Not tracked |
 | PR approvals | 1 hour each role | ❌ Not tracked |
@@ -108,31 +108,31 @@ This report maps each major section of FC-HQ-P-07 to the current system implemen
 ## Priority backlog (remaining gaps)
 
 ### P0
-1. **Budget commitment** on PR submit (not in FC-HQ-P-07 detail but critical for spend control)
+1. **Budget commitment** on PR submit (critical for spend control)
 
 ### P1
-2. **PO/PR cancellation workflows** (§6.4–6.5)
+2. **PO/PR cancellation workflows**
 3. **RFQ detail UI** for HOD selection / PM authorize / waiver (API ready; enhance `RFQDetail.tsx`)
 
 ### P2
-7. Supplier visit records (§5.5)
-8. SLA / deadline tracking (§6.1.2)
-9. MSDS / hazardous materials (§6.6.3)
-10. Receiving attendance (MT, security, SHEQ) (§6.8.5)
+7. Supplier visit records
+8. SLA / deadline tracking
+9. MSDS / hazardous materials
+10. Receiving attendance (MT, security, SHEQ)
 
 ---
 
 ## Recent implementations (this release)
 
-- **§6.2.3 KYS:** Full checklist (19 items), client referrals, document types, verify endpoint
-- **§6.2.4–6.2.6 SEC evaluation:** Model, HOD review, SEC approval, quarterly due date
-- **§6.3.11–6.3.12 PO approval chain:** HOD → Finance → COO (≥ USD 5,000)
-- **§6.6.1 / §6.3.15 AP:** Invoices, three-way match, payments
-- **§6.3.1–6.3.2 Stores gate:** `stores_review` → fulfill | forward → procurement
-- **§6.3.3–6.3.6 Quotations:** 3-quote rule, waiver, HOD selection, PM authorization
+- **KYS:** Full checklist (19 items), client referrals, document types, verify endpoint
+- **SEC evaluation:** Model, HOD review, SEC approval, quarterly due date
+- **PO approval chain:** HOD → Finance → COO (≥ USD 5,000)
+- **Accounts payable:** Invoices, three-way match, payments
+- **Stores gate:** `stores_review` → fulfill | forward → procurement
+- **Quotations:** 3-quote rule, waiver, HOD selection, PM authorization
 - **Approvals UI:** HOD wired to `/app/approvals`
 - **Stores UI:** `/app/stores-pr-review` for PR queue
 
 ---
 
-*This document should be reviewed when FC-HQ-P-07 is revised or when major features ship.*
+*This document should be reviewed when procurement policy is revised or when major features ship.*

@@ -43,7 +43,7 @@ const secApproveEvaluation = async (req: Request, res: Response): Promise<any> =
       entity: 'SupplierEvaluation',
       entityId: evaluation._id,
       user: req.user,
-      description: `SEC approved supplier evaluation (FC-HQ-P-07 §5.6/§6.2.5)`,
+      description: `SEC approved supplier evaluation`,
       req
     });
 

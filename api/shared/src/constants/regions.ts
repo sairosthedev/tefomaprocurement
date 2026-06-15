@@ -11,6 +11,49 @@ export const PROVINCES: readonly string[] = Object.freeze([
   'Midlands'
 ]);
 
+/** Zimbabwe first, then regional/international trading partners, then Other. */
+export const COUNTRIES: readonly string[] = Object.freeze([
+  'Zimbabwe',
+  'Botswana',
+  'China',
+  'Democratic Republic of the Congo',
+  'Eswatini',
+  'France',
+  'Germany',
+  'Ghana',
+  'India',
+  'Indonesia',
+  'Italy',
+  'Japan',
+  'Kenya',
+  'Lesotho',
+  'Malawi',
+  'Malaysia',
+  'Mexico',
+  'Mozambique',
+  'Namibia',
+  'Netherlands',
+  'Nigeria',
+  'Pakistan',
+  'Poland',
+  'Qatar',
+  'Rwanda',
+  'Saudi Arabia',
+  'Singapore',
+  'South Africa',
+  'South Korea',
+  'Spain',
+  'Switzerland',
+  'Tanzania',
+  'Turkey',
+  'Uganda',
+  'United Arab Emirates',
+  'United Kingdom',
+  'United States',
+  'Zambia',
+  'Other'
+]);
+
 export const BANKS: readonly string[] = Object.freeze([
   'CBZ Bank',
   'FBC Bank',

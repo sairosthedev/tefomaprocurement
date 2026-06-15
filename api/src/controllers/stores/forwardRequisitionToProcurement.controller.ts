@@ -28,7 +28,7 @@ const forwardRequisitionToProcurement = async (req: Request, res: Response): Pro
       action: 'forwarded_to_procurement',
       by: req.user!._id,
       role: req.user!.role,
-      comments: notes || 'Forwarded to procurement (FC-HQ-P-07 §6.3.2)'
+      comments: notes || 'Forwarded to procurement'
     });
 
     await requisition.save();

@@ -1,6 +1,61 @@
-import { useMemo, useRef, useState, useEffect } from 'react';
+import { useMemo, useRef, useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { SUPPLIER_CATEGORY_GROUPS, getCategoryName } from '../lib/constants';
 import { ChevronDown, X, Search, Check } from 'lucide-react';
+
+const PANEL_MAX_HEIGHT = 320;
+
+type DropdownPlacement = 'auto' | 'top' | 'bottom';
+
+function useDropdownPanelStyle(
+  open: boolean,
+  containerRef: React.RefObject<HTMLDivElement | null>,
+  placement: DropdownPlacement
+) {
+  const [style, setStyle] = useState<React.CSSProperties>({ visibility: 'hidden' });
+
+  const updatePosition = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const dropUp = placement === 'top'
+      || (placement === 'auto' && spaceBelow < PANEL_MAX_HEIGHT && spaceAbove > spaceBelow);
+
+    const maxHeight = dropUp
+      ? Math.min(PANEL_MAX_HEIGHT, spaceAbove - 8)
+      : Math.min(PANEL_MAX_HEIGHT, spaceBelow - 8);
+
+    setStyle({
+      position: 'fixed',
+      left: rect.left,
+      width: rect.width,
+      maxHeight: Math.max(maxHeight, 160),
+      zIndex: 9999,
+      visibility: 'visible',
+      ...(dropUp
+        ? { top: 'auto', bottom: window.innerHeight - rect.top + 4 }
+        : { top: rect.bottom + 4, bottom: 'auto' })
+    });
+  }, [containerRef, placement]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    updatePosition();
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [open, updatePosition]);
+
+  return style;
+}
 
 /**
  * Single category picker rendered as a searchable, grouped dropdown.
@@ -137,21 +192,30 @@ export function CategorySelect({
 export function CategoryMultiSelect({
   value,
   onChange,
-  placeholder = 'Select categories…'
+  placeholder = 'Select categories…',
+  placement = 'auto'
 }: {
   value: string[];
   onChange: (codes: string[]) => void;
   placeholder?: string;
+  placement?: DropdownPlacement;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const panelStyle = useDropdownPanelStyle(open, containerRef, placement);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
+      const target = e.target as Node;
+      if (
+        containerRef.current?.contains(target)
+        || panelRef.current?.contains(target)
+      ) {
+        return;
       }
+      setOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -214,9 +278,13 @@ export function CategoryMultiSelect({
         <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
-      {open && (
-        <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-80 overflow-hidden flex flex-col">
-          <div className="p-2 border-b border-gray-100 sticky top-0 bg-white">
+      {open && createPortal(
+        <div
+          ref={panelRef}
+          style={panelStyle}
+          className="bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden flex flex-col"
+        >
+          <div className="p-2 border-b border-gray-100 shrink-0 bg-white">
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
               <input
@@ -228,7 +296,7 @@ export function CategoryMultiSelect({
               />
             </div>
           </div>
-          <div className="overflow-y-auto">
+          <div className="overflow-y-auto min-h-0 flex-1">
             {filteredGroups.length === 0 && (
               <p className="px-3 py-4 text-sm text-gray-400 text-center">No matches</p>
             )}
@@ -257,7 +325,8 @@ export function CategoryMultiSelect({
               </div>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

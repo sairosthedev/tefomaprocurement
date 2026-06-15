@@ -17,11 +17,13 @@ router.put('/deliveries/:id/accept', stores.acceptDelivery);
 
 // Inventory
 router.get('/inventory', stores.getInventory);
+router.post('/inventory', stores.addInventoryItem);
+router.post('/inventory/bulk', stores.bulkImportInventory);
 
 // Stock Movements
 router.get('/movements', stores.getMovements);
 
-// Purchase requisitions — stores gate (FC-HQ-P-07 §6.3.1–6.3.2)
+// Purchase requisitions — stores gate
 router.get('/purchase-requisitions/pending', stores.getPendingPurchaseRequisitions);
 router.put('/purchase-requisitions/:id/auto-process', stores.autoProcessRequisition);
 router.put('/purchase-requisitions/:id/fulfill', stores.fulfillRequisitionFromStock);

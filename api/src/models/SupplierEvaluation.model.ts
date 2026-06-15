@@ -98,7 +98,7 @@ SupplierEvaluationSchema.pre('save', function (next) {
 
   if (this.isNew && !this.nextReviewDue) {
     const due = new Date();
-    due.setMonth(due.getMonth() + 3); // §5.7 quarterly review
+    due.setMonth(due.getMonth() + 3); // quarterly review
     this.nextReviewDue = due;
   }
   next();

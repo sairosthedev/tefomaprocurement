@@ -119,7 +119,7 @@ export default function QuotationDetail() {
 
   const handleHodSelect = async () => {
     if (!hodJustification.trim()) {
-      showToast('A selection justification is required (FC-HQ-P-07 §6.3.4)', 'error');
+      showToast('A selection justification is required', 'error');
       return;
     }
     try {
@@ -377,7 +377,7 @@ export default function QuotationDetail() {
         </div>
       </div>
 
-      {/* Acceptance compliance workflow (FC-HQ-P-07 §5.1.2 / §6.3.4) */}
+      {/* Acceptance compliance workflow */}
       {quotation.compliance && quotation.status !== 'accepted' && quotation.status !== 'rejected' && (
         (() => {
           const c = quotation.compliance;
@@ -418,7 +418,7 @@ export default function QuotationDetail() {
                 Acceptance Authorization
               </h2>
               <p className="text-xs text-gray-500 mb-3">
-                FC-HQ-P-07 §5.1.2 / §6.3.4 — complete every step below before Accept is enabled.
+                Complete every step below before Accept is enabled.
               </p>
               {!c.fullyAuthorized && missingSteps.length > 0 && (
                 <div className="mb-5 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">

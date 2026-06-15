@@ -16,7 +16,7 @@ function deptRequisitionFilter(user: Request['user']) {
 const getStats = async (req: Request, res: Response): Promise<any> => {
   try {
     // The head of the Procurement department operates as a procurement officer
-    // for dashboard purposes (FC-HQ-P-07 §5.1.2).
+    // for dashboard purposes.
     const userRole = isProcurementHead(req.user) ? 'procurement_officer' : req.user!.role;
     let stats: any = {};
     let recentActivity: any[] = [];

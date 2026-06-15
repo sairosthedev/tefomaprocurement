@@ -77,7 +77,7 @@ const roleNavigation: any = {
   ],
 
   // Head of the Procurement department: full procurement access plus the
-  // department-head approval queue (FC-HQ-P-07 §5.1.2).
+  // department-head approval queue.
   procurement_head: [
     { name: "Dashboard", href: "/app", icon: LayoutDashboard },
     { name: "Approvals", href: "/app/approvals", icon: CheckSquare },
@@ -150,7 +150,7 @@ export function SidebarLayout({ children }: any) {
     logout()
     setIsLoggingOut(false)
     setShowLogoutModal(false)
-    navigate('/login')
+    navigate('/')
   }
 
   // Get navigation items for current user's role. The procurement department

@@ -59,7 +59,7 @@ export default function MyKys() {
           KYS Compliance — {profile?.companyName}
         </h1>
         <p className="text-gray-500 text-sm mt-1">
-          Upload your Know-Your-Supplier documents (FC-HQ-P-07 §6.2.3). Your account is
+          Upload your Know-Your-Supplier documents. Your account is
           activated once Procurement verifies the mandatory documents.
         </p>
 

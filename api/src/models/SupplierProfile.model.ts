@@ -104,6 +104,10 @@ export interface ISupplierProfile extends Document {
   kysChecklist: IKysChecklist;
   clientReferrals: IClientReferral[];
   kysComplete: boolean;
+  kysExempt: boolean;
+  kysExemptReason?: string;
+  kysExemptBy?: mongoose.Types.ObjectId | any;
+  kysExemptAt?: Date;
   lastEvaluationAt?: Date;
   nextEvaluationDue?: Date;
   status: 'pending' | 'active' | 'suspended' | 'blacklisted' | 'dormant';
@@ -238,6 +242,13 @@ const SupplierProfileSchema = new Schema<ISupplierProfile>({
   kysChecklist: { type: KysChecklistSchema, default: () => ({}) },
   clientReferrals: [ClientReferralSchema],
   kysComplete: { type: Boolean, default: false },
+  kysExempt: { type: Boolean, default: false },
+  kysExemptReason: String,
+  kysExemptBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  kysExemptAt: Date,
   lastEvaluationAt: Date,
   nextEvaluationDue: Date,
   status: {

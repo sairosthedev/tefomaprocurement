@@ -58,7 +58,7 @@ function toObjectUrl(filePath: string, type: string): string {
 }
 
 /**
- * Renders the §6.2.3 KYS document requirements (mandatory + optional) with
+ * Renders the KYS document requirements (mandatory + optional) with
  * per-item upload / view / remove. Used by both procurement (on behalf of a
  * supplier) and suppliers themselves.
  */

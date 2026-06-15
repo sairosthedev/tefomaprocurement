@@ -77,7 +77,7 @@ export const authorize =
 /**
  * Authorize procurement actions. Allows procurement officers and admins, plus
  * the head of the Procurement department (a department_head whose department is
- * Procurement) — see FC-HQ-P-07 §5.1.2. The procurement head therefore gains
+ * Procurement) — per procurement policy. The procurement head therefore gains
  * procurement_officer-level access, including quotation authorization.
  */
 export const authorizeProcurement: RequestHandler = (req, res, next) => {

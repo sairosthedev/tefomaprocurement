@@ -5,8 +5,7 @@ import { protect, authorizeProcurement } from '../middleware/index.js';
 const { procurement, department } = controllers;
 const router = express.Router();
 
-// Procurement officers, admins, and the head of the Procurement department
-// (FC-HQ-P-07 §5.1.2) may access these routes.
+// Procurement officers, admins, and the head of the Procurement department.
 router.use(protect);
 router.use(authorizeProcurement);
 

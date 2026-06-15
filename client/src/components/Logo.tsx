@@ -41,20 +41,23 @@ const Logo = ({
     // card for contrast. Full width with a subtle shadow looks more polished.
     return (
       <div className={`w-full ${className}`}>
-        <div className="bg-white rounded-xl px-4 py-3 shadow-sm flex items-center justify-center">
-          <img
-            src={logoImage}
-            alt="Tefoma Construction"
-            className="h-11 w-auto object-contain"
-            onError={(e: any) => {
-              e.target.style.display = 'none';
-              const fallback = e.target.nextSibling;
-              if (fallback) fallback.style.display = 'flex';
-            }}
-          />
-          <div style={{ display: 'none' }} className="items-center">
-            <span className="text-lg font-bold text-primary">TEFOMA</span>
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="px-4 py-3 flex items-center justify-center">
+            <img
+              src={logoImage}
+              alt="Tefoma Construction"
+              className="h-11 w-auto object-contain"
+              onError={(e: any) => {
+                e.target.style.display = 'none';
+                const fallback = e.target.nextSibling;
+                if (fallback) fallback.style.display = 'flex';
+              }}
+            />
+            <div style={{ display: 'none' }} className="items-center">
+              <span className="text-lg font-bold text-primary">TEFOMA</span>
+            </div>
           </div>
+          <div className="brand-accent-bar h-1 w-full" />
         </div>
         {showText && (
           <p className="text-[11px] font-medium uppercase tracking-wider text-gray-300 text-center mt-2">

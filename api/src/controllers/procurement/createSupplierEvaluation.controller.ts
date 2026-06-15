@@ -31,7 +31,7 @@ const createSupplierEvaluation = async (req: Request, res: Response): Promise<an
       entity: 'SupplierEvaluation',
       entityId: evaluation._id,
       user: req.user,
-      description: `Created supplier evaluation for ${supplier.companyName} (FC-HQ-P-07 §6.2.4)`,
+      description: `Created supplier evaluation for ${supplier.companyName}`,
       req
     });
 

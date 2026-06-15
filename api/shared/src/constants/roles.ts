@@ -35,7 +35,7 @@ export const USER_ROLE_OPTIONS: readonly RoleOption[] = Object.freeze([
  * Recognised identifiers for the Procurement department. A department_head
  * whose department matches one of these is treated as the head of procurement
  * (a.k.a. Procurement Manager) and is granted procurement capabilities,
- * including authorizing quotations for acceptance (FC-HQ-P-07 §5.1.2).
+ * including authorizing quotations for acceptance.
  */
 export const PROCUREMENT_DEPARTMENT_CODES: readonly string[] = Object.freeze([
   'PROC',

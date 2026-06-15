@@ -233,7 +233,7 @@ const getEmailContentForNotification = (notification: any): any => {
       subText: `You have been added as a supplier to the fossilProcure procurement system. ${notification.metadata?.companyName ? `Your company ${notification.metadata.companyName} has been registered.` : 'Your supplier account has been created.'}\n\nPlease sign in to complete your company profile setup. You will need to submit your company details, compliance documents, and banking information before you can receive RFQ invitations.`,
       subSubText: notification.metadata?.password ? `Your login credentials:\nEmail: ${notification.metadata.email}\nTemporary Password: ${notification.metadata.password}\n\nImportant: After signing in, please complete your company profile and submit all required documentation.` : null,
       actionButtonText: 'Sign In & Complete Profile',
-      actionButtonLink: `${baseUrl}/login`
+      actionButtonLink: `${baseUrl}/supplier/login`
     },
     supplier_approved: {
       subject: 'Supplier Account Approved - fossilProcure',
