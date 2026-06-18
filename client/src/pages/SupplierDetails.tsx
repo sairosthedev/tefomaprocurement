@@ -102,11 +102,12 @@ export default function SupplierDetails() {
   }, [checklist]);
 
   const checklistSections = useMemo(() => {
-    const grouped = KYS_CHECKLIST_ITEMS.reduce<Record<string, typeof KYS_CHECKLIST_ITEMS>>((acc, item) => {
+    type KysItem = (typeof KYS_CHECKLIST_ITEMS)[number];
+    const grouped = KYS_CHECKLIST_ITEMS.reduce<Record<string, KysItem[]>>((acc, item) => {
       acc[item.section] = acc[item.section] || [];
       acc[item.section].push(item);
       return acc;
-    }, {} as Record<string, typeof KYS_CHECKLIST_ITEMS>);
+    }, {});
 
     return Object.entries(grouped).map(([section, items]) => ({ section, items }));
   }, []);
