@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
 import Tabs from '../components/Tabs';
+import PageHeader from '../components/PageHeader';
 import { 
   Search, 
   Plus, 
@@ -54,20 +55,19 @@ export default function RFQs() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">RFQs (Enquiries)</h1>
-          <p className="text-gray-500 mt-1">Manage requests for quotations</p>
-        </div>
-        <button 
-          onClick={() => navigate('/app/rfqs/create')}
-          className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
-        >
-          <Plus className="h-5 w-5" />
-          Create RFQ
-        </button>
-      </div>
+      <PageHeader
+        title="RFQs (Enquiries)"
+        subtitle="Manage requests for quotations"
+        actions={
+          <button
+            onClick={() => navigate('/app/rfqs/create')}
+            className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+          >
+            <Plus className="h-5 w-5" />
+            Create RFQ
+          </button>
+        }
+      />
 
       {/* Filters */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">

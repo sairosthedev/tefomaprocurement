@@ -6,6 +6,7 @@ import {
   FileText, Download, Calendar, Loader2, PieChart
 } from 'lucide-react';
 import { formatCurrency } from '../lib/constants';
+import PageHeader from '../components/PageHeader';
 
 export default function Reports() {
   const { user } = useAuth();
@@ -86,29 +87,28 @@ export default function Reports() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
-          <p className="text-gray-500 mt-1">View detailed insights and statistics</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <select
-            value={dateRange}
-            onChange={(e: any) => setDateRange(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
-          >
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-            <option value="quarter">This Quarter</option>
-            <option value="year">This Year</option>
-          </select>
-          <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
-            <Download className="h-4 w-4" />
-            Export
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Reports & Analytics"
+        subtitle="View detailed insights and statistics"
+        actions={
+          <>
+            <select
+              value={dateRange}
+              onChange={(e: any) => setDateRange(e.target.value)}
+              className="px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            >
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+              <option value="quarter">This Quarter</option>
+              <option value="year">This Year</option>
+            </select>
+            <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+              <Download className="h-4 w-4" />
+              Export
+            </button>
+          </>
+        }
+      />
 
       {/* Report Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

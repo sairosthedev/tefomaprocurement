@@ -23,12 +23,18 @@ import AuditLogs from './pages/AuditLogs';
 
 // Procurement Pages
 import Suppliers from './pages/Suppliers';
+import SupplierDetails from './pages/SupplierDetails';
+import VerificationHub from './pages/VerificationHub';
 import SupplierKys from './pages/SupplierKys';
 import RFQs from './pages/RFQs';
 import RFQDetail from './pages/RFQDetail';
 import CreateRFQ from './pages/CreateRFQ';
 import Quotations from './pages/Quotations';
 import QuotationDetail from './pages/QuotationDetail';
+import Performance from './pages/suppliers/Performance';
+import Compliance from './pages/suppliers/Compliance';
+import Evaluations from './pages/suppliers/Evaluations';
+import SupplierReports from './pages/suppliers/Reports';
 import PurchaseOrders from './pages/PurchaseOrders';
 import PurchaseOrderDetail from './pages/PurchaseOrderDetail';
 
@@ -133,6 +139,36 @@ function App() {
             <Route path="/app/suppliers" element={
               <AppLayout allowedRoles={['admin', 'procurement_officer', 'coo']}>
                 <Suppliers />
+              </AppLayout>
+            } />
+            <Route path="/app/suppliers/:id" element={
+              <AppLayout allowedRoles={['admin', 'procurement_officer', 'coo']}>
+                <SupplierDetails />
+              </AppLayout>
+            } />
+            <Route path="/app/verification-hub" element={
+              <AppLayout allowedRoles={['admin', 'procurement_officer', 'coo']}>
+                <VerificationHub />
+              </AppLayout>
+            } />
+            <Route path="/app/suppliers/analytics/performance" element={
+              <AppLayout allowedRoles={['admin', 'procurement_officer', 'coo']}>
+                <Performance />
+              </AppLayout>
+            } />
+            <Route path="/app/suppliers/analytics/compliance" element={
+              <AppLayout allowedRoles={['admin', 'procurement_officer', 'coo']}>
+                <Compliance />
+              </AppLayout>
+            } />
+            <Route path="/app/suppliers/evaluations" element={
+              <AppLayout allowedRoles={['admin', 'procurement_officer', 'coo']}>
+                <Evaluations />
+              </AppLayout>
+            } />
+            <Route path="/app/suppliers/reports" element={
+              <AppLayout allowedRoles={['admin', 'procurement_officer', 'coo']}>
+                <SupplierReports />
               </AppLayout>
             } />
             <Route path="/app/suppliers/:id/kys" element={

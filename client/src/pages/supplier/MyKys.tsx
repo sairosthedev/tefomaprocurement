@@ -3,7 +3,8 @@ import { supplierAPI } from '../../lib/api';
 import { KYS_DOCUMENT_REQUIREMENTS } from '@fossil/shared';
 import { useToast } from '../../components/Toast';
 import KysDocuments from '../../components/KysDocuments';
-import { Loader2, ShieldCheck, AlertCircle, CheckCircle } from 'lucide-react';
+import PageHeader from '../../components/PageHeader';
+import { Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 
 export default function MyKys() {
   const { showToast } = useToast();
@@ -53,16 +54,12 @@ export default function MyKys() {
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
-      <div className="bg-white rounded-xl shadow p-6 mb-6">
-        <h1 className="text-xl font-bold flex items-center gap-2">
-          <ShieldCheck className="h-6 w-6 text-primary" />
-          KYS Compliance — {profile?.companyName}
-        </h1>
-        <p className="text-gray-500 text-sm mt-1">
-          Upload your Know-Your-Supplier documents. Your account is
-          activated once Procurement verifies the mandatory documents.
-        </p>
+      <PageHeader
+        title={`KYS Compliance — ${profile?.companyName}`}
+        subtitle="Upload your Know-Your-Supplier documents. Your account is activated once Procurement verifies the mandatory documents."
+      />
 
+      <div className="bg-white rounded-xl shadow p-6 mb-6">
         <div
           className={`mt-4 flex items-start gap-2 p-3 rounded-lg text-sm ${
             isActive ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'

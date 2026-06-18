@@ -6,6 +6,7 @@ import {
   Search, Package, AlertTriangle, TrendingDown, 
   TrendingUp, Loader2, Edit, Plus, Upload, Download, FileSpreadsheet, XCircle
 } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
 import ViewButton from '../components/ViewButton';
 import Modal from '../components/Modal';
 import { CategorySelect } from '../components/CategorySelect';
@@ -188,29 +189,28 @@ export default function Inventory() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Inventory Management</h1>
-          <p className="text-gray-500 mt-1">View and manage stock levels</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowImportModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 border border-primary text-primary rounded-xl font-medium hover:bg-primary/5 transition-colors"
-          >
-            <Upload className="h-5 w-5" />
-            Import Excel
-          </button>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors"
-          >
-            <Plus className="h-5 w-5" />
-            Add Item
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Inventory Management"
+        subtitle="View and manage stock levels"
+        actions={
+          <>
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="flex items-center gap-2 px-4 py-2.5 border border-primary text-primary rounded-xl font-medium hover:bg-primary/5 transition-colors"
+            >
+              <Upload className="h-5 w-5" />
+              Import Excel
+            </button>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors"
+            >
+              <Plus className="h-5 w-5" />
+              Add Item
+            </button>
+          </>
+        }
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">

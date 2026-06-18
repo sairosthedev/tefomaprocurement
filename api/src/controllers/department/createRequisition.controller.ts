@@ -6,6 +6,7 @@ import {
   checkItemAvailability,
   suggestAction
 } from '../../services/inventoryAvailability.service.js';
+import { hasEnteredLineItems } from '../../lib/lineItems.js';
 
 const createRequisition = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -22,11 +23,18 @@ const createRequisition = async (req: Request, res: Response): Promise<any> => {
       status
     } = req.body;
 
-    // Validate required fields
-    if (!title && !items?.length) {
+    if (!title?.trim()) {
       return res.status(400).json({
         success: false,
-        message: 'Title and at least one item are required'
+        message: 'Title is required'
+      });
+    }
+
+    const isSubmitting = status === 'pending';
+    if (isSubmitting && !hasEnteredLineItems(items)) {
+      return res.status(400).json({
+        success: false,
+        message: 'At least one item is required before submitting'
       });
     }
 

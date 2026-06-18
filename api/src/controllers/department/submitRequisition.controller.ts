@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { PurchaseRequisition } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole, notifyUsersByDepartment } from '../../services/notification.service.js';
+import { hasEnteredLineItems } from '../../lib/lineItems.js';
 
 const submitRequisition = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -31,6 +32,13 @@ const submitRequisition = async (req: Request, res: Response): Promise<any> => {
       return res.status(403).json({
         success: false,
         message: 'You can only submit your own requisitions'
+      });
+    }
+
+    if (!hasEnteredLineItems(requisition.items)) {
+      return res.status(400).json({
+        success: false,
+        message: 'At least one item is required before submitting'
       });
     }
 

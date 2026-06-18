@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import api, { departmentAPI } from '../lib/api';
 import Tabs from '../components/Tabs';
+import PageHeader from '../components/PageHeader';
 import { 
   Plus, Search, Filter, Edit, Trash2, Send, 
   Clock, CheckCircle, XCircle, Package, Loader2, AlertCircle,
@@ -92,7 +93,13 @@ export default function Requisitions() {
     }
   };
 
-  const handleSubmit = async (id: any) => {
+  const handleSubmit = async (id: any, requisition?: any) => {
+    const enteredItems = (requisition?.items || []).filter((item: any) => item.description?.trim());
+    if (enteredItems.length === 0) {
+      showToast('At least one item is required before submitting', 'error');
+      return;
+    }
+
     try {
       setSubmittingId(id);
       await api.put(`/department/requisitions/${id}/submit`);
@@ -218,28 +225,25 @@ export default function Requisitions() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            {isProcurement ? 'Purchase Requisitions' : 'My Requisitions'}
-          </h1>
-          <p className="text-gray-500 mt-1">
-            {isProcurement 
-              ? 'Accept or reject requisitions from departments' 
-              : 'Track your purchase requests'}
-          </p>
-        </div>
-        {!isProcurement && (
-          <button
-            onClick={() => navigate('/app/requisitions/create')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors"
-          >
-            <Plus className="h-5 w-5" />
-            New Requisition
-          </button>
-        )}
-      </div>
+      <PageHeader
+        title={isProcurement ? 'Purchase Requisitions' : 'My Requisitions'}
+        subtitle={
+          isProcurement
+            ? 'Accept or reject requisitions from departments'
+            : 'Track your purchase requests'
+        }
+        actions={
+          !isProcurement ? (
+            <button
+              onClick={() => navigate('/app/requisitions/create')}
+              className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors"
+            >
+              <Plus className="h-5 w-5" />
+              New Requisition
+            </button>
+          ) : undefined
+        }
+      />
 
       {/* Filters */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
@@ -485,10 +489,17 @@ export default function Requisitions() {
                               <Edit className="h-4 w-4" />
                             </button>
                             <button
-                              onClick={() => handleSubmit(req._id)}
-                              disabled={submittingId === req._id}
+                              onClick={() => handleSubmit(req._id, req)}
+                              disabled={
+                                submittingId === req._id ||
+                                (req.items || []).filter((item: any) => item.description?.trim()).length === 0
+                              }
                               className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                              title="Submit for Acceptance"
+                              title={
+                                (req.items || []).filter((item: any) => item.description?.trim()).length === 0
+                                  ? 'Add at least one item before submitting'
+                                  : 'Submit for Acceptance'
+                              }
                             >
                               {submittingId === req._id ? (
                                 <>

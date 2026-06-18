@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '../../components/Toast';
 import api from '../../lib/api';
-import { ArrowLeft, Send, Loader2, FileText, AlertTriangle } from 'lucide-react';
+import { Send, Loader2, FileText, AlertTriangle } from 'lucide-react';
+import PageHeader from '../../components/PageHeader';
 import { CURRENCIES, formatCurrency } from '../../lib/constants';
 
 export default function SubmitQuotation() {
@@ -120,20 +121,12 @@ export default function SubmitQuotation() {
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <button
-          onClick={() => navigate('/app/my-rfqs')}
-          className="flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-4"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to RFQs
-        </button>
-        <h1 className="text-2xl font-bold text-gray-900">Submit Quotation</h1>
-        <p className="text-gray-500 mt-1">
-          For RFQ: <span className="font-mono text-primary">{rfq?.rfqNumber || `RFQ-${rfqId?.slice(-6).toUpperCase()}`}</span>
-        </p>
-      </div>
+      <PageHeader
+        backTo="/app/my-rfqs"
+        backLabel="Back to RFQs"
+        title="Submit Quotation"
+        subtitle={`For RFQ: ${rfq?.rfqNumber || `RFQ-${rfqId?.slice(-6).toUpperCase()}`}`}
+      />
 
       {/* Warning */}
       <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6">

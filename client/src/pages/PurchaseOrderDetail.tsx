@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { procurementAPI, financeAPI, cooAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency } from '../lib/constants';
+import PageHeader from '../components/PageHeader';
 import { 
-  ArrowLeft, 
   ShoppingCart, 
   Calendar, 
   Building2,
@@ -34,7 +34,6 @@ const statusColors: any = {
 
 export default function PurchaseOrderDetail() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const { showToast } = useToast();
   const { user } = useAuth();
   const [loading, setLoading] = useState<any>(true);
@@ -103,64 +102,33 @@ export default function PurchaseOrderDetail() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
-      {/* Header with Back Button */}
-      <div className="flex items-center gap-4 mb-6">
-        <button
-          onClick={() => navigate('/app/purchase-orders')}
-          className="flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Purchase Orders
-        </button>
-      </div>
-
-      {/* Hero Section with Green Background and SVG */}
-      <div className="bg-gradient-to-br from-green-50 via-green-100/50 to-green-50 rounded-2xl p-8 border border-green-200 relative overflow-hidden mb-6">
-        {/* Decorative SVG/Pattern */}
-        <div className="absolute top-0 right-0 w-64 h-64 opacity-10">
-          <svg viewBox="0 0 200 200" className="w-full h-full text-green-600">
-            <path d="M40,120 Q100,80 160,120 T280,120" stroke="currentColor" strokeWidth="2" fill="none" />
-            <path d="M40,140 Q100,100 160,140 T280,140" stroke="currentColor" strokeWidth="2" fill="none" />
-            <circle cx="100" cy="130" r="20" fill="currentColor" opacity="0.2" />
-            <circle cx="150" cy="110" r="15" fill="currentColor" opacity="0.15" />
-          </svg>
-        </div>
-        
-        <div className="relative z-10">
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-3 bg-white/80 rounded-xl shadow-sm">
-                  <ShoppingCart className="h-8 w-8 text-green-600" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900">Purchase Order</h1>
-                  <p className="text-sm text-gray-600 mt-1 font-mono">#{po.poNumber}</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[po.status]}`}>
-                {po.status?.replace(/_/g, ' ').replace(/\b\w/g, (l: any) => l.toUpperCase())}
-              </span>
-              {isProcurement && po.status === 'draft' && (
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitting}
-                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2 disabled:opacity-50"
-                >
-                  {submitting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <FileText className="h-4 w-4" />
-                  )}
-                  Submit for Approval
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        backTo="/app/purchase-orders"
+        backLabel="Back to Purchase Orders"
+        title="Purchase Order"
+        subtitle={`#${po.poNumber}`}
+        actions={
+          <>
+            <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[po.status]}`}>
+              {po.status?.replace(/_/g, ' ').replace(/\b\w/g, (l: any) => l.toUpperCase())}
+            </span>
+            {isProcurement && po.status === 'draft' && (
+              <button
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {submitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FileText className="h-4 w-4" />
+                )}
+                Submit for Approval
+              </button>
+            )}
+          </>
+        }
+      />
 
       {/* Details */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">

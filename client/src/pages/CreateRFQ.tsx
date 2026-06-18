@@ -3,8 +3,9 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 import api, { procurementAPI } from '../lib/api';
 import { getCategoryName } from '../lib/constants';
+import PageHeader from '../components/PageHeader';
 import { 
-  ArrowLeft, Package, Calendar, Users, Send, 
+  Package, Calendar, Users, Send, 
   Loader2, Plus, X, Search, CheckCircle, AlertCircle,
   Lock, FileText, Sparkles
 } from 'lucide-react';
@@ -85,6 +86,11 @@ export default function CreateRFQ() {
     return Array.from(new Set(codes));
   }, [requisition]);
 
+  const enteredItemCount = useMemo(
+    () => (requisition?.items || []).filter((item: any) => item.description?.trim()).length,
+    [requisition]
+  );
+
   const supplierMatchedCategories = (supplier: any): string[] => {
     const cats: string[] = supplier?.categories || [];
     return cats.filter((c) => reqCategoryCodes.includes(c));
@@ -141,6 +147,11 @@ export default function CreateRFQ() {
         showToast('Please set a submission deadline', 'error');
         return;
       }
+      const rfqItems = (requisition?.items || []).filter((item: any) => item.description?.trim());
+      if (rfqItems.length === 0) {
+        showToast('RFQ must have at least one item before it can be sent to suppliers', 'error');
+        return;
+      }
     }
 
     try {
@@ -192,23 +203,15 @@ export default function CreateRFQ() {
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <button
-          onClick={() => navigate(-1)}
-          className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-        >
-          <ArrowLeft className="h-5 w-5 text-gray-600" />
-        </button>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Create RFQ</h1>
-          <p className="text-gray-500 mt-1">
-            {requisition 
-              ? `Creating RFQ from requisition ${requisition.requisitionNumber}`
-              : 'Request for Quotation'}
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        onBack={() => navigate(-1)}
+        title="Create RFQ"
+        subtitle={
+          requisition
+            ? `Creating RFQ from requisition ${requisition.requisitionNumber}`
+            : 'Request for Quotation'
+        }
+      />
 
       <form onSubmit={(e: any) => handleSubmit(e, false)}>
         <div className="space-y-6">
@@ -512,8 +515,9 @@ export default function CreateRFQ() {
               </button>
               <button
                 type="submit"
-                disabled={submitting || selectedSuppliers.length === 0}
+                disabled={submitting || selectedSuppliers.length === 0 || enteredItemCount === 0}
                 className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-medium rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50"
+                title={enteredItemCount === 0 ? 'Add at least one item before publishing' : undefined}
               >
                 {submitting ? (
                   <Loader2 className="h-5 w-5 animate-spin" />

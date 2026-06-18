@@ -6,6 +6,7 @@ import {
   Loader2, Calendar, Filter
 } from 'lucide-react';
 import { formatCurrency } from '../lib/constants';
+import PageHeader from '../components/PageHeader';
 
 const movementTypes: any = {
   'stock-in': { label: 'Stock In', color: 'text-green-600 bg-green-100', icon: ArrowDownLeft },
@@ -46,11 +47,10 @@ export default function StockMovements() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Stock Movements</h1>
-        <p className="text-gray-500 mt-1">Complete history of all stock transactions</p>
-      </div>
+      <PageHeader
+        title="Stock Movements"
+        subtitle="Complete history of all stock transactions"
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">

@@ -15,8 +15,7 @@ import {
   Truck,
   Send
 } from 'lucide-react';
-
-// Map notification types to icons and colors
+import PageHeader from '../components/PageHeader';
 const getNotificationIcon = (type: any) => {
   const icons: any = {
     login_successful: CheckCircle,
@@ -163,27 +162,26 @@ export default function Notifications() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
-          <p className="text-gray-500 mt-1">Stay updated with system activities</p>
-        </div>
-        {notifications.filter((n: any) => !n.read).length > 0 && (
-          <button 
-            onClick={handleMarkAllAsRead}
-            disabled={markingAll}
-            className="flex items-center gap-2 text-sm font-medium text-primary hover:text-primary-dark transition-colors disabled:opacity-50"
-          >
-            {markingAll ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Check className="h-4 w-4" />
-            )}
-            Mark all as read
-          </button>
-        )}
-      </div>
+      <PageHeader
+        title="Notifications"
+        subtitle="Stay updated with system activities"
+        actions={
+          notifications.filter((n: any) => !n.read).length > 0 ? (
+            <button
+              onClick={handleMarkAllAsRead}
+              disabled={markingAll}
+              className="flex items-center gap-2 text-sm font-medium text-primary hover:text-primary-dark transition-colors disabled:opacity-50"
+            >
+              {markingAll ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4" />
+              )}
+              Mark all as read
+            </button>
+          ) : undefined
+        }
+      />
 
       {/* Notifications List */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">

@@ -5,6 +5,7 @@ import { useToast } from '../components/Toast';
 import Modal, { ConfirmModal } from '../components/Modal';
 import { formatCurrency } from '../lib/constants';
 import Tabs from '../components/Tabs';
+import PageHeader from '../components/PageHeader';
 import { 
   Search, 
   FileText,
@@ -209,11 +210,10 @@ export default function Quotations() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Quotations</h1>
-        <p className="text-gray-500 mt-1">View and evaluate supplier quotations</p>
-      </div>
+      <PageHeader
+        title="Quotations"
+        subtitle="View and evaluate supplier quotations"
+      />
 
       {/* Filters */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">

@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { supplierAPI } from '../../lib/api';
 import { formatCurrency } from '../../lib/constants';
 import { useToast } from '../../components/Toast';
-import { ArrowLeft, Loader2, Send } from 'lucide-react';
+import PageHeader from '../../components/PageHeader';
+import { Loader2, Send } from 'lucide-react';
 
 export default function SubmitInvoice() {
   const navigate = useNavigate();
@@ -75,11 +76,11 @@ export default function SubmitInvoice() {
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
-      <button onClick={() => navigate('/app/my-invoices')} className="flex items-center gap-2 text-gray-600 mb-4">
-        <ArrowLeft className="h-4 w-4" /> Back
-      </button>
-
-      <h1 className="text-2xl font-bold mb-6">Submit invoice</h1>
+      <PageHeader
+        backTo="/app/my-invoices"
+        backLabel="Back"
+        title="Submit invoice"
+      />
 
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>

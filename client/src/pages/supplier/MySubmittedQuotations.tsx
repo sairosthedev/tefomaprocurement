@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import ViewButton from '../../components/ViewButton';
 import Modal from '../../components/Modal';
+import PageHeader from '../../components/PageHeader';
 import { formatCurrency } from '../../lib/constants';
 
 const statusColors: any = {
@@ -84,11 +85,10 @@ export default function MySubmittedQuotations() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">My Submitted Quotations</h1>
-        <p className="text-gray-500 mt-1">View and track all your submitted quotations</p>
-      </div>
+      <PageHeader
+        title="My Submitted Quotations"
+        subtitle="View and track all your submitted quotations"
+      />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">

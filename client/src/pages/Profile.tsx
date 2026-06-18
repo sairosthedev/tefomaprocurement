@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import api from '../lib/api';
 import { User, Mail, Phone, Building2, Shield, Save, Loader2, Key, Eye, EyeOff } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
 
 export default function Profile() {
   const { user, updateUser } = useAuth();
@@ -92,11 +93,7 @@ export default function Profile() {
 
   return (
     <div className="p-8 max-w-3xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">My Profile</h1>
-        <p className="text-gray-500 mt-1">Manage your account settings</p>
-      </div>
+      <PageHeader title="My Profile" subtitle="Manage your account settings" />
 
       {/* Profile Card */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">

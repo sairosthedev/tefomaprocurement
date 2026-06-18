@@ -1,12 +1,42 @@
 import express from 'express';
+import type { RequestHandler } from 'express';
+import { isProcurementHead } from '@fossil/shared';
 import controllers from '../controllers/index.js';
 import { protect, authorizeProcurement } from '../middleware/index.js';
 
 const { procurement, department } = controllers;
 const router = express.Router();
 
-// Procurement officers, admins, and the head of the Procurement department.
+const canReadEvaluations: RequestHandler = (req, res, next) => {
+  const role = req.user?.role;
+  if (role === 'admin' || role === 'coo' || role === 'procurement_officer' || isProcurementHead(req.user)) {
+    return next();
+  }
+  return res.status(403).json({
+    success: false,
+    message: `Role '${role}' is not authorized to access evaluations`
+  });
+};
+
+const canSecApproveEvaluation: RequestHandler = (req, res, next) => {
+  const role = req.user?.role;
+  if (role === 'admin' || role === 'coo') {
+    return next();
+  }
+  return res.status(403).json({
+    success: false,
+    message: `Role '${role}' is not authorized to approve evaluations`
+  });
+};
+
 router.use(protect);
+
+// Evaluations — COO can read due list, all evaluations, and SEC-approve.
+router.get('/evaluations/due', canReadEvaluations, procurement.getEvaluationsDue);
+router.get('/evaluations', canReadEvaluations, procurement.getEvaluations);
+router.put('/evaluations/:id/sec-approve', canSecApproveEvaluation, procurement.secApproveEvaluation);
+
+// Procurement officers, admins, and the head of the Procurement department.
 router.use(authorizeProcurement);
 
 // Suppliers
@@ -23,8 +53,6 @@ router.post('/suppliers/:id/documents', procurement.uploadSupplierDocument);
 router.delete('/suppliers/:id/documents/:docId', procurement.deleteSupplierDocument);
 router.get('/suppliers/:id/evaluations', procurement.getSupplierEvaluations);
 router.post('/suppliers/:id/evaluations', procurement.createSupplierEvaluation);
-router.get('/evaluations/due', procurement.getEvaluationsDue);
-router.put('/evaluations/:id/sec-approve', procurement.secApproveEvaluation);
 
 // Requisitions (Procurement accepts these - not approves)
 router.get('/requisitions', procurement.getPendingRequisitions);

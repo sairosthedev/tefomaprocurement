@@ -2,18 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
+import PageHeader from '../components/PageHeader';
 import { 
-  ArrowLeft, 
-  FileText, 
   Calendar, 
   Users, 
   Send,
   Loader2,
-  Clock,
   CheckCircle,
-  XCircle,
-  Package,
-  DollarSign
+  XCircle
 } from 'lucide-react';
 
 const statusColors: any = {
@@ -53,6 +49,12 @@ export default function RFQDetail() {
   };
 
   const handlePublish = async () => {
+    const enteredItems = (rfq?.items || []).filter((item: any) => item.description?.trim());
+    if (enteredItems.length === 0) {
+      showToast('RFQ must have at least one item before it can be sent to suppliers', 'error');
+      return;
+    }
+
     try {
       await procurementAPI.publishRFQ(id);
       showToast('RFQ published successfully', 'success');
@@ -104,91 +106,44 @@ export default function RFQDetail() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
-      {/* Header with Back Button */}
-      <div className="flex items-center gap-4 mb-6">
-        <button
-          onClick={() => navigate('/app/rfqs')}
-          className="flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to RFQs
-        </button>
-      </div>
-
-      {/* Hero Section with Green Background and SVG */}
-      <div className="bg-gradient-to-br from-green-50 via-green-100/50 to-green-50 rounded-2xl p-8 border border-green-200 relative overflow-hidden mb-6">
-        {/* Decorative SVG/Pattern */}
-        <div className="absolute top-0 right-0 w-80 h-80 opacity-10">
-          <svg viewBox="0 0 300 300" className="w-full h-full text-green-600">
-            <circle cx="150" cy="150" r="80" fill="currentColor" opacity="0.1" />
-            <circle cx="100" cy="100" r="40" fill="currentColor" opacity="0.15" />
-            <circle cx="200" cy="200" r="50" fill="currentColor" opacity="0.1" />
-            <path d="M50,150 Q150,50 250,150 T450,150" stroke="currentColor" strokeWidth="3" fill="none" opacity="0.2" />
-            <path d="M50,200 Q150,100 250,200 T450,200" stroke="currentColor" strokeWidth="2" fill="none" opacity="0.15" />
-          </svg>
-        </div>
-        
-        <div className="relative z-10">
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <div className="p-4 bg-white/90 rounded-2xl shadow-sm">
-                <FileText className="h-10 w-10 text-green-600" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-1">{rfq.title}</h1>
-                <p className="text-sm text-gray-600 font-mono">#{rfq.rfqNumber}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[rfq.status]}`}>
-                {rfq.status?.charAt(0).toUpperCase() + rfq.status?.slice(1)}
-              </span>
-              {rfq.status === 'draft' && (
-                <button
-                  onClick={handlePublish}
-                  className="px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors flex items-center gap-2"
-                >
-                  <Send className="h-4 w-4" />
-                  Publish RFQ
-                </button>
-              )}
-              {rfq.status === 'open' && (
-                <button
-                  onClick={handleClose}
-                  disabled={closing}
-                  className="px-4 py-2.5 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 transition-colors flex items-center gap-2 disabled:opacity-50"
-                >
-                  {closing ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
-                  Close RFQ & Reveal Bids
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white/90 rounded-xl p-4 backdrop-blur-sm">
-              <p className="text-xs text-gray-600 mb-1">Items</p>
-              <p className="text-2xl font-bold text-gray-900">{rfq.items?.length || 0}</p>
-            </div>
-            <div className="bg-white/90 rounded-xl p-4 backdrop-blur-sm">
-              <p className="text-xs text-gray-600 mb-1">Suppliers</p>
-              <p className="text-2xl font-bold text-gray-900">{rfq.invitedSuppliers?.length || 0}</p>
-            </div>
-            <div className="bg-white/90 rounded-xl p-4 backdrop-blur-sm">
-              <p className="text-xs text-gray-600 mb-1">Status</p>
-              <p className="text-sm font-semibold text-gray-900 capitalize">{rfq.status}</p>
-            </div>
-            <div className="bg-white/90 rounded-xl p-4 backdrop-blur-sm">
-              <p className="text-xs text-gray-600 mb-1">Deadline</p>
-              <p className="text-sm font-semibold text-gray-900 flex items-center gap-1">
-                <Calendar className="h-4 w-4" />
-                {new Date(rfq.submissionDeadline).toLocaleDateString('en-ZA')}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        backTo="/app/rfqs"
+        backLabel="Back to RFQs"
+        title={rfq.title}
+        subtitle={`#${rfq.rfqNumber}`}
+        actions={
+          <>
+            <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[rfq.status]}`}>
+              {rfq.status?.charAt(0).toUpperCase() + rfq.status?.slice(1)}
+            </span>
+            {rfq.status === 'draft' && (
+              <button
+                onClick={handlePublish}
+                disabled={(rfq.items || []).filter((item: any) => item.description?.trim()).length === 0}
+                className="px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors flex items-center gap-2 disabled:opacity-50"
+                title={
+                  (rfq.items || []).filter((item: any) => item.description?.trim()).length === 0
+                    ? 'Add at least one item before publishing'
+                    : undefined
+                }
+              >
+                <Send className="h-4 w-4" />
+                Publish RFQ
+              </button>
+            )}
+            {rfq.status === 'open' && (
+              <button
+                onClick={handleClose}
+                disabled={closing}
+                className="px-4 py-2.5 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {closing ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                Close RFQ & Reveal Bids
+              </button>
+            )}
+          </>
+        }
+      />
 
       {/* Details */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">

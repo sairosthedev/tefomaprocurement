@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { supplierAPI } from '../../lib/api';
 import { formatCurrency } from '../../lib/constants';
 import { useToast } from '../../components/Toast';
-import { FileText, Loader2, Plus } from 'lucide-react';
+import PageHeader from '../../components/PageHeader';
+import { Loader2, Plus } from 'lucide-react';
 
 export default function MyInvoices() {
   const navigate = useNavigate();
@@ -29,18 +30,17 @@ export default function MyInvoices() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <FileText className="h-7 w-7 text-primary" />
-          My Invoices
-        </h1>
-        <button
-          onClick={() => navigate('/app/submit-invoice')}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
-        >
-          <Plus className="h-4 w-4" /> Submit invoice
-        </button>
-      </div>
+      <PageHeader
+        title="My Invoices"
+        actions={
+          <button
+            onClick={() => navigate('/app/submit-invoice')}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+          >
+            <Plus className="h-4 w-4" /> Submit invoice
+          </button>
+        }
+      />
 
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>

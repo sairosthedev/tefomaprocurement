@@ -6,6 +6,7 @@ import {
   Save, Loader2, Upload, CheckCircle, AlertCircle, Shield
 } from 'lucide-react';
 import { PROVINCES, BANKS, SUPPLIER_CATEGORIES } from '../../lib/constants';
+import PageHeader from '../../components/PageHeader';
 
 export default function SupplierProfile() {
   const { showToast } = useToast();
@@ -115,14 +116,11 @@ export default function SupplierProfile() {
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Company Profile</h1>
-          <p className="text-gray-500 mt-1">Manage your supplier information</p>
-        </div>
-        {getStatusBadge()}
-      </div>
+      <PageHeader
+        title="Company Profile"
+        subtitle="Manage your supplier information"
+        actions={getStatusBadge()}
+      />
 
       <div className="space-y-6">
         {/* Company Information */}

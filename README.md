@@ -103,6 +103,10 @@ npm run dev
 npm run seed
 ```
 
+### Tester guide
+
+If you are onboarding people to test the system, start with [TESTING_GUIDE.md](TESTING_GUIDE.md).
+
 ## Available scripts (root)
 
 | Command                | What it does                                              |

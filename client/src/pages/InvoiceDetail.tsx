@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { financeAPI } from '../lib/api';
 import { formatCurrency } from '../lib/constants';
 import { useToast } from '../components/Toast';
-import { ArrowLeft, Loader2, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
+import { Loader2, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 
 export default function InvoiceDetail() {
   const { id } = useParams();
@@ -95,20 +96,15 @@ export default function InvoiceDetail() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
-      <button onClick={() => navigate('/app/invoices')} className="flex items-center gap-2 text-gray-600 mb-4 hover:text-gray-900">
-        <ArrowLeft className="h-4 w-4" /> Back to invoices
-      </button>
-
-      <div className="bg-white rounded-xl shadow p-6 mb-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-2xl font-bold">{invoice.invoiceNumber}</h1>
-            <p className="text-gray-500">PO: {invoice.purchaseOrder?.poNumber}</p>
-            <p className="text-gray-500">{invoice.supplier?.companyName}</p>
-          </div>
+      <PageHeader
+        backTo="/app/invoices"
+        backLabel="Back to invoices"
+        title={invoice.invoiceNumber}
+        subtitle={`PO: ${invoice.purchaseOrder?.poNumber} · ${invoice.supplier?.companyName}`}
+        actions={
           <span className="text-2xl font-bold text-primary">{formatCurrency(invoice.totalAmount)}</span>
-        </div>
-      </div>
+        }
+      />
 
       {match && (
         <div className={`rounded-xl p-6 mb-6 ${match.matched ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>

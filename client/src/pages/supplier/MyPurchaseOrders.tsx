@@ -5,6 +5,7 @@ import api from '../../lib/api';
 import { ShoppingCart, Loader2, CheckCircle, Truck, Download } from 'lucide-react';
 import ViewButton from '../../components/ViewButton';
 import Modal from '../../components/Modal';
+import PageHeader from '../../components/PageHeader';
 import { formatCurrency } from '../../lib/constants';
 
 const statusColors: any = {
@@ -89,11 +90,10 @@ export default function MyPurchaseOrders() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">My Purchase Orders</h1>
-        <p className="text-gray-500 mt-1">View and manage received purchase orders</p>
-      </div>
+      <PageHeader
+        title="My Purchase Orders"
+        subtitle="View and manage received purchase orders"
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">

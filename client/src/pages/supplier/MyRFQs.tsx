@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import ViewButton from '../../components/ViewButton';
 import Modal from '../../components/Modal';
+import PageHeader from '../../components/PageHeader';
 
 const statusColors: any = {
   open: 'bg-green-100 text-green-700',
@@ -153,11 +154,10 @@ export default function MyRFQs() {
   return (
     <div className="p-8">
       <Confetti show={showConfetti} />
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">My RFQs</h1>
-        <p className="text-gray-500 mt-1">View and respond to Request for Quotations</p>
-      </div>
+      <PageHeader
+        title="My RFQs"
+        subtitle="View and respond to Request for Quotations"
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">

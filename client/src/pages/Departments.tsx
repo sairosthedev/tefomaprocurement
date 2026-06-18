@@ -3,6 +3,7 @@ import { useToast } from '../components/Toast';
 import api, { adminAPI } from '../lib/api';
 import { Building2, Plus, Edit, Trash2, Users, Loader2 } from 'lucide-react';
 import Modal from '../components/Modal';
+import PageHeader from '../components/PageHeader';
 
 export default function Departments() {
   const { showToast } = useToast();
@@ -100,20 +101,19 @@ export default function Departments() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Departments</h1>
-          <p className="text-gray-500 mt-1">Manage organization departments</p>
-        </div>
-        <button
-          onClick={() => { setEditingDepartment(null); setFormData({ name: '', code: '', description: '', head: '' }); setShowModal(true); }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors"
-        >
-          <Plus className="h-5 w-5" />
-          Add Department
-        </button>
-      </div>
+      <PageHeader
+        title="Departments"
+        subtitle="Manage organization departments"
+        actions={
+          <button
+            onClick={() => { setEditingDepartment(null); setFormData({ name: '', code: '', description: '', head: '' }); setShowModal(true); }}
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors"
+          >
+            <Plus className="h-5 w-5" />
+            Add Department
+          </button>
+        }
+      />
 
       {/* Departments Grid */}
       {loading ? (

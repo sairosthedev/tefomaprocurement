@@ -5,8 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { formatCurrency } from '../lib/constants';
 import { isProcurementHead } from '@fossil/shared';
+import PageHeader from '../components/PageHeader';
 import { 
-  ArrowLeft, 
   FileText, 
   Calendar, 
   Building2,
@@ -232,16 +232,13 @@ export default function QuotationDetail() {
   if (sealedInfo) {
     return (
       <div className="p-8 max-w-2xl mx-auto">
-        <button
-          onClick={() => navigate('/app/quotations')}
-          className="flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors mb-6"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Quotations
-        </button>
+        <PageHeader
+          backTo="/app/quotations"
+          backLabel="Back to Quotations"
+          title="Bid is sealed"
+        />
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-8 text-center">
           <Clock className="h-12 w-12 text-amber-500 mx-auto mb-4" />
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Bid is sealed</h1>
           <p className="text-sm text-amber-800 mb-2">
             {sealedInfo.message}
           </p>
@@ -290,92 +287,61 @@ export default function QuotationDetail() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
-      {/* Header with Back Button */}
-      <div className="flex items-center gap-4 mb-6">
-        <button
-          onClick={() => navigate('/app/quotations')}
-          className="flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Quotations
-        </button>
-      </div>
-
-      {/* Hero Section with Green Background and SVG */}
-      <div className="bg-gradient-to-br from-green-50 via-green-100/50 to-green-50 rounded-2xl p-8 border border-green-200 relative overflow-hidden mb-6">
-        {/* Decorative SVG/Pattern */}
-        <div className="absolute top-0 right-0 w-64 h-64 opacity-10">
-          <svg viewBox="0 0 200 200" className="w-full h-full text-green-600">
-            <path d="M40,120 Q100,80 160,120 T280,120" stroke="currentColor" strokeWidth="2" fill="none" />
-            <path d="M40,140 Q100,100 160,140 T280,140" stroke="currentColor" strokeWidth="2" fill="none" />
-            <circle cx="100" cy="130" r="20" fill="currentColor" opacity="0.2" />
-            <circle cx="150" cy="110" r="15" fill="currentColor" opacity="0.15" />
-          </svg>
-        </div>
-        
-        <div className="relative z-10">
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-3 bg-white/80 rounded-xl shadow-sm">
-                  <FileText className="h-8 w-8 text-green-600" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900">Quotation</h1>
-                  <p className="text-sm text-gray-600 mt-1 font-mono">#{quotation.quotationNumber}</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[quotation.status]}`}>
-                {quotation.status?.replace(/_/g, ' ').replace(/\b\w/g, (l: any) => l.toUpperCase())}
-              </span>
-          {(quotation.status === 'submitted' || quotation.status === 'under_review') && (
-            <>
+      <PageHeader
+        backTo="/app/quotations"
+        backLabel="Back to Quotations"
+        title="Quotation"
+        subtitle={`#${quotation.quotationNumber}`}
+        actions={
+          <>
+            <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[quotation.status]}`}>
+              {quotation.status?.replace(/_/g, ' ').replace(/\b\w/g, (l: any) => l.toUpperCase())}
+            </span>
+            {(quotation.status === 'submitted' || quotation.status === 'under_review') && (
+              <>
+                <button
+                  onClick={() => setShowAcceptModal(true)}
+                  disabled={!quotation.compliance?.fullyAuthorized}
+                  title={
+                    quotation.compliance?.fullyAuthorized
+                      ? 'Accept this quotation'
+                      : 'Complete HOD selection and Procurement Manager authorization first'
+                  }
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-4 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  Accept
+                </button>
+                <button
+                  onClick={() => setShowRejectModal(true)}
+                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+                >
+                  <XCircle className="h-4 w-4" />
+                  Reject
+                </button>
+              </>
+            )}
+            {quotation.status === 'accepted' && !quotation.existingPurchaseOrder && (
               <button
-                onClick={() => setShowAcceptModal(true)}
-                disabled={!quotation.compliance?.fullyAuthorized}
-                title={
-                  quotation.compliance?.fullyAuthorized
-                    ? 'Accept this quotation'
-                    : 'Complete HOD selection and Procurement Manager authorization first'
-                }
-                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-4 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => setShowCreatePOModal(true)}
+                className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
               >
-                <CheckCircle className="h-4 w-4" />
-                Accept
+                <ShoppingCart className="h-4 w-4" />
+                Create Purchase Order
               </button>
-              <button
-                onClick={() => setShowRejectModal(true)}
-                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+            )}
+            {quotation.existingPurchaseOrder && (
+              <a
+                href={`/app/purchase-orders/${quotation.existingPurchaseOrder._id}`}
+                className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
               >
-                <XCircle className="h-4 w-4" />
-                Reject
-              </button>
-            </>
-          )}
-          {quotation.status === 'accepted' && !quotation.existingPurchaseOrder && (
-            <button
-              onClick={() => setShowCreatePOModal(true)}
-              className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
-            >
-              <ShoppingCart className="h-4 w-4" />
-              Create Purchase Order
-            </button>
-          )}
-          {quotation.existingPurchaseOrder && (
-            <a
-              href={`/app/purchase-orders/${quotation.existingPurchaseOrder._id}`}
-              className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
-            >
-              <ShoppingCart className="h-4 w-4" />
-              View Purchase Order
-            </a>
-          )}
-            </div>
-          </div>
-        </div>
-      </div>
+                <ShoppingCart className="h-4 w-4" />
+                View Purchase Order
+              </a>
+            )}
+          </>
+        }
+      />
 
       {/* Acceptance compliance workflow */}
       {quotation.compliance && quotation.status !== 'accepted' && quotation.status !== 'rejected' && (

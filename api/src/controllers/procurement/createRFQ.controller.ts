@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import { RFQ, PurchaseRequisition, SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { resolveSiteId } from '../../lib/siteScope.js';
+import { hasEnteredLineItems } from '../../lib/lineItems.js';
 
 const createRFQ = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -67,6 +68,13 @@ const createRFQ = async (req: Request, res: Response): Promise<any> => {
     // Auto-publish: if 'open' status is requested, automatically publish the RFQ
     // (Suppliers are already validated above, so we can safely publish)
     const rfqStatus = requestedStatus === 'open' ? 'open' : 'draft';
+
+    if (rfqStatus === 'open' && !hasEnteredLineItems(items)) {
+      return res.status(400).json({
+        success: false,
+        message: 'RFQ must have at least one item before it can be sent to suppliers'
+      });
+    }
     
     const rfqData: any = {
       rfqNumber,

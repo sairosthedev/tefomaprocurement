@@ -29,6 +29,7 @@ export const procurementAPI: any = {
   createSupplierEvaluation: (id: any, data: any) => http.post(`/procurement/suppliers/${id}/evaluations`, data),
   secApproveEvaluation: (id: any, data: any) => http.put(`/procurement/evaluations/${id}/sec-approve`, data),
   getEvaluationsDue: () => http.get('/procurement/evaluations/due'),
+  getEvaluations: (params?: any) => http.get('/procurement/evaluations', { params }),
   authorizeQuotation: (rfqId: any, data?: any) => http.put(`/procurement/rfqs/${rfqId}/authorize-quotation`, data),
   approveQuotationWaiver: (rfqId: any, data: any) => http.put(`/procurement/rfqs/${rfqId}/quotation-waiver`, data)
 };

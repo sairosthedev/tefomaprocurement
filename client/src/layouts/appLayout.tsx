@@ -29,6 +29,7 @@ import {
   Settings,
   ShieldCheck
 } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { isProcurementHead } from '@fossil/shared'
 
@@ -38,7 +39,16 @@ const roleNavigation: any = {
     { name: "Dashboard", href: "/app", icon: LayoutDashboard },
     { name: "Staff Team", href: "/app/users", icon: Users },
     { name: "Departments", href: "/app/departments", icon: Building2 },
-    { name: "Suppliers", href: "/app/suppliers", icon: Users },
+    { name: "Suppliers", icon: Users, children: [
+      { name: 'All Suppliers', href: '/app/suppliers', icon: Users },
+      { name: 'Verification Hub', href: '/app/verification-hub', icon: FileSearch },
+      { name: 'Analytics', icon: TrendingUp, children: [
+        { name: 'Performance', href: '/app/suppliers/analytics/performance', icon: TrendingUp },
+        { name: 'Compliance', href: '/app/suppliers/analytics/compliance', icon: BarChart3 }
+      ] },
+      { name: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList },
+      { name: 'Reports', href: '/app/suppliers/reports', icon: BarChart3 }
+    ] },
     { name: "RFQs", href: "/app/rfqs", icon: FileSearch },
     { name: "Quotations", href: "/app/quotations", icon: FileText },
     { name: "Purchase Orders", href: "/app/purchase-orders", icon: ShoppingCart },
@@ -70,7 +80,16 @@ const roleNavigation: any = {
     { name: "RFQs", href: "/app/rfqs", icon: FileSearch },
     { name: "Quotations", href: "/app/quotations", icon: FileText },
     { name: "Purchase Orders", href: "/app/purchase-orders", icon: ShoppingCart },
-    { name: "Suppliers", href: "/app/suppliers", icon: Users },
+    { name: "Suppliers", icon: Users, children: [
+      { name: 'All Suppliers', href: '/app/suppliers', icon: Users },
+      { name: 'Verification Hub', href: '/app/verification-hub', icon: FileSearch },
+      { name: 'Analytics', icon: TrendingUp, children: [
+        { name: 'Performance', href: '/app/suppliers/analytics/performance', icon: TrendingUp },
+        { name: 'Compliance', href: '/app/suppliers/analytics/compliance', icon: BarChart3 }
+      ] },
+      { name: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList },
+      { name: 'Reports', href: '/app/suppliers/reports', icon: BarChart3 }
+    ] },
     { name: "Reports", href: "/app/reports", icon: BarChart3 },
     { name: "Notifications", href: "/app/notifications", icon: Bell },
     { name: "Profile", href: "/app/profile", icon: UserCircle },
@@ -85,7 +104,16 @@ const roleNavigation: any = {
     { name: "RFQs", href: "/app/rfqs", icon: FileSearch },
     { name: "Quotations", href: "/app/quotations", icon: FileText },
     { name: "Purchase Orders", href: "/app/purchase-orders", icon: ShoppingCart },
-    { name: "Suppliers", href: "/app/suppliers", icon: Users },
+    { name: "Suppliers", icon: Users, children: [
+      { name: 'All Suppliers', href: '/app/suppliers', icon: Users },
+      { name: 'Verification Hub', href: '/app/verification-hub', icon: FileSearch },
+      { name: 'Analytics', icon: TrendingUp, children: [
+        { name: 'Performance', href: '/app/suppliers/analytics/performance', icon: TrendingUp },
+        { name: 'Compliance', href: '/app/suppliers/analytics/compliance', icon: BarChart3 }
+      ] },
+      { name: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList },
+      { name: 'Reports', href: '/app/suppliers/reports', icon: BarChart3 }
+    ] },
     { name: "Reports", href: "/app/reports", icon: BarChart3 },
     { name: "Notifications", href: "/app/notifications", icon: Bell },
     { name: "Profile", href: "/app/profile", icon: UserCircle },
@@ -107,7 +135,16 @@ const roleNavigation: any = {
     { name: "Dashboard", href: "/app", icon: LayoutDashboard },
     { name: "Approvals", href: "/app/approvals", icon: CheckSquare },
     { name: "Reports", href: "/app/reports", icon: BarChart3 },
-    { name: "Suppliers", href: "/app/suppliers", icon: Users },
+    { name: "Suppliers", icon: Users, children: [
+      { name: 'All Suppliers', href: '/app/suppliers', icon: Users },
+      { name: 'Verification Hub', href: '/app/verification-hub', icon: FileSearch },
+      { name: 'Analytics', icon: TrendingUp, children: [
+        { name: 'Performance', href: '/app/suppliers/analytics/performance', icon: TrendingUp },
+        { name: 'Compliance', href: '/app/suppliers/analytics/compliance', icon: BarChart3 }
+      ] },
+      { name: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList },
+      { name: 'Reports', href: '/app/suppliers/reports', icon: BarChart3 }
+    ] },
     { name: "Notifications", href: "/app/notifications", icon: Bell },
     { name: "Profile", href: "/app/profile", icon: UserCircle },
   ],
@@ -175,6 +212,10 @@ export function SidebarLayout({ children }: any) {
     return names[role] || role
   }
 
+  const [openItems, setOpenItems] = useState<Record<string, boolean>>({})
+
+  const toggleOpen = (name: string) => setOpenItems(prev => ({ ...prev, [name]: !prev[name] }))
+
   return (
     <div className="flex min-h-screen">
       {/* Sidebar */}
@@ -207,7 +248,111 @@ export function SidebarLayout({ children }: any) {
           {/* Navigation */}
           <nav className="flex-1 px-3 flex flex-col gap-0.5 overflow-y-auto">
             {navigation.map((item: any) => {
-              // Special handling for My RFQs - also active on submit-quotation page
+              const Icon = item.icon
+
+              // If item has children render a collapsible group
+              if (item.children && Array.isArray(item.children)) {
+                const anyChildActive = item.children.some((c: any) => location.pathname.startsWith(c.href))
+                const isOpen = openItems[item.name] ?? anyChildActive
+
+                return (
+                  <div key={item.name}>
+                    <button
+                      onClick={() => toggleOpen(item.name)}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[14px] font-medium transition-all duration-200",
+                        "outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
+                        "focus-visible:bg-primary-light focus-visible:text-white",
+                        anyChildActive
+                          ? "bg-primary-light text-white shadow-sm"
+                          : "text-gray-100/80 hover:bg-primary-light hover:text-white active:bg-primary-light",
+                      )}
+                    >
+                      <Icon className="h-[18px] w-[18px] shrink-0" />
+                      <span className="flex-1 text-left">{item.name}</span>
+                      <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen ? "rotate-180" : "rotate-0")} />
+                    </button>
+
+                    {isOpen && (
+                      <div className="mt-1 ml-3 flex flex-col gap-1">
+                        {item.children.map((child: any) => {
+                          // If the child itself has children (nested group), render another collapsible group
+                          if (child.children && Array.isArray(child.children)) {
+                            const anySubActive = child.children.some((sc: any) => location.pathname.startsWith(sc.href))
+                            const childKey = `${item.name}-${child.name}`
+                            const isChildOpen = openItems[childKey] ?? anySubActive
+                            const ChildIcon = child.icon || Users
+
+                            return (
+                              <div key={child.name}>
+                                <button
+                                  onClick={() => toggleOpen(childKey)}
+                                  className={cn(
+                                    "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium",
+                                    "outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
+                                    anySubActive
+                                      ? "bg-primary-light text-white shadow-sm"
+                                      : "text-gray-100/80 hover:bg-primary-light hover:text-white",
+                                  )}
+                                >
+                                  <ChildIcon className="h-[13px] w-[13px] shrink-0 opacity-80" />
+                                  <span className="flex-1 text-left">{child.name}</span>
+                                  <ChevronDown className={cn("h-3 w-3 transition-transform", isChildOpen ? "rotate-180" : "rotate-0")} />
+                                </button>
+
+                                {isChildOpen && (
+                                  <div className="mt-1 ml-4 flex flex-col gap-1">
+                                    {child.children.map((sub: any) => {
+                                      const SubIcon = sub.icon || Users
+                                      const subActive = location.pathname.startsWith(sub.href)
+                                      return (
+                                        <Link
+                                          key={sub.name}
+                                          to={sub.href}
+                                          className={cn(
+                                            "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium",
+                                            subActive
+                                              ? "bg-primary-light text-white shadow-sm"
+                                              : "text-gray-100/80 hover:bg-primary-light hover:text-white"
+                                          )}
+                                        >
+                                          <SubIcon className="h-[12px] w-[12px] shrink-0 opacity-80" />
+                                          {sub.name}
+                                        </Link>
+                                      )
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          }
+
+                          // Otherwise a normal child link
+                          const ChildIcon = child.icon || Users
+                          const childActive = child.href ? location.pathname.startsWith(child.href) : false
+                          return (
+                            <Link
+                              key={child.name}
+                              to={child.href}
+                              className={cn(
+                                "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium",
+                                childActive
+                                  ? "bg-primary-light text-white shadow-sm"
+                                  : "text-gray-100/80 hover:bg-primary-light hover:text-white"
+                              )}
+                            >
+                              <ChildIcon className="h-[14px] w-[14px] shrink-0 opacity-80" />
+                              {child.name}
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              }
+
+              // Regular item (no children)
               let isActive: any;
               if (item.href === '/app/my-rfqs') {
                 isActive = location.pathname.startsWith(item.href) || location.pathname.startsWith('/app/submit-quotation');
@@ -216,7 +361,7 @@ export function SidebarLayout({ children }: any) {
               } else {
                 isActive = location.pathname.startsWith(item.href);
               }
-              const Icon = item.icon
+
               return (
                 <Link
                   key={item.name}

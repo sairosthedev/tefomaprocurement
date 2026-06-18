@@ -4,21 +4,18 @@ import api, { departmentAPI, procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency } from '../lib/constants';
+import PageHeader from '../components/PageHeader';
 import { 
-  ArrowLeft, 
   FileText, 
   Calendar, 
-  Building2,
   CheckCircle,
   XCircle,
   Clock,
   Loader2,
   ShoppingCart,
-  Package,
   User,
   Send,
   Truck,
-  PackageCheck,
   Trash2,
   Pencil,
   Check,
@@ -105,6 +102,12 @@ export default function RequisitionDetail() {
   };
 
   const handleSubmit = async () => {
+    const enteredItems = (requisition?.items || []).filter((item: any) => item.description?.trim());
+    if (enteredItems.length === 0) {
+      showToast('At least one item is required before submitting', 'error');
+      return;
+    }
+
     try {
       setSubmitting(true);
       await departmentAPI.submitRequisition(id);
@@ -205,106 +208,76 @@ export default function RequisitionDetail() {
   }
 
   return (
-    <div className="p-8">
-      {/* Back Button */}
-      <button
-        onClick={() => navigate('/app/requisitions')}
-        className="flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-6 transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Requisitions
-      </button>
+    <div className="p-8 max-w-7xl mx-auto">
+      <PageHeader
+        backTo="/app/requisitions"
+        backLabel="Back to Requisitions"
+        title={requisition.title || 'Requisition'}
+        subtitle={`#${requisition.requisitionNumber || `REQ-${requisition._id?.slice(-6).toUpperCase()}`}`}
+        actions={
+          <>
+            <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[requisition.status]}`}>
+              {statusLabels[requisition.status] || requisition.status?.replace(/_/g, ' ').replace(/\b\w/g, (l: any) => l.toUpperCase())}
+            </span>
+            {isDepartment && requisition.status === 'draft' && (
+              <button
+                onClick={handleSubmit}
+                disabled={
+                  submitting ||
+                  (requisition.items || []).filter((item: any) => item.description?.trim()).length === 0
+                }
+                className="px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors flex items-center gap-2 disabled:opacity-50"
+                title={
+                  (requisition.items || []).filter((item: any) => item.description?.trim()).length === 0
+                    ? 'Add at least one item before submitting'
+                    : undefined
+                }
+              >
+                {submitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                Submit
+              </button>
+            )}
+          </>
+        }
+      />
 
-      {/* Header Card with Green Background and SVG */}
-      <div className="bg-gradient-to-br from-green-50 via-green-100/50 to-green-50 rounded-2xl p-8 border border-green-200 relative overflow-hidden mb-8">
-        {/* Decorative SVG Pattern */}
-        <div className="absolute top-0 right-0 w-80 h-80 opacity-10">
-          <svg viewBox="0 0 300 300" className="w-full h-full text-green-600">
-            <circle cx="150" cy="150" r="80" fill="currentColor" opacity="0.1" />
-            <circle cx="100" cy="100" r="40" fill="currentColor" opacity="0.15" />
-            <circle cx="200" cy="200" r="50" fill="currentColor" opacity="0.1" />
-            <path
-              d="M50,150 Q150,50 250,150 T450,150"
-              stroke="currentColor"
-              strokeWidth="3"
-              fill="none"
-              opacity="0.2"
-            />
-            <path
-              d="M50,200 Q150,100 250,200 T450,200"
-              stroke="currentColor"
-              strokeWidth="2"
-              fill="none"
-              opacity="0.15"
-            />
-          </svg>
-        </div>
-        
-        <div className="relative z-10">
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <div className="p-4 bg-white/90 rounded-2xl shadow-sm">
-                <PackageCheck className="h-10 w-10 text-green-600" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-1">{requisition.title || 'Requisition'}</h1>
-                <p className="text-sm text-gray-600 font-mono">#{requisition.requisitionNumber || `REQ-${requisition._id?.slice(-6).toUpperCase()}`}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[requisition.status]}`}>
-                {statusLabels[requisition.status] || requisition.status?.replace(/_/g, ' ').replace(/\b\w/g, (l: any) => l.toUpperCase())}
-              </span>
-              {isDepartment && requisition.status === 'draft' && (
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitting}
-                  className="px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors flex items-center gap-2 disabled:opacity-50"
-                >
-                  {submitting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                  Submit
-                </button>
-              )}
-            </div>
+      {/* IR header — mirrors paper Internal Requisition form */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">Date</p>
+            <p className="text-sm font-semibold text-gray-900 flex items-center gap-1">
+              <Calendar className="h-3.5 w-3.5" />
+              {new Date(requisition.createdAt).toLocaleDateString('en-ZA')}
+            </p>
           </div>
-
-          {/* IR header — mirrors paper Internal Requisition form */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            <div className="bg-white/90 rounded-xl p-3 backdrop-blur-sm">
-              <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">Date</p>
-              <p className="text-sm font-semibold text-gray-900 flex items-center gap-1">
-                <Calendar className="h-3.5 w-3.5" />
-                {new Date(requisition.createdAt).toLocaleDateString('en-ZA')}
-              </p>
-            </div>
-            <div className="bg-white/90 rounded-xl p-3 backdrop-blur-sm">
-              <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">Work Order</p>
-              <p className="text-sm font-semibold text-gray-900">{requisition.workOrder || '—'}</p>
-            </div>
-            <div className="bg-white/90 rounded-xl p-3 backdrop-blur-sm">
-              <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">Stores Issue No.</p>
-              <p className="text-sm font-semibold text-gray-900">{requisition.storesIssueNumber || '—'}</p>
-            </div>
-            <div className="bg-white/90 rounded-xl p-3 backdrop-blur-sm">
-              <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">Requested By</p>
-              <p className="text-sm font-semibold text-gray-900">
-                {requisition.requestedBy?.firstName} {requisition.requestedBy?.lastName}
-              </p>
-            </div>
-            <div className="bg-white/90 rounded-xl p-3 backdrop-blur-sm">
-              <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">Dept</p>
-              <p className="text-sm font-semibold text-gray-900">{requisition.department?.name || '—'}</p>
-            </div>
-            <div className="bg-white/90 rounded-xl p-3 backdrop-blur-sm">
-              <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">Priority</p>
-              <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${priorityColors[requisition.priority] || priorityColors.medium}`}>
-                {requisition.priority || 'Medium'}
-              </span>
-            </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">Work Order</p>
+            <p className="text-sm font-semibold text-gray-900">{requisition.workOrder || '—'}</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">Stores Issue No.</p>
+            <p className="text-sm font-semibold text-gray-900">{requisition.storesIssueNumber || '—'}</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">Requested By</p>
+            <p className="text-sm font-semibold text-gray-900">
+              {requisition.requestedBy?.firstName} {requisition.requestedBy?.lastName}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">Dept</p>
+            <p className="text-sm font-semibold text-gray-900">{requisition.department?.name || '—'}</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">Priority</p>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${priorityColors[requisition.priority] || priorityColors.medium}`}>
+              {requisition.priority || 'Medium'}
+            </span>
           </div>
         </div>
       </div>

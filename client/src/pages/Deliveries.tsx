@@ -6,6 +6,7 @@ import {
   Loader2, Package, Calendar, FileText, AlertCircle, Clock
 } from 'lucide-react';
 import ViewButton from '../components/ViewButton';
+import PageHeader from '../components/PageHeader';
 import Modal from '../components/Modal';
 import { formatCurrency } from '../lib/constants';
 
@@ -127,13 +128,10 @@ export default function Deliveries() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Goods Receiving (GRV)</h1>
-          <p className="text-gray-500 mt-1">Receive and record deliveries</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Goods Receiving (GRV)"
+        subtitle="Receive and record deliveries"
+      />
 
       {/* Pending Deliveries Alert */}
       {pendingPOs.length > 0 && (

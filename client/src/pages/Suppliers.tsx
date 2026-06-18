@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import Tabs from '../components/Tabs';
+import PageHeader from '../components/PageHeader';
 import Modal from '../components/Modal';
 import { CategoryMultiSelect } from '../components/CategorySelect';
 import { getCategoryName } from '../lib/constants';
@@ -80,6 +81,8 @@ export default function Suppliers() {
   const [importing, setImporting] = useState<any>(false);
   const [showViewModal, setShowViewModal] = useState<any>(false);
   const [selectedSupplier, setSelectedSupplier] = useState<any>(null);
+  const [selectedSupplierTab, setSelectedSupplierTab] = useState<any>('overview');
+  const [supplierEvaluations, setSupplierEvaluations] = useState<any[]>([]);
   const [actionLoading, setActionLoading] = useState<any>(false);
   const [pendingAction, setPendingAction] = useState<any>(null);
   const [actionReason, setActionReason] = useState<any>('');
@@ -104,16 +107,15 @@ export default function Suppliers() {
   };
 
   const openViewModal = (supplier: any) => {
-    setSelectedSupplier(supplier);
-    setPendingAction(null);
-    setActionReason('');
-    setShowViewModal(true);
+    navigate(`/app/suppliers/${supplier._id}`);
   };
 
   const closeViewModal = () => {
     if (actionLoading) return;
     setShowViewModal(false);
     setSelectedSupplier(null);
+    setSelectedSupplierTab('overview');
+    setSupplierEvaluations([]);
     setPendingAction(null);
     setActionReason('');
   };
@@ -370,29 +372,28 @@ export default function Suppliers() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Suppliers</h1>
-          <p className="text-gray-500 mt-1">Manage and view all registered suppliers</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => setShowBulkImportModal(true)}
-            className="flex items-center gap-2 border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2.5 px-4 rounded-xl transition-colors"
-          >
-            <Upload className="h-5 w-5" />
-            Bulk Import
-          </button>
-          <button 
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
-          >
-            <Plus className="h-5 w-5" />
-            Add Supplier
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Suppliers"
+        subtitle="Manage and view all registered suppliers"
+        actions={
+          <>
+            <button
+              onClick={() => setShowBulkImportModal(true)}
+              className="flex items-center gap-2 border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2.5 px-4 rounded-xl transition-colors"
+            >
+              <Upload className="h-5 w-5" />
+              Bulk Import
+            </button>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+            >
+              <Plus className="h-5 w-5" />
+              Add Supplier
+            </button>
+          </>
+        }
+      />
 
       {/* Filters */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
@@ -1048,6 +1049,39 @@ Company ABC,REG123,John Doe,john@company.com,1234567890`}
           );
           const ticked = checklistKeys.filter((k: string) => checklist[k]).length;
           const docCount = Array.isArray(s.complianceDocuments) ? s.complianceDocuments.length : 0;
+          const evaluationCount = Array.isArray(supplierEvaluations) ? supplierEvaluations.length : 0;
+          const addressParts = [
+            s.address?.street || s.physicalAddress,
+            s.address?.city || s.city,
+            s.address?.province || s.province,
+            s.address?.postalCode || s.postalCode,
+            s.address?.country
+          ].filter(Boolean);
+          const bankDetails = s.bankDetails || s.bankingDetails || {};
+          const contactPeople = Array.isArray(s.contactPersons) ? s.contactPersons : [];
+          const references = Array.isArray(s.clientReferrals) ? s.clientReferrals : [];
+          const documents = Array.isArray(s.complianceDocuments) ? s.complianceDocuments : [];
+          const latestEvaluation = supplierEvaluations?.[0];
+
+          const detailTabs = [
+            { value: 'overview', label: 'Overview' },
+            { value: 'verification', label: 'Verification' },
+            { value: 'corporate', label: 'Corporate' },
+            { value: 'banking', label: 'Banking' },
+            { value: 'trade', label: 'Trade' },
+            { value: 'directors', label: 'Directors', count: contactPeople.length },
+            { value: 'references', label: 'References', count: references.length },
+            { value: 'documents', label: 'Documents', count: docCount },
+            { value: 'performance', label: 'Performance', count: evaluationCount }
+          ];
+
+          const renderKeyValue = (label: string, value: any) => (
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
+              <p className="text-gray-900">{value || '-'}</p>
+            </div>
+          );
+
           return (
             <div className="space-y-5">
               {/* Header */}
@@ -1067,84 +1101,262 @@ Company ABC,REG123,John Doe,john@company.com,1234567890`}
                 </span>
               </div>
 
-              {/* Details grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Registration No.</p>
-                  <p className="text-gray-900">{s.registrationNumber || '-'}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-sm">
+                <div className="rounded-xl border border-gray-100 p-4 bg-gray-50">
+                  <p className="text-xs text-gray-500">Overall Score</p>
+                  <p className="text-2xl font-bold text-gray-900">{s.overallScore ? `${s.overallScore}%` : '0%'}</p>
                 </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Tax / VAT</p>
-                  <p className="text-gray-900">{s.taxNumber || '-'}{s.vatNumber ? ` / ${s.vatNumber}` : ''}</p>
+                <div className="rounded-xl border border-gray-100 p-4 bg-gray-50">
+                  <p className="text-xs text-gray-500">Rating</p>
+                  <p className="text-2xl font-bold text-gray-900">{s.kysComplete ? 'Verified' : 'Not Started'}</p>
                 </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Contact</p>
-                  <p className="text-gray-900 flex items-center gap-2"><Mail className="h-4 w-4 text-gray-400" />{s.user?.email || '-'}</p>
-                  <p className="text-gray-900 flex items-center gap-2 mt-1"><Phone className="h-4 w-4 text-gray-400" />{s.user?.phone || s.phone || '-'}</p>
+                <div className="rounded-xl border border-gray-100 p-4 bg-gray-50">
+                  <p className="text-xs text-gray-500">Documents</p>
+                  <p className="text-2xl font-bold text-gray-900">{docCount}</p>
                 </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Address</p>
-                  <p className="text-gray-900">
-                    {[s.physicalAddress, s.city, s.province, s.postalCode].filter(Boolean).join(', ') || '-'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Bank</p>
-                  <p className="text-gray-900">
-                    {s.bankingDetails?.bankName || s.bankName || '-'}
-                    {(s.bankingDetails?.accountNumber || s.bankAccountNumber) ? ` · ${s.bankingDetails?.accountNumber || s.bankAccountNumber}` : ''}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Registered</p>
-                  <p className="text-gray-900">{new Date(s.createdAt).toLocaleDateString('en-ZA')}</p>
+                <div className="rounded-xl border border-gray-100 p-4 bg-gray-50">
+                  <p className="text-xs text-gray-500">Evaluations</p>
+                  <p className="text-2xl font-bold text-gray-900">{evaluationCount}</p>
                 </div>
               </div>
 
-              {/* Categories */}
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Categories</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {s.categories?.length ? (
-                    s.categories.map((cat: any, idx: any) => (
-                      <span key={idx} className="px-2 py-1 bg-gray-100 rounded-lg text-xs text-gray-600" title={cat}>
-                        {getCategoryName(cat)}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-sm text-gray-400">No categories</span>
-                  )}
-                </div>
-              </div>
+              <Tabs
+                tabs={detailTabs}
+                activeTab={selectedSupplierTab}
+                onTabChange={setSelectedSupplierTab}
+                variant="pills"
+              />
 
-              {/* KYS summary */}
-              <div className="flex items-center justify-between gap-4 p-4 bg-gray-50 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <FileText className="h-5 w-5 text-primary" />
+              {selectedSupplierTab === 'overview' && (
+                <div className="space-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                    {renderKeyValue('Registration No.', s.registrationNumber)}
+                    {renderKeyValue('Tax / VAT', `${s.taxNumber || '-'}${s.vatNumber ? ` / ${s.vatNumber}` : ''}`)}
+                    <div>
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Contact</p>
+                      <p className="text-gray-900 flex items-center gap-2"><Mail className="h-4 w-4 text-gray-400" />{s.user?.email || s.email || '-'}</p>
+                      <p className="text-gray-900 flex items-center gap-2 mt-1"><Phone className="h-4 w-4 text-gray-400" />{s.user?.phone || s.phone || '-'}</p>
+                    </div>
+                    {renderKeyValue('Address', addressParts.join(', '))}
+                    {renderKeyValue('Bank', `${bankDetails.bankName || s.bankName || '-'}${bankDetails.accountNumber || s.bankAccountNumber ? ` · ${bankDetails.accountNumber || s.bankAccountNumber}` : ''}`)}
+                    {renderKeyValue('Registered', new Date(s.createdAt).toLocaleDateString('en-ZA'))}
+                    {renderKeyValue('Supplier Status', s.status.charAt(0).toUpperCase() + s.status.slice(1))}
+                  </div>
+
                   <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {s.kysExempt
-                        ? 'KYS Exempt (override applied)'
-                        : s.kysComplete
-                          ? 'KYS Verified'
-                          : 'KYS Incomplete'}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {s.kysExempt && s.kysExemptReason
-                        ? s.kysExemptReason
-                        : `${ticked}/${checklistKeys.length} checklist items · ${docCount} document${docCount === 1 ? '' : 's'}`}
-                    </p>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Categories</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {s.categories?.length ? (
+                        s.categories.map((cat: any, idx: any) => (
+                          <span key={idx} className="px-2 py-1 bg-gray-100 rounded-lg text-xs text-gray-600" title={cat}>
+                            {getCategoryName(cat)}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-sm text-gray-400">No categories</span>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => navigate(`/app/suppliers/${s._id}/kys`)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/5"
-                >
-                  <Eye className="h-3.5 w-3.5" />
-                  View KYS
-                </button>
-              </div>
+              )}
+
+              {selectedSupplierTab === 'verification' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between gap-4 p-4 bg-gray-50 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <FileText className="h-5 w-5 text-primary" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {s.kysExempt
+                            ? 'KYS Exempt (override applied)'
+                            : s.kysComplete
+                              ? 'KYS Verified'
+                              : 'KYS Incomplete'}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {s.kysExempt && s.kysExemptReason
+                            ? s.kysExemptReason
+                            : `${ticked}/${checklistKeys.length} checklist items complete · ${docCount} document${docCount === 1 ? '' : 's'}`}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/app/suppliers/${s._id}/kys`)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/5"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      Open KYS
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                    {renderKeyValue('Required Checklist Items', checklistKeys.length)}
+                    {renderKeyValue('Completed Items', ticked)}
+                    {renderKeyValue('Documents Uploaded', docCount)}
+                  </div>
+                  {s.kysExempt && s.kysExemptReason && (
+                    <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-sm text-amber-800">
+                      <span className="font-medium">KYS override: </span>{s.kysExemptReason}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {selectedSupplierTab === 'corporate' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                  {renderKeyValue('Legal Name', s.companyName)}
+                  {renderKeyValue('Trading Name', s.tradingAs || s.tradingName)}
+                  {renderKeyValue('Incorporation', s.incorporationDate ? new Date(s.incorporationDate).toLocaleDateString('en-ZA') : 'Not captured in this system')}
+                  {renderKeyValue('Country', s.address?.country || 'Zimbabwe')}
+                  {renderKeyValue('Website', s.website || 'Not captured in this system')}
+                  {renderKeyValue('Department', s.department?.name || s.department || 'Not captured in this system')}
+                  {renderKeyValue('Services / Products', s.businessDescription || s.notes || s.categories?.map((cat: string) => getCategoryName(cat)).join(', ') || 'Not captured in this system')}
+                  {renderKeyValue('Primary Contact', s.contactPerson || `${s.user?.firstName || ''} ${s.user?.lastName || ''}`.trim() || 'Not captured in this system')}
+                </div>
+              )}
+
+              {selectedSupplierTab === 'banking' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                  {renderKeyValue('Bank Name', bankDetails.bankName || s.bankName)}
+                  {renderKeyValue('Account Name', bankDetails.accountName || s.bankAccountName)}
+                  {renderKeyValue('Account Number', bankDetails.accountNumber || s.bankAccountNumber)}
+                  {renderKeyValue('Branch Code', bankDetails.branchCode || s.bankBranchCode)}
+                  {renderKeyValue('Account Type', bankDetails.accountType || 'Not captured in this system')}
+                </div>
+              )}
+
+              {selectedSupplierTab === 'trade' && (
+                <div className="space-y-4 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {renderKeyValue('Proposed Business', s.proposedBusiness || 'Not captured in this system')}
+                    {renderKeyValue('Volume / Quantity', s.tradeVolume || 'Not captured in this system')}
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Products / Goods</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {s.tradeProducts?.length ? (
+                        s.tradeProducts.map((item: any, idx: any) => (
+                          <span key={idx} className="px-2 py-1 bg-gray-100 rounded-lg text-xs text-gray-600">{item}</span>
+                        ))
+                      ) : (
+                        <span className="text-sm text-gray-400">Not captured in this system</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500">Trade details are mapped from the current supplier profile fields where available.</div>
+                </div>
+              )}
+
+              {selectedSupplierTab === 'directors' && (
+                <div className="space-y-3 text-sm">
+                  {contactPeople.length > 0 ? (
+                    contactPeople.map((person: any, idx: number) => (
+                      <div key={idx} className="rounded-xl border border-gray-100 p-4 bg-gray-50 flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-medium text-gray-900">{person.name}</p>
+                          <p className="text-xs text-gray-500">{person.position || 'Director / contact role not captured'}</p>
+                          <p className="text-xs text-gray-500 mt-1">{person.email || '-'}</p>
+                          <p className="text-xs text-gray-500">{person.phone || '-'}</p>
+                        </div>
+                        <span className="text-xs px-2 py-1 rounded-full bg-white border border-gray-200 text-gray-600">
+                          {person.isPrimary ? 'Primary' : 'Member'}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-gray-200 p-4 text-gray-500">
+                      No directors captured in the current supplier profile.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {selectedSupplierTab === 'references' && (
+                <div className="space-y-3 text-sm">
+                  {references.length > 0 ? (
+                    references.map((reference: any, idx: number) => (
+                      <div key={idx} className="rounded-xl border border-gray-100 p-4 bg-gray-50">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="font-medium text-gray-900">{reference.clientName || reference.name || 'Reference'}</p>
+                            <p className="text-xs text-gray-500">{reference.contactPerson || 'Contact not captured'}</p>
+                            <p className="text-xs text-gray-500">{reference.contactEmail || reference.email || '-'}</p>
+                            <p className="text-xs text-gray-500">{reference.contactPhone || reference.phone || '-'}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-gray-200 p-4 text-gray-500">
+                      No trade references captured in the current supplier profile.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {selectedSupplierTab === 'documents' && (
+                <div className="space-y-3 text-sm">
+                  {documents.length > 0 ? (
+                    documents.map((document: any, idx: number) => (
+                      <div key={idx} className="rounded-xl border border-gray-100 p-4 bg-gray-50 flex items-start justify-between gap-4">
+                        <div>
+                          <p className="font-medium text-gray-900">{document.fileName || document.documentType || 'Document'}</p>
+                          <p className="text-xs text-gray-500">{document.documentType || 'unknown type'}</p>
+                          <p className="text-xs text-gray-500 mt-1">Uploaded {document.uploadedAt ? new Date(document.uploadedAt).toLocaleDateString('en-ZA') : 'date unavailable'}</p>
+                        </div>
+                        <span className={`text-xs px-2 py-1 rounded-full ${document.verified ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                          {document.verified ? 'Verified' : 'Uploaded'}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-gray-200 p-4 text-gray-500">
+                      No compliance documents captured yet.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {selectedSupplierTab === 'performance' && (
+                <div className="space-y-4 text-sm">
+                  {latestEvaluation ? (
+                    <div className="rounded-xl border border-gray-100 p-4 bg-gray-50 space-y-3">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="font-medium text-gray-900">Latest Evaluation</p>
+                          <p className="text-xs text-gray-500">{latestEvaluation.evaluationType} · {new Date(latestEvaluation.createdAt).toLocaleDateString('en-ZA')}</p>
+                        </div>
+                        <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+                          {latestEvaluation.recommendation}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                        {Object.entries(latestEvaluation.scores || {})
+                          .filter(([key]) => key !== 'otherNotes')
+                          .map(([key, value]) => (
+                            <div key={key} className="rounded-lg border border-gray-200 bg-white p-3">
+                              <p className="text-gray-500 capitalize">{key.replace(/([A-Z])/g, ' $1')}</p>
+                              <p className="text-lg font-semibold text-gray-900">{String(value)}</p>
+                            </div>
+                          ))}
+                      </div>
+                      {latestEvaluation.scores?.otherNotes && (
+                        <div className="text-xs text-gray-600">Notes: {latestEvaluation.scores.otherNotes}</div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-gray-200 p-4 text-gray-500">
+                      No supplier evaluations captured yet.
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {renderKeyValue('Total Evaluations', evaluationCount)}
+                    {renderKeyValue('Last Evaluation', latestEvaluation ? new Date(latestEvaluation.createdAt).toLocaleDateString('en-ZA') : 'Not captured')}
+                    {renderKeyValue('Next Review', latestEvaluation?.nextReviewDue ? new Date(latestEvaluation.nextReviewDue).toLocaleDateString('en-ZA') : 'Not captured')}
+                  </div>
+                </div>
+              )}
 
               {s.kysExempt && s.kysExemptReason && (
                 <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-sm text-amber-800">

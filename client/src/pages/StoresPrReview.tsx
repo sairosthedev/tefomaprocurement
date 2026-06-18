@@ -3,6 +3,7 @@ import { storesAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { Package, Loader2, ArrowRight, CheckCircle, Zap } from 'lucide-react';
 import { formatCurrency } from '../lib/constants';
+import PageHeader from '../components/PageHeader';
 
 const actionLabel: Record<string, string> = {
   store_issue: 'Issue from stock',
@@ -79,14 +80,10 @@ export default function StoresPrReview() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold flex items-center gap-2 mb-2">
-        <Package className="h-7 w-7 text-primary" />
-        Internal Requisitions — Stores Review
-      </h1>
-      <p className="text-gray-500 mb-6 text-sm">
-        Stock enquiry before procurement. <span className="font-medium text-gray-700">Auto-process</span> issues
-        available stock (Qty Delivered) and forwards the balance — like the paper IR form.
-      </p>
+      <PageHeader
+        title="Internal Requisitions — Stores Review"
+        subtitle="Stock enquiry before procurement. Auto-process issues available stock (Qty Delivered) and forwards the balance — like the paper IR form."
+      />
 
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>

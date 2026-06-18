@@ -3,6 +3,7 @@ import { useToast } from '../components/Toast';
 import api from '../lib/api';
 import { DollarSign, TrendingUp, AlertCircle, Loader2, PieChart } from 'lucide-react';
 import { formatCurrency } from '../lib/constants';
+import PageHeader from '../components/PageHeader';
 
 export default function Budgets() {
   const [loading, setLoading] = useState<any>(true);
@@ -58,11 +59,10 @@ export default function Budgets() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Budget Management</h1>
-        <p className="text-gray-500 mt-1">Monitor and manage procurement budgets</p>
-      </div>
+      <PageHeader
+        title="Budget Management"
+        subtitle="Monitor and manage procurement budgets"
+      />
 
       {/* Budget Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">

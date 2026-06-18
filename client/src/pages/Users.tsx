@@ -3,6 +3,7 @@ import { adminAPI } from '../lib/api';
 import { Modal } from '../components/Modal';
 import { useToast } from '../components/Toast';
 import Tabs from '../components/Tabs';
+import PageHeader from '../components/PageHeader';
 import { 
   Search, 
   Plus,
@@ -213,20 +214,19 @@ export default function Users() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Staff Team</h1>
-          <p className="text-gray-500 mt-1">Manage system users and their roles</p>
-        </div>
-        <button 
-          onClick={() => handleOpenModal()}
-          className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
-        >
-          <Plus className="h-5 w-5" />
-          Add User
-        </button>
-      </div>
+      <PageHeader
+        title="Staff Team"
+        subtitle="Manage system users and their roles"
+        actions={
+          <button
+            onClick={() => handleOpenModal()}
+            className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+          >
+            <Plus className="h-5 w-5" />
+            Add User
+          </button>
+        }
+      />
 
       {/* Filters */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">

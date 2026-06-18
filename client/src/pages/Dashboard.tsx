@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { isProcurementHead } from '@fossil/shared';
 import api from '../lib/api';
+import PageHeader from '../components/PageHeader';
 import { 
   FileText, 
   ShoppingCart, 
@@ -233,24 +234,19 @@ export default function Dashboard() {
 
   return (
     <div className="p-8">
-      {/* Welcome Section */}
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Welcome back, {user?.firstName}!
-          </h1>
-          <p className="text-gray-500 mt-1">
-            {getRoleDisplayName(user?.role)} Dashboard • {new Date().toLocaleDateString('en-ZA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-          </p>
-        </div>
-        <button 
-          onClick={fetchDashboardData}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <RefreshCw className="h-4 w-4" />
-          Refresh
-        </button>
-      </div>
+      <PageHeader
+        title={`Welcome back, ${user?.firstName}!`}
+        subtitle={`${getRoleDisplayName(user?.role)} Dashboard • ${new Date().toLocaleDateString('en-ZA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`}
+        actions={
+          <button
+            onClick={fetchDashboardData}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </button>
+        }
+      />
 
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">

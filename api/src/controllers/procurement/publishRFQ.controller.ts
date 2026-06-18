@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import { RFQ, SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifySupplier } from '../../services/notification.service.js';
+import { hasEnteredLineItems } from '../../lib/lineItems.js';
 
 const publishRFQ = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -27,6 +28,13 @@ const publishRFQ = async (req: Request, res: Response): Promise<any> => {
       return res.status(400).json({
         success: false,
         message: 'RFQ must have at least one invited supplier'
+      });
+    }
+
+    if (!hasEnteredLineItems(rfq.items)) {
+      return res.status(400).json({
+        success: false,
+        message: 'RFQ must have at least one item before it can be sent to suppliers'
       });
     }
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import api from '../lib/api';
+import PageHeader from '../components/PageHeader';
 import { 
   CheckCircle, XCircle, Eye, Loader2, Clock, 
   DollarSign, FileText, AlertTriangle, Package, ShoppingCart
@@ -169,11 +170,7 @@ export default function Approvals() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">{getTitle()}</h1>
-        <p className="text-gray-500 mt-1">{getDescription()}</p>
-      </div>
+      <PageHeader title={getTitle()} subtitle={getDescription()} />
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">

@@ -6,6 +6,7 @@ import {
   Plus, Search, Package, CheckCircle, XCircle, 
   Loader2, Clock, Truck, AlertCircle
 } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
 import ViewButton from '../components/ViewButton';
 import Modal from '../components/Modal';
 
@@ -145,24 +146,23 @@ export default function StoreRequisitions() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Store Requisitions</h1>
-          <p className="text-gray-500 mt-1">
-            {isStoresOfficer ? 'Process department stock requests' : 'Request items from stores'}
-          </p>
-        </div>
-        {!isStoresOfficer && (
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors"
-          >
-            <Plus className="h-5 w-5" />
-            Request from Store
-          </button>
-        )}
-      </div>
+      <PageHeader
+        title="Store Requisitions"
+        subtitle={
+          isStoresOfficer ? 'Process department stock requests' : 'Request items from stores'
+        }
+        actions={
+          !isStoresOfficer ? (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors"
+            >
+              <Plus className="h-5 w-5" />
+              Request from Store
+            </button>
+          ) : undefined
+        }
+      />
 
       {/* Search */}
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-6">

@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { financeAPI } from '../lib/api';
 import { formatCurrency } from '../lib/constants';
 import { useToast } from '../components/Toast';
-import { FileText, Loader2, Search, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Loader2, Search, AlertTriangle, CheckCircle } from 'lucide-react';
 import ViewButton from '../components/ViewButton';
+import PageHeader from '../components/PageHeader';
 
 const statusColors: Record<string, string> = {
   submitted: 'bg-blue-100 text-blue-700',
@@ -43,21 +44,18 @@ export default function Invoices() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <FileText className="h-7 w-7 text-primary" />
-            Invoices
-          </h1>
-          <p className="text-gray-500 mt-1">Three-way match and accounts payable</p>
-        </div>
-        <button
-          onClick={() => navigate('/app/payments')}
-          className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
-        >
-          Payments
-        </button>
-      </div>
+      <PageHeader
+        title="Invoices"
+        subtitle="Three-way match and accounts payable"
+        actions={
+          <button
+            onClick={() => navigate('/app/payments')}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+          >
+            Payments
+          </button>
+        }
+      />
 
       <div className="flex flex-wrap gap-3 mb-6">
         <div className="relative flex-1 min-w-[200px]">

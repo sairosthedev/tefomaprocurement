@@ -5,6 +5,7 @@ import { formatCurrency } from '../lib/constants';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import Tabs from '../components/Tabs';
+import PageHeader from '../components/PageHeader';
 import { 
   Search, 
   Plus,
@@ -105,22 +106,21 @@ export default function PurchaseOrders() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Purchase Orders</h1>
-          <p className="text-gray-500 mt-1">Manage and track purchase orders</p>
-        </div>
-        {!isFinance && (
-          <button 
-            onClick={() => navigate('/app/quotations?status=accepted')}
-            className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
-          >
-            <Plus className="h-5 w-5" />
-            Create PO from Quotation
-          </button>
-        )}
-      </div>
+      <PageHeader
+        title="Purchase Orders"
+        subtitle="Manage and track purchase orders"
+        actions={
+          !isFinance ? (
+            <button
+              onClick={() => navigate('/app/quotations?status=accepted')}
+              className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+            >
+              <Plus className="h-5 w-5" />
+              Create PO from Quotation
+            </button>
+          ) : undefined
+        }
+      />
 
       {/* Filters */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">

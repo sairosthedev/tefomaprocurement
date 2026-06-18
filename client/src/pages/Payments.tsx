@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { financeAPI } from '../lib/api';
 import { formatCurrency } from '../lib/constants';
 import { useToast } from '../components/Toast';
-import { CreditCard, Loader2 } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
+import { Loader2 } from 'lucide-react';
 
 export default function Payments() {
   const { showToast } = useToast();
@@ -27,10 +28,7 @@ export default function Payments() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2 mb-6">
-        <CreditCard className="h-7 w-7 text-primary" />
-        Payments
-      </h1>
+      <PageHeader title="Payments" />
 
       {loading ? (
         <div className="flex justify-center py-12">

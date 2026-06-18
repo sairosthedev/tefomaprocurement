@@ -6,6 +6,7 @@ import {
   RefreshCw, ChevronLeft, ChevronRight, X
 } from 'lucide-react';
 import ViewButton from '../components/ViewButton';
+import PageHeader from '../components/PageHeader';
 import Modal from '../components/Modal';
 
 const actionIcons: any = {
@@ -175,22 +176,21 @@ export default function AuditLogs() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="mb-8 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Audit Logs</h1>
-          <p className="text-gray-500 mt-1">Track all system activities and changes</p>
-        </div>
-        <button
-          type="button"
-          onClick={exportCsv}
-          disabled={exporting || logs.length === 0}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-xl hover:bg-primary/90 disabled:opacity-50"
-        >
-          {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-          Export CSV
-        </button>
-      </div>
+      <PageHeader
+        title="Audit Logs"
+        subtitle="Track all system activities and changes"
+        actions={
+          <button
+            type="button"
+            onClick={exportCsv}
+            disabled={exporting || logs.length === 0}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-xl hover:bg-primary/90 disabled:opacity-50"
+          >
+            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            Export CSV
+          </button>
+        }
+      />
 
       {/* Filters */}
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-6">

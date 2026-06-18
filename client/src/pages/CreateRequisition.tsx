@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 import api from '../lib/api';
-import { Plus, Trash2, Save, Send, ArrowLeft, Package, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Save, Send, Package, Loader2 } from 'lucide-react';
 import { UNITS_OF_MEASUREMENT } from '../lib/constants';
 import { CategorySelect } from '../components/CategorySelect';
+import PageHeader from '../components/PageHeader';
 
 export default function CreateRequisition() {
   const navigate = useNavigate();
@@ -51,24 +52,30 @@ export default function CreateRequisition() {
       }
       
       const validItems = formData.items.filter((item: any) => item.description.trim());
-      if (validItems.length === 0) {
-        showToast('Please add at least one item', 'error');
+      if (submit && validItems.length === 0) {
+        showToast('Please add at least one item before submitting', 'error');
         setLoading(false);
         return;
       }
 
-      // Every requested item must fall under a category
-      const uncategorized = validItems.filter((item: any) => !item.category);
-      if (uncategorized.length > 0) {
-        showToast('Please select a category for every item', 'error');
-        setLoading(false);
-        return;
+      // Every requested item must fall under a category (when submitting)
+      if (submit) {
+        const uncategorized = validItems.filter((item: any) => !item.category);
+        if (uncategorized.length > 0) {
+          showToast('Please select a category for every item', 'error');
+          setLoading(false);
+          return;
+        }
       }
+
+      const itemsToSave = submit
+        ? validItems
+        : formData.items.filter((item: any) => item.description.trim());
 
       const response = await api.post('/department/requisitions', {
         ...formData,
         justification: formData.description,
-        items: validItems.map((item: any) => ({
+        items: itemsToSave.map((item: any) => ({
           description: item.description,
           category: item.category,
           package: item.package,
@@ -95,18 +102,12 @@ export default function CreateRequisition() {
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <button
-          onClick={() => navigate('/app/requisitions')}
-          className="flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-4"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Requisitions
-        </button>
-        <h1 className="text-2xl font-bold text-gray-900">Internal Requisition</h1>
-        <p className="text-gray-500 mt-1">Request items for your department — digital IR form</p>
-      </div>
+      <PageHeader
+        backTo="/app/requisitions"
+        backLabel="Back to Requisitions"
+        title="Internal Requisition"
+        subtitle="Request items for your department — digital IR form"
+      />
 
       {/* Form */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">

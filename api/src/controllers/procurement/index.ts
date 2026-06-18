@@ -31,6 +31,7 @@ import createSupplierEvaluation from './createSupplierEvaluation.controller.js';
 import getSupplierEvaluations from './getSupplierEvaluations.controller.js';
 import secApproveEvaluation from './secApproveEvaluation.controller.js';
 import getEvaluationsDue from './getEvaluationsDue.controller.js';
+import getEvaluations from './getEvaluations.controller.js';
 import authorizeQuotation from './authorizeQuotation.controller.js';
 import approveQuotationWaiver from './approveQuotationWaiver.controller.js';
 
@@ -50,6 +51,7 @@ export default {
   getSupplierEvaluations,
   secApproveEvaluation,
   getEvaluationsDue,
+  getEvaluations,
   createRFQ,
   getRFQs,
   getRFQById,

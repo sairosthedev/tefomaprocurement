@@ -23,7 +23,7 @@
 
 ## 🎯 Executive Summary
 
-**fossilProcure** is a comprehensive, cloud-based procurement and stores management system designed to transform Fossil Contracting's procurement operations from manual, paper-based processes to a fully digital, transparent, and auditable workflow.
+**fossilProcure** is a comprehensive, cloud-based procurement and stores management system designed to transform Tefoma procurement operations from manual, paper-based processes to a fully digital, transparent, and auditable workflow.
 
 ### Key Highlights
 

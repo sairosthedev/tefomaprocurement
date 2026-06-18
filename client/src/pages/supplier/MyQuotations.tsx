@@ -4,6 +4,7 @@ import api from '../../lib/api';
 import { FileText, Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
 import ViewButton from '../../components/ViewButton';
 import Modal from '../../components/Modal';
+import PageHeader from '../../components/PageHeader';
 import { formatCurrency } from '../../lib/constants';
 import confetti from 'canvas-confetti';
 
@@ -42,11 +43,10 @@ export default function MyQuotations() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">My Quotations</h1>
-        <p className="text-gray-500 mt-1">Track your submitted quotations</p>
-      </div>
+      <PageHeader
+        title="My Quotations"
+        subtitle="Track your submitted quotations"
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">

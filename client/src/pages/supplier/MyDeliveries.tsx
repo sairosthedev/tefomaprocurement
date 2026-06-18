@@ -4,6 +4,7 @@ import api from '../../lib/api';
 import { Truck, Loader2, CheckCircle, XCircle, Clock, Package, AlertCircle } from 'lucide-react';
 import ViewButton from '../../components/ViewButton';
 import Modal from '../../components/Modal';
+import PageHeader from '../../components/PageHeader';
 import { formatCurrency } from '../../lib/constants';
 
 const statusColors: any = {
@@ -49,11 +50,10 @@ export default function MyDeliveries() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">My Deliveries</h1>
-        <p className="text-gray-500 mt-1">Track your goods deliveries and GRV status</p>
-      </div>
+      <PageHeader
+        title="My Deliveries"
+        subtitle="Track your goods deliveries and GRV status"
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
