@@ -34,6 +34,7 @@ router.use(protect);
 // Evaluations — COO can read due list, all evaluations, and SEC-approve.
 router.get('/evaluations/due', canReadEvaluations, procurement.getEvaluationsDue);
 router.get('/evaluations', canReadEvaluations, procurement.getEvaluations);
+router.get('/supplier-reports', canReadEvaluations, procurement.getSupplierReports);
 router.put('/evaluations/:id/sec-approve', canSecApproveEvaluation, procurement.secApproveEvaluation);
 
 // Procurement officers, admins, and the head of the Procurement department.
