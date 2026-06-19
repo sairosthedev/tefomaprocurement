@@ -5,7 +5,7 @@ import { useToast } from '../components/Toast';
 import api, { storesAPI } from '../lib/api';
 import { 
   Search, Package, AlertTriangle, TrendingDown, 
-  TrendingUp, Loader2, Plus, Upload, Download, FileSpreadsheet, PackageCheck, X, ArrowLeft
+  TrendingUp, Loader2, Plus, Upload, Download, FileSpreadsheet, PackageCheck, X, ArrowLeft, XCircle
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import ViewButton from '../components/ViewButton';
