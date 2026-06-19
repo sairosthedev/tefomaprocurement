@@ -3,10 +3,14 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { isProcurementHead } from '@fossil/shared';
 import { Loader2 } from 'lucide-react';
+import { hasStoredSession, readStoredSession } from '../lib/session';
 
 export function ProtectedRoute({ children, allowedRoles }: any) {
-  const { user, loading, isAuthenticated } = useAuth();
+  const { user, loading } = useAuth();
   const location = useLocation();
+  const storedSession = readStoredSession();
+  const sessionUser = user || storedSession.user;
+  const authenticated = hasStoredSession();
 
   if (loading) {
     return (
@@ -19,14 +23,24 @@ export function ProtectedRoute({ children, allowedRoles }: any) {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!authenticated) {
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  // A procurement department head also has procurement_officer capabilities.
-  const effectiveRoles = isProcurementHead(user)
-    ? [user.role, 'procurement_officer']
-    : [user.role];
+  if (!sessionUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="flex items-center gap-3">
+          <Loader2 className="h-8 w-8 text-primary animate-spin" />
+          <span className="text-lg text-gray-600">Loading session...</span>
+        </div>
+      </div>
+    );
+  }
+
+  const effectiveRoles = isProcurementHead(sessionUser)
+    ? [sessionUser.role, 'procurement_officer']
+    : [sessionUser.role];
 
   if (allowedRoles && !effectiveRoles.some((r: string) => allowedRoles.includes(r))) {
     return <Navigate to="/unauthorized" replace />;

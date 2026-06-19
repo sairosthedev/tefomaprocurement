@@ -1,26 +1,44 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authAPI } from '../lib/api';
+import {
+  readStoredSession,
+  persistSession,
+  clearSession,
+  hasStoredSession
+} from '../lib/session';
 
 const AuthContext = createContext<any>(null);
 
 export function AuthProvider({ children }: any) {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<any>(() => readStoredSession().user);
   const [loading, setLoading] = useState<any>(true);
+
+  const hydrateFromStorage = useCallback(() => {
+    const { user: storedUser } = readStoredSession();
+    if (storedUser) {
+      setUser(storedUser);
+    }
+  }, []);
 
   useEffect(() => {
     const initAuth = async () => {
-      const token = localStorage.getItem('token');
-      const storedUser = localStorage.getItem('user');
-      
-      if (token && storedUser) {
+      const { token, user: storedUser } = readStoredSession();
+
+      if (storedUser) {
+        setUser(storedUser);
+      }
+
+      if (token) {
         try {
           const response = await authAPI.getMe();
           setUser(response.data.user);
-        } catch (error: any) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
+          persistSession(token, response.data.user);
+        } catch {
+          clearSession();
+          setUser(null);
         }
       }
+
       setLoading(false);
     };
 
@@ -32,31 +50,42 @@ export function AuthProvider({ children }: any) {
     if (response.data.requiresOtp) {
       return { requiresOtp: true, email: response.data.email, message: response.data.message };
     }
-    const { token, user } = response.data;
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-    setUser(user);
-    return { requiresOtp: false, user };
+
+    const { token, user: sessionUser } = response.data;
+    if (!token || !sessionUser) {
+      throw new Error('Invalid login response');
+    }
+
+    persistSession(token, sessionUser);
+    setUser(sessionUser);
+    return { requiresOtp: false, user: sessionUser };
   };
 
   const verifyOtp = async (email: any, otp: any) => {
     const response = await authAPI.verifyOtp({ email, otp });
-    const { token, user } = response.data;
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-    setUser(user);
-    return user;
+    const { token, user: sessionUser } = response.data;
+
+    if (!token || !sessionUser) {
+      throw new Error('Invalid verification response');
+    }
+
+    persistSession(token, sessionUser);
+    setUser(sessionUser);
+    hydrateFromStorage();
+    return sessionUser;
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    clearSession();
     setUser(null);
   };
 
   const updateUser = (updatedData: any) => {
     const newUser: any = { ...user, ...updatedData };
-    localStorage.setItem('user', JSON.stringify(newUser));
+    const { token } = readStoredSession();
+    if (token) {
+      persistSession(token, newUser);
+    }
     setUser(newUser);
   };
 
@@ -67,7 +96,7 @@ export function AuthProvider({ children }: any) {
     verifyOtp,
     logout,
     updateUser,
-    isAuthenticated: !!user
+    isAuthenticated: hasStoredSession()
   };
 
   return (

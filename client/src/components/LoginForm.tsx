@@ -95,7 +95,8 @@ export default function LoginForm({ variant }: { variant: LoginVariant }) {
     setIsLoading(true);
     try {
       await verifyOtp(pendingEmail, otp.trim());
-      navigate(from, { replace: true });
+      // Full navigation so auth state is read from storage reliably in production.
+      window.location.assign(from.startsWith('/') ? from : '/app');
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Invalid verification code', 'error', 5000);
     } finally {

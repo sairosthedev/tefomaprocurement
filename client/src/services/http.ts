@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { clearSession, hasStoredSession } from '../lib/session';
 
 const DEFAULT_API_URL = 'https://fosssil-procure-api.vercel.app/api';
 
@@ -32,9 +33,17 @@ http.interceptors.response.use(
       url.includes('/auth/register');
 
     if (error.response?.status === 401 && !isAuthEndpoint) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      if (typeof window !== 'undefined') {
+      const hadSession = hasStoredSession();
+      clearSession();
+
+      const path = typeof window !== 'undefined' ? window.location.pathname : '';
+      const onPublicAuthPage =
+        path === '/' ||
+        path.startsWith('/login') ||
+        path.startsWith('/supplier/login') ||
+        path.startsWith('/register');
+
+      if (hadSession && !onPublicAuthPage && typeof window !== 'undefined') {
         window.location.href = '/';
       }
     }
