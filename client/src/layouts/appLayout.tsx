@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { cn } from '../../lib/utils'
 import Logo from '../components/Logo'
@@ -20,6 +20,7 @@ import {
   Truck,
   ArrowLeftRight,
   Building2,
+  MapPin,
   FileCheck,
   DollarSign,
   CreditCard,
@@ -32,6 +33,7 @@ import {
 import { ChevronDown } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { isProcurementHead } from '@fossil/shared'
+import { notificationsAPI } from '../lib/api'
 
 // Role-based navigation configuration
 const roleNavigation: any = {
@@ -39,6 +41,7 @@ const roleNavigation: any = {
     { name: "Dashboard", href: "/app", icon: LayoutDashboard },
     { name: "Staff Team", href: "/app/users", icon: Users },
     { name: "Departments", href: "/app/departments", icon: Building2 },
+    { name: "Sites", href: "/app/sites", icon: MapPin },
     { name: "Suppliers", icon: Users, children: [
       { name: 'All Suppliers', href: '/app/suppliers', icon: Users },
       { name: 'Verification Hub', href: '/app/verification-hub', icon: FileSearch },
@@ -156,6 +159,7 @@ const roleNavigation: any = {
     { name: "Inventory", href: "/app/inventory", icon: Package },
     { name: "Store Requisitions", href: "/app/store-requisitions", icon: ClipboardList },
     { name: "Stock Movements", href: "/app/stock-movements", icon: ArrowLeftRight },
+    { name: "Stock Transfers", href: "/app/stock-transfers", icon: Truck },
     { name: "Reports", href: "/app/reports", icon: BarChart3 },
     { name: "Notifications", href: "/app/notifications", icon: Bell },
     { name: "Profile", href: "/app/profile", icon: UserCircle },
@@ -180,6 +184,30 @@ export function SidebarLayout({ children }: any) {
   const { user, logout } = useAuth()
   const [showLogoutModal, setShowLogoutModal] = useState<any>(false)
   const [isLoggingOut, setIsLoggingOut] = useState<any>(false)
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadUnread = async () => {
+      if (!user) return
+      try {
+        const res = await notificationsAPI.getUnreadCount()
+        if (!cancelled && res.data.success) {
+          setUnreadCount(res.data.count ?? res.data.data?.count ?? 0)
+        }
+      } catch {
+        // ignore — badge is optional
+      }
+    }
+
+    loadUnread()
+    const interval = setInterval(loadUnread, 60000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [user?._id, user?.id, location.pathname])
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
@@ -376,7 +404,12 @@ export function SidebarLayout({ children }: any) {
                   )}
                 >
                   <Icon className="h-[18px] w-[18px] shrink-0" />
-                  {item.name}
+                  <span className="flex-1">{item.name}</span>
+                  {item.href === '/app/notifications' && unreadCount > 0 && (
+                    <span className="min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center rounded-full bg-red-500 text-white text-[11px] font-semibold">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
                 </Link>
               )
             })}

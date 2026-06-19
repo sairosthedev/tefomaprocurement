@@ -13,6 +13,7 @@ export const storesAPI: any = {
   approveTransfer: (id: any) => http.put(`/stores/transfers/${id}/approve`),
   shipTransfer: (id: any, data: any) => http.put(`/stores/transfers/${id}/ship`, data),
   receiveTransfer: (id: any, data: any) => http.put(`/stores/transfers/${id}/receive`, data),
+  getTransferSites: () => http.get('/stores/sites'),
   getPendingPurchaseRequisitions: (params?: any) => http.get('/stores/purchase-requisitions/pending', { params }),
   autoProcessPurchaseRequisition: (id: any) => http.put(`/stores/purchase-requisitions/${id}/auto-process`),
   issuePurchaseRequisitionLine: (id: any, data: any) =>

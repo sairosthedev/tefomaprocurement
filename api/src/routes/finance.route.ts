@@ -24,4 +24,8 @@ router.put('/invoices/:id/reject', finance.rejectInvoice);
 router.get('/payments', finance.getPayments);
 router.post('/payments', finance.createPayment);
 
+// Budgets
+router.get('/budgets', finance.getBudgets);
+router.put('/budgets', finance.upsertDepartmentBudget);
+
 export default router;

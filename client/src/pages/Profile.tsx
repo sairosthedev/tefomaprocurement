@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
-import api from '../lib/api';
+import { authAPI } from '../lib/api';
 import { User, Mail, Phone, Building2, Shield, Save, Loader2, Key, Eye, EyeOff } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 
@@ -31,7 +31,7 @@ export default function Profile() {
     e.preventDefault();
     try {
       setLoading(true);
-      const response = await api.put('/auth/profile', {
+      const response = await authAPI.updateProfile({
         firstName: formData.firstName,
         lastName: formData.lastName,
         phone: formData.phone
@@ -63,7 +63,7 @@ export default function Profile() {
 
     try {
       setLoading(true);
-      await api.put('/auth/change-password', {
+      await authAPI.changePassword({
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword
       });

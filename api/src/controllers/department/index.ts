@@ -13,6 +13,8 @@ import getPendingPoApprovals from './getPendingPoApprovals.controller.js';
 import hodReviewEvaluation from './hodReviewEvaluation.controller.js';
 import hodSelectQuotation from './hodSelectQuotation.controller.js';
 import searchCatalogItems from './searchCatalogItems.controller.js';
+import rejectPurchaseOrder from './rejectPurchaseOrder.controller.js';
+import getPendingEvaluations from './getPendingEvaluations.controller.js';
 
 export default {
   createRequisition,
@@ -26,7 +28,9 @@ export default {
   createStoreRequisition,
   getStoreRequisitions,
   approvePurchaseOrder,
+  rejectPurchaseOrder,
   getPendingPoApprovals,
+  getPendingEvaluations,
   hodReviewEvaluation,
   hodSelectQuotation,
   searchCatalogItems

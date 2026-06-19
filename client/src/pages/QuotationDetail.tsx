@@ -59,6 +59,8 @@ export default function QuotationDetail() {
   const [sealedInfo, setSealedInfo] = useState<any>(null);
   const [closingRfq, setClosingRfq] = useState<any>(false);
   const [hodJustification, setHodJustification] = useState<any>('');
+  const [waiverReason, setWaiverReason] = useState<any>('');
+  const [approvingWaiver, setApprovingWaiver] = useState<any>(false);
   const [authorizing, setAuthorizing] = useState<any>(false);
   const [showAcceptModal, setShowAcceptModal] = useState<any>(false);
   const [showRejectModal, setShowRejectModal] = useState<any>(false);
@@ -135,6 +137,29 @@ export default function QuotationDetail() {
       showToast(error.response?.data?.message || 'Failed to select quotation', 'error');
     } finally {
       setAuthorizing(false);
+    }
+  };
+
+  const handleApproveWaiver = async () => {
+    if (!waiverReason.trim()) {
+      showToast('A waiver reason is required', 'error');
+      return;
+    }
+    if (!quotation?.rfq?._id) return;
+
+    try {
+      setApprovingWaiver(true);
+      await procurementAPI.approveQuotationWaiver(quotation.rfq._id, {
+        reason: waiverReason.trim(),
+        waiverType: 'insufficient_quotations'
+      });
+      showToast('Quotation waiver approved', 'success');
+      setWaiverReason('');
+      fetchQuotation();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to approve waiver', 'error');
+    } finally {
+      setApprovingWaiver(false);
     }
   };
 
@@ -351,6 +376,7 @@ export default function QuotationDetail() {
           const procurementHead = isProcurementHead(user);
           const canHodSelect = canUserHodSelect(user, c);
           const canPmAuthorize = role === 'procurement_officer' || role === 'admin' || procurementHead;
+          const canApproveWaiver = canPmAuthorize || role === 'coo';
           const reqDeptName = c.requestingDepartment?.name;
           const missingSteps: string[] = [];
           if (!c.minQuotationsMet) missingSteps.push('at least 3 quotations (or a waiver)');
@@ -402,6 +428,26 @@ export default function QuotationDetail() {
                     {c.quotationCount} quotation{c.quotationCount === 1 ? '' : 's'} on this RFQ
                     {!c.minQuotationsMet && ' — need at least 3 or an approved waiver'}
                   </p>
+                  {!c.minQuotationsMet && !c.waived && canApproveWaiver && (
+                    <div className="mt-2 space-y-2">
+                      <textarea
+                        value={waiverReason}
+                        onChange={(e: any) => setWaiverReason(e.target.value)}
+                        rows={2}
+                        placeholder="Justification for waiving the 3-quotation requirement..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApproveWaiver}
+                        disabled={approvingWaiver}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50"
+                      >
+                        {approvingWaiver ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                        Approve waiver
+                      </button>
+                    </div>
+                  )}
                 </Step>
 
                 <Step

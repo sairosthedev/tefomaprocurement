@@ -11,5 +11,7 @@ export const financeAPI: any = {
   approveInvoice: (id: any, data?: any) => http.put(`/finance/invoices/${id}/approve`, data),
   rejectInvoice: (id: any, data: any) => http.put(`/finance/invoices/${id}/reject`, data),
   getPayments: (params?: any) => http.get('/finance/payments', { params }),
-  createPayment: (data: any) => http.post('/finance/payments', data)
+  createPayment: (data: any) => http.post('/finance/payments', data),
+  getBudgets: (params?: any) => http.get('/finance/budgets', { params }),
+  upsertDepartmentBudget: (data: any) => http.put('/finance/budgets', data)
 };

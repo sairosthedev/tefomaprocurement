@@ -449,9 +449,30 @@ const sendOtpEmail = async (emailTo: string, code: string): Promise<boolean> => 
   return result != null;
 };
 
+const sendPasswordResetEmail = async (
+  emailTo: string,
+  resetLink: string,
+  firstName?: string
+): Promise<boolean> => {
+  const companyName = process.env.COMPANY_NAME || 'Tefoma Construction Procurement';
+  const greeting = firstName ? `Hi ${firstName},` : 'Hello,';
+
+  const result = await sendEmailNotification({
+    emailTo,
+    subject: `Reset your ${companyName} password`,
+    headingText: 'Password reset request',
+    subText: `${greeting} we received a request to reset your password. Click the button below to choose a new password. This link expires in 1 hour.`,
+    subSubText: 'If you did not request this, you can safely ignore this email.',
+    actionButtonText: 'Reset password',
+    actionButtonLink: resetLink
+  });
+  return result != null;
+};
+
 export {
   sendEmailNotification,
   sendNotificationEmail,
   sendOtpEmail,
+  sendPasswordResetEmail,
   getUserEmail
 };

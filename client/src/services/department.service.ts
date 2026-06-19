@@ -9,6 +9,8 @@ export const departmentAPI: any = {
   getStoreRequisitions: (params?: any) => http.get('/department/store-requisitions', { params }),
   getPendingPoApprovals: () => http.get('/department/pending-po-approvals'),
   approvePO: (id: any, data?: any) => http.put(`/department/purchase-orders/${id}/approve`, data),
+  rejectPO: (id: any, data: any) => http.put(`/department/purchase-orders/${id}/reject`, data),
+  getPendingEvaluations: () => http.get('/department/evaluations/pending'),
   hodReviewEvaluation: (id: any, data: any) => http.put(`/department/evaluations/${id}/review`, data),
   hodSelectQuotation: (rfqId: any, data: any) => http.put(`/department/rfqs/${rfqId}/select-quotation`, data)
 };

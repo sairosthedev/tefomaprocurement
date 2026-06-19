@@ -30,8 +30,10 @@ router.get('/store-requisitions', hod, department.getStoreRequisitions);
 // PO approvals (HOD step)
 router.get('/pending-po-approvals', hod, department.getPendingPoApprovals);
 router.put('/purchase-orders/:id/approve', hod, department.approvePurchaseOrder);
+router.put('/purchase-orders/:id/reject', hod, department.rejectPurchaseOrder);
 
 // Supplier evaluation HOD review
+router.get('/evaluations/pending', hod, department.getPendingEvaluations);
 router.put('/evaluations/:id/review', hod, department.hodReviewEvaluation);
 
 // HOD quotation selection

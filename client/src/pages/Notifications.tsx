@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/Toast';
+import { useAuth } from '../context/AuthContext';
 import { notificationsAPI } from '../lib/api';
+import { getNotificationPath } from '../lib/notificationRoutes';
 import { 
   Bell, 
   CheckCircle, 
@@ -107,6 +110,8 @@ const formatTimeAgo = (date: any) => {
 
 export default function Notifications() {
   const { showToast } = useToast();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState<any>(true);
   const [markingAll, setMarkingAll] = useState<any>(false);
@@ -162,7 +167,10 @@ export default function Notifications() {
     if (!notification.read) {
       await handleMarkAsRead(notification._id);
     }
-    // TODO: Navigate to the related entity based on entity type and ID
+    const path = getNotificationPath(notification, user?.role);
+    if (path) {
+      navigate(path);
+    }
   };
 
   return (

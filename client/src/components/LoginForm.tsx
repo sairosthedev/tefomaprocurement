@@ -176,6 +176,13 @@ export default function LoginForm({ variant }: { variant: LoginVariant }) {
                       {showPassword ? 'HIDE' : 'SHOW'}
                     </button>
                   </div>
+                  {variant === 'staff' && (
+                    <div className="text-right">
+                      <Link to="/forgot-password" className="text-sm font-medium text-primary hover:text-primary-dark">
+                        Forgot password?
+                      </Link>
+                    </div>
+                  )}
                 </div>
 
                 <button

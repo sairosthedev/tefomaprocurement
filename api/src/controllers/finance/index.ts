@@ -9,6 +9,8 @@ import approveInvoice from './approveInvoice.controller.js';
 import rejectInvoice from './rejectInvoice.controller.js';
 import getPayments from './getPayments.controller.js';
 import createPayment from './createPayment.controller.js';
+import getBudgets from './getBudgets.controller.js';
+import upsertDepartmentBudget from './upsertDepartmentBudget.controller.js';
 
 export default {
   getPendingApprovals,
@@ -21,5 +23,7 @@ export default {
   approveInvoice,
   rejectInvoice,
   getPayments,
-  createPayment
+  createPayment,
+  getBudgets,
+  upsertDepartmentBudget
 };

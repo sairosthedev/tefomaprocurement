@@ -20,6 +20,7 @@ import Reports from './pages/Reports';
 import Users from './pages/Users';
 import Departments from './pages/Departments';
 import AuditLogs from './pages/AuditLogs';
+import Sites from './pages/Sites';
 
 // Procurement Pages
 import Suppliers from './pages/Suppliers';
@@ -56,6 +57,7 @@ import Payments from './pages/Payments';
 import Deliveries from './pages/Deliveries';
 import Inventory from './pages/Inventory';
 import StockMovements from './pages/StockMovements';
+import StockTransfers from './pages/StockTransfers';
 
 // Supplier Portal Pages
 import MyRFQs from './pages/supplier/MyRFQs';
@@ -68,6 +70,8 @@ import SupplierProfile from './pages/supplier/SupplierProfile';
 import MyKys from './pages/supplier/MyKys';
 import MyInvoices from './pages/supplier/MyInvoices';
 import SubmitInvoice from './pages/supplier/SubmitInvoice';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 function AppLayout({ children, allowedRoles }: any) {
   return (
@@ -88,6 +92,8 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/supplier/login" element={<SupplierLogin />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
 
             {/* Dashboard - All authenticated users */}
@@ -127,6 +133,11 @@ function App() {
             <Route path="/app/departments" element={
               <AppLayout allowedRoles={['admin']}>
                 <Departments />
+              </AppLayout>
+            } />
+            <Route path="/app/sites" element={
+              <AppLayout allowedRoles={['admin']}>
+                <Sites />
               </AppLayout>
             } />
             <Route path="/app/audit-logs" element={
@@ -280,6 +291,11 @@ function App() {
             <Route path="/app/stock-movements" element={
               <AppLayout allowedRoles={['stores_officer']}>
                 <StockMovements />
+              </AppLayout>
+            } />
+            <Route path="/app/stock-transfers" element={
+              <AppLayout allowedRoles={['stores_officer', 'admin']}>
+                <StockTransfers />
               </AppLayout>
             } />
 

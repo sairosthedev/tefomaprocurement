@@ -20,6 +20,7 @@ import autoProcessRequisition from './autoProcessRequisition.controller.js';
 import issuePurchaseRequisitionLine from './issuePurchaseRequisitionLine.controller.js';
 import addInventoryItem from './addInventoryItem.controller.js';
 import bulkImportInventory from './bulkImportInventory.controller.js';
+import getTransferSites from './getTransferSites.controller.js';
 
 export default {
   receiveGoods,
@@ -43,5 +44,6 @@ export default {
   autoProcessRequisition,
   issuePurchaseRequisitionLine,
   addInventoryItem,
-  bulkImportInventory
+  bulkImportInventory,
+  getTransferSites
 };

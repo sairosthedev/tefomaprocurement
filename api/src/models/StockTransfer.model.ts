@@ -58,8 +58,7 @@ const StockTransferSchema = new Schema<IStockTransfer>(
   {
     transferNumber: {
       type: String,
-      unique: true,
-      required: true
+      unique: true
     },
     fromSite: {
       type: mongoose.Schema.Types.ObjectId,
@@ -109,13 +108,12 @@ const StockTransferSchema = new Schema<IStockTransfer>(
   { timestamps: true }
 );
 
-StockTransferSchema.pre('save', async function (next) {
+StockTransferSchema.pre('validate', async function () {
   if (this.isNew && !this.transferNumber) {
-    const count = await (this.constructor as any).countDocuments();
+    const count = await (this.constructor as typeof mongoose.Model).countDocuments();
     const year = new Date().getFullYear();
     this.transferNumber = `TRF-${year}-${String(count + 1).padStart(5, '0')}`;
   }
-  next();
 });
 
 export default mongoose.model<IStockTransfer>('StockTransfer', StockTransferSchema);
