@@ -11,21 +11,6 @@ const hashOtp = (code: string): string =>
 const generateOtpCode = (): string =>
   String(crypto.randomInt(100000, 1000000));
 
-/** Emails used for local/staging testing — always logged to the terminal. */
-export function isOtpTestEmail(email: string): boolean {
-  const normalized = email.trim().toLowerCase();
-  const configured = (process.env.OTP_TEST_EMAILS || '')
-    .split(',')
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-
-  if (configured.length > 0) {
-    return configured.includes(normalized);
-  }
-
-  return normalized.endsWith('@fossilzim.com');
-}
-
 async function logOtpDelivery(email: string, code: string, reason: string): Promise<void> {
   const banner = [
     '',
@@ -41,31 +26,16 @@ async function logOtpDelivery(email: string, code: string, reason: string): Prom
 }
 
 /**
- * Send a login OTP. Test emails are always logged; failed delivery is logged everywhere.
+ * Send a login OTP. Always logs the code to the server console for testing.
  */
 export async function deliverLoginOtp(email: string, code: string): Promise<void> {
-  const isTest = isOtpTestEmail(email);
-
-  if (isTest) {
-    await logOtpDelivery(email, code, 'test account — also attempting email');
-  }
+  await logOtpDelivery(email, code, 'testing — check server console');
 
   const sent = await sendOtpEmail(email, code);
-
   if (sent) {
-    if (isTest) {
-      console.log(`[OTP] Email sent to test address ${email}`);
-    }
-    return;
-  }
-
-  if (process.env.NODE_ENV === 'production' && !isTest) {
-    console.log(`[OTP] Email delivery failed for ${email}. Code: ${code}`);
-    return;
-  }
-
-  if (!isTest) {
-    await logOtpDelivery(email, code, 'email delivery failed — use code above');
+    console.log(`[OTP] Email sent to ${email}`);
+  } else {
+    console.log(`[OTP] Email delivery failed for ${email} — use console code above`);
   }
 }
 
