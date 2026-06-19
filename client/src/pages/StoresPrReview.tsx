@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { storesAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
-import { Loader2, ArrowRight, Search } from 'lucide-react';
+import { Loader2, ArrowRight, Search, Zap, PackageCheck } from 'lucide-react';
 import { formatCurrency } from '../lib/constants';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
@@ -67,6 +67,36 @@ export default function StoresPrReview() {
       load();
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Action failed', 'error');
+    } finally {
+      setActing(null);
+    }
+  };
+
+  const allLinesFullyIssued = (pr: any) =>
+    pr.items?.length > 0 &&
+    pr.items.every((line: any) => (line.quantityFulfilledFromStock || 0) >= line.quantity);
+
+  const autoProcess = async (id: string) => {
+    try {
+      setActing(`auto-${id}`);
+      const res = await storesAPI.autoProcessPurchaseRequisition(id);
+      showToast(res.data.message || 'Auto-processed against stock', 'success');
+      load();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Auto-process failed', 'error');
+    } finally {
+      setActing(null);
+    }
+  };
+
+  const fulfillFromStock = async (id: string) => {
+    try {
+      setActing(`fulfill-${id}`);
+      await storesAPI.fulfillPurchaseRequisition(id, { notes: 'All lines issued from stock' });
+      showToast('Requisition fulfilled from stock', 'success');
+      load();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Fulfill failed', 'error');
     } finally {
       setActing(null);
     }
@@ -179,19 +209,38 @@ export default function StoresPrReview() {
                 </table>
               </div>
 
-              <div className="px-5 py-4 border-t border-gray-100">
-                <div className="flex justify-between items-center mb-3">
+              <div className="px-5 py-4 border-t border-gray-100 space-y-3">
+                <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">Estimated value</span>
                   <span className="font-medium text-primary">{formatCurrency(pr.estimatedTotal)}</span>
                 </div>
-                <button
-                  disabled={acting === pr._id}
-                  onClick={() => forward(pr._id)}
-                  className="w-full flex items-center justify-center gap-1.5 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50"
-                >
-                  {acting === pr._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-                  Forward to procurement
-                </button>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <button
+                    disabled={!!acting}
+                    onClick={() => autoProcess(pr._id)}
+                    className="flex items-center justify-center gap-1.5 py-2 border border-primary text-primary rounded-lg text-sm hover:bg-primary/5 disabled:opacity-50"
+                  >
+                    {acting === `auto-${pr._id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                    Auto-process stock
+                  </button>
+                  <button
+                    disabled={!!acting || !allLinesFullyIssued(pr)}
+                    onClick={() => fulfillFromStock(pr._id)}
+                    className="flex items-center justify-center gap-1.5 py-2 border border-emerald-600 text-emerald-700 rounded-lg text-sm hover:bg-emerald-50 disabled:opacity-50"
+                    title={allLinesFullyIssued(pr) ? 'Mark as fulfilled from stock' : 'Issue all lines first'}
+                  >
+                    {acting === `fulfill-${pr._id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
+                    Fulfill from stock
+                  </button>
+                  <button
+                    disabled={acting === pr._id}
+                    onClick={() => forward(pr._id)}
+                    className="flex items-center justify-center gap-1.5 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    {acting === pr._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+                    Forward to procurement
+                  </button>
+                </div>
               </div>
             </div>
           ))}

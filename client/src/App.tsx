@@ -61,6 +61,7 @@ import StockTransfers from './pages/StockTransfers';
 
 // Supplier Portal Pages
 import MyRFQs from './pages/supplier/MyRFQs';
+import SupplierRFQDetail from './pages/supplier/SupplierRFQDetail';
 import SubmitQuotation from './pages/supplier/SubmitQuotation';
 import MyQuotations from './pages/supplier/MyQuotations';
 import MySubmittedQuotations from './pages/supplier/MySubmittedQuotations';
@@ -72,6 +73,7 @@ import MyInvoices from './pages/supplier/MyInvoices';
 import SubmitInvoice from './pages/supplier/SubmitInvoice';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import NotFound from './pages/NotFound';
 
 function AppLayout({ children, allowedRoles }: any) {
   return (
@@ -213,12 +215,12 @@ function App() {
               </AppLayout>
             } />
             <Route path="/app/purchase-orders" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer', 'finance', 'coo']}>
+              <AppLayout allowedRoles={['admin', 'procurement_officer', 'finance', 'coo', 'department_head']}>
                 <PurchaseOrders />
               </AppLayout>
             } />
             <Route path="/app/purchase-orders/:id" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer', 'finance', 'coo']}>
+              <AppLayout allowedRoles={['admin', 'procurement_officer', 'finance', 'coo', 'department_head']}>
                 <PurchaseOrderDetail />
               </AppLayout>
             } />
@@ -305,6 +307,11 @@ function App() {
                 <MyRFQs />
               </AppLayout>
             } />
+            <Route path="/app/my-rfqs/:id" element={
+              <AppLayout allowedRoles={['supplier']}>
+                <SupplierRFQDetail />
+              </AppLayout>
+            } />
             <Route path="/app/submit-quotation" element={
               <AppLayout allowedRoles={['supplier']}>
                 <SubmitQuotation />
@@ -351,8 +358,8 @@ function App() {
               </AppLayout>
             } />
 
-            {/* Catch all - redirect to app */}
-            <Route path="*" element={<Navigate to="/app" replace />} />
+            {/* Catch all */}
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </ToastProvider>
       </AuthProvider>

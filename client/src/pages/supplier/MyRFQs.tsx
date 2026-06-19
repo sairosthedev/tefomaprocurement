@@ -301,15 +301,7 @@ export default function MyRFQs() {
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-2">
                           <ViewButton
-                            onClick={() => { 
-                              setSelectedRFQ(rfq);
-                              setShowViewModal(true);
-                              // Show confetti if quotation is accepted
-                              if (rfq.quotationStatus === 'accepted') {
-                                setShowConfetti(true);
-                                setTimeout(() => setShowConfetti(false), 3000);
-                              }
-                            }}
+                            onClick={() => navigate(`/app/my-rfqs/${rfq._id}`)}
                           />
                           {canSubmit && (
                             <button

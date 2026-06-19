@@ -7,158 +7,135 @@ This guide is for normal users, not developers. Follow the steps in order so you
 - A browser and the test system link.
 - One login for each role you want to test.
 - A supplier account for the supplier steps.
+- **Setup time:** allow 30–60 minutes before the first full E2E run to create inventory items and (optionally) a second site for stock transfers.
 
 If you do not already have all the logins, ask the project owner for them before testing.
 
-## 2. Login pages and accounts
+## 2. Developer setup (for the team hosting QA)
+
+1. Copy `api/.env.example` → `api/.env` and set `MONGODB_URI` and `JWT_SECRET`.
+2. Copy `client/.env.example` → `client/.env` and set `VITE_API_URL=http://localhost:3001/api` for local testing.
+3. Run `npm install` then `npm run dev`.
+4. Seed test accounts: **`npm run seed:all`** (creates all staff roles + 6 active suppliers).
+5. Optional email: set `RESEND_API_KEY`, `EMAIL_FROM`, and `CLIENT_URL` in `api/.env`.
+
+## 3. Login pages and accounts
 
 - Staff/admin login page: `/login`
 - Supplier login page: `/supplier/login`
 - Supplier registration page: `/register`
-- Seeded staff/admin account: `admin@fossilzim.com` / `Admin@123`
 
-Note: the repository seed only creates the staff/admin account. Supplier accounts must be created through the supplier registration page or provided by the team.
+### Seeded accounts (`npm run seed:all`) — password **`Admin@123`** for all:
 
-## 3. Full end-to-end test flow
+| Email | Role |
+|-------|------|
+| admin@fossilzim.com | Admin |
+| macdonald@fossilzim.com | Procurement officer |
+| jb@fossilzim.com | Department head (Procurement) |
+| mac@fossilzim.com | Department head (ICT) |
+| james@fossilzim.com | End user (ICT) |
+| paul@fossilzim.com | Finance |
+| tino@fossilzim.com | COO |
+| alfred@fossilzim.com | Stores officer |
+| ict.*@techzone.co.zw (6 suppliers) | Active supplier accounts |
+
+### Login OTP
+
+Every login requires a one-time code (OTP). If email is not configured, the OTP appears in the **API server console** and (by default) in the browser developer tools network response. In-app notifications work without email.
+
+## 4. Pre-test setup (stores)
+
+Before Step 3 below, the stores officer should:
+
+1. Open **Inventory** and add catalog items that match what end users will request.
+2. Set quantities on hand for those items.
+3. (Optional) Admin → **Sites**: add a second site if testing stock transfers.
+
+## 5. Full end-to-end test flow
 
 Use one test request and move it through every role below.
 
 ### Step 1: End user creates a requisition
 
-1. Log in as an end user.
-2. Open Requisitions.
-3. Select Create Requisition.
-4. Fill in the item details, quantity, and reason for the request.
-5. Submit the requisition.
+1. Log in as an end user (`james@fossilzim.com`).
+2. Open Requisitions → Create Requisition.
+3. Search the stock catalog for items (or type a description manually).
+4. Select a category for each line, quantity, and submit.
 
-Expected result: the requisition is saved and appears in the list with a pending status.
+Expected result: the requisition is saved with pending status.
 
 ### Step 2: Department head reviews the request
 
-1. Log out.
-2. Log in as a department head.
-3. Open Approvals or Requisitions.
-4. Open the submitted requisition.
-5. Approve it or reject it with a reason.
+1. Log in as a department head (`mac@fossilzim.com`).
+2. Open Approvals or Requisitions.
+3. Approve or reject with a reason.
 
-Expected result: the status changes correctly and the requester can see the update.
+Expected result: status updates and the requester is notified.
 
 ### Step 3: Stores reviews the approved request
 
-1. Log out.
-2. Log in as a stores officer.
-3. Open Store Requisitions or Stores PR Review.
-4. Check whether the item can be supplied from stock.
-5. If stock is available, process it as a store issue.
-6. If stock is not available, forward it for procurement.
+1. Log in as stores officer (`alfred@fossilzim.com`).
+2. Open **Stores PR Review**.
+3. Use **Search inventory** to issue stock line-by-line, or **Auto-process stock** to issue available quantities automatically.
+4. If all lines are issued: click **Fulfill from stock**.
+5. If items are not in stock: click **Forward to procurement**.
 
-Expected result: the request moves to the next correct stage and inventory is updated if stock is issued.
+Expected result: inventory updates when stock is issued; requisition moves to fulfilled or procurement queue.
 
 ### Step 4: Procurement creates the RFQ
 
-1. Log out.
-2. Log in as a procurement officer.
-3. Open RFQs.
-4. Create a new RFQ from the approved request.
-5. Select the supplier or suppliers to invite.
-6. Save and publish the RFQ.
+1. Log in as procurement (`macdonald@fossilzim.com`).
+2. Open RFQs → create from the approved/forwarded requisition.
+3. Invite active suppliers and publish.
 
-Expected result: the RFQ is created and the invited suppliers can see it in their portal.
+Expected result: suppliers see the RFQ in **My RFQs** (notification links open the RFQ detail page).
 
-### Step 5: Supplier registers or logs in
+### Step 5: Supplier submits a quotation
 
-1. If the supplier does not yet have an account, go to `/register` and create one.
-2. If the supplier already has an account, go to `/supplier/login`.
-3. Log in as the supplier.
-4. Open My RFQs.
+1. Log in as a supplier (`ict.admin@techzone.co.zw` or similar).
+2. Open My RFQs → open the RFQ → Submit Quote.
+3. Confirm in My Submitted Quotations.
 
-Expected result: the supplier can see the RFQ that was sent to them.
+### Step 6: Procurement selects the quotation
 
-### Step 6: Supplier submits a quotation
+1. Log in as procurement.
+2. Open Quotations → review → select winner (3-quote waiver if needed).
 
-1. Open Submit Quotation.
-2. Fill in the price, delivery time, and any other required details.
-3. Submit the quotation.
-4. Open My Submitted Quotations or My Quotations to confirm it was saved.
+Department heads use **Approvals** for PO-related steps; the Quotations list is for procurement officers.
 
-Expected result: the quotation appears in the supplier portal and is visible to procurement.
+### Step 7: Purchase order approvals
 
-### Step 7: Procurement and department head review the quotation
+1. Procurement submits the PO.
+2. HOD approves in **Approvals**.
+3. Finance approves in **Approvals**.
+4. If total ≥ USD 5,000, COO must also approve (or reject with reason).
 
-1. Log out.
-2. Log in as procurement officer or department head.
-3. Open Quotations.
-4. Open the quotation details.
-5. Select the winning quotation or record the required approval decision.
+Expected result: PO reaches approved status; supplier can acknowledge.
 
-Expected result: the winning quotation is recorded and the process can move to purchase order creation.
+### Step 8: Supplier acknowledges PO
 
-### Step 8: Purchase order is created and approved
+1. Supplier → My Purchase Orders → acknowledge with delivery note if prompted.
 
-1. Open Purchase Orders.
-2. Create or review the purchase order for the selected quotation.
-3. Follow the approval steps shown in the system.
-4. If a higher approval is required, continue until it is fully approved.
+### Step 9: Goods received and accepted
 
-Expected result: the purchase order reaches an approved status and the supplier can view it.
+1. Stores officer → **Deliveries**.
+2. **Receive** goods against the PO (GRV).
+3. Open the delivery → **Accept into stock** (accept, partial, or reject).
 
-### Step 9: Supplier acknowledges the purchase order
+Expected result: delivery status updates and inventory increases on acceptance.
 
-1. Log in as the supplier.
-2. Open My Purchase Orders.
-3. Open the purchase order.
-4. Acknowledge it if the action is available.
+### Step 10: Supplier invoice and finance payment
 
-Expected result: the supplier can see the order and its status is updated.
+1. Supplier submits invoice against the PO.
+2. Finance → Invoices → approve.
+3. Open invoice detail → record payment.
 
-### Step 10: Goods are delivered and received
+### Step 11: Notifications and audit
 
-1. Log out.
-2. Log in as a stores officer.
-3. Open Deliveries.
-4. Record or review the delivery.
-5. Confirm the goods received match the order.
-6. Open Inventory or Stock Movements to confirm stock has changed.
+1. Check **Notifications** after major actions.
+2. Admin → **Audit Logs** for a full trail.
 
-Expected result: the delivery is recorded and inventory updates correctly.
-
-### Step 11: Supplier submits an invoice
-
-1. Log in as the supplier.
-2. Open Submit Invoice or My Invoices.
-3. Enter the invoice details against the purchase order.
-4. Submit the invoice.
-
-Expected result: the invoice is created and visible to finance.
-
-### Step 12: Finance reviews and pays the invoice
-
-1. Log out.
-2. Log in as finance.
-3. Open Invoices.
-4. Review the invoice.
-5. Approve or reject it.
-6. If approved, open Payments and record the payment.
-
-Expected result: the invoice moves through the finance process and the payment is recorded.
-
-### Step 13: Check notifications and audit trail
-
-1. Open Notifications after each major action.
-2. Confirm the system shows the event.
-3. If you are testing as admin, open Audit Logs and check that the action was recorded.
-
-Expected result: the system keeps a clear record of what happened.
-
-### Step 14: Log out and test access again
-
-1. Log out of the account.
-2. Try to open a protected page.
-3. Confirm the system sends you back to login.
-
-Expected result: protected pages are blocked after logout.
-
-## 4. What testers should report back
+## 6. What testers should report back
 
 - The role they used.
 - The exact step where the process stopped.
@@ -166,15 +143,12 @@ Expected result: protected pages are blocked after logout.
 - The error message or unexpected screen.
 - Whether the problem is a failed action, missing permission, or confusing wording.
 
-## 5. Quick test checklist
+## 7. Quick test checklist
 
-If you only have time for a short test, do these steps:
-
-1. End user creates a requisition.
+1. End user creates a requisition (with catalog search).
 2. Department head approves it.
-3. Stores reviews it.
-4. Procurement creates the RFQ.
-5. Supplier submits a quotation.
-6. Purchase order is approved.
-7. Delivery is received.
-8. Finance approves and records payment.
+3. Stores issues stock or forwards to procurement.
+4. Procurement creates RFQ; supplier submits quote.
+5. PO approved through HOD → Finance → COO (if ≥ $5,000).
+6. Delivery received and accepted into stock.
+7. Invoice approved and payment recorded.

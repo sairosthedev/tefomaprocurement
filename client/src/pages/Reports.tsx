@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
 import api from '../lib/api';
 import { 
   BarChart3, TrendingUp, DollarSign, Package, Users, 
@@ -64,6 +65,7 @@ function HorizontalBars({ data, valueFormatter }: { data: { label: string; value
 
 export default function Reports() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [loading, setLoading] = useState<any>(true);
   const [reportData, setReportData] = useState<any>(null);
   const [dateRange, setDateRange] = useState<any>('month');
@@ -80,7 +82,7 @@ export default function Reports() {
         setReportData(response.data.data);
       }
     } catch (error: any) {
-      console.error('Failed to fetch report data:', error);
+      showToast(error.response?.data?.message || 'Failed to load report data', 'error');
     } finally {
       setLoading(false);
     }

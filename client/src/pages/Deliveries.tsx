@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../components/Toast';
-import api from '../lib/api';
+import api, { storesAPI } from '../lib/api';
 import { 
   Plus, Search, Truck, CheckCircle, 
   Loader2, Package, Calendar, FileText, AlertCircle, Clock
@@ -40,6 +40,9 @@ export default function Deliveries() {
     items: []
   });
   const [isReceiving, setIsReceiving] = useState<any>(false);
+  const [acceptNotes, setAcceptNotes] = useState('');
+  const [acceptStatus, setAcceptStatus] = useState<'accepted' | 'partially_accepted' | 'rejected'>('accepted');
+  const [isAccepting, setIsAccepting] = useState(false);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(emptyPagination());
 
@@ -62,17 +65,17 @@ export default function Deliveries() {
       if (deliveriesRes.status === 'fulfilled' && deliveriesRes.value.data.success) {
         setDeliveries(deliveriesRes.value.data.data || []);
         setPagination(parsePagination(deliveriesRes.value.data.pagination));
+      } else if (deliveriesRes.status === 'rejected') {
+        showToast(deliveriesRes.reason?.response?.data?.message || 'Failed to load deliveries', 'error');
       }
       
       if (posRes.status === 'fulfilled' && posRes.value.data.success) {
         setPendingPOs(posRes.value.data.data || []);
       } else if (posRes.status === 'rejected') {
-        // Endpoint might not exist or failed, just set empty array
-        console.warn('Failed to fetch pending deliveries:', posRes.reason?.message);
         setPendingPOs([]);
       }
     } catch (error: any) {
-      console.error('Failed to fetch data:', error);
+      showToast(error.response?.data?.message || 'Failed to load deliveries', 'error');
     } finally {
       setLoading(false);
     }
@@ -133,6 +136,40 @@ export default function Deliveries() {
     const newItems = [...receiveData.items];
     newItems[index].receivedQuantity = parseInt(qty) || 0;
     setReceiveData({ ...receiveData, items: newItems });
+  };
+
+  const canAcceptDelivery = (delivery: any) =>
+    ['received', 'inspected'].includes(delivery?.status);
+
+  const openAcceptFlow = (delivery: any) => {
+    setSelectedDelivery(delivery);
+    setAcceptStatus('accepted');
+    setAcceptNotes('');
+    setShowViewModal(true);
+  };
+
+  const handleAcceptDelivery = async () => {
+    if (!selectedDelivery) return;
+    try {
+      setIsAccepting(true);
+      await storesAPI.acceptDelivery(selectedDelivery._id, {
+        status: acceptStatus,
+        notes: acceptNotes.trim() || undefined
+      });
+      showToast(
+        acceptStatus === 'rejected'
+          ? 'Delivery rejected'
+          : 'Delivery accepted — stock updated',
+        'success'
+      );
+      setShowViewModal(false);
+      setSelectedDelivery(null);
+      fetchData();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to update delivery', 'error');
+    } finally {
+      setIsAccepting(false);
+    }
   };
 
   return (
@@ -259,9 +296,19 @@ export default function Deliveries() {
                       )}
                     </td>
                     <td className="py-4 px-6">
-                      <ViewButton
-                        onClick={() => { setSelectedDelivery(delivery); setShowViewModal(true); }}
-                      />
+                      <div className="flex items-center gap-2">
+                        <ViewButton
+                          onClick={() => { setSelectedDelivery(delivery); setShowViewModal(true); }}
+                        />
+                        {canAcceptDelivery(delivery) && (
+                          <button
+                            onClick={() => openAcceptFlow(delivery)}
+                            className="px-2.5 py-1 text-xs font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                          >
+                            Accept
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -498,6 +545,47 @@ export default function Deliveries() {
                 </table>
               </div>
             </div>
+
+            {canAcceptDelivery(selectedDelivery) && (
+              <div className="border-t border-gray-100 pt-6 space-y-4">
+                <h3 className="font-semibold text-gray-900">Accept into stock</h3>
+                <p className="text-sm text-gray-500">
+                  Confirm inspection and move received goods into inventory.
+                </p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Decision</label>
+                  <select
+                    value={acceptStatus}
+                    onChange={(e: any) => setAcceptStatus(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  >
+                    <option value="accepted">Accept all (good condition)</option>
+                    <option value="partially_accepted">Partially accept</option>
+                    <option value="rejected">Reject delivery</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Notes (optional)</label>
+                  <textarea
+                    value={acceptNotes}
+                    onChange={(e: any) => setAcceptNotes(e.target.value)}
+                    rows={2}
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
+                    placeholder="Inspection notes..."
+                  />
+                </div>
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={handleAcceptDelivery}
+                    disabled={isAccepting}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    {isAccepting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                    Confirm {acceptStatus === 'rejected' ? 'Rejection' : 'Acceptance'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </Modal>

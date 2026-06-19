@@ -174,7 +174,7 @@ export default function Inventory() {
         }
       }
     } catch (error: any) {
-      console.error('Failed to fetch inventory:', error);
+      showToast(error.response?.data?.message || 'Failed to load inventory', 'error');
     } finally {
       setLoading(false);
     }

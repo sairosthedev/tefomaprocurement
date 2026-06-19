@@ -740,34 +740,60 @@ export default function SupplierDetails() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-                <p className="text-xs uppercase tracking-wide text-gray-500">Verification Snapshot</p>
-                <p className="mt-2 text-2xl font-semibold text-gray-900">{supplier.kysComplete ? 'Verified' : 'Pending'}</p>
-                <p className="mt-1 text-sm text-gray-500">Placeholder for compliance score and verification trend.</p>
+                <p className="text-xs uppercase tracking-wide text-gray-500">Verification</p>
+                <p className="mt-2 text-2xl font-semibold text-gray-900">{supplier.kysComplete ? 'Complete' : 'Incomplete'}</p>
+                <p className="mt-1 text-sm text-gray-500">
+                  Status: <span className="capitalize">{supplier.status?.replace('_', ' ')}</span>
+                  {supplier.kysExempt ? ' · KYS exempt' : ''}
+                </p>
               </div>
               <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-                <p className="text-xs uppercase tracking-wide text-gray-500">Document Activity</p>
+                <p className="text-xs uppercase tracking-wide text-gray-500">Compliance documents</p>
                 <p className="mt-2 text-2xl font-semibold text-gray-900">{checklistDocuments.length}</p>
-                <p className="mt-1 text-sm text-gray-500">Placeholder for uploads, downloads, and missing file alerts.</p>
+                <p className="mt-1 text-sm text-gray-500">
+                  {checklistDocuments.filter((d: any) => d.status === 'verified').length} verified ·{' '}
+                  {checklistDocuments.filter((d: any) => !d.fileUrl && !d.url).length} missing uploads
+                </p>
               </div>
               <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-                <p className="text-xs uppercase tracking-wide text-gray-500">Performance Reviews</p>
+                <p className="text-xs uppercase tracking-wide text-gray-500">Performance reviews</p>
                 <p className="mt-2 text-2xl font-semibold text-gray-900">{evaluations.length}</p>
-                <p className="mt-1 text-sm text-gray-500">Placeholder for score trends, recommendations, and review history.</p>
+                <p className="mt-1 text-sm text-gray-500">
+                  {latestEvaluation?.overallScore != null
+                    ? `Latest score: ${latestEvaluation.overallScore}/5`
+                    : 'No scored evaluations yet'}
+                </p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-6 text-gray-500 shadow-sm">
-                <h3 className="text-sm font-semibold text-gray-900">Compliance report</h3>
-                <p className="mt-2 text-sm">
-                  Placeholder area for a supplier compliance summary, including KYS completion, missing documents, and approval status.
-                </p>
+              <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                <h3 className="text-sm font-semibold text-gray-900">Compliance summary</h3>
+                <ul className="mt-3 space-y-2 text-sm text-gray-600">
+                  <li>KYS complete: {supplier.kysComplete ? 'Yes' : 'No'}</li>
+                  <li>Documents on file: {checklistDocuments.length}</li>
+                  <li>Account status: <span className="capitalize">{supplier.status}</span></li>
+                  {supplier.blacklistReason && (
+                    <li className="text-red-600">Blacklisted: {supplier.blacklistReason}</li>
+                  )}
+                </ul>
               </div>
-              <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-6 text-gray-500 shadow-sm">
-                <h3 className="text-sm font-semibold text-gray-900">Performance report</h3>
-                <p className="mt-2 text-sm">
-                  Placeholder area for spend, evaluation scores, delivery performance, and review timelines.
-                </p>
+              <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                <h3 className="text-sm font-semibold text-gray-900">Performance summary</h3>
+                {evaluations.length === 0 ? (
+                  <p className="mt-2 text-sm text-gray-500">No evaluations recorded for this supplier.</p>
+                ) : (
+                  <ul className="mt-3 space-y-2 text-sm text-gray-600">
+                    <li>Total evaluations: {evaluations.length}</li>
+                    {latestEvaluation && (
+                      <>
+                        <li>Latest period: {latestEvaluation.evaluationPeriod || '—'}</li>
+                        <li>Overall score: {latestEvaluation.overallScore ?? '—'}/5</li>
+                        <li>Recommendation: {latestEvaluation.recommendation || '—'}</li>
+                      </>
+                    )}
+                  </ul>
+                )}
               </div>
             </div>
           </div>

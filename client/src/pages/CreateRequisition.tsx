@@ -5,6 +5,7 @@ import api from '../lib/api';
 import { Plus, Trash2, Save, Send, Package, Loader2 } from 'lucide-react';
 import { UNITS_OF_MEASUREMENT } from '../lib/constants';
 import { CategorySelect } from '../components/CategorySelect';
+import { ItemSelect, type CatalogItem } from '../components/ItemSelect';
 import PageHeader from '../components/PageHeader';
 
 export default function CreateRequisition() {
@@ -16,13 +17,13 @@ export default function CreateRequisition() {
     workOrder: '',
     description: '',
     urgency: 'normal',
-    items: [{ description: '', category: '', quantity: 1, unit: 'Each', package: '', specification: '' }]
+    items: [{ description: '', category: '', quantity: 1, unit: 'Each', package: '', specification: '', catalogItem: null as CatalogItem | null }]
   });
 
   const addItem = () => {
     setFormData({
       ...formData,
-      items: [...formData.items, { description: '', category: '', quantity: 1, unit: 'Each', package: '', specification: '' }]
+      items: [...formData.items, { description: '', category: '', quantity: 1, unit: 'Each', package: '', specification: '', catalogItem: null as CatalogItem | null }]
     });
   };
 
@@ -76,6 +77,7 @@ export default function CreateRequisition() {
         ...formData,
         justification: formData.description,
         items: itemsToSave.map((item: any) => ({
+          itemId: item.catalogItem?._id,
           description: item.description,
           category: item.category,
           package: item.package,
@@ -198,13 +200,31 @@ export default function CreateRequisition() {
                 <div className="grid grid-cols-12 gap-3">
                   <div className="col-span-12 md:col-span-6">
                     <label className="block text-xs text-gray-500 mb-1">Details</label>
-                    <input
-                      type="text"
-                      value={item.description}
-                      onChange={(e: any) => updateItem(index, 'description', e.target.value)}
-                      placeholder="e.g., A4 Paper"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    <ItemSelect
+                      value={item.catalogItem}
+                      freeTextValue={item.description}
+                      onChange={(catalogItem) => {
+                        const newItems = [...formData.items];
+                        newItems[index] = {
+                          ...newItems[index],
+                          catalogItem,
+                          description: catalogItem?.name || newItems[index].description,
+                          category: catalogItem?.category || newItems[index].category,
+                          unit: catalogItem?.unit
+                            ? catalogItem.unit.charAt(0).toUpperCase() + catalogItem.unit.slice(1)
+                            : newItems[index].unit
+                        };
+                        setFormData({ ...formData, items: newItems });
+                      }}
+                      onFreeText={(text) => updateItem(index, 'description', text)}
+                      placeholder="Search stock catalog or type description…"
+                      className="w-full"
                     />
+                    {item.catalogItem && (
+                      <p className="text-xs text-emerald-600 mt-1">
+                        Linked to catalog · {item.catalogItem.quantityAvailable} available at your site
+                      </p>
+                    )}
                   </div>
                   <div className="col-span-12 md:col-span-6">
                     <label className="block text-xs text-gray-500 mb-1">

@@ -2,6 +2,7 @@ import http from './http';
 
 export const storesAPI: any = {
   receiveGoods: (data: any) => http.post('/stores/deliveries', data),
+  acceptDelivery: (id: any, data: any) => http.put(`/stores/deliveries/${id}/accept`, data),
   getDeliveries: (params?: any) => http.get('/stores/deliveries', { params }),
   getInventory: (params?: any) => http.get('/stores/inventory', { params }),
   getStoreRequisitions: (params?: any) => http.get('/stores/requisitions', { params }),

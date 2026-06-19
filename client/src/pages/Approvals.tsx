@@ -98,7 +98,7 @@ export default function Approvals() {
         setPendingEvaluations(response.data.data || []);
       }
     } catch (error: any) {
-      console.error('Failed to fetch pending evaluations:', error);
+      showToast(error.response?.data?.message || 'Failed to load pending evaluations', 'error');
     } finally {
       setEvaluationsLoading(false);
     }

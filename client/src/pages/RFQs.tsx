@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
+import { useToast } from '../components/Toast';
 import Tabs from '../components/Tabs';
 import PageHeader from '../components/PageHeader';
 import { 
@@ -31,6 +32,7 @@ const statusColors: any = {
 
 export default function RFQs() {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [rfqs, setRFQs] = useState<any[]>([]);
   const [loading, setLoading] = useState<any>(true);
   const [search, setSearch] = useState<any>('');
@@ -58,7 +60,7 @@ export default function RFQs() {
       setRFQs(response.data.data);
       setPagination(parsePagination(response.data.pagination));
     } catch (error: any) {
-      console.error('Error fetching RFQs:', error);
+      showToast(error.response?.data?.message || 'Failed to load RFQs', 'error');
     } finally {
       setLoading(false);
     }

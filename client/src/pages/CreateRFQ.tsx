@@ -180,7 +180,14 @@ export default function CreateRFQ() {
       
       // Update requisition status to sourcing
       if (!asDraft && requisitionId) {
-        await api.put(`/procurement/requisitions/${requisitionId}/sourcing`).catch(() => {});
+        try {
+          await api.put(`/procurement/requisitions/${requisitionId}/sourcing`);
+        } catch (sourcingError: any) {
+          showToast(
+            sourcingError.response?.data?.message || 'RFQ created but requisition status was not updated',
+            'error'
+          );
+        }
       }
 
       showToast(asDraft ? 'RFQ saved as draft' : 'RFQ created and sent to suppliers', 'success');

@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import { Delivery, PurchaseOrder, PurchaseRequisition, StoreTransaction, Item } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { resolveSiteId, findOrCreateInventory } from '../../lib/siteScope.js';
+import { notifySupplier } from '../../services/notification.service.js';
 
 const acceptDelivery = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -204,6 +205,19 @@ const acceptDelivery = async (req: Request, res: Response): Promise<any> => {
       newData: { status },
       req
     });
+
+    if (po.supplier) {
+      const notifType = status === 'rejected' ? 'delivery_rejected' : 'delivery_accepted';
+      await notifySupplier(po.supplier, {
+        type: notifType,
+        title: status === 'rejected' ? 'Delivery rejected' : 'Delivery accepted',
+        message: `Delivery for PO ${po.poNumber} was ${status.replace('_', ' ')}.`,
+        entity: 'Delivery',
+        entityId: delivery._id,
+        relatedUser: req.user!._id,
+        metadata: { grvNumber: delivery.grvNumber, poNumber: po.poNumber, isSupplier: true }
+      });
+    }
 
     res.status(200).json({
       success: true,

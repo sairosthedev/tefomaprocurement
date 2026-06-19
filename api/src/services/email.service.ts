@@ -357,6 +357,63 @@ const getEmailContentForNotification = (notification: any): any => {
       actionButtonText: 'View Purchase Order',
       actionButtonLink: `${appUrl}/procurement/purchase-orders/${notification.entityId}`
     },
+    po_submitted: {
+      subject: 'Purchase Order Submitted for Approval',
+      headingText: 'PO Submitted',
+      subText: notification.message,
+      actionButtonText: 'Review Purchase Order',
+      actionButtonLink: `${appUrl}/purchase-orders/${notification.entityId}`
+    },
+
+    // Invoices
+    invoice_submitted: {
+      subject: 'Invoice Submitted for Review',
+      headingText: 'New Invoice',
+      subText: notification.message,
+      actionButtonText: 'Review Invoice',
+      actionButtonLink: `${appUrl}/invoices/${notification.entityId}`
+    },
+    invoice_approved: {
+      subject: 'Invoice Approved',
+      headingText: 'Invoice Approved',
+      subText: notification.message,
+      actionButtonText: 'View Invoice',
+      actionButtonLink: notification.metadata?.isSupplier
+        ? `${baseUrl}/app/my-invoices`
+        : `${appUrl}/invoices/${notification.entityId}`
+    },
+    invoice_rejected: {
+      subject: 'Invoice Rejected',
+      headingText: 'Invoice Rejected',
+      subText: notification.message,
+      actionButtonText: 'View Invoice',
+      actionButtonLink: notification.metadata?.isSupplier
+        ? `${baseUrl}/app/my-invoices`
+        : `${appUrl}/invoices/${notification.entityId}`
+    },
+    invoice_paid: {
+      subject: 'Invoice Paid',
+      headingText: 'Payment Recorded',
+      subText: notification.message,
+      actionButtonText: 'View Invoices',
+      actionButtonLink: notification.metadata?.isSupplier
+        ? `${baseUrl}/app/my-invoices`
+        : `${appUrl}/invoices/${notification.entityId}`
+    },
+    supplier_status_change: {
+      subject: 'Supplier Status Updated',
+      headingText: 'Account Status Changed',
+      subText: notification.message,
+      actionButtonText: 'View Profile',
+      actionButtonLink: `${baseUrl}/app/supplier-profile`
+    },
+    requisition_updated: {
+      subject: 'Requisition Updated',
+      headingText: 'Requisition Updated',
+      subText: notification.message,
+      actionButtonText: 'View Requisition',
+      actionButtonLink: `${appUrl}/requisitions/${notification.entityId}`
+    },
 
     // Goods & Deliveries
     goods_received: {

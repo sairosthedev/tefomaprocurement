@@ -13,5 +13,6 @@ router.use(authorize('coo', 'admin'));
 router.get('/pending-approvals', coo.getPendingApprovals);
 router.get('/purchase-orders/:id', coo.getPurchaseOrderById);
 router.put('/purchase-orders/:id/approve', coo.approvePurchaseOrder);
+router.put('/purchase-orders/:id/reject', coo.rejectPurchaseOrder);
 
 export default router;
