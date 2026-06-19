@@ -15,6 +15,8 @@ export const storesAPI: any = {
   receiveTransfer: (id: any, data: any) => http.put(`/stores/transfers/${id}/receive`, data),
   getPendingPurchaseRequisitions: (params?: any) => http.get('/stores/purchase-requisitions/pending', { params }),
   autoProcessPurchaseRequisition: (id: any) => http.put(`/stores/purchase-requisitions/${id}/auto-process`),
+  issuePurchaseRequisitionLine: (id: any, data: any) =>
+    http.put(`/stores/purchase-requisitions/${id}/issue-line`, data),
   fulfillPurchaseRequisition: (id: any, data?: any) => http.put(`/stores/purchase-requisitions/${id}/fulfill`, data),
   forwardPurchaseRequisition: (id: any, data?: any) => http.put(`/stores/purchase-requisitions/${id}/forward`, data)
 };

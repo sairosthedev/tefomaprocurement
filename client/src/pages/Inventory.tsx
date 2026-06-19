@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { useToast } from '../components/Toast';
-import api from '../lib/api';
+import api, { storesAPI } from '../lib/api';
 import { 
   Search, Package, AlertTriangle, TrendingDown, 
-  TrendingUp, Loader2, Edit, Plus, Upload, Download, FileSpreadsheet, XCircle
+  TrendingUp, Loader2, Plus, Upload, Download, FileSpreadsheet, PackageCheck, X, ArrowLeft
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import ViewButton from '../components/ViewButton';
@@ -41,9 +42,11 @@ function mapRow(raw: Record<string, any>): Record<string, any> {
 
 export default function Inventory() {
   const { showToast } = useToast();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [inventory, setInventory] = useState<any[]>([]);
   const [loading, setLoading] = useState<any>(true);
-  const [searchTerm, setSearchTerm] = useState<any>('');
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search')?.trim() || '');
   const [categoryFilter, setCategoryFilter] = useState<any>('');
   const [showLowStock, setShowLowStock] = useState<any>(false);
   const [showAddModal, setShowAddModal] = useState<any>(false);
@@ -68,6 +71,69 @@ export default function Inventory() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(emptyPagination());
+  const [stats, setStats] = useState({
+    totalItems: 0,
+    lowStockCount: 0,
+    totalStockValue: 0,
+    categoryCount: 0
+  });
+  const [issuingItemId, setIssuingItemId] = useState<string | null>(null);
+
+  const issueContext = useMemo(() => {
+    const prId = searchParams.get('prId');
+    const lineIndex = searchParams.get('lineIndex');
+    if (!prId || lineIndex === null || lineIndex === '') return null;
+    return {
+      prId,
+      lineIndex: Number(lineIndex),
+      prNumber: searchParams.get('prNumber') || '',
+      lineQty: Number(searchParams.get('lineQty')) || 0,
+      lineUnit: searchParams.get('lineUnit') || 'each',
+      lineDescription: searchParams.get('search')?.trim() || ''
+    };
+  }, [searchParams]);
+
+  const clearIssueContext = () => {
+    const next = new URLSearchParams(searchParams);
+    ['prId', 'lineIndex', 'prNumber', 'lineQty', 'lineUnit'].forEach((k) => next.delete(k));
+    setSearchParams(next, { replace: true });
+  };
+
+  const issueForRequisition = async (inv: any) => {
+    if (!issueContext) return;
+    const itemId = inv.item?._id;
+    if (!itemId) return;
+
+    const available = inv.quantityOnHand || 0;
+    if (available < issueContext.lineQty) {
+      showToast(
+        `Not enough stock. Need ${issueContext.lineQty} ${issueContext.lineUnit}, only ${available} on hand.`,
+        'error'
+      );
+      return;
+    }
+
+    try {
+      setIssuingItemId(itemId);
+      const res = await storesAPI.issuePurchaseRequisitionLine(issueContext.prId, {
+        lineIndex: issueContext.lineIndex,
+        itemId,
+        notes: `Issued from inventory: ${inv.item?.name || issueContext.lineDescription}`
+      });
+      showToast(res.data?.message || 'Stock issued', 'success');
+      navigate('/app/stores-pr-review');
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Could not issue stock', 'error');
+    } finally {
+      setIssuingItemId(null);
+    }
+  };
+
+  // Keep search in sync when arriving from Stores PR Review (or other deep links).
+  useEffect(() => {
+    const q = searchParams.get('search')?.trim() || '';
+    setSearchTerm((prev: string) => (prev === q ? prev : q));
+  }, [searchParams]);
 
   useEffect(() => {
     setPage(1);
@@ -77,21 +143,35 @@ export default function Inventory() {
     fetchInventory();
   }, [page, searchTerm, categoryFilter, showLowStock]);
 
-  const fetchInventory = async () => {
+  const handleSearchSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    setPage(1);
+    fetchInventory({ page: 1, search: searchTerm.trim() });
+  };
+
+  const fetchInventory = async (overrides?: {
+    page?: number;
+    search?: string;
+    category?: string;
+    lowStock?: boolean;
+  }) => {
     try {
       setLoading(true);
       const response = await api.get('/stores/inventory', {
         params: { 
-          search: searchTerm, 
-          category: categoryFilter,
-          lowStock: showLowStock,
-          page,
+          search: (overrides?.search ?? searchTerm).trim(), 
+          category: overrides?.category ?? categoryFilter,
+          lowStock: overrides?.lowStock ?? showLowStock,
+          page: overrides?.page ?? page,
           limit: DEFAULT_PAGE_SIZE
         }
       });
       if (response.data.success) {
         setInventory(response.data.data || []);
         setPagination(parsePagination(response.data.pagination));
+        if (response.data.stats) {
+          setStats(response.data.stats);
+        }
       }
     } catch (error: any) {
       console.error('Failed to fetch inventory:', error);
@@ -104,6 +184,10 @@ export default function Inventory() {
     try {
       if (!formData.name.trim()) {
         showToast('Please enter item name', 'error');
+        return;
+      }
+      if (!formData.category) {
+        showToast('Please select a category', 'error');
         return;
       }
 
@@ -120,7 +204,11 @@ export default function Inventory() {
         currentQuantity: 0,
         unitPrice: 0
       });
-      fetchInventory();
+      setSearchTerm('');
+      setCategoryFilter('');
+      setShowLowStock(false);
+      setPage(1);
+      fetchInventory({ page: 1, search: '', category: '', lowStock: false });
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to add item', 'error');
     }
@@ -132,7 +220,7 @@ export default function Inventory() {
         code: 'ITEM-000001',
         name: 'A4 Paper',
         description: '80gsm white printing paper',
-        category: 'Office Supplies',
+        category: 'OFF-STAT',
         unit: 'box',
         reorderLevel: 10,
         quantity: 50,
@@ -176,7 +264,11 @@ export default function Inventory() {
       const res = await api.post('/stores/inventory/bulk', { items: importRows });
       setImportResult(res.data);
       showToast(res.data.message || 'Import complete', res.data.summary?.failed ? 'info' : 'success');
-      fetchInventory();
+      setSearchTerm('');
+      setCategoryFilter('');
+      setShowLowStock(false);
+      setPage(1);
+      fetchInventory({ page: 1, search: '', category: '', lowStock: false });
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Import failed', 'error');
     } finally {
@@ -193,10 +285,7 @@ export default function Inventory() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const lowStockCount = inventory.filter((inv: any) => {
-    const item = inv.item || {};
-    return inv.quantityOnHand <= (item.reorderLevel || 0);
-  }).length;
+  const lowStockCount = stats.lowStockCount;
 
   return (
     <div className="p-8">
@@ -232,7 +321,7 @@ export default function Inventory() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Total Items</p>
-              <p className="text-2xl font-bold text-gray-900">{inventory.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.totalItems}</p>
             </div>
           </div>
         </div>
@@ -264,9 +353,7 @@ export default function Inventory() {
             <div>
               <p className="text-sm text-gray-500">Stock Value</p>
               <p className="text-2xl font-bold text-gray-900">
-                {formatCurrency(inventory.reduce((sum: any, inv: any) => 
-                  sum + (inv.totalValue || 0), 0
-                ))}
+                {formatCurrency(stats.totalStockValue)}
               </p>
             </div>
           </div>
@@ -279,40 +366,72 @@ export default function Inventory() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Categories</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {new Set(inventory.map((inv: any) => inv.item?.category).filter(Boolean)).size}
-              </p>
+              <p className="text-2xl font-bold text-gray-900">{stats.categoryCount}</p>
             </div>
           </div>
         </div>
       </div>
 
+      {issueContext && (
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
+          <div className="text-sm text-gray-800">
+            <span className="font-semibold text-primary">Issuing for {issueContext.prNumber}</span>
+            <span className="text-gray-500"> — </span>
+            {issueContext.lineQty} {issueContext.lineUnit} of &ldquo;{issueContext.lineDescription}&rdquo;
+            <p className="text-xs text-gray-500 mt-0.5">Confirm the item below, then click Issue.</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              to="/app/stores-pr-review"
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Back to review
+            </Link>
+            <button
+              type="button"
+              onClick={clearIssueContext}
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg hover:bg-white"
+            >
+              <X className="h-3.5 w-3.5" />
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
+        <form
+          onSubmit={handleSearchSubmit}
+          className="flex flex-col md:flex-row gap-4"
+        >
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by name or item code..."
+              placeholder="Search by name, code, or description..."
               value={searchTerm}
               onChange={(e: any) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
-          <select
-            value={categoryFilter}
-            onChange={(e: any) => setCategoryFilter(e.target.value)}
-            className="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+          <button
+            type="submit"
+            className="px-5 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors"
           >
-            <option value="">All Categories</option>
-            <option value="Office Supplies">Office Supplies</option>
-            <option value="IT Equipment">IT Equipment</option>
-            <option value="Furniture">Furniture</option>
-            <option value="Cleaning">Cleaning</option>
-            <option value="Stationery">Stationery</option>
-          </select>
-        </div>
+            Search
+          </button>
+          <div className="w-full md:w-72">
+            <CategorySelect
+              value={categoryFilter}
+              onChange={setCategoryFilter}
+              placeholder="All Categories"
+              clearable
+              className="w-full flex items-center justify-between px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white"
+            />
+          </div>
+        </form>
       </div>
 
       {/* Inventory Table */}
@@ -346,6 +465,9 @@ export default function Inventory() {
                 {inventory.map((inv: any) => {
                   const item = inv.item || {};
                   const isLowStock = inv.quantityOnHand <= (item.reorderLevel || 0);
+                  const canIssue =
+                    issueContext && (inv.quantityOnHand || 0) >= issueContext.lineQty;
+                  const isIssuing = issuingItemId === item._id;
                   return (
                     <tr key={inv._id} className={`hover:bg-gray-50 ${isLowStock ? 'bg-red-50/50' : ''}`}>
                       <td className="py-4 px-6">
@@ -385,9 +507,31 @@ export default function Inventory() {
                         )}
                       </td>
                       <td className="py-4 px-6">
-                        <ViewButton
-                          onClick={() => { setSelectedItem({ ...inv, item }); setShowViewModal(true); }}
-                        />
+                        <div className="flex items-center gap-2">
+                          {issueContext && (
+                            <button
+                              type="button"
+                              disabled={!canIssue || isIssuing}
+                              title={
+                                canIssue
+                                  ? `Issue ${issueContext.lineQty} ${issueContext.lineUnit} for ${issueContext.prNumber}`
+                                  : `Need ${issueContext.lineQty} on hand (${inv.quantityOnHand || 0} available)`
+                              }
+                              onClick={() => issueForRequisition(inv)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              {isIssuing ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <PackageCheck className="h-3.5 w-3.5" />
+                              )}
+                              Issue
+                            </button>
+                          )}
+                          <ViewButton
+                            onClick={() => { setSelectedItem({ ...inv, item }); setShowViewModal(true); }}
+                          />
+                        </div>
                       </td>
                     </tr>
                   );
@@ -430,6 +574,7 @@ export default function Inventory() {
                 value={formData.category}
                 onChange={(code) => setFormData({ ...formData, category: code })}
                 placeholder="Select Category"
+                required
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
               />
             </div>

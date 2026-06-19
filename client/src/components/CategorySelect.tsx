@@ -66,13 +66,16 @@ export function CategorySelect({
   onChange,
   required,
   placeholder = 'Select category',
-  className = ''
+  className = '',
+  clearable = false
 }: {
   value: string;
   onChange: (code: string) => void;
   required?: boolean;
   placeholder?: string;
   className?: string;
+  /** When true, allows clearing the selection (e.g. filter bars). */
+  clearable?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -121,7 +124,34 @@ export function CategorySelect({
         <span className={value ? 'text-gray-900' : 'text-gray-500'}>
           {value ? getCategoryName(value) : placeholder}
         </span>
-        <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform shrink-0 ${open ? 'rotate-180' : ''}`} />
+        <span className="flex items-center gap-1 shrink-0">
+          {clearable && value && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange('');
+                setOpen(false);
+                setQuery('');
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onChange('');
+                  setOpen(false);
+                  setQuery('');
+                }
+              }}
+              className="p-0.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+              aria-label="Clear category"
+            >
+              <X className="h-3.5 w-3.5" />
+            </span>
+          )}
+          <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </span>
       </button>
 
       {/* Keep a hidden input so native `required` validation still works */}
@@ -151,6 +181,18 @@ export function CategorySelect({
             </div>
           </div>
           <div className="overflow-y-auto">
+            {clearable && (
+              <button
+                type="button"
+                onClick={() => select('')}
+                className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-sm text-left hover:bg-gray-50 border-b border-gray-100 ${
+                  !value ? 'text-primary font-medium' : 'text-gray-700'
+                }`}
+              >
+                <span>{placeholder}</span>
+                {!value && <Check className="h-4 w-4 text-primary shrink-0" />}
+              </button>
+            )}
             {filteredGroups.length === 0 && (
               <p className="px-3 py-4 text-sm text-gray-400 text-center">No matches</p>
             )}

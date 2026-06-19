@@ -93,15 +93,14 @@ const StoreTransactionSchema = new Schema<IStoreTransaction>({
   timestamps: true
 });
 
-// Generate transaction number before saving
-StoreTransactionSchema.pre('save', async function(next) {
-  if (this.isNew) {
+// Generate transaction number before validation (required field must be set pre-validate)
+StoreTransactionSchema.pre('validate', async function() {
+  if (this.isNew && !this.transactionNumber) {
     const count = await (this.constructor as any).countDocuments();
     const year = new Date().getFullYear();
     const typePrefix = this.type.substring(0, 3).toUpperCase();
     this.transactionNumber = `ST-${typePrefix}-${year}-${String(count + 1).padStart(6, '0')}`;
   }
-  next();
 });
 
 export default mongoose.model<IStoreTransaction>('StoreTransaction', StoreTransactionSchema);

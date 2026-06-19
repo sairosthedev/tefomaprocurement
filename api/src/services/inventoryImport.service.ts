@@ -24,11 +24,14 @@ export interface InventoryRowInput {
   reorderLevel?: number | string;
   quantity?: number | string;
   unitPrice?: number | string;
+  /** Ledger note when an opening-balance transaction is recorded */
+  transactionNotes?: string;
 }
 
 export interface RowResult {
   row: number;
   name: string;
+  itemId?: string;
   status: 'created' | 'updated' | 'failed';
   message?: string;
 }
@@ -90,8 +93,17 @@ export async function processInventoryRow(
     await item.save();
   }
 
-  // Find or create the site-scoped inventory record.
+  // Find or create the site-scoped inventory record (restore soft-deleted rows).
   let inventory = await Inventory.findOne({ item: item._id, site: siteId, isDeleted: false });
+  if (!inventory) {
+    const deleted = await Inventory.findOne({ item: item._id, site: siteId, isDeleted: true });
+    if (deleted) {
+      inventory = deleted;
+      inventory.isDeleted = false;
+      inventory.quantityOnHand = 0;
+      inventory.quantityReserved = 0;
+    }
+  }
   if (!inventory) {
     inventory = await Inventory.create({
       item: item._id,
@@ -125,7 +137,7 @@ export async function processInventoryRow(
         totalValue: Math.abs(delta) * (inventory.unitCost || 0),
         reference: { type: 'adjustment' },
         performedBy: user._id,
-        notes: 'Bulk import — opening balance'
+        notes: row.transactionNotes || 'Bulk import — opening balance'
       });
     }
   } else {
@@ -135,6 +147,7 @@ export async function processInventoryRow(
   return {
     row: rowNumber,
     name: item.name,
+    itemId: item._id.toString(),
     status: created ? 'created' : 'updated'
   };
 }

@@ -28,7 +28,8 @@ function httpError(message: string, statusCode: number): HttpError {
 }
 
 /**
- * Build a Mongo filter fragment for site-scoped queries.
+ * Build a Mongo filter fragment for site-scoped queries (sync).
+ * Prefer {@link buildSiteFilterAsync} when the user may have no homeSite assigned.
  */
 export function buildSiteFilter(
   user: any,
@@ -40,7 +41,10 @@ export function buildSiteFilter(
 
   const home = userSiteId(user);
   if (!home) {
-    return { site: { $exists: false } };
+    throw httpError(
+      'Site context required. Assign homeSite or use async site filter.',
+      400
+    );
   }
 
   if (querySiteId && querySiteId !== home) {
@@ -48,6 +52,22 @@ export function buildSiteFilter(
   }
 
   return { site: home };
+}
+
+/**
+ * Build a site filter using the same resolution rules as writes (import, receive, etc.).
+ * Falls back to HQ when the user has no homeSite.
+ */
+export async function buildSiteFilterAsync(
+  user: any,
+  querySiteId?: string
+): Promise<Record<string, unknown>> {
+  if (canAccessAllSites(user)) {
+    return querySiteId ? { site: querySiteId } : {};
+  }
+
+  const siteId = await resolveSiteId(user, querySiteId);
+  return { site: siteId };
 }
 
 export async function getDefaultHqSite(): Promise<any> {

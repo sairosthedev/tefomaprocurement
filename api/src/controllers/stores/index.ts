@@ -17,6 +17,7 @@ import getPendingPurchaseRequisitions from './getPendingPurchaseRequisitions.con
 import fulfillRequisitionFromStock from './fulfillRequisitionFromStock.controller.js';
 import forwardRequisitionToProcurement from './forwardRequisitionToProcurement.controller.js';
 import autoProcessRequisition from './autoProcessRequisition.controller.js';
+import issuePurchaseRequisitionLine from './issuePurchaseRequisitionLine.controller.js';
 import addInventoryItem from './addInventoryItem.controller.js';
 import bulkImportInventory from './bulkImportInventory.controller.js';
 
@@ -40,6 +41,7 @@ export default {
   fulfillRequisitionFromStock,
   forwardRequisitionToProcurement,
   autoProcessRequisition,
+  issuePurchaseRequisitionLine,
   addInventoryItem,
   bulkImportInventory
 };

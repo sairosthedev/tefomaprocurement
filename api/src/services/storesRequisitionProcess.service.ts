@@ -219,6 +219,132 @@ export async function processRequisitionAgainstStock(
   return { requisition, summary, message };
 }
 
+interface LineIssueResult {
+  requisition: any;
+  issueQty: number;
+  lineDescription: string;
+  allLinesFulfilled: boolean;
+  storesIssueNumber?: string;
+}
+
+/**
+ * Manually issue stock for a single requisition line after stores verifies inventory.
+ * When itemId is supplied, stock is taken from that catalog item (user-selected row).
+ */
+export async function issueRequisitionLine(
+  requisition: any,
+  lineIndex: number,
+  user: any,
+  notes?: string,
+  itemId?: string
+): Promise<LineIssueResult> {
+  if (requisition.status !== 'stores_review') {
+    throw new Error('Requisition is not in stores review');
+  }
+
+  const line = requisition.items[lineIndex];
+  if (!line) {
+    throw new Error('Line not found');
+  }
+
+  const alreadyIssued = line.quantityFulfilledFromStock || 0;
+  const remaining = line.quantity - alreadyIssued;
+  if (remaining <= 0) {
+    throw new Error('This line is already fully issued');
+  }
+
+  const catalogItem = itemId
+    ? await Item.findOne({ _id: itemId, isDeleted: false, status: 'active' })
+    : await resolveCatalogItem(line);
+  if (!catalogItem) {
+    throw new Error(
+      itemId
+        ? 'Selected item not found in catalog'
+        : 'No matching catalog item. Search inventory, add the item if needed, then issue again.'
+    );
+  }
+
+  const siteId = requisition.site || (await resolveSiteId(user));
+  const inventory = await Inventory.findOne({ item: catalogItem._id, site: siteId, isDeleted: false });
+  if (!inventory) {
+    throw new Error('Item is not in site inventory');
+  }
+
+  const available = Math.max(0, inventory.quantityOnHand - (inventory.quantityReserved || 0));
+  if (available < remaining) {
+    throw new Error(
+      `Insufficient stock for "${line.description}". Available: ${available} ${line.unit}, required: ${remaining} ${line.unit}`
+    );
+  }
+
+  const issueQty = remaining;
+  const previousQty = inventory.quantityOnHand;
+  inventory.quantityOnHand -= issueQty;
+  inventory.lastIssuedDate = new Date();
+  await inventory.save();
+
+  await StoreTransaction.create({
+    type: 'issue',
+    site: siteId,
+    item: catalogItem._id,
+    inventory: inventory._id,
+    quantity: -issueQty,
+    previousQuantity: previousQty,
+    newQuantity: inventory.quantityOnHand,
+    unitCost: inventory.unitCost || line.estimatedUnitPrice || 0,
+    reference: { type: 'purchase_requisition', document: requisition._id },
+    department: requisition.department,
+    performedBy: user._id,
+    notes: notes || `Issued for requisition ${requisition.requisitionNumber}: ${line.description}`
+  });
+
+  line.quantityFulfilledFromStock = alreadyIssued + issueQty;
+
+  if (!requisition.storesIssueNumber) {
+    requisition.storesIssueNumber = await generateStoresIssueNumber();
+  }
+
+  requisition.storesReviewedBy = user._id;
+  requisition.storesReviewedAt = new Date();
+
+  const allLinesFulfilled = (requisition.items as any[]).every(
+    (l) => (l.quantityFulfilledFromStock || 0) >= l.quantity
+  );
+
+  if (allLinesFulfilled) {
+    requisition.status = 'fulfilled';
+    requisition.storesReviewNotes =
+      notes ||
+      `Issued from stock. Stores Issue ${requisition.storesIssueNumber}.`;
+    requisition.statusHistory.push({
+      action: 'fulfilled_from_stock',
+      by: user._id,
+      role: user.role,
+      comments: `All lines issued from stock (Issue No. ${requisition.storesIssueNumber})`
+    });
+
+    await createNotification({
+      recipient: requisition.requestedBy,
+      type: 'requisition_accepted',
+      title: 'Request fulfilled from stores',
+      message: `Your requisition ${requisition.requisitionNumber} was fully issued from stock (Issue No. ${requisition.storesIssueNumber}).`,
+      entity: 'PurchaseRequisition',
+      entityId: requisition._id,
+      relatedUser: user._id
+    });
+  }
+
+  await requisition.save();
+
+  return {
+    requisition,
+    issueQty,
+    lineDescription: line.description,
+    allLinesFulfilled,
+    storesIssueNumber: requisition.storesIssueNumber
+  };
+}
+
 /** True when every line can be fully covered from stock at the requisition site. */
 export async function canFullyFulfillFromStock(requisition: any): Promise<boolean> {
   const siteId = requisition.site;
