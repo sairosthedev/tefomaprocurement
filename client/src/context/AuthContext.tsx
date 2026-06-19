@@ -29,12 +29,22 @@ export function AuthProvider({ children }: any) {
 
   const login = async (email: any, password: any) => {
     const response = await authAPI.login({ email, password });
+    if (response.data.requiresOtp) {
+      return { requiresOtp: true, email: response.data.email, message: response.data.message };
+    }
     const { token, user } = response.data;
-    
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
     setUser(user);
-    
+    return { requiresOtp: false, user };
+  };
+
+  const verifyOtp = async (email: any, otp: any) => {
+    const response = await authAPI.verifyOtp({ email, otp });
+    const { token, user } = response.data;
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
+    setUser(user);
     return user;
   };
 
@@ -54,6 +64,7 @@ export function AuthProvider({ children }: any) {
     user,
     loading,
     login,
+    verifyOtp,
     logout,
     updateUser,
     isAuthenticated: !!user

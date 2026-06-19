@@ -18,3 +18,4 @@ export { default as Notification } from './Notification.model.js';
 export { default as Invoice } from './Invoice.model.js';
 export { default as Payment } from './Payment.model.js';
 export { default as SupplierEvaluation } from './SupplierEvaluation.model.js';
+export { default as OtpChallenge } from './OtpChallenge.model.js';

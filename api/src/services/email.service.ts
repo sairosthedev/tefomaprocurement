@@ -432,8 +432,26 @@ const getEmailContentForNotification = (notification: any): any => {
   return contentMap[notification.type] || null;
 };
 
+/**
+ * Send a one-time login verification code.
+ * Returns true when Resend accepts the message.
+ */
+const sendOtpEmail = async (emailTo: string, code: string): Promise<boolean> => {
+  const companyName = process.env.COMPANY_NAME || 'Tefoma Construction Procurement';
+
+  const result = await sendEmailNotification({
+      emailTo,
+      subject: `${code} is your ${companyName} login code`,
+      headingText: 'Your login verification code',
+      subText: 'Use the code below to complete your sign-in. It expires in 10 minutes.',
+      subSubText: `<strong style="font-size: 28px; letter-spacing: 6px; color: #111827;">${code}</strong>`
+    });
+  return result != null;
+};
+
 export {
   sendEmailNotification,
   sendNotificationEmail,
+  sendOtpEmail,
   getUserEmail
 };
