@@ -5,6 +5,8 @@ import { FileText, Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
 import ViewButton from '../../components/ViewButton';
 import Modal from '../../components/Modal';
 import PageHeader from '../../components/PageHeader';
+import Pagination from '../../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
 import { formatCurrency } from '../../lib/constants';
 import confetti from 'canvas-confetti';
 
@@ -22,17 +24,20 @@ export default function MyQuotations() {
   const [loading, setLoading] = useState<any>(true);
   const [selectedQuotation, setSelectedQuotation] = useState<any>(null);
   const [showViewModal, setShowViewModal] = useState<any>(false);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
     fetchMyQuotations();
-  }, []);
+  }, [page]);
 
   const fetchMyQuotations = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/supplier/quotations');
+      const response = await api.get('/supplier/quotations', { params: { page, limit: DEFAULT_PAGE_SIZE } });
       if (response.data.success) {
         setQuotations(response.data.data || []);
+        setPagination(parsePagination(response.data.pagination));
       }
     } catch (error: any) {
       console.error('Failed to fetch quotations:', error);
@@ -119,6 +124,7 @@ export default function MyQuotations() {
             <p className="text-gray-500">No quotations submitted yet</p>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-100">
@@ -194,6 +200,14 @@ export default function MyQuotations() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+            itemLabel="quotations"
+          />
+          </>
         )}
       </div>
 

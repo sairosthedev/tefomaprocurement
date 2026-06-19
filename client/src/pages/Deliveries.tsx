@@ -9,6 +9,8 @@ import ViewButton from '../components/ViewButton';
 import PageHeader from '../components/PageHeader';
 import Modal from '../components/Modal';
 import { formatCurrency } from '../lib/constants';
+import Pagination from '../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 const statusColors: any = {
   pending: 'bg-yellow-100 text-yellow-700',
@@ -38,21 +40,28 @@ export default function Deliveries() {
     items: []
   });
   const [isReceiving, setIsReceiving] = useState<any>(false);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(emptyPagination());
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
 
   useEffect(() => {
     fetchData();
-  }, [searchTerm]);
+  }, [page, searchTerm]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const [deliveriesRes, posRes] = await Promise.allSettled([
-        api.get('/stores/deliveries', { params: { search: searchTerm } }),
+        api.get('/stores/deliveries', { params: { search: searchTerm, page, limit: DEFAULT_PAGE_SIZE } }),
         api.get('/stores/pending-deliveries')
       ]);
       
       if (deliveriesRes.status === 'fulfilled' && deliveriesRes.value.data.success) {
         setDeliveries(deliveriesRes.value.data.data || []);
+        setPagination(parsePagination(deliveriesRes.value.data.pagination));
       }
       
       if (posRes.status === 'fulfilled' && posRes.value.data.success) {
@@ -194,6 +203,7 @@ export default function Deliveries() {
             <p className="text-gray-500">No deliveries recorded yet</p>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-100">
@@ -258,6 +268,14 @@ export default function Deliveries() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+            itemLabel="deliveries"
+          />
+          </>
         )}
       </div>
 

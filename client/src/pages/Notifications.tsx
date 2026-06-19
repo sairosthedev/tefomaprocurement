@@ -16,6 +16,8 @@ import {
   Send
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
+import Pagination from '../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 const getNotificationIcon = (type: any) => {
   const icons: any = {
     login_successful: CheckCircle,
@@ -108,17 +110,20 @@ export default function Notifications() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState<any>(true);
   const [markingAll, setMarkingAll] = useState<any>(false);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
     fetchNotifications();
-  }, []);
+  }, [page]);
 
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const response = await notificationsAPI.getNotifications({ limit: 100 });
+      const response = await notificationsAPI.getNotifications({ page, limit: DEFAULT_PAGE_SIZE });
       if (response.data.success) {
         setNotifications(response.data.data || []);
+        setPagination(parsePagination(response.data.pagination));
       }
     } catch (error: any) {
       console.error('Failed to fetch notifications:', error);
@@ -233,6 +238,13 @@ export default function Notifications() {
             })}
           </div>
         )}
+        <Pagination
+          page={page}
+          pages={pagination.pages}
+          total={pagination.total}
+          onPageChange={setPage}
+          itemLabel="notifications"
+        />
       </div>
     </div>
   );

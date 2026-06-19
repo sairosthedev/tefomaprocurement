@@ -4,6 +4,8 @@ import api, { adminAPI } from '../lib/api';
 import { Building2, Plus, Edit, Trash2, Users, Loader2 } from 'lucide-react';
 import Modal from '../components/Modal';
 import PageHeader from '../components/PageHeader';
+import Pagination from '../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 export default function Departments() {
   const { showToast } = useToast();
@@ -19,18 +21,21 @@ export default function Departments() {
     description: '',
     head: ''
   });
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
     fetchDepartments();
     fetchDepartmentHeads();
-  }, []);
+  }, [page]);
 
   const fetchDepartments = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/admin/departments');
+      const response = await api.get('/admin/departments', { params: { page, limit: DEFAULT_PAGE_SIZE } });
       if (response.data.success) {
         setDepartments(response.data.data || []);
+        setPagination(parsePagination(response.data.pagination));
       }
     } catch (error: any) {
       console.error('Failed to fetch departments:', error);
@@ -132,6 +137,7 @@ export default function Departments() {
           </button>
         </div>
       ) : (
+        <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {departments.map((dept: any) => (
             <div key={dept._id} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
@@ -183,6 +189,16 @@ export default function Departments() {
             </div>
           ))}
         </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-6">
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+            itemLabel="departments"
+          />
+        </div>
+        </>
       )}
 
       {/* Add/Edit Modal */}

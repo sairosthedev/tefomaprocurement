@@ -4,6 +4,8 @@ import { supplierAPI } from '../../lib/api';
 import { formatCurrency } from '../../lib/constants';
 import { useToast } from '../../components/Toast';
 import PageHeader from '../../components/PageHeader';
+import Pagination from '../../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
 import { Loader2, Plus } from 'lucide-react';
 
 export default function MyInvoices() {
@@ -11,16 +13,19 @@ export default function MyInvoices() {
   const { showToast } = useToast();
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
     fetchInvoices();
-  }, []);
+  }, [page]);
 
   const fetchInvoices = async () => {
     try {
       setLoading(true);
-      const res = await supplierAPI.getMyInvoices();
+      const res = await supplierAPI.getMyInvoices({ page, limit: DEFAULT_PAGE_SIZE });
       setInvoices(res.data.data);
+      setPagination(parsePagination(res.data.pagination));
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to load invoices', 'error');
     } finally {
@@ -68,6 +73,13 @@ export default function MyInvoices() {
               ))}
             </tbody>
           </table>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+            itemLabel="invoices"
+          />
         </div>
       )}
     </div>

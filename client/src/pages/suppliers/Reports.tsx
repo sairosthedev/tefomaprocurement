@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   BarChart3,
@@ -16,6 +16,8 @@ import PageHeader, { PageStatCard } from '../../components/PageHeader'
 import { formatCurrency } from '../../lib/constants'
 import { procurementAPI } from '../../services/procurement.service'
 import { useToast } from '../../components/Toast'
+import Pagination from '../../components/Pagination'
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination'
 
 const STATUS_LABELS: Record<string, string> = {
   active: 'Active',
@@ -43,16 +45,28 @@ export default function SupplierReports() {
   const [report, setReport] = useState<any>(null)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState(emptyPagination())
+
+  useEffect(() => {
+    setPage(1)
+  }, [search, statusFilter])
 
   useEffect(() => {
     load()
-  }, [])
+  }, [page, search, statusFilter])
 
   const load = async () => {
     try {
       setLoading(true)
-      const response = await procurementAPI.getSupplierReports()
+      const response = await procurementAPI.getSupplierReports({
+        page,
+        limit: DEFAULT_PAGE_SIZE,
+        search,
+        status: statusFilter || undefined
+      })
       setReport(response.data.data)
+      setPagination(parsePagination(response.data.pagination))
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to load supplier reports', 'error')
     } finally {
@@ -62,18 +76,6 @@ export default function SupplierReports() {
 
   const summary = report?.summary
   const registry = report?.registry || []
-
-  const filteredRegistry = useMemo(() => {
-    return registry.filter((row: any) => {
-      if (statusFilter && row.status !== statusFilter) return false
-      if (!search.trim()) return true
-      const term = search.toLowerCase()
-      return (
-        row.companyName?.toLowerCase().includes(term) ||
-        row.registrationNumber?.toLowerCase().includes(term)
-      )
-    })
-  }, [registry, search, statusFilter])
 
   const handleExport = () => {
     const headers = [
@@ -90,7 +92,7 @@ export default function SupplierReports() {
       'Categories'
     ]
 
-    const rows = filteredRegistry.map((row: any) => [
+    const rows = registry.map((row: any) => [
       row.companyName || '',
       row.registrationNumber || '',
       row.status || '',
@@ -249,7 +251,7 @@ export default function SupplierReports() {
         <div className="px-5 py-4 border-b border-gray-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <h2 className="text-base font-semibold text-gray-900">Supplier registry report</h2>
-            <p className="text-sm text-gray-500 mt-1">{filteredRegistry.length} suppliers shown</p>
+            <p className="text-sm text-gray-500 mt-1">{pagination.total} suppliers</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative">
@@ -291,7 +293,7 @@ export default function SupplierReports() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredRegistry.map((row: any) => (
+              {registry.map((row: any) => (
                 <tr
                   key={row._id}
                   className="hover:bg-gray-50 cursor-pointer"
@@ -334,7 +336,15 @@ export default function SupplierReports() {
           </table>
         </div>
 
-        {filteredRegistry.length === 0 && (
+        <Pagination
+          page={page}
+          pages={pagination.pages}
+          total={pagination.total}
+          onPageChange={setPage}
+          itemLabel="suppliers"
+        />
+
+        {registry.length === 0 && (
           <div className="px-5 py-12 text-center text-gray-500">
             <BarChart3 className="h-10 w-10 mx-auto mb-3 text-gray-300" />
             No suppliers match your filters.

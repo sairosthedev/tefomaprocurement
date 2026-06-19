@@ -8,8 +8,7 @@ import dotenv from 'dotenv';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// Ensure dotenv is loaded
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 // Initialize Resend client lazily
 let resend: Resend | null = null;
@@ -129,15 +128,20 @@ const sendEmailNotification = async ({
 
     const fromEmail = process.env.EMAIL_FROM || 'notifications@fossilprocure.com';
 
-    const email = await resendClient.emails.send({
+    const { data, error } = await resendClient.emails.send({
       from: fromEmail,
       to: emailTo,
       subject: subject || '',
       html: emailHtml,
     });
 
-    console.log('Email sent successfully:', (email as any)?.id || (email as any)?.data?.id || 'Email queued');
-    return email;
+    if (error) {
+      console.error(`Resend rejected email to ${emailTo}:`, error);
+      return null;
+    }
+
+    console.log(`Email sent to ${emailTo}:`, data?.id ?? 'queued');
+    return data;
   } catch (error) {
     console.error('Error sending email notification:', error);
     // Don't throw error - email failures shouldn't break the notification flow

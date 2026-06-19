@@ -19,6 +19,8 @@ import {
   EyeOff,
   Users as UsersIcon
 } from 'lucide-react';
+import Pagination from '../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 const roleColors: any = {
   admin: 'bg-purple-100 text-purple-700',
@@ -75,17 +77,24 @@ export default function Users() {
     phone: '',
     status: 'active'
   });
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(emptyPagination());
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, roleFilter]);
 
   useEffect(() => {
     fetchUsers();
     fetchDepartments();
-  }, [search, roleFilter]);
+  }, [page, search, roleFilter]);
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await adminAPI.getUsers({ search, role: roleFilter });
+      const response = await adminAPI.getUsers({ search, role: roleFilter, page, limit: DEFAULT_PAGE_SIZE });
       setUsers(response.data.data || []);
+      setPagination(parsePagination(response.data.pagination));
     } catch (error: any) {
       addToast('Failed to fetch users', 'error');
     } finally {
@@ -270,6 +279,7 @@ export default function Users() {
             <p className="text-gray-500 mt-1">Add your first user to get started</p>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-100">
@@ -349,6 +359,14 @@ export default function Users() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+            itemLabel="users"
+          />
+          </>
         )}
       </div>
 

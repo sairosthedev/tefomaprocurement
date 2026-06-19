@@ -5,6 +5,10 @@ const PO_SPEND_STATUSES = ['approved', 'issued', 'partially_received', 'complete
 
 const getSupplierReports = async (req: Request, res: Response): Promise<any> => {
   try {
+    const { page = 1, limit = 20, search = '', status = '' } = req.query as Record<string, any>;
+    const pageNum = Math.max(parseInt(String(page), 10) || 1, 1);
+    const limitNum = Math.min(Math.max(parseInt(String(limit), 10) || 20, 1), 100);
+
     const [suppliers, purchaseOrders, evaluations] = await Promise.all([
       SupplierProfile.find({ isDeleted: false })
         .select(
@@ -114,6 +118,20 @@ const getSupplierReports = async (req: Request, res: Response): Promise<any> => 
     const totalPoSpend = purchaseOrders.reduce((sum, po) => sum + (Number(po.totalAmount) || 0), 0);
     const dueForReview = registry.filter((row) => row.reviewOverdue && row.status !== 'blacklisted').length;
 
+    const searchTerm = String(search || '').trim().toLowerCase();
+    const statusFilter = String(status || '').trim();
+    const filteredRegistry = registry.filter((row) => {
+      if (statusFilter && row.status !== statusFilter) return false;
+      if (!searchTerm) return true;
+      return (
+        row.companyName?.toLowerCase().includes(searchTerm) ||
+        row.registrationNumber?.toLowerCase().includes(searchTerm)
+      );
+    });
+    const registryTotal = filteredRegistry.length;
+    const registrySkip = (pageNum - 1) * limitNum;
+    const pagedRegistry = filteredRegistry.slice(registrySkip, registrySkip + limitNum);
+
     res.status(200).json({
       success: true,
       data: {
@@ -142,7 +160,13 @@ const getSupplierReports = async (req: Request, res: Response): Promise<any> => 
         })),
         topBySpend,
         topByScore,
-        registry
+        registry: pagedRegistry
+      },
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total: registryTotal,
+        pages: Math.ceil(registryTotal / limitNum) || 1
       }
     });
   } catch (error) {

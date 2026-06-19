@@ -3,11 +3,13 @@ import { adminAPI } from '../lib/api';
 import {
   Search, FileCheck, Loader2, Download, AlertCircle,
   LogIn, LogOut, Edit, Trash2, Plus, Eye, Send, Upload,
-  RefreshCw, ChevronLeft, ChevronRight, X
+  RefreshCw, X
 } from 'lucide-react';
 import ViewButton from '../components/ViewButton';
 import PageHeader from '../components/PageHeader';
 import Modal from '../components/Modal';
+import Pagination from '../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 const actionIcons: any = {
   login: LogIn,
@@ -52,8 +54,6 @@ const ENTITY_OPTIONS = [
   'Delivery', 'Inventory', 'Department', 'Site'
 ];
 
-const PAGE_SIZE = 25;
-
 const formatLabel = (s: string) =>
   s ? s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : s;
 
@@ -68,7 +68,7 @@ export default function AuditLogs() {
   const [startDate, setStartDate] = useState<any>('');
   const [endDate, setEndDate] = useState<any>('');
   const [page, setPage] = useState<any>(1);
-  const [pagination, setPagination] = useState<any>({ total: 0, pages: 1 });
+  const [pagination, setPagination] = useState(emptyPagination());
   const [selectedLog, setSelectedLog] = useState<any>(null);
   const [showModal, setShowModal] = useState<any>(false);
   const [exporting, setExporting] = useState<any>(false);
@@ -94,11 +94,11 @@ export default function AuditLogs() {
         startDate,
         endDate,
         page,
-        limit: PAGE_SIZE
+        limit: DEFAULT_PAGE_SIZE
       });
       if (response.data.success) {
         setLogs(response.data.data || []);
-        setPagination(response.data.pagination || { total: 0, pages: 1 });
+        setPagination(parsePagination(response.data.pagination));
       }
     } catch (err: any) {
       console.error('Failed to fetch audit logs:', err);
@@ -342,34 +342,13 @@ export default function AuditLogs() {
           </div>
         )}
 
-        {/* Pagination */}
-        {!loading && !error && logs.length > 0 && (
-          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
-            <p className="text-sm text-gray-500">
-              Page {page} of {pagination.pages} · {pagination.total} total
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setPage((p: number) => Math.max(p - 1, 1))}
-                disabled={page <= 1}
-                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Prev
-              </button>
-              <button
-                type="button"
-                onClick={() => setPage((p: number) => Math.min(p + 1, pagination.pages))}
-                disabled={page >= pagination.pages}
-                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40"
-              >
-                Next
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        )}
+        <Pagination
+          page={page}
+          pages={pagination.pages}
+          total={pagination.total}
+          onPageChange={setPage}
+          itemLabel="log entries"
+        />
       </div>
 
       {/* Detail Modal */}

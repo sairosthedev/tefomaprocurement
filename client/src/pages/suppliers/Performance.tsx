@@ -4,6 +4,8 @@ import { BarChart3, CalendarClock, CheckCircle2, Loader2, Trophy, XCircle } from
 import { procurementAPI } from '../../services/procurement.service'
 import { useToast } from '../../components/Toast'
 import PageHeader, { PageStatCard } from '../../components/PageHeader'
+import Pagination from '../../components/Pagination'
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination'
 
 export default function Performance() {
   const navigate = useNavigate()
@@ -11,19 +13,22 @@ export default function Performance() {
   const [suppliers, setSuppliers] = useState<any[]>([])
   const [pendingEvaluations, setPendingEvaluations] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState(emptyPagination())
 
   useEffect(() => {
     load()
-  }, [])
+  }, [page])
 
   const load = async () => {
     try {
       setLoading(true)
       const [suppliersResponse, dueResponse] = await Promise.all([
-        procurementAPI.getSuppliers(),
+        procurementAPI.getSuppliers({ page, limit: DEFAULT_PAGE_SIZE }),
         procurementAPI.getEvaluationsDue()
       ])
       setSuppliers(suppliersResponse.data.data || [])
+      setPagination(parsePagination(suppliersResponse.data.pagination))
       setPendingEvaluations(dueResponse.data.data?.pendingEvaluations || [])
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to load supplier analytics', 'error')
@@ -132,7 +137,7 @@ export default function Performance() {
               <BarChart3 className="h-5 w-5 text-gray-400" />
             </div>
             <div className="space-y-3">
-              {performanceRows.slice(0, 6).map((supplier, index) => (
+              {performanceRows.map((supplier, index) => (
                 <div key={supplier._id || supplier.id || index} className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
@@ -155,6 +160,13 @@ export default function Performance() {
                 </div>
               )}
             </div>
+            <Pagination
+              page={page}
+              pages={pagination.pages}
+              total={pagination.total}
+              onPageChange={setPage}
+              itemLabel="suppliers"
+            />
           </div>
         </div>
 

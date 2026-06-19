@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import ViewButton from '../components/ViewButton';
 import Modal from '../components/Modal';
+import Pagination from '../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
@@ -66,13 +68,19 @@ export default function Requisitions() {
   const [actionLoading, setActionLoading] = useState<any>(false);
   const [submittingId, setSubmittingId] = useState<any>(null);
   const [removingItemId, setRemovingItemId] = useState<any>(null);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(emptyPagination());
 
   const isProcurement = user?.role === 'procurement_officer' || user?.role === 'admin';
   const isDeptHead = user?.role === 'department_head' || user?.role === 'admin';
 
   useEffect(() => {
+    setPage(1);
+  }, [searchTerm, statusFilter]);
+
+  useEffect(() => {
     fetchRequisitions();
-  }, [searchTerm, statusFilter, isProcurement]);
+  }, [page, searchTerm, statusFilter, isProcurement]);
 
   const fetchRequisitions = async () => {
     try {
@@ -80,10 +88,16 @@ export default function Requisitions() {
       // Use different endpoint based on role
       const endpoint = isProcurement ? '/procurement/requisitions' : '/department/requisitions';
       const response = await api.get(endpoint, {
-        params: { search: searchTerm, status: statusFilter || undefined }
+        params: {
+          search: searchTerm,
+          status: statusFilter || undefined,
+          page,
+          limit: DEFAULT_PAGE_SIZE
+        }
       });
       if (response.data.success) {
         setRequisitions(response.data.data || []);
+        setPagination(parsePagination(response.data.pagination));
       }
     } catch (error: any) {
       console.error('Failed to fetch requisitions:', error);
@@ -329,6 +343,7 @@ export default function Requisitions() {
             )}
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-100">
@@ -589,6 +604,14 @@ export default function Requisitions() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+            itemLabel="requisitions"
+          />
+          </>
         )}
       </div>
 

@@ -20,6 +20,8 @@ import {
   Truck
 } from 'lucide-react';
 import ViewButton from '../components/ViewButton';
+import Pagination from '../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
@@ -57,13 +59,19 @@ export default function PurchaseOrders() {
   const [search, setSearch] = useState<any>('');
   const [statusFilter, setStatusFilter] = useState<any>('');
   const [submitting, setSubmitting] = useState<any>(null);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(emptyPagination());
 
   const isFinance = user?.role === 'finance';
   const isCoo = user?.role === 'coo';
 
   useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter]);
+
+  useEffect(() => {
     fetchOrders();
-  }, [search, statusFilter, isFinance, isCoo]);
+  }, [page, search, statusFilter, isFinance, isCoo]);
 
   const fetchOrders = async () => {
     try {
@@ -73,9 +81,12 @@ export default function PurchaseOrders() {
       const apiToUse = isFinance ? financeAPI : isCoo ? cooAPI : procurementAPI;
       const response = await apiToUse.getPurchaseOrders({ 
         search, 
-        status: statusFilter 
+        status: statusFilter,
+        page,
+        limit: DEFAULT_PAGE_SIZE
       });
       setOrders(response.data.data);
+      setPagination(parsePagination(response.data.pagination));
     } catch (error: any) {
       console.error('Error fetching orders:', error);
       showToast(error.response?.data?.message || 'Failed to fetch purchase orders', 'error');
@@ -166,6 +177,7 @@ export default function PurchaseOrders() {
             <p className="text-gray-500 mt-1">Create your first purchase order to get started</p>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-100">
@@ -268,6 +280,14 @@ export default function PurchaseOrders() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+            itemLabel="purchase orders"
+          />
+          </>
         )}
       </div>
     </div>

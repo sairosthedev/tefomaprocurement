@@ -3,22 +3,27 @@ import { financeAPI } from '../lib/api';
 import { formatCurrency } from '../lib/constants';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
+import Pagination from '../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 import { Loader2 } from 'lucide-react';
 
 export default function Payments() {
   const { showToast } = useToast();
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
     fetchPayments();
-  }, []);
+  }, [page]);
 
   const fetchPayments = async () => {
     try {
       setLoading(true);
-      const res = await financeAPI.getPayments();
+      const res = await financeAPI.getPayments({ page, limit: DEFAULT_PAGE_SIZE });
       setPayments(res.data.data);
+      setPagination(parsePagination(res.data.pagination));
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to load payments', 'error');
     } finally {
@@ -60,6 +65,13 @@ export default function Payments() {
               ))}
             </tbody>
           </table>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+            itemLabel="payments"
+          />
         </div>
       )}
     </div>

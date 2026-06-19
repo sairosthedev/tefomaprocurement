@@ -4,6 +4,8 @@ import { useToast } from '../components/Toast';
 import { Package, Loader2, ArrowRight, CheckCircle, Zap } from 'lucide-react';
 import { formatCurrency } from '../lib/constants';
 import PageHeader from '../components/PageHeader';
+import Pagination from '../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 const actionLabel: Record<string, string> = {
   store_issue: 'Issue from stock',
@@ -22,16 +24,19 @@ export default function StoresPrReview() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
     load();
-  }, []);
+  }, [page]);
 
   const load = async () => {
     try {
       setLoading(true);
-      const res = await storesAPI.getPendingPurchaseRequisitions();
+      const res = await storesAPI.getPendingPurchaseRequisitions({ page, limit: DEFAULT_PAGE_SIZE });
       setItems(res.data.data);
+      setPagination(parsePagination(res.data.pagination));
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to load queue', 'error');
     } finally {
@@ -199,6 +204,15 @@ export default function StoresPrReview() {
               </div>
             </div>
           ))}
+          <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
+            <Pagination
+              page={page}
+              pages={pagination.pages}
+              total={pagination.total}
+              onPageChange={setPage}
+              itemLabel="requisitions"
+            />
+          </div>
         </div>
       )}
     </div>

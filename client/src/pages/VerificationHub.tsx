@@ -4,6 +4,8 @@ import { KYS_CHECKLIST_ITEMS, computeKysCompletion } from '@fossil/shared'
 import { procurementAPI } from '../services/procurement.service'
 import { useToast } from '../components/Toast'
 import PageHeader, { PageStatCard } from '../components/PageHeader'
+import Pagination from '../components/Pagination'
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination'
 
 export default function VerificationHub() {
   const { showToast } = useToast()
@@ -14,6 +16,8 @@ export default function VerificationHub() {
   const [verificationStatusFilter, setVerificationStatusFilter] = useState('')
   const [selectedSection, setSelectedSection] = useState('')
   const [verifyingSupplierId, setVerifyingSupplierId] = useState('')
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState(emptyPagination())
 
   const supplierCompletion = (supplier: any) => computeKysCompletion(supplier?.kysChecklist || {})
 
@@ -51,14 +55,19 @@ export default function VerificationHub() {
   }, [selectedSection, suppliers, verificationStatusFilter])
 
   useEffect(() => {
+    setPage(1)
+  }, [search, verificationStatusFilter, selectedSection])
+
+  useEffect(() => {
     fetchSuppliers()
-  }, [search])
+  }, [page, search])
 
   const fetchSuppliers = async () => {
     try {
       setLoading(true)
-      const res = await procurementAPI.getSuppliers({ search })
+      const res = await procurementAPI.getSuppliers({ search, page, limit: DEFAULT_PAGE_SIZE })
       setSuppliers(res.data.data || [])
+      setPagination(parsePagination(res.data.pagination))
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Failed to load suppliers', 'error')
     } finally {
@@ -306,6 +315,14 @@ export default function VerificationHub() {
               )
             })}
           </div>
+
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+            itemLabel="suppliers"
+          />
         </div>
 
         <aside className="space-y-4 sticky top-6">

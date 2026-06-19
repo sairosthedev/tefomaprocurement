@@ -9,6 +9,8 @@ import {
 import PageHeader from '../components/PageHeader';
 import ViewButton from '../components/ViewButton';
 import Modal from '../components/Modal';
+import Pagination from '../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 const statusColors: any = {
   pending: 'bg-amber-100 text-amber-700',
@@ -35,22 +37,29 @@ export default function StoreRequisitions() {
   const [formData, setFormData] = useState<any>({
     items: [{ itemCode: '', description: '', quantity: 1 }]
   });
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(emptyPagination());
 
   const isStoresOfficer = user?.role === 'stores_officer';
 
   useEffect(() => {
-    fetchRequisitions();
+    setPage(1);
   }, [searchTerm]);
+
+  useEffect(() => {
+    fetchRequisitions();
+  }, [page, searchTerm]);
 
   const fetchRequisitions = async () => {
     try {
       setLoading(true);
       const response = isStoresOfficer 
-        ? await storesAPI.getStoreRequisitions({ search: searchTerm })
-        : await departmentAPI.getStoreRequisitions({ search: searchTerm });
+        ? await storesAPI.getStoreRequisitions({ search: searchTerm, page, limit: DEFAULT_PAGE_SIZE })
+        : await departmentAPI.getStoreRequisitions({ search: searchTerm, page, limit: DEFAULT_PAGE_SIZE });
       
       if (response.data.success) {
         setRequisitions(response.data.data || []);
+        setPagination(parsePagination(response.data.pagination));
       }
     } catch (error: any) {
       console.error('Failed to fetch store requisitions:', error);
@@ -190,6 +199,7 @@ export default function StoreRequisitions() {
             <p className="text-gray-500">No store requisitions found</p>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-100">
@@ -273,6 +283,14 @@ export default function StoreRequisitions() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+            itemLabel="requisitions"
+          />
+          </>
         )}
       </div>
 

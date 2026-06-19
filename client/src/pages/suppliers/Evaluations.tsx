@@ -14,6 +14,8 @@ import { procurementAPI } from '../../services/procurement.service'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../context/AuthContext'
 import PageHeader, { PageStatCard } from '../../components/PageHeader'
+import Pagination from '../../components/Pagination'
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination'
 
 type Tab = 'due' | 'pending' | 'all'
 
@@ -74,6 +76,8 @@ export default function Evaluations() {
   const [suppliersDue, setSuppliersDue] = useState<any[]>([])
   const [pendingEvaluations, setPendingEvaluations] = useState<any[]>([])
   const [allEvaluations, setAllEvaluations] = useState<any[]>([])
+  const [allPage, setAllPage] = useState(1)
+  const [allPagination, setAllPagination] = useState(emptyPagination())
 
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [selectedSupplier, setSelectedSupplier] = useState<any>(null)
@@ -91,24 +95,43 @@ export default function Evaluations() {
   const canSecApprove = user?.role === 'admin' || user?.role === 'coo'
 
   useEffect(() => {
-    load()
+    loadDueAndPending()
   }, [])
 
-  const load = async () => {
+  useEffect(() => {
+    if (activeTab === 'all') {
+      loadAllEvaluations()
+    }
+  }, [activeTab, allPage])
+
+  const loadDueAndPending = async () => {
     try {
       setLoading(true)
-      const [dueResponse, allResponse] = await Promise.all([
-        procurementAPI.getEvaluationsDue(),
-        procurementAPI.getEvaluations()
-      ])
+      const dueResponse = await procurementAPI.getEvaluationsDue()
       setSuppliersDue(dueResponse.data.data?.suppliersDueForReview || [])
       setPendingEvaluations(dueResponse.data.data?.pendingEvaluations || [])
-      setAllEvaluations(allResponse.data.data || [])
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to load evaluations', 'error')
     } finally {
       setLoading(false)
     }
+  }
+
+  const loadAllEvaluations = async () => {
+    try {
+      setLoading(true)
+      const allResponse = await procurementAPI.getEvaluations({ page: allPage, limit: DEFAULT_PAGE_SIZE })
+      setAllEvaluations(allResponse.data.data || [])
+      setAllPagination(parsePagination(allResponse.data.pagination))
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to load evaluations', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const load = async () => {
+    await Promise.all([loadDueAndPending(), activeTab === 'all' ? loadAllEvaluations() : Promise.resolve()])
   }
 
   const totals = useMemo(() => ({
@@ -381,6 +404,13 @@ export default function Evaluations() {
               No evaluations recorded yet.
             </div>
           )}
+          <Pagination
+            page={allPage}
+            pages={allPagination.pages}
+            total={allPagination.total}
+            onPageChange={setAllPage}
+            itemLabel="evaluations"
+          />
         </div>
       )}
 

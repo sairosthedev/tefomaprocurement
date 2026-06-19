@@ -6,6 +6,8 @@ import { useToast } from '../components/Toast';
 import { Loader2, Search, AlertTriangle, CheckCircle } from 'lucide-react';
 import ViewButton from '../components/ViewButton';
 import PageHeader from '../components/PageHeader';
+import Pagination from '../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 const statusColors: Record<string, string> = {
   submitted: 'bg-blue-100 text-blue-700',
@@ -23,16 +25,23 @@ export default function Invoices() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(emptyPagination());
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter]);
 
   useEffect(() => {
     fetchInvoices();
-  }, [search, statusFilter]);
+  }, [page, search, statusFilter]);
 
   const fetchInvoices = async () => {
     try {
       setLoading(true);
-      const res = await financeAPI.getInvoices({ search, status: statusFilter });
+      const res = await financeAPI.getInvoices({ search, status: statusFilter, page, limit: DEFAULT_PAGE_SIZE });
       setInvoices(res.data.data);
+      setPagination(parsePagination(res.data.pagination));
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to load invoices', 'error');
     } finally {
@@ -128,6 +137,13 @@ export default function Invoices() {
               ))}
             </tbody>
           </table>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+            itemLabel="invoices"
+          />
         </div>
       )}
     </div>

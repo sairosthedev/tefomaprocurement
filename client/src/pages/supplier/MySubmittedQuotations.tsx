@@ -11,6 +11,8 @@ import {
 import ViewButton from '../../components/ViewButton';
 import Modal from '../../components/Modal';
 import PageHeader from '../../components/PageHeader';
+import Pagination from '../../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
 import { formatCurrency } from '../../lib/constants';
 
 const statusColors: any = {
@@ -40,10 +42,16 @@ export default function MySubmittedQuotations() {
   const [statusFilter, setStatusFilter] = useState<any>('');
   const [selectedQuotation, setSelectedQuotation] = useState<any>(null);
   const [showViewModal, setShowViewModal] = useState<any>(false);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(emptyPagination());
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, statusFilter]);
 
   useEffect(() => {
     fetchQuotations();
-  }, [searchTerm, statusFilter]);
+  }, [page, searchTerm, statusFilter]);
 
   const fetchQuotations = async () => {
     try {
@@ -51,11 +59,14 @@ export default function MySubmittedQuotations() {
       const response = await api.get('/supplier/quotations', {
         params: { 
           status: statusFilter || undefined,
-          search: searchTerm || undefined
+          search: searchTerm || undefined,
+          page,
+          limit: DEFAULT_PAGE_SIZE
         }
       });
       if (response.data.success) {
         setQuotations(response.data.data || []);
+        setPagination(parsePagination(response.data.pagination));
       }
     } catch (error: any) {
       console.error('Failed to fetch quotations:', error);
@@ -64,16 +75,6 @@ export default function MySubmittedQuotations() {
       setLoading(false);
     }
   };
-
-  const filteredQuotations = quotations.filter((quote: any) => {
-    if (!searchTerm) return true;
-    const search = searchTerm.toLowerCase();
-    return (
-      quote.quotationNumber?.toLowerCase().includes(search) ||
-      quote.rfq?.rfqNumber?.toLowerCase().includes(search) ||
-      quote.rfq?.title?.toLowerCase().includes(search)
-    );
-  });
 
   const quotationStatusTabs = [
     { value: '', label: 'All', icon: FileText, count: quotations.length },
@@ -178,7 +179,7 @@ export default function MySubmittedQuotations() {
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
           </div>
-        ) : filteredQuotations.length === 0 ? (
+        ) : quotations.length === 0 ? (
           <div className="text-center py-12">
             <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-500 font-medium">No quotations found</p>
@@ -187,6 +188,7 @@ export default function MySubmittedQuotations() {
             </p>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-100">
@@ -201,7 +203,7 @@ export default function MySubmittedQuotations() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredQuotations.map((quote: any) => (
+                {quotations.map((quote: any) => (
                   <tr key={quote._id} className="hover:bg-gray-50 transition-colors">
                     <td className="py-4 px-6">
                       <span className="font-mono text-sm font-medium text-primary">
@@ -269,6 +271,14 @@ export default function MySubmittedQuotations() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+            itemLabel="quotations"
+          />
+          </>
         )}
       </div>
 

@@ -17,6 +17,8 @@ import {
   XCircle
 } from 'lucide-react';
 import ViewButton from '../components/ViewButton';
+import Pagination from '../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
@@ -33,19 +35,28 @@ export default function RFQs() {
   const [loading, setLoading] = useState<any>(true);
   const [search, setSearch] = useState<any>('');
   const [statusFilter, setStatusFilter] = useState<any>('');
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(emptyPagination());
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter]);
 
   useEffect(() => {
     fetchRFQs();
-  }, [search, statusFilter]);
+  }, [page, search, statusFilter]);
 
   const fetchRFQs = async () => {
     try {
       setLoading(true);
       const response = await procurementAPI.getRFQs({ 
         search, 
-        status: statusFilter 
+        status: statusFilter,
+        page,
+        limit: DEFAULT_PAGE_SIZE
       });
       setRFQs(response.data.data);
+      setPagination(parsePagination(response.data.pagination));
     } catch (error: any) {
       console.error('Error fetching RFQs:', error);
     } finally {
@@ -110,6 +121,7 @@ export default function RFQs() {
           <p className="text-gray-500 mt-1">Create your first RFQ to get started</p>
         </div>
       ) : (
+        <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {rfqs.map((rfq: any) => (
             <div 
@@ -182,6 +194,16 @@ export default function RFQs() {
             </div>
           ))}
         </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-6">
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+            itemLabel="RFQs"
+          />
+        </div>
+        </>
       )}
     </div>
   );

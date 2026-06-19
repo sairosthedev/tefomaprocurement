@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import { formatCurrency } from '../lib/constants';
+import Pagination from '../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 const statusColors: any = {
   pending_hod: 'bg-purple-100 text-purple-700',
@@ -37,10 +39,12 @@ export default function Approvals() {
   const [showModal, setShowModal] = useState<any>(false);
   const [actionLoading, setActionLoading] = useState<any>(false);
   const [comment, setComment] = useState<any>('');
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
     fetchPendingApprovals();
-  }, []);
+  }, [page]);
 
   const fetchPendingApprovals = async () => {
     try {
@@ -64,9 +68,10 @@ export default function Approvals() {
           endpoint = '/finance/pending-approvals';
       }
       
-      const response = await api.get(endpoint);
+      const response = await api.get(endpoint, { params: { page, limit: DEFAULT_PAGE_SIZE } });
       if (response.data.success) {
         setPendingItems(response.data.data || []);
+        setPagination(parsePagination(response.data.pagination));
       }
     } catch (error: any) {
       console.error('Failed to fetch approvals:', error);
@@ -226,6 +231,7 @@ export default function Approvals() {
             <p className="text-sm text-gray-400 mt-1">All purchase orders are processed</p>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-100">
@@ -296,6 +302,14 @@ export default function Approvals() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+            itemLabel="approvals"
+          />
+          </>
         )}
       </div>
 

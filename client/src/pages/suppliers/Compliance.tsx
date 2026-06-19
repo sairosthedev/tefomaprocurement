@@ -4,22 +4,27 @@ import { FileText, Loader2, ShieldCheck, Sparkles, UserCheck } from 'lucide-reac
 import { procurementAPI } from '../../services/procurement.service'
 import { useToast } from '../../components/Toast'
 import PageHeader, { PageStatCard } from '../../components/PageHeader'
+import Pagination from '../../components/Pagination'
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination'
 
 export default function Compliance() {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const [suppliers, setSuppliers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState(emptyPagination())
 
   useEffect(() => {
     load()
-  }, [])
+  }, [page])
 
   const load = async () => {
     try {
       setLoading(true)
-      const response = await procurementAPI.getSuppliers()
+      const response = await procurementAPI.getSuppliers({ page, limit: DEFAULT_PAGE_SIZE })
       setSuppliers(response.data.data || [])
+      setPagination(parsePagination(response.data.pagination))
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to load compliance analytics', 'error')
     } finally {
@@ -104,7 +109,7 @@ export default function Compliance() {
               <Sparkles className="h-5 w-5 text-gray-400" />
             </div>
             <div className="space-y-3">
-              {complianceRows.slice(0, 6).map((supplier, index) => {
+              {complianceRows.map((supplier, index) => {
                 const statusLabel = supplier.kysComplete ? 'Compliant' : supplier.kysExempt ? 'Exempt' : 'Needs review'
                 const statusClass = supplier.kysComplete
                   ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
@@ -133,6 +138,13 @@ export default function Compliance() {
                 </div>
               )}
             </div>
+            <Pagination
+              page={page}
+              pages={pagination.pages}
+              total={pagination.total}
+              onPageChange={setPage}
+              itemLabel="suppliers"
+            />
           </div>
         </div>
 

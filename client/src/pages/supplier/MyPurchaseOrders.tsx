@@ -6,6 +6,8 @@ import { ShoppingCart, Loader2, CheckCircle, Truck, Download } from 'lucide-reac
 import ViewButton from '../../components/ViewButton';
 import Modal from '../../components/Modal';
 import PageHeader from '../../components/PageHeader';
+import Pagination from '../../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
 import { formatCurrency } from '../../lib/constants';
 
 const statusColors: any = {
@@ -38,18 +40,21 @@ export default function MyPurchaseOrders() {
     deliveryNoteNumber: '',
     expectedDeliveryDate: ''
   });
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
     fetchMyPurchaseOrders();
-  }, []);
+  }, [page]);
 
   const fetchMyPurchaseOrders = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/supplier/purchase-orders');
+      const response = await api.get('/supplier/purchase-orders', { params: { page, limit: DEFAULT_PAGE_SIZE } });
       if (response.data.success) {
         console.log('Purchase orders received:', response.data.data);
         setPurchaseOrders(response.data.data || []);
+        setPagination(parsePagination(response.data.pagination));
       } else {
         console.error('Failed to fetch purchase orders:', response.data.message);
         showToast(response.data.message || 'Failed to load purchase orders', 'error');
@@ -152,6 +157,7 @@ export default function MyPurchaseOrders() {
             <p className="text-gray-500">No purchase orders received yet</p>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-100">
@@ -230,6 +236,14 @@ export default function MyPurchaseOrders() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+            itemLabel="purchase orders"
+          />
+          </>
         )}
       </div>
 

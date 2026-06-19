@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '../lib/constants';
 import PageHeader from '../components/PageHeader';
+import Pagination from '../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 const movementTypes: any = {
   'stock-in': { label: 'Stock In', color: 'text-green-600 bg-green-100', icon: ArrowDownLeft },
@@ -22,19 +24,26 @@ export default function StockMovements() {
   const [searchTerm, setSearchTerm] = useState<any>('');
   const [typeFilter, setTypeFilter] = useState<any>('');
   const [dateRange, setDateRange] = useState<any>('all');
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(emptyPagination());
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, typeFilter, dateRange]);
 
   useEffect(() => {
     fetchMovements();
-  }, [searchTerm, typeFilter, dateRange]);
+  }, [page, searchTerm, typeFilter, dateRange]);
 
   const fetchMovements = async () => {
     try {
       setLoading(true);
       const response = await api.get('/stores/movements', {
-        params: { search: searchTerm, type: typeFilter, range: dateRange }
+        params: { search: searchTerm, type: typeFilter, range: dateRange, page, limit: DEFAULT_PAGE_SIZE }
       });
       if (response.data.success) {
         setMovements(response.data.data || []);
+        setPagination(parsePagination(response.data.pagination));
       }
     } catch (error: any) {
       console.error('Failed to fetch movements:', error);
@@ -158,6 +167,7 @@ export default function StockMovements() {
             <p className="text-gray-500">No stock movements found</p>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-100">
@@ -212,6 +222,14 @@ export default function StockMovements() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+            itemLabel="movements"
+          />
+          </>
         )}
       </div>
     </div>

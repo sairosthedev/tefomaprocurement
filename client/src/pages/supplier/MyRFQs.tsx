@@ -9,6 +9,8 @@ import {
 import ViewButton from '../../components/ViewButton';
 import Modal from '../../components/Modal';
 import PageHeader from '../../components/PageHeader';
+import Pagination from '../../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
 
 const statusColors: any = {
   open: 'bg-green-100 text-green-700',
@@ -117,17 +119,20 @@ export default function MyRFQs() {
   const [selectedRFQ, setSelectedRFQ] = useState<any>(null);
   const [showViewModal, setShowViewModal] = useState<any>(false);
   const [showConfetti, setShowConfetti] = useState<any>(false);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
     fetchMyRFQs();
-  }, []);
+  }, [page]);
 
   const fetchMyRFQs = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/supplier/rfqs');
+      const response = await api.get('/supplier/rfqs', { params: { page, limit: DEFAULT_PAGE_SIZE } });
       if (response.data.success) {
         setRFQs(response.data.data || []);
+        setPagination(parsePagination(response.data.pagination));
       }
     } catch (error: any) {
       console.error('Failed to fetch RFQs:', error);
@@ -234,6 +239,7 @@ export default function MyRFQs() {
             <p className="text-sm text-gray-400 mt-1">You'll be notified when new RFQs are published</p>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-100">
@@ -321,6 +327,14 @@ export default function MyRFQs() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+            itemLabel="RFQs"
+          />
+          </>
         )}
       </div>
 

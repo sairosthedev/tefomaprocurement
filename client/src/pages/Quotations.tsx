@@ -23,6 +23,8 @@ import {
   ShoppingCart
 } from 'lucide-react';
 import ViewButton from '../components/ViewButton';
+import Pagination from '../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
@@ -77,19 +79,28 @@ export default function Quotations() {
     termsAndConditions: '',
     notes: ''
   });
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(emptyPagination());
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter]);
 
   useEffect(() => {
     fetchQuotations();
-  }, [search, statusFilter]);
+  }, [page, search, statusFilter]);
 
   const fetchQuotations = async () => {
     try {
       setLoading(true);
       const response = await procurementAPI.getQuotations({ 
         search, 
-        status: statusFilter 
+        status: statusFilter,
+        page,
+        limit: DEFAULT_PAGE_SIZE
       });
       setQuotations(response.data.data);
+      setPagination(parsePagination(response.data.pagination));
     } catch (error: any) {
       console.error('Error fetching quotations:', error);
       showToast('Failed to load quotations', 'error');
@@ -263,6 +274,7 @@ export default function Quotations() {
             <p className="text-gray-500 mt-1">Quotations will appear here when suppliers respond to RFQs</p>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-100">
@@ -342,6 +354,14 @@ export default function Quotations() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+            itemLabel="quotations"
+          />
+          </>
         )}
       </div>
 

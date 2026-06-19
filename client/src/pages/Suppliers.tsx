@@ -26,6 +26,8 @@ import {
   FileText,
   ShieldCheck
 } from 'lucide-react';
+import Pagination from '../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 const statusColors: any = {
   pending: 'bg-amber-100 text-amber-700',
@@ -86,19 +88,28 @@ export default function Suppliers() {
   const [actionLoading, setActionLoading] = useState<any>(false);
   const [pendingAction, setPendingAction] = useState<any>(null);
   const [actionReason, setActionReason] = useState<any>('');
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(emptyPagination());
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter]);
 
   useEffect(() => {
     fetchSuppliers();
-  }, [search, statusFilter]);
+  }, [page, search, statusFilter]);
 
   const fetchSuppliers = async () => {
     try {
       setLoading(true);
       const response = await procurementAPI.getSuppliers({ 
         search, 
-        status: statusFilter 
+        status: statusFilter,
+        page,
+        limit: DEFAULT_PAGE_SIZE
       });
       setSuppliers(response.data.data);
+      setPagination(parsePagination(response.data.pagination));
     } catch (error: any) {
       console.error('Error fetching suppliers:', error);
     } finally {
@@ -442,6 +453,7 @@ export default function Suppliers() {
             <p className="text-gray-500 mt-1">Get started by adding your first supplier</p>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-100">
@@ -542,6 +554,14 @@ export default function Suppliers() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+            itemLabel="suppliers"
+          />
+          </>
         )}
       </div>
 

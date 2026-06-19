@@ -11,6 +11,8 @@ import ViewButton from '../components/ViewButton';
 import Modal from '../components/Modal';
 import { CategorySelect } from '../components/CategorySelect';
 import { formatCurrency, UNITS_OF_MEASUREMENT, getCategoryName } from '../lib/constants';
+import Pagination from '../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 // Map a spreadsheet row (any header casing/variant) to our canonical fields.
 const TEMPLATE_HEADERS = ['code', 'name', 'description', 'category', 'unit', 'reorderLevel', 'quantity', 'unitPrice'];
@@ -64,10 +66,16 @@ export default function Inventory() {
   const [importResult, setImportResult] = useState<any>(null);
   const [parseError, setParseError] = useState<any>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(emptyPagination());
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, categoryFilter, showLowStock]);
 
   useEffect(() => {
     fetchInventory();
-  }, [searchTerm, categoryFilter, showLowStock]);
+  }, [page, searchTerm, categoryFilter, showLowStock]);
 
   const fetchInventory = async () => {
     try {
@@ -76,11 +84,14 @@ export default function Inventory() {
         params: { 
           search: searchTerm, 
           category: categoryFilter,
-          lowStock: showLowStock 
+          lowStock: showLowStock,
+          page,
+          limit: DEFAULT_PAGE_SIZE
         }
       });
       if (response.data.success) {
         setInventory(response.data.data || []);
+        setPagination(parsePagination(response.data.pagination));
       }
     } catch (error: any) {
       console.error('Failed to fetch inventory:', error);
@@ -316,6 +327,7 @@ export default function Inventory() {
             <p className="text-gray-500">No items found</p>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-100">
@@ -383,6 +395,14 @@ export default function Inventory() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+            itemLabel="items"
+          />
+          </>
         )}
       </div>
 
