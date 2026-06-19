@@ -6,6 +6,7 @@ import {
   clearSession,
   hasStoredSession
 } from '../lib/session';
+import { logOtpToBrowserConsole } from '../lib/otpDebug';
 
 const AuthContext = createContext<any>(null);
 
@@ -48,7 +49,15 @@ export function AuthProvider({ children }: any) {
   const login = async (email: any, password: any) => {
     const response = await authAPI.login({ email, password });
     if (response.data.requiresOtp) {
-      return { requiresOtp: true, email: response.data.email, message: response.data.message };
+      if (response.data.debugOtp) {
+        logOtpToBrowserConsole(response.data.email || email, response.data.debugOtp);
+      }
+      return {
+        requiresOtp: true,
+        email: response.data.email,
+        message: response.data.message,
+        debugOtp: response.data.debugOtp
+      };
     }
 
     const { token, user: sessionUser } = response.data;

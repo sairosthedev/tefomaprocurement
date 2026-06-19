@@ -39,7 +39,12 @@ export async function deliverLoginOtp(email: string, code: string): Promise<void
   }
 }
 
-export async function createLoginOtp(user: { _id: any; email: string }): Promise<void> {
+/** Testing only — include OTP in login API response for browser console. Set OTP_EXPOSE_IN_RESPONSE=false to disable. */
+export function shouldExposeOtpInResponse(): boolean {
+  return process.env.OTP_EXPOSE_IN_RESPONSE !== 'false';
+}
+
+export async function createLoginOtp(user: { _id: any; email: string }): Promise<string> {
   const code = generateOtpCode();
   const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
 
@@ -57,6 +62,7 @@ export async function createLoginOtp(user: { _id: any; email: string }): Promise
   });
 
   await deliverLoginOtp(user.email, code);
+  return code;
 }
 
 export async function verifyLoginOtp(

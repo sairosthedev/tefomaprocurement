@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { createAuditLog } from '../../middleware/index.js';
 import { findActiveUserByEmail } from '../../services/authLogin.service.js';
-import { createLoginOtp } from '../../services/otp.service.js';
+import { createLoginOtp, shouldExposeOtpInResponse } from '../../services/otp.service.js';
 
 const login = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -55,13 +55,14 @@ const login = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    await createLoginOtp(user);
+    const otpCode = await createLoginOtp(user);
 
     res.status(200).json({
       success: true,
       requiresOtp: true,
       email: user.email,
-      message: 'A verification code has been sent to your email'
+      message: 'A verification code has been sent to your email',
+      ...(shouldExposeOtpInResponse() ? { debugOtp: otpCode } : {})
     });
   } catch (error) {
     console.error('Login error:', error);
