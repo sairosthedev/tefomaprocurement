@@ -1,4 +1,5 @@
 import express from 'express';
+import { getProductName } from '../lib/branding.js';
 const router = express.Router();
 
 import authRoutes from './auth.route.js';
@@ -17,7 +18,7 @@ import sitesRoutes from './sites.route.js';
 router.get('/', (req, res) => {
   res.json({
     success: true,
-    message: 'fossilProcure API is running',
+    message: `${getProductName()} API is running`,
     version: '1.0.0'
   });
 });

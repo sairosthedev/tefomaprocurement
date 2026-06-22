@@ -4,7 +4,7 @@ import { isValidCategoryCode } from '@fossil/shared';
 import { User, SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { createNotification } from '../../services/notification.service.js';
-import { sendEmailNotification } from '../../services/email.service.js';
+import { getProductName } from '../../lib/branding.js';
 
 const createSupplier = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -158,7 +158,7 @@ const createSupplier = async (req: Request, res: Response): Promise<any> => {
     await createNotification({
       recipient: user._id,
       type: 'supplier_added',
-      title: 'Welcome to fossilProcure',
+      title: `Welcome to ${getProductName()}`,
       message: `Your supplier account for ${companyName} has been created. Please log in and upload your KYS compliance documents so your account can be verified and activated.`,
       entity: 'SupplierProfile',
       entityId: supplierProfile._id,

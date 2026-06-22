@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import type { Request, Response } from 'express';
 import { User } from '../../models/index.js';
 import { sendPasswordResetEmail } from '../../services/email.service.js';
+import { getClientUrl } from '../../lib/branding.js';
 
 const forgotPassword = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -26,8 +27,7 @@ const forgotPassword = async (req: Request, res: Response): Promise<any> => {
     user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000);
     await user.save({ validateBeforeSave: false });
 
-    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-    const resetLink = `${clientUrl}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
+    const resetLink = `${getClientUrl()}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
 
     await sendPasswordResetEmail(user.email, resetLink, user.firstName);
 

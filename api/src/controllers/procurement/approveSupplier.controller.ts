@@ -1,10 +1,9 @@
 import type { Request, Response } from 'express';
 
 import { computeKysCompletion } from '@fossil/shared';
-import { SupplierProfile, User } from '../../models/index.js';
+import { SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { createNotification } from '../../services/notification.service.js';
-import { sendEmailNotification } from '../../services/email.service.js';
 
 const approveSupplier = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -79,30 +78,13 @@ const approveSupplier = async (req: Request, res: Response): Promise<any> => {
       await createNotification({
         recipient: supplier.user._id,
         type: 'supplier_approved',
-        title: 'Supplier Account Approved',
+        title: 'Supplier account approved',
         message: `Your supplier account for ${supplier.companyName} has been approved. You can now receive RFQ invitations and submit quotations.`,
         entity: 'SupplierProfile',
         entityId: supplier._id,
         relatedUser: req.user!._id,
-        metadata: { companyName: supplier.companyName }
+        metadata: { companyName: supplier.companyName, notes: supplier.notes || undefined }
       });
-
-      const baseUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-      const user = await User.findById(supplier.user._id).select('email firstName lastName');
-
-      if (user && user.email) {
-        await sendEmailNotification({
-          emailTo: user.email,
-          subject: 'Supplier Account Approved - fossilProcure',
-          headingText: 'Your Supplier Account Has Been Approved!',
-          subText: `Congratulations! Your supplier account for ${supplier.companyName} has been approved. You can now receive RFQ invitations, submit quotations, and manage your orders through the supplier dashboard.`,
-          subSubText: supplier.notes ? `Notes: ${supplier.notes}` : null,
-          actionButtonText: 'Access Supplier Dashboard',
-          actionButtonLink: `${baseUrl}/app`
-        }).catch((err) => {
-          console.error('Failed to send approval email to supplier:', err);
-        });
-      }
     }
 
     res.status(200).json({

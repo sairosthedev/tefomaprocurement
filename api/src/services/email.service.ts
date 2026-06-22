@@ -4,6 +4,13 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { User } from '../models/index.js';
+import {
+  getBrandLabel,
+  getProductName,
+  brandSubject,
+  getEmailFromAddress
+} from '../lib/branding.js';
+import { emailPaths } from '../lib/emailLinks.js';
 import dotenv from 'dotenv';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -123,10 +130,10 @@ const sendEmailNotification = async ({
     }
 
     // Replace company name if exists
-    const companyName = process.env.COMPANY_NAME || 'Tefoma Construction Procurement';
+    const companyName = getBrandLabel();
     emailHtml = emailHtml.replace(/{companyName}/g, companyName);
 
-    const fromEmail = process.env.EMAIL_FROM || 'notifications@miccstechnologies.co.zw';
+    const fromEmail = getEmailFromAddress();
 
     const { data, error } = await resendClient.emails.send({
       from: fromEmail,
@@ -216,273 +223,269 @@ const sendNotificationEmail = async (notification: any, userEmail: string | null
  * Get email content based on notification type
  */
 const getEmailContentForNotification = (notification: any): any => {
-  const baseUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-  const appUrl = `${baseUrl}/app`;
+  const id = String(notification.entityId || '');
+  const product = getProductName();
 
   const contentMap: Record<string, any> = {
-    // Login
     login_successful: {
-      subject: 'Successful Login - Tefoma Construction Procurement',
-      headingText: 'Successful Login',
-      subText: 'You have successfully logged into your Tefoma Construction Procurement account.',
-      subSubText: notification.metadata?.ipAddress ? `IP Address: ${notification.metadata.ipAddress}` : null,
-      actionButtonText: 'View Dashboard',
-      actionButtonLink: `${appUrl}`
+      subject: brandSubject('Successful login'),
+      headingText: 'Successful login',
+      subText: `You have successfully signed in to ${product}.`,
+      subSubText: notification.metadata?.ipAddress ? `IP address: ${notification.metadata.ipAddress}` : null,
+      actionButtonText: 'Open dashboard',
+      actionButtonLink: emailPaths.dashboard()
     },
 
-    // Supplier
     supplier_added: {
-      subject: 'Welcome to Tefoma Construction Procurement - Supplier Account Created',
-      headingText: `Welcome to Tefoma Construction Procurement!`,
-      subText: `You have been added as a supplier to the Tefoma Construction Procurement system. ${notification.metadata?.companyName ? `Your company ${notification.metadata.companyName} has been registered.` : 'Your supplier account has been created.'}\n\nPlease sign in to complete your company profile setup. You will need to submit your company details, compliance documents, and banking information before you can receive RFQ invitations.`,
-      subSubText: notification.metadata?.password ? `Your login credentials:\nEmail: ${notification.metadata.email}\nTemporary Password: ${notification.metadata.password}\n\nImportant: After signing in, please complete your company profile and submit all required documentation.` : null,
-      actionButtonText: 'Sign In & Complete Profile',
-      actionButtonLink: `${baseUrl}/supplier/login`
+      subject: brandSubject('Welcome — supplier account created'),
+      headingText: `Welcome to ${product}`,
+      subText: `You have been registered as a supplier on ${product}. ${notification.metadata?.companyName ? `Company: ${notification.metadata.companyName}.` : ''}\n\nSign in to complete your profile and upload KYS compliance documents before you can receive RFQ invitations.`,
+      subSubText: notification.metadata?.password
+        ? `Your login credentials:\nEmail: ${notification.metadata.email}\nTemporary password: ${notification.metadata.password}\n\nPlease change your password after first sign-in.`
+        : null,
+      actionButtonText: 'Sign in',
+      actionButtonLink: emailPaths.supplierLogin()
     },
     supplier_approved: {
-      subject: 'Supplier Account Approved - Tefoma Construction Procurement',
-      headingText: 'Your Supplier Account Has Been Approved!',
+      subject: brandSubject('Supplier account approved'),
+      headingText: 'Your supplier account is approved',
       subText: notification.message,
-      actionButtonText: 'Access Supplier Dashboard',
-      actionButtonLink: `${baseUrl}/app`
+      subSubText: notification.metadata?.notes ? `Notes: ${notification.metadata.notes}` : null,
+      actionButtonText: 'Open supplier portal',
+      actionButtonLink: emailPaths.supplierDashboard()
     },
 
-    // Requisitions
     requisition_submitted: {
-      subject: 'Requisition Submitted - Requires Review',
-      headingText: 'Requisition Submitted',
+      subject: brandSubject('Requisition submitted'),
+      headingText: 'Requisition submitted',
       subText: notification.message,
-      actionButtonText: 'View Requisition',
-      actionButtonLink: `${appUrl}/procurement/requisitions/${notification.entityId}`
+      actionButtonText: 'View requisition',
+      actionButtonLink: emailPaths.requisition(id)
     },
     requisition_approved: {
-      subject: 'Requisition Approved',
-      headingText: 'Requisition Approved',
+      subject: brandSubject('Requisition approved'),
+      headingText: 'Requisition approved',
       subText: notification.message,
-      actionButtonText: 'View Requisition',
-      actionButtonLink: `${appUrl}/department/requisitions/${notification.entityId}`
+      actionButtonText: 'View requisition',
+      actionButtonLink: emailPaths.requisition(id)
     },
     requisition_rejected: {
-      subject: 'Requisition Rejected',
-      headingText: 'Requisition Rejected',
+      subject: brandSubject('Requisition rejected'),
+      headingText: 'Requisition rejected',
       subText: notification.message,
-      actionButtonText: 'View Requisition',
-      actionButtonLink: `${appUrl}/department/requisitions/${notification.entityId}`
+      actionButtonText: 'View requisition',
+      actionButtonLink: emailPaths.requisition(id)
     },
     requisition_accepted: {
-      subject: 'Requisition Accepted',
-      headingText: 'Requisition Accepted',
+      subject: brandSubject('Requisition accepted'),
+      headingText: 'Requisition accepted',
       subText: notification.message,
-      actionButtonText: 'View Requisition',
-      actionButtonLink: `${appUrl}/department/requisitions/${notification.entityId}`
+      actionButtonText: 'View requisition',
+      actionButtonLink: emailPaths.requisition(id)
     },
     requisition_rejected_procurement: {
-      subject: 'Requisition Rejected by Procurement',
-      headingText: 'Requisition Rejected',
+      subject: brandSubject('Requisition rejected by procurement'),
+      headingText: 'Requisition rejected',
       subText: notification.message,
-      actionButtonText: 'View Requisition',
-      actionButtonLink: `${appUrl}/department/requisitions/${notification.entityId}`
-    },
-
-    // RFQ
-    rfq_published: {
-      subject: `New RFQ Invitation - ${notification.metadata?.rfqNumber || 'RFQ'}`,
-      headingText: 'New RFQ Published',
-      subText: notification.message,
-      subSubText: notification.metadata?.deadline ? `Submission Deadline: ${new Date(notification.metadata.deadline).toLocaleDateString()}` : null,
-      actionButtonText: 'View RFQ & Submit Quotation',
-      actionButtonLink: `${baseUrl}/app/my-rfqs/${notification.entityId}`
-    },
-
-    // Quotations
-    quotation_submitted: {
-      subject: 'New Quotation Received',
-      headingText: 'New Quotation Received',
-      subText: notification.message,
-      actionButtonText: 'Review Quotation',
-      actionButtonLink: `${appUrl}/procurement/quotations/${notification.entityId}`
-    },
-    quotation_accepted: {
-      subject: 'Quotation Accepted',
-      headingText: 'Quotation Accepted',
-      subText: notification.message,
-      actionButtonText: 'View Quotation',
-      actionButtonLink: `${baseUrl}/app/supplier/quotations/${notification.entityId}`
-    },
-    quotation_rejected: {
-      subject: 'Quotation Rejected',
-      headingText: 'Quotation Rejected',
-      subText: notification.message,
-      actionButtonText: 'View Quotation',
-      actionButtonLink: `${baseUrl}/app/supplier/quotations/${notification.entityId}`
-    },
-
-    // Purchase Orders
-    po_created: {
-      subject: 'New Purchase Order Created',
-      headingText: 'New Purchase Order',
-      subText: notification.message,
-      actionButtonText: notification.metadata?.isSupplier ? 'View Purchase Order' : 'Review Purchase Order',
-      actionButtonLink: notification.metadata?.isSupplier
-        ? `${baseUrl}/app/supplier/purchase-orders/${notification.entityId}`
-        : `${appUrl}/procurement/purchase-orders/${notification.entityId}`
-    },
-    po_finance_approved: {
-      subject: 'Purchase Order Approved by Finance',
-      headingText: 'PO Approved by Finance',
-      subText: notification.message,
-      actionButtonText: 'View Purchase Order',
-      actionButtonLink: `${appUrl}/procurement/purchase-orders/${notification.entityId}`
-    },
-    po_finance_rejected: {
-      subject: 'Purchase Order Rejected by Finance',
-      headingText: 'PO Rejected by Finance',
-      subText: notification.message,
-      actionButtonText: 'View Purchase Order',
-      actionButtonLink: `${appUrl}/procurement/purchase-orders/${notification.entityId}`
-    },
-    po_coo_approved: {
-      subject: 'Purchase Order Fully Approved',
-      headingText: 'PO Fully Approved',
-      subText: notification.message,
-      actionButtonText: notification.metadata?.isSupplier ? 'View Purchase Order' : 'View Purchase Order',
-      actionButtonLink: notification.metadata?.isSupplier
-        ? `${baseUrl}/app/supplier/purchase-orders/${notification.entityId}`
-        : `${appUrl}/procurement/purchase-orders/${notification.entityId}`
-    },
-    po_coo_rejected: {
-      subject: 'Purchase Order Rejected by COO',
-      headingText: 'PO Rejected by COO',
-      subText: notification.message,
-      actionButtonText: 'View Purchase Order',
-      actionButtonLink: `${appUrl}/procurement/purchase-orders/${notification.entityId}`
-    },
-    po_submitted: {
-      subject: 'Purchase Order Submitted for Approval',
-      headingText: 'PO Submitted',
-      subText: notification.message,
-      actionButtonText: 'Review Purchase Order',
-      actionButtonLink: `${appUrl}/purchase-orders/${notification.entityId}`
-    },
-
-    // Invoices
-    invoice_submitted: {
-      subject: 'Invoice Submitted for Review',
-      headingText: 'New Invoice',
-      subText: notification.message,
-      actionButtonText: 'Review Invoice',
-      actionButtonLink: `${appUrl}/invoices/${notification.entityId}`
-    },
-    invoice_approved: {
-      subject: 'Invoice Approved',
-      headingText: 'Invoice Approved',
-      subText: notification.message,
-      actionButtonText: 'View Invoice',
-      actionButtonLink: notification.metadata?.isSupplier
-        ? `${baseUrl}/app/my-invoices`
-        : `${appUrl}/invoices/${notification.entityId}`
-    },
-    invoice_rejected: {
-      subject: 'Invoice Rejected',
-      headingText: 'Invoice Rejected',
-      subText: notification.message,
-      actionButtonText: 'View Invoice',
-      actionButtonLink: notification.metadata?.isSupplier
-        ? `${baseUrl}/app/my-invoices`
-        : `${appUrl}/invoices/${notification.entityId}`
-    },
-    invoice_paid: {
-      subject: 'Invoice Paid',
-      headingText: 'Payment Recorded',
-      subText: notification.message,
-      actionButtonText: 'View Invoices',
-      actionButtonLink: notification.metadata?.isSupplier
-        ? `${baseUrl}/app/my-invoices`
-        : `${appUrl}/invoices/${notification.entityId}`
-    },
-    supplier_status_change: {
-      subject: 'Supplier Status Updated',
-      headingText: 'Account Status Changed',
-      subText: notification.message,
-      actionButtonText: 'View Profile',
-      actionButtonLink: `${baseUrl}/app/supplier-profile`
+      actionButtonText: 'View requisition',
+      actionButtonLink: emailPaths.requisition(id)
     },
     requisition_updated: {
-      subject: 'Requisition Updated',
-      headingText: 'Requisition Updated',
+      subject: brandSubject('Requisition updated'),
+      headingText: 'Requisition updated',
       subText: notification.message,
-      actionButtonText: 'View Requisition',
-      actionButtonLink: `${appUrl}/requisitions/${notification.entityId}`
+      actionButtonText: 'View requisition',
+      actionButtonLink: emailPaths.requisition(id)
     },
 
-    // Goods & Deliveries
-    goods_received: {
-      subject: 'Goods Received - Ready for Collection',
-      headingText: 'Goods Received',
+    rfq_published: {
+      subject: brandSubject(`New RFQ — ${notification.metadata?.rfqNumber || 'invitation'}`),
+      headingText: 'New RFQ published',
       subText: notification.message,
-      subSubText: notification.metadata?.grvNumber ? `GRV Number: ${notification.metadata.grvNumber}` : null,
-      actionButtonText: 'Request from Stores',
-      actionButtonLink: `${appUrl}/department/requisitions/${notification.entityId}`
+      subSubText: notification.metadata?.deadline
+        ? `Submission deadline: ${new Date(notification.metadata.deadline).toLocaleDateString()}`
+        : null,
+      actionButtonText: 'View RFQ & submit quote',
+      actionButtonLink: emailPaths.supplierRfqs(id)
+    },
+
+    quotation_submitted: {
+      subject: brandSubject('New quotation received'),
+      headingText: 'New quotation received',
+      subText: notification.message,
+      actionButtonText: 'Review quotation',
+      actionButtonLink: emailPaths.quotation(id)
+    },
+    quotation_accepted: {
+      subject: brandSubject('Quotation accepted'),
+      headingText: 'Your quotation was accepted',
+      subText: notification.message,
+      actionButtonText: 'View quotations',
+      actionButtonLink: emailPaths.supplierQuotations()
+    },
+    quotation_rejected: {
+      subject: brandSubject('Quotation not selected'),
+      headingText: 'Quotation update',
+      subText: notification.message,
+      actionButtonText: 'View quotations',
+      actionButtonLink: emailPaths.supplierQuotations()
+    },
+
+    po_created: {
+      subject: brandSubject('New purchase order'),
+      headingText: 'New purchase order',
+      subText: notification.message,
+      actionButtonText: notification.metadata?.isSupplier ? 'View purchase order' : 'Review purchase order',
+      actionButtonLink: notification.metadata?.isSupplier
+        ? emailPaths.supplierPurchaseOrders()
+        : emailPaths.purchaseOrder(id)
+    },
+    po_submitted: {
+      subject: brandSubject('Purchase order submitted for approval'),
+      headingText: 'PO awaiting approval',
+      subText: notification.message,
+      actionButtonText: 'Review purchase order',
+      actionButtonLink: emailPaths.purchaseOrder(id)
+    },
+    po_finance_approved: {
+      subject: brandSubject('PO approved by finance'),
+      headingText: 'PO approved by finance',
+      subText: notification.message,
+      actionButtonText: 'View purchase order',
+      actionButtonLink: emailPaths.purchaseOrder(id)
+    },
+    po_finance_rejected: {
+      subject: brandSubject('PO rejected by finance'),
+      headingText: 'PO rejected',
+      subText: notification.message,
+      actionButtonText: 'View purchase order',
+      actionButtonLink: emailPaths.purchaseOrder(id)
+    },
+    po_coo_approved: {
+      subject: brandSubject('Purchase order fully approved'),
+      headingText: 'PO fully approved',
+      subText: notification.message,
+      actionButtonText: 'View purchase order',
+      actionButtonLink: notification.metadata?.isSupplier
+        ? emailPaths.supplierPurchaseOrders()
+        : emailPaths.purchaseOrder(id)
+    },
+    po_coo_rejected: {
+      subject: brandSubject('PO rejected by COO'),
+      headingText: 'PO rejected',
+      subText: notification.message,
+      actionButtonText: 'View purchase order',
+      actionButtonLink: emailPaths.purchaseOrder(id)
+    },
+
+    invoice_submitted: {
+      subject: brandSubject('Invoice submitted for review'),
+      headingText: 'New invoice',
+      subText: notification.message,
+      actionButtonText: 'Review invoice',
+      actionButtonLink: emailPaths.invoice(id)
+    },
+    invoice_approved: {
+      subject: brandSubject('Invoice approved'),
+      headingText: 'Invoice approved',
+      subText: notification.message,
+      actionButtonText: 'View invoices',
+      actionButtonLink: notification.metadata?.isSupplier
+        ? emailPaths.supplierInvoices()
+        : emailPaths.invoice(id)
+    },
+    invoice_rejected: {
+      subject: brandSubject('Invoice rejected'),
+      headingText: 'Invoice rejected',
+      subText: notification.message,
+      actionButtonText: 'View invoices',
+      actionButtonLink: notification.metadata?.isSupplier
+        ? emailPaths.supplierInvoices()
+        : emailPaths.invoice(id)
+    },
+    invoice_paid: {
+      subject: brandSubject('Payment recorded'),
+      headingText: 'Payment recorded',
+      subText: notification.message,
+      actionButtonText: 'View invoices',
+      actionButtonLink: notification.metadata?.isSupplier
+        ? emailPaths.supplierInvoices()
+        : emailPaths.invoice(id)
+    },
+
+    supplier_status_change: {
+      subject: brandSubject('Supplier status updated'),
+      headingText: 'Account status changed',
+      subText: notification.message,
+      actionButtonText: 'View profile',
+      actionButtonLink: emailPaths.supplierProfile()
+    },
+
+    goods_received: {
+      subject: brandSubject('Goods received'),
+      headingText: 'Goods received',
+      subText: notification.message,
+      subSubText: notification.metadata?.grvNumber ? `GRV number: ${notification.metadata.grvNumber}` : null,
+      actionButtonText: 'View requisition',
+      actionButtonLink: emailPaths.requisition(id)
     },
     delivery_accepted: {
-      subject: 'Delivery Accepted',
-      headingText: 'Delivery Accepted',
+      subject: brandSubject('Delivery accepted'),
+      headingText: 'Delivery accepted',
       subText: notification.message,
-      actionButtonText: 'View Delivery',
-      actionButtonLink: `${baseUrl}/app/supplier/deliveries/${notification.entityId}`
+      actionButtonText: 'View deliveries',
+      actionButtonLink: emailPaths.supplierDeliveries()
     },
     delivery_rejected: {
-      subject: 'Delivery Rejected',
-      headingText: 'Delivery Rejected',
+      subject: brandSubject('Delivery rejected'),
+      headingText: 'Delivery rejected',
       subText: notification.message,
-      actionButtonText: 'View Delivery',
-      actionButtonLink: `${baseUrl}/app/supplier/deliveries/${notification.entityId}`
+      actionButtonText: 'View deliveries',
+      actionButtonLink: emailPaths.supplierDeliveries()
     },
 
-    // Store Requisitions
     store_requisition_created: {
-      subject: 'New Store Requisition',
-      headingText: 'New Store Requisition',
+      subject: brandSubject('New store requisition'),
+      headingText: 'New store requisition',
       subText: notification.message,
-      actionButtonText: 'Review Requisition',
-      actionButtonLink: `${appUrl}/stores/requisitions/${notification.entityId}`
+      actionButtonText: 'Review request',
+      actionButtonLink: emailPaths.storeRequisitions()
     },
     store_requisition_approved: {
-      subject: 'Store Requisition Approved',
-      headingText: 'Store Requisition Approved',
+      subject: brandSubject('Store requisition approved'),
+      headingText: 'Store requisition approved',
       subText: notification.message,
-      actionButtonText: 'View Requisition',
-      actionButtonLink: `${appUrl}/department/store-requisitions/${notification.entityId}`
+      actionButtonText: 'View store requisitions',
+      actionButtonLink: emailPaths.storeRequisitions()
     },
     store_requisition_rejected: {
-      subject: 'Store Requisition Rejected',
-      headingText: 'Store Requisition Rejected',
+      subject: brandSubject('Store requisition rejected'),
+      headingText: 'Store requisition rejected',
       subText: notification.message,
-      actionButtonText: 'View Requisition',
-      actionButtonLink: `${appUrl}/department/store-requisitions/${notification.entityId}`
+      actionButtonText: 'View store requisitions',
+      actionButtonLink: emailPaths.storeRequisitions()
     },
     stock_issued: {
-      subject: 'Stock Issued',
-      headingText: 'Stock Issued',
+      subject: brandSubject('Stock issued'),
+      headingText: 'Stock issued',
       subText: notification.message,
-      actionButtonText: 'View Requisition',
-      actionButtonLink: `${appUrl}/department/store-requisitions/${notification.entityId}`
+      actionButtonText: 'View store requisitions',
+      actionButtonLink: emailPaths.storeRequisitions()
     },
 
-    // Alerts
     low_stock: {
-      subject: 'Low Stock Alert',
-      headingText: 'Low Stock Alert',
+      subject: brandSubject('Low stock alert'),
+      headingText: 'Low stock alert',
       subText: notification.message,
-      actionButtonText: 'View Inventory',
-      actionButtonLink: `${appUrl}/stores/inventory`
+      actionButtonText: 'View inventory',
+      actionButtonLink: emailPaths.inventory()
     },
     rfq_deadline_approaching: {
-      subject: 'RFQ Deadline Approaching',
-      headingText: 'RFQ Deadline Approaching',
+      subject: brandSubject('RFQ deadline approaching'),
+      headingText: 'RFQ deadline approaching',
       subText: notification.message,
-      actionButtonText: 'Submit Quotation',
-      actionButtonLink: `${baseUrl}/app/my-rfqs/${notification.entityId}`
+      actionButtonText: 'Submit quotation',
+      actionButtonLink: emailPaths.supplierRfqs(id)
     }
   };
 
@@ -494,11 +497,11 @@ const getEmailContentForNotification = (notification: any): any => {
  * Returns true when Resend accepts the message.
  */
 const sendOtpEmail = async (emailTo: string, code: string): Promise<boolean> => {
-  const companyName = process.env.COMPANY_NAME || 'Tefoma Construction Procurement';
+  const product = getProductName();
 
   const result = await sendEmailNotification({
       emailTo,
-      subject: `${code} is your ${companyName} login code`,
+      subject: `${code} is your ${product} login code`,
       headingText: 'Your login verification code',
       subText: 'Use the code below to complete your sign-in. It expires in 10 minutes.',
       subSubText: `<strong style="font-size: 28px; letter-spacing: 6px; color: #111827;">${code}</strong>`
@@ -511,12 +514,12 @@ const sendPasswordResetEmail = async (
   resetLink: string,
   firstName?: string
 ): Promise<boolean> => {
-  const companyName = process.env.COMPANY_NAME || 'Tefoma Construction Procurement';
+  const product = getProductName();
   const greeting = firstName ? `Hi ${firstName},` : 'Hello,';
 
   const result = await sendEmailNotification({
     emailTo,
-    subject: `Reset your ${companyName} password`,
+    subject: brandSubject('Password reset'),
     headingText: 'Password reset request',
     subText: `${greeting} we received a request to reset your password. Click the button below to choose a new password. This link expires in 1 hour.`,
     subSubText: 'If you did not request this, you can safely ignore this email.',
