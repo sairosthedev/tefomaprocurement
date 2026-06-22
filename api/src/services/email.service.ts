@@ -291,7 +291,7 @@ const getEmailContentForNotification = (notification: any): any => {
       subText: notification.message,
       subSubText: notification.metadata?.deadline ? `Submission Deadline: ${new Date(notification.metadata.deadline).toLocaleDateString()}` : null,
       actionButtonText: 'View RFQ & Submit Quotation',
-      actionButtonLink: `${baseUrl}/app/supplier/rfqs/${notification.entityId}`
+      actionButtonLink: `${baseUrl}/app/my-rfqs/${notification.entityId}`
     },
 
     // Quotations
@@ -482,7 +482,7 @@ const getEmailContentForNotification = (notification: any): any => {
       headingText: 'RFQ Deadline Approaching',
       subText: notification.message,
       actionButtonText: 'Submit Quotation',
-      actionButtonLink: `${baseUrl}/app/supplier/rfqs/${notification.entityId}`
+      actionButtonLink: `${baseUrl}/app/my-rfqs/${notification.entityId}`
     }
   };
 

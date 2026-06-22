@@ -9,6 +9,14 @@ import {
 import { formatCurrency } from '../lib/constants';
 import PageHeader from '../components/PageHeader';
 
+type ChartConfig = {
+  id: string;
+  title: string;
+  kind: 'bar' | 'horizontal';
+  format: 'currency' | 'number';
+  data: { label: string; value: number }[];
+};
+
 function BarChart({ data, valueFormatter }: { data: { label: string; value: number }[]; valueFormatter?: (v: number) => string }) {
   const max = Math.max(...data.map((d) => d.value), 1);
   const fmt = valueFormatter || ((v: number) => String(v));
@@ -26,8 +34,8 @@ function BarChart({ data, valueFormatter }: { data: { label: string; value: numb
             style={{ height: `${Math.max(4, (point.value / max) * 100)}%` }}
             title={`${point.label}: ${fmt(point.value)}`}
           />
-          <span className="text-[10px] text-gray-400 mt-2 truncate w-full text-center rotate-0">
-            {point.label.slice(5)}
+          <span className="text-[10px] text-gray-400 mt-2 truncate w-full text-center">
+            {point.label.length > 10 ? point.label.slice(5) : point.label}
           </span>
         </div>
       ))}
@@ -63,12 +71,57 @@ function HorizontalBars({ data, valueFormatter }: { data: { label: string; value
   );
 }
 
+const ROLE_CARD_CONFIG: Record<string, { title: string; icon: typeof DollarSign; color: string; statKey?: string }[]> = {
+  department_head: [
+    { title: 'Department Spend', icon: DollarSign, color: 'bg-green-500', statKey: 'departmentRequisitions' },
+    { title: 'Items Requested', icon: Package, color: 'bg-blue-500', statKey: 'approvedRequisitions' },
+    { title: 'Requisition Status', icon: FileText, color: 'bg-amber-500', statKey: 'pendingApproval' },
+    { title: 'POs Pending Approval', icon: FileText, color: 'bg-purple-500', statKey: 'pendingPoApprovals' }
+  ],
+  procurement_officer: [
+    { title: 'Procurement Analytics', icon: TrendingUp, color: 'bg-primary', statKey: 'openRFQs' },
+    { title: 'Supplier Performance', icon: Users, color: 'bg-purple-500', statKey: 'activeSuppliers' },
+    { title: 'RFQ Statistics', icon: FileText, color: 'bg-blue-500', statKey: 'pendingQuotations' },
+    { title: 'PO Summary', icon: DollarSign, color: 'bg-green-500', statKey: 'purchaseOrders' }
+  ],
+  finance: [
+    { title: 'Spend by Department', icon: PieChart, color: 'bg-blue-500', statKey: 'totalPOs' },
+    { title: 'Spend by Supplier', icon: Users, color: 'bg-purple-500', statKey: 'approved' },
+    { title: 'Monthly Commitments', icon: Calendar, color: 'bg-amber-500', statKey: 'totalValue' },
+    { title: 'Budget Utilization', icon: DollarSign, color: 'bg-green-500', statKey: 'pendingApproval' }
+  ],
+  coo: [
+    { title: 'Total Spend Overview', icon: DollarSign, color: 'bg-green-500', statKey: 'pendingValue' },
+    { title: 'Top Suppliers', icon: Users, color: 'bg-purple-500', statKey: 'approved' },
+    { title: 'Department Spend', icon: PieChart, color: 'bg-blue-500', statKey: 'totalPOs' },
+    { title: 'Procurement Performance', icon: TrendingUp, color: 'bg-primary', statKey: 'pendingApproval' }
+  ],
+  stores_officer: [
+    { title: 'Stock Valuation', icon: DollarSign, color: 'bg-green-500', statKey: 'totalItems' },
+    { title: 'Fast-Moving Items', icon: TrendingUp, color: 'bg-blue-500', statKey: 'purchaseOrders' },
+    { title: 'Low Stock Items', icon: Package, color: 'bg-amber-500', statKey: 'lowStock' },
+    { title: 'Pending Deliveries', icon: BarChart3, color: 'bg-purple-500', statKey: 'pendingDeliveries' }
+  ],
+  end_user: [
+    { title: 'My Requisitions', icon: FileText, color: 'bg-primary', statKey: 'myRequisitions' },
+    { title: 'Drafts', icon: Package, color: 'bg-gray-500', statKey: 'drafts' },
+    { title: 'Awaiting Approval', icon: Calendar, color: 'bg-amber-500', statKey: 'pendingApproval' },
+    { title: 'Fulfilled', icon: TrendingUp, color: 'bg-green-500', statKey: 'fulfilled' }
+  ],
+  supplier: [
+    { title: 'My RFQs', icon: FileText, color: 'bg-blue-500', statKey: 'myRFQs' },
+    { title: 'My Quotations', icon: Package, color: 'bg-purple-500', statKey: 'myQuotations' },
+    { title: 'Submitted', icon: TrendingUp, color: 'bg-amber-500', statKey: 'submittedQuotations' },
+    { title: 'My Purchase Orders', icon: DollarSign, color: 'bg-green-500', statKey: 'myPOs' }
+  ]
+};
+
 export default function Reports() {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const [loading, setLoading] = useState<any>(true);
+  const [loading, setLoading] = useState(true);
   const [reportData, setReportData] = useState<any>(null);
-  const [dateRange, setDateRange] = useState<any>('month');
+  const [dateRange, setDateRange] = useState('month');
 
   useEffect(() => {
     fetchReportData();
@@ -88,7 +141,35 @@ export default function Reports() {
     }
   };
 
-  const chartData = reportData?.chartData;
+  const charts: ChartConfig[] = useMemo(() => {
+    const raw = reportData?.chartData;
+    if (Array.isArray(raw)) return raw;
+    // Legacy shape fallback
+    if (raw?.spendTrend) {
+      return [
+        { id: 'spendTrend', title: 'Spend trend', kind: 'bar', format: 'currency', data: raw.spendTrend },
+        { id: 'departmentSpend', title: 'Department spend', kind: 'horizontal', format: 'currency', data: raw.departmentSpend || [] },
+        { id: 'poDistribution', title: 'PO value by status', kind: 'horizontal', format: 'currency', data: raw.distribution || [] }
+      ];
+    }
+    return [];
+  }, [reportData?.chartData]);
+
+  const summaryCards = useMemo(() => {
+    const config = ROLE_CARD_CONFIG[user?.role || ''] || [
+      { title: 'Overview', icon: BarChart3, color: 'bg-primary', statKey: 'openRFQs' },
+      { title: 'Spend Analysis', icon: DollarSign, color: 'bg-green-500', statKey: 'purchaseOrders' },
+      { title: 'Performance', icon: TrendingUp, color: 'bg-blue-500', statKey: 'quotations' }
+    ];
+    const stats = reportData?.stats || {};
+    return config.map((card) => ({
+      ...card,
+      value: card.statKey && stats[card.statKey] ? stats[card.statKey].value : '—'
+    }));
+  }, [user?.role, reportData?.stats]);
+
+  const formatValue = (format: 'currency' | 'number', v: number) =>
+    format === 'currency' ? formatCurrency(v) : String(v);
 
   const exportCsv = () => {
     const rows: string[][] = [['Metric', 'Value']];
@@ -97,11 +178,10 @@ export default function Reports() {
         rows.push([stat.label || key, String(stat.value)]);
       });
     }
-    chartData?.spendTrend?.forEach((row: any) => {
-      rows.push([`Spend ${row.label}`, String(row.value)]);
-    });
-    chartData?.departmentSpend?.forEach((row: any) => {
-      rows.push([`Dept ${row.label}`, String(row.value)]);
+    charts.forEach((chart) => {
+      chart.data.forEach((row) => {
+        rows.push([`${chart.title}: ${row.label}`, String(row.value)]);
+      });
     });
 
     const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -115,51 +195,6 @@ export default function Reports() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
-
-  const summaryCards = useMemo(() => {
-    switch (user?.role) {
-      case 'department_head':
-        return [
-          { title: 'Department Spend', icon: DollarSign, color: 'bg-green-500' },
-          { title: 'Items Requested', icon: Package, color: 'bg-blue-500' },
-          { title: 'Requisition Status', icon: FileText, color: 'bg-amber-500' }
-        ];
-      case 'procurement_officer':
-        return [
-          { title: 'Procurement Analytics', icon: TrendingUp, color: 'bg-primary' },
-          { title: 'Supplier Performance', icon: Users, color: 'bg-purple-500' },
-          { title: 'RFQ Statistics', icon: FileText, color: 'bg-blue-500' },
-          { title: 'PO Summary', icon: DollarSign, color: 'bg-green-500' }
-        ];
-      case 'finance':
-        return [
-          { title: 'Spend by Department', icon: PieChart, color: 'bg-blue-500' },
-          { title: 'Spend by Supplier', icon: Users, color: 'bg-purple-500' },
-          { title: 'Monthly Commitments', icon: Calendar, color: 'bg-amber-500' },
-          { title: 'Budget Utilization', icon: DollarSign, color: 'bg-green-500' }
-        ];
-      case 'coo':
-        return [
-          { title: 'Total Spend Overview', icon: DollarSign, color: 'bg-green-500' },
-          { title: 'Top Suppliers', icon: Users, color: 'bg-purple-500' },
-          { title: 'Department Spend', icon: PieChart, color: 'bg-blue-500' },
-          { title: 'Procurement Performance', icon: TrendingUp, color: 'bg-primary' }
-        ];
-      case 'stores_officer':
-        return [
-          { title: 'Stock Valuation', icon: DollarSign, color: 'bg-green-500' },
-          { title: 'Fast-Moving Items', icon: TrendingUp, color: 'bg-blue-500' },
-          { title: 'Slow-Moving Items', icon: Package, color: 'bg-amber-500' },
-          { title: 'Stock Movements', icon: BarChart3, color: 'bg-purple-500' }
-        ];
-      default:
-        return [
-          { title: 'Overview', icon: BarChart3, color: 'bg-primary' },
-          { title: 'Spend Analysis', icon: DollarSign, color: 'bg-green-500' },
-          { title: 'Performance', icon: TrendingUp, color: 'bg-blue-500' }
-        ];
-    }
-  }, [user?.role]);
 
   if (loading) {
     return (
@@ -178,7 +213,7 @@ export default function Reports() {
           <>
             <select
               value={dateRange}
-              onChange={(e: any) => setDateRange(e.target.value)}
+              onChange={(e) => setDateRange(e.target.value)}
               className="px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
             >
               <option value="week">This Week</option>
@@ -199,7 +234,7 @@ export default function Reports() {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {summaryCards.map((report: any, index: number) => {
+        {summaryCards.map((report, index) => {
           const Icon = report.icon;
           return (
             <div
@@ -212,7 +247,7 @@ export default function Reports() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">{report.title}</p>
-                  <p className="text-lg font-semibold text-gray-900">Summary below</p>
+                  <p className="text-lg font-semibold text-gray-900">{report.value}</p>
                 </div>
               </div>
             </div>
@@ -235,29 +270,32 @@ export default function Reports() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Spend trend</h3>
-          <BarChart
-            data={chartData?.spendTrend || []}
-            valueFormatter={(v) => formatCurrency(v)}
-          />
-        </div>
-
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Department spend</h3>
-          <HorizontalBars
-            data={chartData?.departmentSpend || []}
-            valueFormatter={(v) => formatCurrency(v)}
-          />
-        </div>
-
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 lg:col-span-2">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">PO value by status</h3>
-          <HorizontalBars
-            data={chartData?.distribution || []}
-            valueFormatter={(v) => formatCurrency(v)}
-          />
-        </div>
+        {charts.map((chart) => (
+          <div
+            key={chart.id}
+            className={`bg-white rounded-2xl p-6 shadow-sm border border-gray-100 ${
+              charts.length === 1 || chart.id === 'poDistribution' ? 'lg:col-span-2' : ''
+            }`}
+          >
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">{chart.title}</h3>
+            {chart.kind === 'bar' ? (
+              <BarChart
+                data={chart.data}
+                valueFormatter={(v) => formatValue(chart.format, v)}
+              />
+            ) : (
+              <HorizontalBars
+                data={chart.data}
+                valueFormatter={(v) => formatValue(chart.format, v)}
+              />
+            )}
+          </div>
+        ))}
+        {charts.length === 0 && (
+          <div className="lg:col-span-2 bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center text-gray-500">
+            No chart data for this period.
+          </div>
+        )}
       </div>
     </div>
   );

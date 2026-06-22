@@ -152,3 +152,12 @@ Expected result: delivery status updates and inventory increases on acceptance.
 5. PO approved through HOD → Finance → COO (if ≥ $5,000).
 6. Delivery received and accepted into stock.
 7. Invoice approved and payment recorded.
+
+## 8. Automated alerts
+
+The system runs background checks (every hour by default) for:
+
+- **Low stock** — stores officers receive in-app (and email if configured) alerts when inventory falls at or below reorder level.
+- **RFQ deadlines** — suppliers who have not submitted a quote receive a reminder when the submission deadline is within 48 hours.
+
+These use the same Notifications panel; configure `ALERT_JOBS_*` in `api/.env` to tune frequency and deduplication.

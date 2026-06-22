@@ -9,6 +9,7 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 import { createApp } from './app.js';
 import connectDB from './config/db.js';
 import { logger } from './lib/logger.js';
+import { startAlertScheduler, stopAlertScheduler } from './jobs/scheduler.js';
 
 const PORT = process.env.PORT || 3001;
 
@@ -18,10 +19,12 @@ async function bootstrap(): Promise<void> {
   const app = createApp();
   const server = app.listen(PORT, () => {
     logger.info(`API server running on http://localhost:${PORT}`);
+    startAlertScheduler();
   });
 
   const shutdown = (signal: string): void => {
     logger.info(`Received ${signal}, shutting down gracefully...`);
+    stopAlertScheduler();
     server.close((err?: Error) => {
       if (err) {
         logger.error('Error closing server', err);

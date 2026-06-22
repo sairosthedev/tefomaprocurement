@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { isProcurementHead } from '@fossil/shared';
 import { User, SupplierProfile, RFQ, Quotation, PurchaseOrder, Inventory, PurchaseRequisition, AuditLog } from '../../models/index.js';
-import { buildReportCharts } from '../../lib/reportAnalytics.js';
+import { buildRoleReportCharts } from '../../lib/reportAnalytics.js';
 
 /** Build a department-scoped filter for requisition queries. */
 function deptRequisitionFilter(user: Request['user']) {
@@ -421,7 +421,19 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
     }
 
     const range = req.query.range as string | undefined;
-    const chartData = range ? await buildReportCharts(range) : undefined;
+    let chartData: Awaited<ReturnType<typeof buildRoleReportCharts>> | undefined;
+    if (range) {
+      let supplierProfileId: string | undefined;
+      if (userRole === 'supplier') {
+        const sp = await SupplierProfile.findOne({ user: req.user!._id, isDeleted: false }).select('_id');
+        supplierProfileId = sp?._id?.toString();
+      }
+      chartData = await buildRoleReportCharts(userRole, range, {
+        departmentId: req.user?.department?.toString(),
+        userId: req.user?._id?.toString(),
+        supplierProfileId
+      });
+    }
 
     res.status(200).json({
       success: true,
