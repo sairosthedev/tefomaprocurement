@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   BarChart3,
   ClipboardList,
@@ -10,72 +10,72 @@ import {
   ShieldCheck,
   TrendingUp,
   Users
-} from 'lucide-react'
-import { getCategoryName } from '@fossil/shared'
-import PageHeader, { PageStatCard } from '../../components/PageHeader'
-import { formatCurrency } from '../../lib/constants'
-import { procurementAPI } from '../../services/procurement.service'
-import { useToast } from '../../components/Toast'
-import Pagination from '../../components/Pagination'
-import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination'
+} from 'lucide-react';
+import { getCategoryName } from '@fossil/shared';
+import { PageStatCard } from '../PageHeader';
+import { formatCurrency } from '../../lib/constants';
+import { procurementAPI } from '../../services/procurement.service';
+import { useToast } from '../Toast';
+import Pagination from '../Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
 
 const STATUS_LABELS: Record<string, string> = {
   active: 'Active',
   pending: 'Pending',
   dormant: 'Dormant',
   blacklisted: 'Blacklisted'
-}
+};
 
 const STATUS_COLORS: Record<string, string> = {
   active: 'bg-green-100 text-green-800',
   pending: 'bg-amber-100 text-amber-800',
   dormant: 'bg-gray-100 text-gray-700',
   blacklisted: 'bg-red-100 text-red-700'
-}
+};
 
 function formatDate(value?: string | null) {
-  if (!value) return '—'
-  return new Date(value).toLocaleDateString('en-ZA')
+  if (!value) return '—';
+  return new Date(value).toLocaleDateString('en-ZA');
 }
 
-export default function SupplierReports() {
-  const navigate = useNavigate()
-  const { showToast } = useToast()
-  const [loading, setLoading] = useState(true)
-  const [report, setReport] = useState<any>(null)
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [page, setPage] = useState(1)
-  const [pagination, setPagination] = useState(emptyPagination())
+export default function SupplierReportsSection() {
+  const navigate = useNavigate();
+  const { showToast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [report, setReport] = useState<any>(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
-    setPage(1)
-  }, [search, statusFilter])
+    setPage(1);
+  }, [search, statusFilter]);
 
   useEffect(() => {
-    load()
-  }, [page, search, statusFilter])
+    load();
+  }, [page, search, statusFilter]);
 
   const load = async () => {
     try {
-      setLoading(true)
+      setLoading(true);
       const response = await procurementAPI.getSupplierReports({
         page,
         limit: DEFAULT_PAGE_SIZE,
         search,
         status: statusFilter || undefined
-      })
-      setReport(response.data.data)
-      setPagination(parsePagination(response.data.pagination))
+      });
+      setReport(response.data.data);
+      setPagination(parsePagination(response.data.pagination));
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to load supplier reports', 'error')
+      showToast(error.response?.data?.message || 'Failed to load supplier reports', 'error');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const summary = report?.summary
-  const registry = report?.registry || []
+  const summary = report?.summary;
+  const registry = report?.registry || [];
 
   const handleExport = () => {
     const headers = [
@@ -90,7 +90,7 @@ export default function SupplierReports() {
       'Last Evaluation',
       'Next Review Due',
       'Categories'
-    ]
+    ];
 
     const rows = registry.map((row: any) => [
       row.companyName || '',
@@ -104,57 +104,51 @@ export default function SupplierReports() {
       formatDate(row.lastEvaluationAt),
       formatDate(row.nextEvaluationDue),
       (row.categories || []).map((c: string) => getCategoryName(c)).join('; ')
-    ])
+    ]);
 
     const csv = [headers, ...rows]
       .map((row) => row.map((value: string | number) => `"${String(value).replace(/"/g, '""')}"`).join(','))
-      .join('\n')
+      .join('\n');
 
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `supplier-reports-${new Date().toISOString().slice(0, 10)}.csv`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-  }
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `supplier-reports-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
+      <div className="min-h-[40vh] flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
-    )
+    );
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
-      <PageHeader
-        title="Supplier Reports"
-        subtitle="Portfolio-wide supplier registry, spend, compliance, and evaluation insights."
-        actions={
-          <>
-            <button
-              type="button"
-              onClick={() => navigate('/app/suppliers')}
-              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              <Users className="h-4 w-4" />
-              All Suppliers
-            </button>
-            <button
-              type="button"
-              onClick={handleExport}
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-dark"
-            >
-              <Download className="h-4 w-4" />
-              Export CSV
-            </button>
-          </>
-        }
-      />
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-3">
+        <button
+          type="button"
+          onClick={() => navigate('/app/suppliers')}
+          className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          <Users className="h-4 w-4" />
+          All Suppliers
+        </button>
+        <button
+          type="button"
+          onClick={handleExport}
+          className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-dark"
+        >
+          <Download className="h-4 w-4" />
+          Export CSV
+        </button>
+      </div>
 
       {summary && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -227,7 +221,7 @@ export default function SupplierReports() {
           { label: 'Compliance analytics', href: '/app/suppliers/analytics/compliance', icon: ShieldCheck },
           { label: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList }
         ].map((link) => {
-          const Icon = link.icon
+          const Icon = link.icon;
           return (
             <button
               key={link.href}
@@ -243,7 +237,7 @@ export default function SupplierReports() {
               </div>
               <ExternalLink className="h-4 w-4 text-gray-400" />
             </button>
-          )
+          );
         })}
       </div>
 
@@ -352,5 +346,5 @@ export default function SupplierReports() {
         )}
       </div>
     </div>
-  )
+  );
 }

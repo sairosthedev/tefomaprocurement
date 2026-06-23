@@ -3,6 +3,7 @@ import http from './http';
 export const procurementAPI: any = {
   getSuppliers: (params?: any) => http.get('/procurement/suppliers', { params }),
   getSupplier: (id: any) => http.get(`/procurement/suppliers/${id}`),
+  updateSupplier: (id: any, data: any) => http.put(`/procurement/suppliers/${id}`, data),
   createSupplier: (data: any) => http.post('/procurement/suppliers', data),
   bulkImportSuppliers: (data: any) => http.post('/procurement/suppliers/bulk-import', data),
   approveSupplier: (id: any, data?: any) => http.put(`/procurement/suppliers/${id}/approve`, data),

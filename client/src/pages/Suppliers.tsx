@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import Tabs from '../components/Tabs';
@@ -9,9 +9,7 @@ import { CategoryMultiSelect } from '../components/CategorySelect';
 import { getCategoryName } from '../lib/constants';
 import { 
   Search, 
-  Filter, 
   Plus, 
-  MoreVertical, 
   CheckCircle, 
   XCircle, 
   Clock,
@@ -45,13 +43,40 @@ const statusIcons: any = {
   dormant: Clock
 };
 
+function needsKysAttention(supplier: any): boolean {
+  return supplier.status === 'pending' || (!supplier.kysComplete && !supplier.kysExempt);
+}
+
+function supplierProfilePath(supplier: any): string {
+  const id = supplier._id;
+  return needsKysAttention(supplier)
+    ? `/app/suppliers/${id}?tab=documents`
+    : `/app/suppliers/${id}`;
+}
+
+function kysStatus(supplier: any): { label: string; className: string } {
+  if (supplier.kysExempt) {
+    return { label: 'Exempt', className: 'bg-slate-100 text-slate-600 ring-slate-200/80' };
+  }
+  if (supplier.kysComplete) {
+    return { label: 'Verified', className: 'bg-emerald-50 text-emerald-700 ring-emerald-600/10' };
+  }
+  return { label: 'Pending', className: 'bg-amber-50 text-amber-800 ring-amber-600/10' };
+}
+
 export default function Suppliers() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { showToast } = useToast();
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [loading, setLoading] = useState<any>(true);
   const [search, setSearch] = useState<any>('');
-  const [statusFilter, setStatusFilter] = useState<any>('');
+  const [statusFilter, setStatusFilter] = useState<any>(() => {
+    const fromUrl = searchParams.get('status');
+    if (fromUrl) return fromUrl;
+    if (searchParams.get('kys') === 'pending') return 'pending';
+    return '';
+  });
   const [showAddModal, setShowAddModal] = useState<any>(false);
   const [submitting, setSubmitting] = useState<any>(false);
   const [formData, setFormData] = useState<any>({
@@ -117,8 +142,8 @@ export default function Suppliers() {
     }
   };
 
-  const openViewModal = (supplier: any) => {
-    navigate(`/app/suppliers/${supplier._id}`);
+  const openSupplierProfile = (supplier: any) => {
+    navigate(supplierProfilePath(supplier));
   };
 
   const closeViewModal = () => {
@@ -174,7 +199,7 @@ export default function Suppliers() {
       return;
     }
     showToast('Complete KYS first, or use Activate without KYS if this supplier is exempt.', 'error');
-    navigate(`/app/suppliers/${supplier._id}/kys`);
+    navigate(`/app/suppliers/${supplier._id}?tab=documents`);
   };
 
   const startApproveOverride = () => {
@@ -419,24 +444,19 @@ export default function Suppliers() {
               className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
             />
           </div>
-          <div className="flex items-center gap-4">
-            <Tabs
-              tabs={[
-                { value: '', label: 'All', icon: Users },
-                { value: 'pending', label: 'Pending', icon: Clock },
-                { value: 'active', label: 'Active', icon: CheckCircle },
-                { value: 'suspended', label: 'Suspended', icon: XCircle },
-                { value: 'blacklisted', label: 'Blacklisted', icon: XCircle }
-              ]}
-              activeTab={statusFilter}
-              onTabChange={setStatusFilter}
-              variant="pills"
-            />
-            <button className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">
-              <Filter className="h-4 w-4" />
-              More Filters
-            </button>
-          </div>
+          <Tabs
+            className="w-full"
+            tabs={[
+              { value: '', label: 'All', icon: Users },
+              { value: 'pending', label: 'Pending', icon: Clock },
+              { value: 'active', label: 'Active', icon: CheckCircle },
+              { value: 'suspended', label: 'Suspended', icon: XCircle },
+              { value: 'blacklisted', label: 'Blacklisted', icon: XCircle }
+            ]}
+            activeTab={statusFilter}
+            onTabChange={setStatusFilter}
+            variant="pills"
+          />
         </div>
       </div>
 
@@ -454,107 +474,100 @@ export default function Suppliers() {
           </div>
         ) : (
           <>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
-                <tr>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Company
-                  </th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Contact
-                  </th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Categories
-                  </th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Registered
-                  </th>
-                  <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {suppliers.map((supplier: any) => {
-                  const StatusIcon = statusIcons[supplier.status] || Clock;
-                  return (
-                    <tr key={supplier._id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center">
-                            <Building2 className="h-5 w-5 text-primary" />
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Supplier
+                    </th>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Contact
+                    </th>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Vendor status
+                    </th>
+                    <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {suppliers.map((supplier: any) => {
+                    const StatusIcon = statusIcons[supplier.status] || Clock;
+                    const kys = kysStatus(supplier);
+                    const kysPending = needsKysAttention(supplier);
+                    const statusLabel =
+                      supplier.status.charAt(0).toUpperCase() + supplier.status.slice(1);
+
+                    return (
+                      <tr key={supplier._id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3 min-w-0 max-w-md">
+                            <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+                              <Building2 className="h-5 w-5 text-primary" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-medium text-gray-900 truncate" title={supplier.companyName}>
+                                {supplier.companyName}
+                              </p>
+                              <p className="text-sm text-gray-500 truncate" title={supplier.registrationNumber}>
+                                {supplier.registrationNumber || 'No registration no.'}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium text-gray-900">{supplier.companyName}</p>
-                            <p className="text-sm text-gray-500">{supplier.registrationNumber}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Mail className="h-4 w-4" />
-                            {supplier.user?.email}
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Phone className="h-4 w-4" />
-                            {supplier.user?.phone || '-'}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-wrap gap-1">
-                          {supplier.categories?.slice(0, 2).map((cat: any, idx: any) => (
-                            <span key={idx} className="px-2 py-1 bg-gray-100 rounded-lg text-xs text-gray-600" title={cat}>
-                              {getCategoryName(cat)}
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2 text-sm text-gray-600 min-w-0 max-w-xs">
+                            <Mail className="h-4 w-4 text-gray-400 shrink-0" />
+                            <span className="truncate" title={supplier.user?.email}>
+                              {supplier.user?.email || '—'}
                             </span>
-                          ))}
-                          {supplier.categories?.length > 2 && (
-                            <span className="px-2 py-1 bg-gray-100 rounded-lg text-xs text-gray-600">
-                              +{supplier.categories.length - 2}
+                          </div>
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <div className="space-y-1.5">
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium capitalize ${statusColors[supplier.status]}`}
+                            >
+                              <StatusIcon className="h-3.5 w-3.5 shrink-0" />
+                              {statusLabel}
                             </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${statusColors[supplier.status]}`}>
-                          <StatusIcon className="h-3.5 w-3.5" />
-                          {supplier.status.charAt(0).toUpperCase() + supplier.status.slice(1)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {new Date(supplier.createdAt).toLocaleDateString('en-ZA')}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                            <p className="text-xs text-gray-500">
+                              KYS · <span className="font-medium text-gray-700">{kys.label}</span>
+                            </p>
+                          </div>
+                        </td>
+
+                        <td className="px-6 py-4 text-right">
                           <button
                             type="button"
-                            onClick={() => openViewModal(supplier)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-primary rounded-lg hover:bg-primary/90"
+                            onClick={() => openSupplierProfile(supplier)}
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            title={
+                              kysPending
+                                ? 'View vendor profile & KYS documents'
+                                : 'View vendor profile'
+                            }
+                            aria-label={
+                              kysPending
+                                ? 'View vendor profile and KYS documents'
+                                : 'View vendor profile'
+                            }
                           >
-                            <Eye className="h-3.5 w-3.5" />
-                            View
+                            <Eye className="h-4 w-4 text-gray-500" />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => navigate(`/app/suppliers/${supplier._id}/kys`)}
-                            className="px-3 py-1.5 text-xs font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/5"
-                          >
-                            KYS
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <Pagination
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <Pagination
             page={page}
             pages={pagination.pages}
             total={pagination.total}
@@ -1082,6 +1095,10 @@ Company ABC,REG123,John Doe,john@company.com,1234567890`}
           const references = Array.isArray(s.clientReferrals) ? s.clientReferrals : [];
           const documents = Array.isArray(s.complianceDocuments) ? s.complianceDocuments : [];
           const latestEvaluation = supplierEvaluations?.[0];
+          const performanceScore = latestEvaluation?.overallScore > 0
+            ? `${latestEvaluation.overallScore}/5`
+            : '—';
+          const kysLabel = s.kysExempt ? 'Exempt' : s.kysComplete ? 'Verified' : 'Pending';
 
           const detailTabs = [
             { value: 'overview', label: 'Overview' },
@@ -1123,12 +1140,12 @@ Company ABC,REG123,John Doe,john@company.com,1234567890`}
 
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-sm">
                 <div className="rounded-xl border border-gray-100 p-4 bg-gray-50">
-                  <p className="text-xs text-gray-500">Overall Score</p>
-                  <p className="text-2xl font-bold text-gray-900">{s.overallScore ? `${s.overallScore}%` : '0%'}</p>
+                  <p className="text-xs text-gray-500">Performance score</p>
+                  <p className="text-2xl font-bold text-gray-900">{performanceScore}</p>
                 </div>
                 <div className="rounded-xl border border-gray-100 p-4 bg-gray-50">
-                  <p className="text-xs text-gray-500">Rating</p>
-                  <p className="text-2xl font-bold text-gray-900">{s.kysComplete ? 'Verified' : 'Not Started'}</p>
+                  <p className="text-xs text-gray-500">KYS status</p>
+                  <p className="text-2xl font-bold text-gray-900">{kysLabel}</p>
                 </div>
                 <div className="rounded-xl border border-gray-100 p-4 bg-gray-50">
                   <p className="text-xs text-gray-500">Documents</p>
@@ -1202,7 +1219,7 @@ Company ABC,REG123,John Doe,john@company.com,1234567890`}
                     </div>
                     <button
                       type="button"
-                      onClick={() => navigate(`/app/suppliers/${s._id}/kys`)}
+                      onClick={() => navigate(`/app/suppliers/${s._id}?tab=documents`)}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/5"
                     >
                       <Eye className="h-3.5 w-3.5" />
@@ -1509,7 +1526,7 @@ Company ABC,REG123,John Doe,john@company.com,1234567890`}
                   )}
                   <button
                     type="button"
-                    onClick={() => navigate(`/app/suppliers/${s._id}/kys`)}
+                    onClick={() => navigate(`/app/suppliers/${s._id}?tab=documents`)}
                     className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 ml-auto"
                   >
                     <FileText className="h-4 w-4" />

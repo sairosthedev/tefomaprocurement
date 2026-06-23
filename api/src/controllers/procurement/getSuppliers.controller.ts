@@ -4,11 +4,17 @@ import { SupplierProfile } from '../../models/index.js';
 
 const getSuppliers = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { status, search, category, categories, page = 1, limit = 20 } = req.query as Record<string, any>;
+    const { status, search, category, categories, kys, page = 1, limit = 20 } = req.query as Record<string, any>;
     
     const query: any = { isDeleted: false };
     
     if (status) query.status = status;
+    if (kys === 'pending') {
+      query.kysComplete = false;
+      query.kysExempt = { $ne: true };
+    } else if (kys === 'verified') {
+      query.kysComplete = true;
+    }
     // `category` matches a single code; `categories` matches any of several codes
     // (comma-separated string or array) — used to find suppliers for an RFQ's items.
     if (categories) {

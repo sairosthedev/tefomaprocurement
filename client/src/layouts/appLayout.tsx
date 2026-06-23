@@ -44,13 +44,11 @@ const roleNavigation: any = {
     { name: "Sites", href: "/app/sites", icon: MapPin },
     { name: "Suppliers", icon: Users, children: [
       { name: 'All Suppliers', href: '/app/suppliers', icon: Users },
-      { name: 'Verification Hub', href: '/app/verification-hub', icon: FileSearch },
       { name: 'Analytics', icon: TrendingUp, children: [
         { name: 'Performance', href: '/app/suppliers/analytics/performance', icon: TrendingUp },
         { name: 'Compliance', href: '/app/suppliers/analytics/compliance', icon: BarChart3 }
       ] },
-      { name: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList },
-      { name: 'Reports', href: '/app/suppliers/reports', icon: BarChart3 }
+      { name: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList }
     ] },
     { name: "RFQs", href: "/app/rfqs", icon: FileSearch },
     { name: "Quotations", href: "/app/quotations", icon: FileText },
@@ -85,13 +83,11 @@ const roleNavigation: any = {
     { name: "Purchase Orders", href: "/app/purchase-orders", icon: ShoppingCart },
     { name: "Suppliers", icon: Users, children: [
       { name: 'All Suppliers', href: '/app/suppliers', icon: Users },
-      { name: 'Verification Hub', href: '/app/verification-hub', icon: FileSearch },
       { name: 'Analytics', icon: TrendingUp, children: [
         { name: 'Performance', href: '/app/suppliers/analytics/performance', icon: TrendingUp },
         { name: 'Compliance', href: '/app/suppliers/analytics/compliance', icon: BarChart3 }
       ] },
-      { name: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList },
-      { name: 'Reports', href: '/app/suppliers/reports', icon: BarChart3 }
+      { name: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList }
     ] },
     { name: "Reports", href: "/app/reports", icon: BarChart3 },
     { name: "Notifications", href: "/app/notifications", icon: Bell },
@@ -109,13 +105,11 @@ const roleNavigation: any = {
     { name: "Purchase Orders", href: "/app/purchase-orders", icon: ShoppingCart },
     { name: "Suppliers", icon: Users, children: [
       { name: 'All Suppliers', href: '/app/suppliers', icon: Users },
-      { name: 'Verification Hub', href: '/app/verification-hub', icon: FileSearch },
       { name: 'Analytics', icon: TrendingUp, children: [
         { name: 'Performance', href: '/app/suppliers/analytics/performance', icon: TrendingUp },
         { name: 'Compliance', href: '/app/suppliers/analytics/compliance', icon: BarChart3 }
       ] },
-      { name: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList },
-      { name: 'Reports', href: '/app/suppliers/reports', icon: BarChart3 }
+      { name: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList }
     ] },
     { name: "Reports", href: "/app/reports", icon: BarChart3 },
     { name: "Notifications", href: "/app/notifications", icon: Bell },
@@ -140,13 +134,11 @@ const roleNavigation: any = {
     { name: "Reports", href: "/app/reports", icon: BarChart3 },
     { name: "Suppliers", icon: Users, children: [
       { name: 'All Suppliers', href: '/app/suppliers', icon: Users },
-      { name: 'Verification Hub', href: '/app/verification-hub', icon: FileSearch },
       { name: 'Analytics', icon: TrendingUp, children: [
         { name: 'Performance', href: '/app/suppliers/analytics/performance', icon: TrendingUp },
         { name: 'Compliance', href: '/app/suppliers/analytics/compliance', icon: BarChart3 }
       ] },
-      { name: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList },
-      { name: 'Reports', href: '/app/suppliers/reports', icon: BarChart3 }
+      { name: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList }
     ] },
     { name: "Notifications", href: "/app/notifications", icon: Bell },
     { name: "Profile", href: "/app/profile", icon: UserCircle },
@@ -247,7 +239,7 @@ export function SidebarLayout({ children }: any) {
   return (
     <div className="flex min-h-screen">
       {/* Sidebar */}
-      <aside className="w-64 bg-primary text-gray-100 border-r border-primary-light fixed h-full">
+      <aside className="fixed z-30 h-full w-64 border-r border-primary-light bg-primary text-gray-100">
         <div className="flex flex-col h-full py-6">
           {/* Logo/Brand */}
           <div className="px-4 mb-6">
@@ -428,9 +420,9 @@ export function SidebarLayout({ children }: any) {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 bg-gray-50 ml-64 min-h-screen px-4 md:px-8">{children}</main>
-
-      {/* Logout Confirmation Modal */}
+      <main className="ml-64 min-h-screen min-w-0 w-[calc(100%-16rem)] overflow-x-hidden bg-gray-50 px-4 md:px-8">
+        {children}
+      </main>
       {showLogoutModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div 

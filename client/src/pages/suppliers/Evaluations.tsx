@@ -6,8 +6,7 @@ import {
   Loader2,
   Plus,
   Star,
-  X,
-  XCircle
+  X
 } from 'lucide-react'
 import { SUPPLIER_EVALUATION_CRITERIA, isProcurementHead } from '@fossil/shared'
 import { procurementAPI } from '../../services/procurement.service'
@@ -17,24 +16,18 @@ import PageHeader, { PageStatCard } from '../../components/PageHeader'
 import Pagination from '../../components/Pagination'
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination'
 
-type Tab = 'due' | 'pending' | 'all'
+type Tab = 'due' | 'all'
 
 const STATUS_LABELS: Record<string, string> = {
-  draft: 'Draft',
-  pending_hod: 'Pending HOD',
-  pending_procurement_manager: 'Pending PM',
-  pending_sec: 'Pending SEC',
-  approved: 'Approved',
+  approved: 'Recorded',
   rejected: 'Rejected'
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  draft: 'bg-gray-100 text-gray-700',
-  pending_hod: 'bg-amber-100 text-amber-800',
-  pending_procurement_manager: 'bg-orange-100 text-orange-800',
-  pending_sec: 'bg-blue-100 text-blue-800',
   approved: 'bg-green-100 text-green-800',
-  rejected: 'bg-red-100 text-red-700'
+  rejected: 'bg-red-100 text-red-700',
+  pending_hod: 'bg-amber-100 text-amber-800',
+  pending_sec: 'bg-blue-100 text-blue-800'
 }
 
 const RECOMMENDATION_OPTIONS = [
@@ -74,7 +67,6 @@ export default function Evaluations() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<Tab>('due')
   const [suppliersDue, setSuppliersDue] = useState<any[]>([])
-  const [pendingEvaluations, setPendingEvaluations] = useState<any[]>([])
   const [allEvaluations, setAllEvaluations] = useState<any[]>([])
   const [allPage, setAllPage] = useState(1)
   const [allPagination, setAllPagination] = useState(emptyPagination())
@@ -88,14 +80,11 @@ export default function Evaluations() {
   const [scores, setScores] = useState<Record<string, number>>(emptyScores)
   const [otherNotes, setOtherNotes] = useState('')
 
-  const [reviewingEvaluation, setReviewingEvaluation] = useState<any>(null)
-  const [secNotes, setSecNotes] = useState('')
-
   const canCreate = user?.role === 'admin' || user?.role === 'procurement_officer' || isProcurementHead(user)
-  const canSecApprove = user?.role === 'admin' || user?.role === 'coo'
 
   useEffect(() => {
-    loadDueAndPending()
+    loadDue()
+    loadAllEvaluations()
   }, [])
 
   useEffect(() => {
@@ -104,16 +93,12 @@ export default function Evaluations() {
     }
   }, [activeTab, allPage])
 
-  const loadDueAndPending = async () => {
+  const loadDue = async () => {
     try {
-      setLoading(true)
       const dueResponse = await procurementAPI.getEvaluationsDue()
       setSuppliersDue(dueResponse.data.data?.suppliersDueForReview || [])
-      setPendingEvaluations(dueResponse.data.data?.pendingEvaluations || [])
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to load evaluations', 'error')
-    } finally {
-      setLoading(false)
+      showToast(error.response?.data?.message || 'Failed to load due suppliers', 'error')
     }
   }
 
@@ -130,16 +115,16 @@ export default function Evaluations() {
     }
   }
 
-  const load = async () => {
-    await Promise.all([loadDueAndPending(), activeTab === 'all' ? loadAllEvaluations() : Promise.resolve()])
+  const refresh = async () => {
+    await Promise.all([loadDue(), loadAllEvaluations()])
   }
 
   const totals = useMemo(() => ({
     due: suppliersDue.length,
-    pending: pendingEvaluations.length,
+    total: allPagination.total || allEvaluations.length,
     approved: allEvaluations.filter((e) => e.status === 'approved').length,
     rejected: allEvaluations.filter((e) => e.status === 'rejected').length
-  }), [suppliersDue.length, pendingEvaluations.length, allEvaluations])
+  }), [suppliersDue.length, allPagination.total, allEvaluations])
 
   const openCreateModal = (supplier: any) => {
     setSelectedSupplier(supplier)
@@ -173,49 +158,18 @@ export default function Evaluations() {
         recommendation,
         scores: { ...scores, otherNotes }
       })
-      showToast('Evaluation submitted for HOD review', 'success')
+      showToast('Evaluation saved', 'success')
       closeCreateModal()
-      await load()
-      setActiveTab('pending')
+      await refresh()
+      setActiveTab('all')
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to create evaluation', 'error')
+      showToast(error.response?.data?.message || 'Failed to save evaluation', 'error')
     } finally {
       setSubmitting(false)
     }
   }
 
-  const handleSecReview = async (approved: boolean) => {
-    if (!reviewingEvaluation?._id) return
-
-    try {
-      setSubmitting(true)
-      await procurementAPI.secApproveEvaluation(reviewingEvaluation._id, {
-        approved,
-        secNotes: secNotes.trim() || undefined
-      })
-      showToast(approved ? 'Evaluation approved' : 'Evaluation rejected', 'success')
-      setReviewingEvaluation(null)
-      setSecNotes('')
-      await load()
-    } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to update evaluation', 'error')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const renderScoreBreakdown = (evaluation: any) => (
-    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-      {SUPPLIER_EVALUATION_CRITERIA.map((criterion) => (
-        <div key={criterion.key} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-xs">
-          <span className="text-gray-600">{criterion.label}</span>
-          <span className="font-semibold text-gray-900">{evaluation.scores?.[criterion.key] ?? '—'}/5</span>
-        </div>
-      ))}
-    </div>
-  )
-
-  if (loading) {
+  if (loading && allEvaluations.length === 0 && suppliersDue.length === 0) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -227,7 +181,7 @@ export default function Evaluations() {
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <PageHeader
         title="Evaluations"
-        subtitle="Score suppliers against procurement criteria, track review workflow, and manage quarterly re-evaluations."
+        subtitle="Score suppliers against procurement criteria and track quarterly re-evaluations. Evaluations are saved immediately — no approval step."
         actions={
           <button
             type="button"
@@ -241,16 +195,15 @@ export default function Evaluations() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <PageStatCard label="Due for review" value={totals.due} valueClassName="text-amber-600" />
-        <PageStatCard label="Pending approval" value={totals.pending} />
-        <PageStatCard label="Approved" value={totals.approved} valueClassName="text-emerald-600" />
+        <PageStatCard label="Total recorded" value={totals.total} />
+        <PageStatCard label="Positive" value={totals.approved} valueClassName="text-emerald-600" />
         <PageStatCard label="Rejected" value={totals.rejected} valueClassName="text-rose-600" />
       </div>
 
       <div className="flex flex-wrap gap-2">
         {([
           { key: 'due', label: `Due for review (${totals.due})` },
-          { key: 'pending', label: `Pending (${totals.pending})` },
-          { key: 'all', label: `All evaluations (${allEvaluations.length})` }
+          { key: 'all', label: `All evaluations (${totals.total})` }
         ] as const).map((tab) => (
           <button
             key={tab.key}
@@ -308,55 +261,6 @@ export default function Evaluations() {
               </div>
             )}
           </div>
-        </div>
-      )}
-
-      {activeTab === 'pending' && (
-        <div className="space-y-4">
-          {pendingEvaluations.map((evaluation) => (
-            <div key={evaluation._id} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h3 className="font-semibold text-gray-900">{supplierName(evaluation)}</h3>
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[evaluation.status] || 'bg-gray-100 text-gray-700'}`}>
-                      {STATUS_LABELS[evaluation.status] || evaluation.status}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-500 mt-1 capitalize">
-                    {String(evaluation.evaluationType || 'initial').replace(/_/g, ' ')} · Score {evaluation.overallScore}/5 · {evaluation.recommendation}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">Submitted {formatDate(evaluation.createdAt)}</p>
-                  {renderScoreBreakdown(evaluation)}
-                  {evaluation.scores?.otherNotes && (
-                    <p className="mt-3 text-sm text-gray-600">Notes: {evaluation.scores.otherNotes}</p>
-                  )}
-                </div>
-                {evaluation.status === 'pending_sec' && canSecApprove && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setReviewingEvaluation(evaluation)
-                      setSecNotes('')
-                    }}
-                    className="shrink-0 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark"
-                  >
-                    SEC review
-                  </button>
-                )}
-                {evaluation.status === 'pending_hod' && (
-                  <div className="shrink-0 rounded-xl bg-amber-50 px-4 py-2 text-sm text-amber-800">
-                    Awaiting Department Head review
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-          {pendingEvaluations.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-10 text-center text-gray-500">
-              No evaluations are pending approval.
-            </div>
-          )}
         </div>
       )}
 
@@ -484,7 +388,7 @@ export default function Evaluations() {
                   value={otherNotes}
                   onChange={(e) => setOtherNotes(e.target.value)}
                   rows={3}
-                  placeholder="Additional comments for reviewers..."
+                  placeholder="Additional comments..."
                   className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm resize-none"
                 />
               </div>
@@ -505,65 +409,7 @@ export default function Evaluations() {
                 className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-dark disabled:opacity-50"
               >
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
-                Submit for HOD review
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {reviewingEvaluation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">SEC approval</h2>
-                <p className="text-sm text-gray-500">{supplierName(reviewingEvaluation)}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setReviewingEvaluation(null)}
-                className="p-2 rounded-lg hover:bg-gray-100"
-              >
-                <X className="h-5 w-5 text-gray-500" />
-              </button>
-            </div>
-
-            <div className="px-6 py-5 space-y-4">
-              <div className="rounded-xl bg-gray-50 p-4 text-sm">
-                <p className="font-medium text-gray-900">Overall score: {reviewingEvaluation.overallScore}/5</p>
-                <p className="text-gray-600 mt-1 capitalize">Recommendation: {reviewingEvaluation.recommendation}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">SEC notes (optional)</label>
-                <textarea
-                  value={secNotes}
-                  onChange={(e) => setSecNotes(e.target.value)}
-                  rows={3}
-                  className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm resize-none"
-                  placeholder="Approval or rejection notes..."
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 border-t border-gray-100 px-6 py-4">
-              <button
-                type="button"
-                onClick={() => handleSecReview(false)}
-                disabled={submitting}
-                className="inline-flex items-center gap-2 rounded-xl border border-red-200 px-4 py-2.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
-              >
-                <XCircle className="h-4 w-4" />
-                Reject
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSecReview(true)}
-                disabled={submitting}
-                className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-dark disabled:opacity-50"
-              >
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                Approve
+                Save evaluation
               </button>
             </div>
           </div>

@@ -8,12 +8,12 @@ const Tabs = ({
   className = '',
   variant = 'default' // 'default' or 'pills'
 }: any) => {
-  const baseStyles = variant === 'pills' 
-    ? 'inline-flex items-center gap-1 p-1 bg-gray-100 rounded-xl'
-    : 'flex items-center gap-1 border-b border-gray-200';
+  const baseStyles = variant === 'pills'
+    ? 'inline-flex flex-wrap items-center gap-1 p-1 bg-gray-100 rounded-xl max-w-full'
+    : 'flex items-center gap-1 border-b border-gray-200 overflow-x-auto';
 
   return (
-    <div className={cn('w-full', className)}>
+    <div className={cn(variant === 'pills' ? 'min-w-0 max-w-full overflow-x-auto' : 'w-full', className)}>
       <div className={cn(baseStyles)}>
         {tabs.map((tab: any) => {
           const isActive = activeTab === tab.value;

@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import api from '../lib/api';
-import { 
-  BarChart3, TrendingUp, DollarSign, Package, Users, 
+import {
+  BarChart3, TrendingUp, DollarSign, Package, Users,
   FileText, Download, Calendar, Loader2, PieChart
 } from 'lucide-react';
 import { formatCurrency } from '../lib/constants';
+import { canViewSupplierReports } from '../lib/reportAccess';
 import PageHeader from '../components/PageHeader';
+import SupplierReportsSection from '../components/reports/SupplierReportsSection';
 
 type ChartConfig = {
   id: string;
@@ -16,6 +19,8 @@ type ChartConfig = {
   format: 'currency' | 'number';
   data: { label: string; value: number }[];
 };
+
+type ReportTab = 'overview' | 'suppliers';
 
 function BarChart({ data, valueFormatter }: { data: { label: string; value: number }[]; valueFormatter?: (v: number) => string }) {
   const max = Math.max(...data.map((d) => d.value), 1);
@@ -116,12 +121,18 @@ const ROLE_CARD_CONFIG: Record<string, { title: string; icon: typeof DollarSign;
   ]
 };
 
-export default function Reports() {
-  const { user } = useAuth();
+function OverviewReportsSection({
+  userRole,
+  dateRange,
+  onDateRangeChange
+}: {
+  userRole?: string;
+  dateRange: string;
+  onDateRangeChange: (value: string) => void;
+}) {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [reportData, setReportData] = useState<any>(null);
-  const [dateRange, setDateRange] = useState('month');
 
   useEffect(() => {
     fetchReportData();
@@ -144,7 +155,6 @@ export default function Reports() {
   const charts: ChartConfig[] = useMemo(() => {
     const raw = reportData?.chartData;
     if (Array.isArray(raw)) return raw;
-    // Legacy shape fallback
     if (raw?.spendTrend) {
       return [
         { id: 'spendTrend', title: 'Spend trend', kind: 'bar', format: 'currency', data: raw.spendTrend },
@@ -156,7 +166,7 @@ export default function Reports() {
   }, [reportData?.chartData]);
 
   const summaryCards = useMemo(() => {
-    const config = ROLE_CARD_CONFIG[user?.role || ''] || [
+    const config = ROLE_CARD_CONFIG[userRole || ''] || [
       { title: 'Overview', icon: BarChart3, color: 'bg-primary', statKey: 'openRFQs' },
       { title: 'Spend Analysis', icon: DollarSign, color: 'bg-green-500', statKey: 'purchaseOrders' },
       { title: 'Performance', icon: TrendingUp, color: 'bg-blue-500', statKey: 'quotations' }
@@ -166,7 +176,7 @@ export default function Reports() {
       ...card,
       value: card.statKey && stats[card.statKey] ? stats[card.statKey].value : '—'
     }));
-  }, [user?.role, reportData?.stats]);
+  }, [userRole, reportData?.stats]);
 
   const formatValue = (format: 'currency' | 'number', v: number) =>
     format === 'currency' ? formatCurrency(v) : String(v);
@@ -198,42 +208,36 @@ export default function Reports() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex items-center justify-center min-h-[40vh]">
         <Loader2 className="h-8 w-8 text-primary animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="p-8">
-      <PageHeader
-        title="Reports & Analytics"
-        subtitle="View detailed insights and statistics"
-        actions={
-          <>
-            <select
-              value={dateRange}
-              onChange={(e) => setDateRange(e.target.value)}
-              className="px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
-            >
-              <option value="week">This Week</option>
-              <option value="month">This Month</option>
-              <option value="quarter">This Quarter</option>
-              <option value="year">This Year</option>
-            </select>
-            <button
-              type="button"
-              onClick={exportCsv}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
-            >
-              <Download className="h-4 w-4" />
-              Export
-            </button>
-          </>
-        }
-      />
+    <div className="space-y-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-3">
+        <select
+          value={dateRange}
+          onChange={(e) => onDateRangeChange(e.target.value)}
+          className="px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+        >
+          <option value="week">This Week</option>
+          <option value="month">This Month</option>
+          <option value="quarter">This Quarter</option>
+          <option value="year">This Year</option>
+        </select>
+        <button
+          type="button"
+          onClick={exportCsv}
+          className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+        >
+          <Download className="h-4 w-4" />
+          Export
+        </button>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {summaryCards.map((report, index) => {
           const Icon = report.icon;
           return (
@@ -256,7 +260,7 @@ export default function Reports() {
       </div>
 
       {reportData?.stats && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-8">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <h2 className="text-lg font-semibold text-gray-900 mb-6">Quick Summary</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {Object.entries(reportData.stats).map(([key, stat]: any) => (
@@ -297,6 +301,71 @@ export default function Reports() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+export default function Reports() {
+  const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [dateRange, setDateRange] = useState('month');
+  const showSupplierReports = canViewSupplierReports(user);
+
+  const requestedTab = searchParams.get('tab');
+  const activeTab: ReportTab =
+    showSupplierReports && requestedTab === 'suppliers' ? 'suppliers' : 'overview';
+
+  const setActiveTab = (tab: ReportTab) => {
+    if (tab === 'overview') {
+      setSearchParams({});
+    } else {
+      setSearchParams({ tab: 'suppliers' });
+    }
+  };
+
+  const subtitle =
+    activeTab === 'suppliers'
+      ? 'Supplier registry, spend, compliance, and evaluation insights.'
+      : 'Role-based insights, spend trends, and operational statistics.';
+
+  return (
+    <div className="p-8 max-w-7xl mx-auto">
+      <PageHeader
+        title="Reports & Analytics"
+        subtitle={subtitle}
+      />
+
+      {showSupplierReports && (
+        <div className="flex gap-2 mb-8 border-b border-gray-200">
+          {([
+            { id: 'overview' as const, label: 'Overview' },
+            { id: 'suppliers' as const, label: 'Suppliers' }
+          ]).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                activeTab === tab.id
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {activeTab === 'overview' ? (
+        <OverviewReportsSection
+          userRole={user?.role}
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+        />
+      ) : (
+        <SupplierReportsSection />
+      )}
     </div>
   );
 }

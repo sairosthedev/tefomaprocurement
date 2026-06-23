@@ -45,6 +45,7 @@ router.get('/suppliers', procurement.getSuppliers);
 router.post('/suppliers', procurement.createSupplier);
 router.post('/suppliers/bulk-import', procurement.bulkImportSuppliers);
 router.get('/suppliers/:id', procurement.getSupplierById);
+router.put('/suppliers/:id', procurement.updateSupplier);
 router.put('/suppliers/:id/approve', procurement.approveSupplier);
 router.put('/suppliers/:id/blacklist', procurement.blacklistSupplier);
 router.put('/suppliers/:id/status', procurement.setSupplierStatus);

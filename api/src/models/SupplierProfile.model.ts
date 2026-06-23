@@ -117,6 +117,11 @@ export interface ISupplierProfile extends Document {
   approvedBy?: mongoose.Types.ObjectId | any;
   approvedAt?: Date;
   notes?: string;
+  website?: string;
+  incorporationDate?: Date;
+  proposedBusiness?: string;
+  tradeVolume?: string;
+  tradeProducts?: string[];
   isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -268,6 +273,11 @@ const SupplierProfileSchema = new Schema<ISupplierProfile>({
   },
   approvedAt: Date,
   notes: String,
+  website: String,
+  incorporationDate: Date,
+  proposedBusiness: String,
+  tradeVolume: String,
+  tradeProducts: [{ type: String, trim: true }],
   isDeleted: {
     type: Boolean,
     default: false

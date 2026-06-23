@@ -1,5 +1,6 @@
 import getSuppliers from './getSuppliers.controller.js';
 import getSupplierById from './getSupplierById.controller.js';
+import updateSupplier from './updateSupplier.controller.js';
 import approveSupplier from './approveSupplier.controller.js';
 import blacklistSupplier from './blacklistSupplier.controller.js';
 import setSupplierStatus from './setSupplierStatus.controller.js';
@@ -39,6 +40,7 @@ import approveQuotationWaiver from './approveQuotationWaiver.controller.js';
 export default {
   getSuppliers,
   getSupplierById,
+  updateSupplier,
   approveSupplier,
   blacklistSupplier,
   setSupplierStatus,

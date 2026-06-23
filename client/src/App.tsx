@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -25,8 +25,6 @@ import Sites from './pages/Sites';
 // Procurement Pages
 import Suppliers from './pages/Suppliers';
 import SupplierDetails from './pages/SupplierDetails';
-import VerificationHub from './pages/VerificationHub';
-import SupplierKys from './pages/SupplierKys';
 import RFQs from './pages/RFQs';
 import RFQDetail from './pages/RFQDetail';
 import CreateRFQ from './pages/CreateRFQ';
@@ -35,7 +33,6 @@ import QuotationDetail from './pages/QuotationDetail';
 import Performance from './pages/suppliers/Performance';
 import Compliance from './pages/suppliers/Compliance';
 import Evaluations from './pages/suppliers/Evaluations';
-import SupplierReports from './pages/suppliers/Reports';
 import PurchaseOrders from './pages/PurchaseOrders';
 import PurchaseOrderDetail from './pages/PurchaseOrderDetail';
 
@@ -74,6 +71,11 @@ import SubmitInvoice from './pages/supplier/SubmitInvoice';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import NotFound from './pages/NotFound';
+
+function SupplierKysRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/app/suppliers/${id}?tab=documents`} replace />;
+}
 
 function AppLayout({ children, allowedRoles }: any) {
   return (
@@ -160,9 +162,7 @@ function App() {
               </AppLayout>
             } />
             <Route path="/app/verification-hub" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer', 'coo']}>
-                <VerificationHub />
-              </AppLayout>
+              <Navigate to="/app/suppliers?status=pending" replace />
             } />
             <Route path="/app/suppliers/analytics/performance" element={
               <AppLayout allowedRoles={['admin', 'procurement_officer', 'coo']}>
@@ -180,13 +180,11 @@ function App() {
               </AppLayout>
             } />
             <Route path="/app/suppliers/reports" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer', 'coo']}>
-                <SupplierReports />
-              </AppLayout>
+              <Navigate to="/app/reports?tab=suppliers" replace />
             } />
             <Route path="/app/suppliers/:id/kys" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer']}>
-                <SupplierKys />
+              <AppLayout allowedRoles={['admin', 'procurement_officer', 'coo']}>
+                <SupplierKysRedirect />
               </AppLayout>
             } />
             <Route path="/app/rfqs" element={

@@ -79,7 +79,7 @@ const SupplierEvaluationSchema = new Schema<ISupplierEvaluation>({
   status: {
     type: String,
     enum: ['draft', 'pending_hod', 'pending_procurement_manager', 'pending_sec', 'approved', 'rejected'],
-    default: 'pending_hod'
+    default: 'approved'
   },
   isDeleted: { type: Boolean, default: false }
 }, { timestamps: true });

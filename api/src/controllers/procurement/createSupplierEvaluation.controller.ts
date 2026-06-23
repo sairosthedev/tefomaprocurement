@@ -1,7 +1,6 @@
 import type { Request, Response } from 'express';
 import { SupplierProfile, SupplierEvaluation } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
-import { notifyUsersByRole } from '../../services/notification.service.js';
 
 const createSupplierEvaluation = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -17,31 +16,37 @@ const createSupplierEvaluation = async (req: Request, res: Response): Promise<an
       return res.status(400).json({ success: false, message: 'Scores and recommendation are required' });
     }
 
+    const finalStatus = recommendation === 'reject' ? 'rejected' : 'approved';
+    const now = new Date();
+    const nextReviewDue = new Date();
+    nextReviewDue.setMonth(nextReviewDue.getMonth() + 3);
+
     const evaluation = await SupplierEvaluation.create({
       supplier: supplier._id,
       evaluationType: evaluationType || 'initial',
       scores: { ...scores, otherNotes },
       recommendation,
       evaluatedBy: req.user!._id,
-      status: 'pending_hod'
+      status: finalStatus,
+      secApproved: finalStatus === 'approved',
+      secApprovedBy: finalStatus === 'approved' ? req.user!._id : undefined,
+      secApprovedAt: finalStatus === 'approved' ? now : undefined,
+      nextReviewDue
     });
+
+    if (finalStatus === 'approved') {
+      supplier.lastEvaluationAt = now;
+      supplier.nextEvaluationDue = nextReviewDue;
+      await supplier.save();
+    }
 
     await createAuditLog({
       action: 'create',
       entity: 'SupplierEvaluation',
       entityId: evaluation._id,
       user: req.user,
-      description: `Created supplier evaluation for ${supplier.companyName}`,
+      description: `Recorded supplier evaluation for ${supplier.companyName}`,
       req
-    });
-
-    await notifyUsersByRole('department_head', {
-      type: 'supplier_added',
-      title: 'Supplier evaluation pending HOD review',
-      message: `Evaluation for ${supplier.companyName} requires HOD review.`,
-      entity: 'SupplierEvaluation',
-      entityId: evaluation._id,
-      relatedUser: req.user!._id
     });
 
     res.status(201).json({ success: true, data: evaluation });

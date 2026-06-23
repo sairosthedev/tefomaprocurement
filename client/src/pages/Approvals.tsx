@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
-import api, { departmentAPI } from '../lib/api';
+import api from '../lib/api';
 import PageHeader from '../components/PageHeader';
 import { 
   CheckCircle, XCircle, Eye, Loader2, Clock, 
@@ -41,18 +41,9 @@ export default function Approvals() {
   const [comment, setComment] = useState<any>('');
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(emptyPagination());
-  const [pendingEvaluations, setPendingEvaluations] = useState<any[]>([]);
-  const [evaluationsLoading, setEvaluationsLoading] = useState(false);
-  const [selectedEvaluation, setSelectedEvaluation] = useState<any>(null);
-  const [showEvalModal, setShowEvalModal] = useState(false);
-
-  const isHod = user?.role === 'department_head' || user?.role === 'admin';
 
   useEffect(() => {
     fetchPendingApprovals();
-    if (isHod) {
-      fetchPendingEvaluations();
-    }
   }, [page, user?.role]);
 
   const fetchPendingApprovals = async () => {
@@ -87,20 +78,6 @@ export default function Approvals() {
       showToast('Failed to load pending approvals', 'error');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchPendingEvaluations = async () => {
-    try {
-      setEvaluationsLoading(true);
-      const response = await departmentAPI.getPendingEvaluations();
-      if (response.data.success) {
-        setPendingEvaluations(response.data.data || []);
-      }
-    } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to load pending evaluations', 'error');
-    } finally {
-      setEvaluationsLoading(false);
     }
   };
 
@@ -168,31 +145,6 @@ export default function Approvals() {
       fetchPendingApprovals();
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to reject', 'error');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleEvaluationReview = async (approved: boolean) => {
-    if (!selectedEvaluation) return;
-    if (!approved && !comment.trim()) {
-      showToast('Please provide a reason for rejection', 'error');
-      return;
-    }
-
-    try {
-      setActionLoading(true);
-      await departmentAPI.hodReviewEvaluation(selectedEvaluation._id, {
-        approved,
-        comments: comment.trim() || undefined
-      });
-      showToast(approved ? 'Evaluation forwarded to SEC review' : 'Evaluation rejected', 'success');
-      setShowEvalModal(false);
-      setSelectedEvaluation(null);
-      setComment('');
-      fetchPendingEvaluations();
-    } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to review evaluation', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -363,49 +315,6 @@ export default function Approvals() {
           </>
         )}
       </div>
-
-      {isHod && (
-        <div className="mt-8 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="font-semibold text-gray-900">Supplier Evaluations — HOD Review</h2>
-            <p className="text-sm text-gray-500 mt-1">Evaluations submitted by procurement awaiting your review</p>
-          </div>
-          {evaluationsLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 text-primary animate-spin" />
-            </div>
-          ) : pendingEvaluations.length === 0 ? (
-            <p className="text-center text-gray-500 py-10">No supplier evaluations pending HOD review.</p>
-          ) : (
-            <div className="divide-y divide-gray-100">
-              {pendingEvaluations.map((evaluation: any) => (
-                <div key={evaluation._id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-4">
-                  <div>
-                    <p className="font-medium text-gray-900">{evaluation.supplier?.companyName || 'Supplier'}</p>
-                    <p className="text-sm text-gray-500 mt-1 capitalize">
-                      {String(evaluation.evaluationType || 'initial').replace(/_/g, ' ')} · Score {evaluation.overallScore}/5 · {evaluation.recommendation}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      Submitted by {evaluation.evaluatedBy?.firstName} {evaluation.evaluatedBy?.lastName}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedEvaluation(evaluation);
-                      setComment('');
-                      setShowEvalModal(true);
-                    }}
-                    className="shrink-0 px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
-                  >
-                    Review
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Approval Modal */}
       <Modal
@@ -614,62 +523,6 @@ export default function Approvals() {
               >
                 {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                 Approve
-              </button>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      <Modal
-        isOpen={showEvalModal}
-        onClose={() => { setShowEvalModal(false); setSelectedEvaluation(null); setComment(''); }}
-        title="Review Supplier Evaluation"
-      >
-        {selectedEvaluation && (
-          <div className="space-y-4">
-            <div className="rounded-xl bg-gray-50 p-4 text-sm">
-              <p className="font-medium text-gray-900">{selectedEvaluation.supplier?.companyName}</p>
-              <p className="text-gray-600 mt-1">Overall score: {selectedEvaluation.overallScore}/5</p>
-              <p className="text-gray-600 capitalize">Recommendation: {selectedEvaluation.recommendation}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Comments (required for rejection)
-              </label>
-              <textarea
-                value={comment}
-                onChange={(e: any) => setComment(e.target.value)}
-                rows={3}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
-                placeholder="Optional notes for approval, required if rejecting..."
-              />
-            </div>
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
-              <button
-                type="button"
-                onClick={() => { setShowEvalModal(false); setSelectedEvaluation(null); setComment(''); }}
-                className="px-4 py-2.5 text-gray-700 font-medium hover:bg-gray-100 rounded-xl"
-                disabled={actionLoading}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => handleEvaluationReview(false)}
-                disabled={actionLoading}
-                className="flex items-center gap-2 px-4 py-2.5 bg-red-600 text-white font-medium rounded-xl hover:bg-red-700 disabled:opacity-50"
-              >
-                <XCircle className="h-4 w-4" />
-                Reject
-              </button>
-              <button
-                type="button"
-                onClick={() => handleEvaluationReview(true)}
-                disabled={actionLoading}
-                className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-medium rounded-xl hover:bg-primary-dark disabled:opacity-50"
-              >
-                {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                Approve for SEC
               </button>
             </div>
           </div>

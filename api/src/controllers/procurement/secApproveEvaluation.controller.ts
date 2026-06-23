@@ -12,8 +12,8 @@ const secApproveEvaluation = async (req: Request, res: Response): Promise<any> =
       return res.status(404).json({ success: false, message: 'Evaluation not found' });
     }
 
-    if (evaluation.status !== 'pending_sec') {
-      return res.status(400).json({ success: false, message: 'Evaluation is not pending SEC approval' });
+    if (!['pending_sec', 'pending_hod'].includes(evaluation.status)) {
+      return res.status(400).json({ success: false, message: 'Evaluation is not pending approval' });
     }
 
     evaluation.secApproved = approved !== false;

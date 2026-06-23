@@ -4,9 +4,13 @@ import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import Tabs from '../components/Tabs';
 import KysDocuments from '../components/KysDocuments';
-import { getCategoryName } from '../lib/constants';
 import { KYS_CHECKLIST_ITEMS } from '@fossil/shared';
-import PageHeader from '../components/PageHeader';
+import SupplierEditableSection from '../components/supplier/SupplierEditableSection';
+import {
+  draftPayloadForSection,
+  supplierToDraft,
+  type SupplierDraft
+} from '../components/supplier/SupplierProfileEditor';
 import {
   Building2,
   CheckCircle,
@@ -14,11 +18,10 @@ import {
   Eye,
   FileText,
   Loader2,
-  Mail,
-  Phone,
   ShieldCheck,
   XCircle
 } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
 
 const statusColors: any = {
   pending: 'bg-amber-100 text-amber-700',
@@ -40,6 +43,15 @@ function valueOrDash(value: any) {
   return value === null || value === undefined || value === '' ? '-' : value;
 }
 
+const EDITABLE_SUPPLIER_TABS = [
+  'overview',
+  'corporate',
+  'banking',
+  'trade',
+  'directors',
+  'references'
+] as const;
+
 export default function SupplierDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -57,6 +69,9 @@ export default function SupplierDetails() {
   const [actionReason, setActionReason] = useState('');
   const [overrideReason, setOverrideReason] = useState('');
   const [showOverrideConfirm, setShowOverrideConfirm] = useState(false);
+  const [profileDraft, setProfileDraft] = useState<SupplierDraft | null>(null);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileEditing, setProfileEditing] = useState(false);
 
   const supplierId = id as string;
 
@@ -90,9 +105,57 @@ export default function SupplierDetails() {
     }
   }, [location.search]);
 
+  useEffect(() => {
+    setProfileEditing(false);
+    if (supplier && EDITABLE_SUPPLIER_TABS.includes(tab as typeof EDITABLE_SUPPLIER_TABS[number])) {
+      setProfileDraft(supplierToDraft(supplier));
+    }
+  }, [supplier, tab]);
+
+  const handleTabChange = (nextTab: string) => {
+    setProfileEditing(false);
+    setTab(nextTab);
+  };
+
+  const startProfileEdit = () => {
+    if (supplier) {
+      setProfileDraft(supplierToDraft(supplier));
+    }
+    setProfileEditing(true);
+  };
+
+  const cancelProfileEdit = () => {
+    if (supplier) {
+      setProfileDraft(supplierToDraft(supplier));
+    }
+    setProfileEditing(false);
+  };
+
   const refreshSupplier = (updated: any) => {
     setSupplier(updated);
     setChecklist(updated?.kysChecklist || {});
+    if (EDITABLE_SUPPLIER_TABS.includes(tab as typeof EDITABLE_SUPPLIER_TABS[number])) {
+      setProfileDraft(supplierToDraft(updated));
+    }
+  };
+
+  const saveProfileSection = async () => {
+    if (!supplier || !profileDraft || !EDITABLE_SUPPLIER_TABS.includes(tab as typeof EDITABLE_SUPPLIER_TABS[number])) return;
+    try {
+      setProfileSaving(true);
+      const payload = draftPayloadForSection(tab, profileDraft);
+      const res = await procurementAPI.updateSupplier(supplier._id, payload);
+      const updated = res.data?.data;
+      if (updated) {
+        refreshSupplier(updated);
+      }
+      setProfileEditing(false);
+      showToast('Supplier profile saved', 'success');
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to save supplier profile', 'error');
+    } finally {
+      setProfileSaving(false);
+    }
   };
 
   const completion = useMemo(() => {
@@ -260,18 +323,25 @@ export default function SupplierDetails() {
   };
 
   const checklistDocuments = Array.isArray(supplier?.complianceDocuments) ? supplier.complianceDocuments : [];
-  const contactPeople = Array.isArray(supplier?.contactPersons) ? supplier.contactPersons : [];
-  const references = Array.isArray(supplier?.clientReferrals) ? supplier.clientReferrals : [];
-  const bankDetails = supplier?.bankDetails || supplier?.bankingDetails || {};
   const latestEvaluation = evaluations?.[0];
+  const performanceScore = latestEvaluation?.overallScore != null && latestEvaluation.overallScore > 0
+    ? `${latestEvaluation.overallScore}/5`
+    : '—';
+  const kysLabel = supplier?.kysExempt
+    ? 'Exempt'
+    : supplier?.kysComplete
+      ? 'Verified'
+      : 'Pending';
   const canRunKysActivation = supplier?.status !== 'active';
+  const directorCount = Array.isArray(supplier?.contactPersons) ? supplier.contactPersons.length : 0;
+  const referenceCount = Array.isArray(supplier?.clientReferrals) ? supplier.clientReferrals.length : 0;
   const tabs = [
     { value: 'overview', label: 'Overview' },
     { value: 'corporate', label: 'Corporate' },
     { value: 'banking', label: 'Banking' },
     { value: 'trade', label: 'Trade' },
-    { value: 'directors', label: 'Directors', count: contactPeople.length },
-    { value: 'references', label: 'References', count: references.length },
+    { value: 'directors', label: 'Directors', count: directorCount },
+    { value: 'references', label: 'References', count: referenceCount },
     { value: 'documents', label: 'Documents', count: checklistDocuments.length },
     { value: 'performance', label: 'Performance', count: evaluations.length },
     { value: 'reports', label: 'Reports' }
@@ -299,13 +369,6 @@ export default function SupplierDetails() {
   }
 
   const StatusIcon = statusIcons[supplier.status] || Clock;
-  const addressParts = [
-    supplier.address?.street || supplier.physicalAddress,
-    supplier.address?.city || supplier.city,
-    supplier.address?.province || supplier.province,
-    supplier.address?.postalCode || supplier.postalCode,
-    supplier.address?.country
-  ].filter(Boolean);
 
   const renderValue = (label: string, value: any) => (
     <div>
@@ -322,24 +385,14 @@ export default function SupplierDetails() {
         title={supplier.companyName}
         subtitle={supplier.tradingAs ? `Trading as ${supplier.tradingAs}` : 'Supplier profile'}
         actions={
-          <>
-            <button
-              type="button"
-              onClick={() => setTab('documents')}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/5"
-            >
-              <FileText className="h-4 w-4" />
-              Open Documents
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/app/verification-hub')}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              <ShieldCheck className="h-4 w-4" />
-              Verification Hub
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={() => setTab('documents')}
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/5"
+          >
+            <FileText className="h-4 w-4" />
+            Open Documents
+          </button>
         }
       />
 
@@ -356,12 +409,13 @@ export default function SupplierDetails() {
 
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-sm">
           <div className="rounded-xl border border-gray-100 p-4 bg-gray-50">
-            <p className="text-xs text-gray-500">Overall Score</p>
-            <p className="text-2xl font-bold text-gray-900">{supplier.overallScore ? `${supplier.overallScore}%` : '0%'}</p>
+            <p className="text-xs text-gray-500">Performance score</p>
+            <p className="text-2xl font-bold text-gray-900">{performanceScore}</p>
+            <p className="text-xs text-gray-400 mt-0.5">From latest evaluation</p>
           </div>
           <div className="rounded-xl border border-gray-100 p-4 bg-gray-50">
-            <p className="text-xs text-gray-500">Rating</p>
-            <p className="text-2xl font-bold text-gray-900">{supplier.kysComplete ? 'Verified' : 'Not Started'}</p>
+            <p className="text-xs text-gray-500">KYS status</p>
+            <p className="text-2xl font-bold text-gray-900">{kysLabel}</p>
           </div>
           <div className="rounded-xl border border-gray-100 p-4 bg-gray-50">
             <p className="text-xs text-gray-500">Documents</p>
@@ -373,130 +427,20 @@ export default function SupplierDetails() {
           </div>
         </div>
 
-        <Tabs tabs={tabs} activeTab={tab} onTabChange={setTab} variant="pills" />
+        <Tabs tabs={tabs} activeTab={tab} onTabChange={handleTabChange} variant="pills" />
 
-        {tab === 'overview' && (
-          <div className="space-y-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-              {renderValue('Registration No.', supplier.registrationNumber)}
-              {renderValue('Tax / VAT', `${supplier.taxNumber || '-'}${supplier.vatNumber ? ` / ${supplier.vatNumber}` : ''}`)}
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Contact</p>
-                <p className="text-gray-900 flex items-center gap-2"><Mail className="h-4 w-4 text-gray-400" />{supplier.user?.email || supplier.email || '-'}</p>
-                <p className="text-gray-900 flex items-center gap-2 mt-1"><Phone className="h-4 w-4 text-gray-400" />{supplier.user?.phone || supplier.phone || '-'}</p>
-              </div>
-              {renderValue('Address', addressParts.join(', '))}
-              {renderValue('Bank', `${bankDetails.bankName || supplier.bankName || '-'}${bankDetails.accountNumber || supplier.bankAccountNumber ? ` · ${bankDetails.accountNumber || supplier.bankAccountNumber}` : ''}`)}
-              {renderValue('Registered', supplier.createdAt ? new Date(supplier.createdAt).toLocaleDateString('en-ZA') : '-')}
-              {renderValue('Supplier Status', supplier.status.charAt(0).toUpperCase() + supplier.status.slice(1))}
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Categories</p>
-              <div className="flex flex-wrap gap-1.5">
-                {supplier.categories?.length ? (
-                  supplier.categories.map((cat: any, idx: number) => (
-                    <span key={idx} className="px-2 py-1 bg-gray-100 rounded-lg text-xs text-gray-600" title={cat}>
-                      {getCategoryName(cat)}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-sm text-gray-400">No categories</span>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {tab === 'corporate' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            {renderValue('Legal Name', supplier.companyName)}
-            {renderValue('Trading Name', supplier.tradingAs || supplier.tradingName)}
-            {renderValue('Incorporation', supplier.incorporationDate ? new Date(supplier.incorporationDate).toLocaleDateString('en-ZA') : 'Not captured in this system')}
-            {renderValue('Country', supplier.address?.country || 'Zimbabwe')}
-            {renderValue('Website', supplier.website || 'Not captured in this system')}
-            {renderValue('Department', supplier.department?.name || supplier.department || 'Not captured in this system')}
-            {renderValue('Services / Products', supplier.businessDescription || supplier.notes || supplier.categories?.map((cat: string) => getCategoryName(cat)).join(', ') || 'Not captured in this system')}
-            {renderValue('Primary Contact', supplier.contactPerson || `${supplier.user?.firstName || ''} ${supplier.user?.lastName || ''}`.trim() || 'Not captured in this system')}
-          </div>
-        )}
-
-        {tab === 'banking' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            {renderValue('Bank Name', bankDetails.bankName || supplier.bankName)}
-            {renderValue('Account Name', bankDetails.accountName || supplier.bankAccountName)}
-            {renderValue('Account Number', bankDetails.accountNumber || supplier.bankAccountNumber)}
-            {renderValue('Branch Code', bankDetails.branchCode || supplier.bankBranchCode)}
-            {renderValue('Account Type', bankDetails.accountType || 'Not captured in this system')}
-          </div>
-        )}
-
-        {tab === 'trade' && (
-          <div className="space-y-4 text-sm">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {renderValue('Proposed Business', supplier.proposedBusiness || 'Not captured in this system')}
-              {renderValue('Volume / Quantity', supplier.tradeVolume || 'Not captured in this system')}
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Products / Goods</p>
-              <div className="flex flex-wrap gap-1.5">
-                {supplier.tradeProducts?.length ? (
-                  supplier.tradeProducts.map((item: any, idx: number) => (
-                    <span key={idx} className="px-2 py-1 bg-gray-100 rounded-lg text-xs text-gray-600">{item}</span>
-                  ))
-                ) : (
-                  <span className="text-sm text-gray-400">Not captured in this system</span>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {tab === 'directors' && (
-          <div className="space-y-3 text-sm">
-            {contactPeople.length > 0 ? (
-              contactPeople.map((person: any, idx: number) => (
-                <div key={idx} className="rounded-xl border border-gray-100 p-4 bg-gray-50 flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-gray-900">{person.name}</p>
-                    <p className="text-xs text-gray-500">{person.position || 'Director / contact role not captured'}</p>
-                    <p className="text-xs text-gray-500 mt-1">{person.email || '-'}</p>
-                    <p className="text-xs text-gray-500">{person.phone || '-'}</p>
-                  </div>
-                  <span className="text-xs px-2 py-1 rounded-full bg-white border border-gray-200 text-gray-600">
-                    {person.isPrimary ? 'Primary' : 'Member'}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <div className="rounded-xl border border-dashed border-gray-200 p-4 text-gray-500">
-                No directors captured in the current supplier profile.
-              </div>
-            )}
-          </div>
-        )}
-
-        {tab === 'references' && (
-          <div className="space-y-3 text-sm">
-            {references.length > 0 ? (
-              references.map((reference: any, idx: number) => (
-                <div key={idx} className="rounded-xl border border-gray-100 p-4 bg-gray-50">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-medium text-gray-900">{reference.clientName || reference.name || 'Reference'}</p>
-                      <p className="text-xs text-gray-500">{reference.contactPerson || 'Contact not captured'}</p>
-                      <p className="text-xs text-gray-500">{reference.contactEmail || reference.email || '-'}</p>
-                      <p className="text-xs text-gray-500">{reference.contactPhone || reference.phone || '-'}</p>
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="rounded-xl border border-dashed border-gray-200 p-4 text-gray-500">
-                No trade references captured in the current supplier profile.
-              </div>
-            )}
-          </div>
+        {(EDITABLE_SUPPLIER_TABS as readonly string[]).includes(tab) && supplier && profileDraft && (
+          <SupplierEditableSection
+            section={tab}
+            supplier={supplier}
+            draft={profileDraft}
+            editing={profileEditing}
+            saving={profileSaving}
+            onEdit={startProfileEdit}
+            onCancel={cancelProfileEdit}
+            onSave={saveProfileSection}
+            onDraftChange={setProfileDraft}
+          />
         )}
 
         {tab === 'documents' && (
@@ -686,11 +630,25 @@ export default function SupplierDetails() {
               <div className="rounded-xl border border-gray-100 p-4 bg-gray-50 space-y-3">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="font-medium text-gray-900">Latest Evaluation</p>
-                    <p className="text-xs text-gray-500">{latestEvaluation.evaluationType} · {new Date(latestEvaluation.createdAt).toLocaleDateString('en-ZA')}</p>
+                    <p className="font-medium text-gray-900">Latest evaluation</p>
+                    <p className="text-xs text-gray-500 capitalize">
+                      {String(latestEvaluation.evaluationType || 'initial').replace(/_/g, ' ')} ·{' '}
+                      {new Date(latestEvaluation.createdAt).toLocaleDateString('en-ZA')}
+                    </p>
+                    <p className="text-sm font-semibold text-gray-900 mt-2">
+                      Overall: {latestEvaluation.overallScore}/5
+                    </p>
                   </div>
-                  <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
-                    {latestEvaluation.recommendation}
+                  <span
+                    className={`text-xs px-2.5 py-1 rounded-full font-medium capitalize ${
+                      latestEvaluation.recommendation === 'approve'
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : latestEvaluation.recommendation === 'reject'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-amber-100 text-amber-800'
+                    }`}
+                  >
+                    {String(latestEvaluation.recommendation || '').replace(/_/g, ' ')}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
@@ -729,7 +687,7 @@ export default function SupplierDetails() {
               actions={
                 <button
                   type="button"
-                  onClick={() => navigate('/app/suppliers/reports')}
+                  onClick={() => navigate('/app/reports?tab=suppliers')}
                   className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
                 >
                   <Eye className="h-4 w-4" />

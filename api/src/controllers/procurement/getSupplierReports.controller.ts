@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { computeKysCompletion } from '@fossil/shared';
 import { SupplierProfile, PurchaseOrder, SupplierEvaluation } from '../../models/index.js';
 
 const PO_SPEND_STATUSES = ['approved', 'issued', 'partially_received', 'completed'] as const;
@@ -12,7 +13,7 @@ const getSupplierReports = async (req: Request, res: Response): Promise<any> => 
     const [suppliers, purchaseOrders, evaluations] = await Promise.all([
       SupplierProfile.find({ isDeleted: false })
         .select(
-          'companyName status kysComplete kysExempt categories lastEvaluationAt nextEvaluationDue createdAt complianceDocuments registrationNumber'
+          'companyName status kysComplete kysExempt kysChecklist categories lastEvaluationAt nextEvaluationDue createdAt complianceDocuments registrationNumber'
         )
         .sort({ companyName: 1 })
         .lean(),
@@ -51,6 +52,7 @@ const getSupplierReports = async (req: Request, res: Response): Promise<any> => 
     let kysPending = 0;
     const statusCounts: Record<string, number> = {};
     const scores: number[] = [];
+    const scoreBands = { excellent: 0, good: 0, watch: 0, low: 0, unrated: 0 };
 
     const registry = suppliers.map((supplier) => {
       const id = supplier._id.toString();
@@ -62,7 +64,19 @@ const getSupplierReports = async (req: Request, res: Response): Promise<any> => 
       else if (supplier.status !== 'blacklisted') kysPending += 1;
 
       const score = latestScoreBySupplier.get(id) || 0;
-      if (score > 0) scores.push(score);
+      if (score > 0) {
+        scores.push(score);
+        if (score >= 4.5) scoreBands.excellent += 1;
+        else if (score >= 3.5) scoreBands.good += 1;
+        else if (score >= 2.5) scoreBands.watch += 1;
+        else scoreBands.low += 1;
+      } else {
+        scoreBands.unrated += 1;
+      }
+
+      const kysProgress = computeKysCompletion(
+        (supplier.kysChecklist || {}) as Record<string, boolean | undefined>
+      );
 
       const docCount = Array.isArray(supplier.complianceDocuments)
         ? supplier.complianceDocuments.length
@@ -75,6 +89,7 @@ const getSupplierReports = async (req: Request, res: Response): Promise<any> => 
         status: supplier.status,
         kysComplete: verified,
         kysExempt: Boolean(supplier.kysExempt),
+        kysPercent: supplier.kysExempt ? 100 : kysProgress.percentComplete,
         overallScore: score,
         categories: supplier.categories || [],
         documentCount: docCount,
@@ -149,9 +164,10 @@ const getSupplierReports = async (req: Request, res: Response): Promise<any> => 
           totalPoSpend,
           poCount: purchaseOrders.length,
           evaluationsTotal: evaluations.length,
-          evaluationsPending:
-            (evaluationsByStatus.pending_hod || 0) + (evaluationsByStatus.pending_sec || 0),
-          dueForReview
+          evaluationsPending: 0,
+          dueForReview,
+          scoreBands,
+          evaluationsRecorded: evaluations.filter((e) => e.status === 'approved').length
         },
         byStatus: Object.entries(statusCounts).map(([status, count]) => ({ status, count })),
         evaluationsByStatus: Object.entries(evaluationsByStatus).map(([status, count]) => ({
