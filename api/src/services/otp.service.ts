@@ -65,36 +65,45 @@ export async function createLoginOtp(user: { _id: any; email: string }): Promise
   return code;
 }
 
+export type VerifyLoginOtpResult =
+  | { status: 'success'; userId: string }
+  | { status: 'invalid_code' }
+  | { status: 'unavailable' };
+
 export async function verifyLoginOtp(
   email: string,
   code: string
-): Promise<{ userId: string } | null> {
+): Promise<VerifyLoginOtpResult> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedCode = code.trim();
+  const codeHash = hashOtp(normalizedCode);
+
   const challenge = await OtpChallenge.findOne({
-    email: email.trim().toLowerCase(),
+    email: normalizedEmail,
     purpose: 'login',
     used: false,
     expiresAt: { $gt: new Date() }
   }).sort({ createdAt: -1 });
 
   if (!challenge) {
-    return null;
+    return { status: 'unavailable' };
   }
 
   if (challenge.attempts >= OTP_MAX_ATTEMPTS) {
     challenge.used = true;
     await challenge.save();
-    return null;
+    return { status: 'unavailable' };
   }
 
-  const valid = challenge.codeHash === hashOtp(code.trim());
+  const valid = challenge.codeHash === codeHash;
   challenge.attempts += 1;
 
   if (!valid) {
     await challenge.save();
-    return null;
+    return { status: 'invalid_code' };
   }
 
   challenge.used = true;
   await challenge.save();
-  return { userId: challenge.user.toString() };
+  return { status: 'success', userId: challenge.user.toString() };
 }

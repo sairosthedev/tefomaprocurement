@@ -17,13 +17,15 @@ const verifyOtp = async (req: Request, res: Response): Promise<any> => {
     }
 
     const result = await verifyLoginOtp(email, otpCode);
-    if (!result) {
-      await createAuditLog({
-        action: 'login_failed',
-        entity: 'User',
-        description: `Failed OTP verification for email: ${email}`,
-        req
-      });
+    if (result.status !== 'success') {
+      if (result.status === 'invalid_code') {
+        await createAuditLog({
+          action: 'login_failed',
+          entity: 'User',
+          description: `Failed OTP verification for email: ${email}`,
+          req
+        });
+      }
 
       return res.status(401).json({
         success: false,

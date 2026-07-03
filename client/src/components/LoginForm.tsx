@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from './Toast';
@@ -53,6 +53,11 @@ export default function LoginForm({ variant }: { variant: LoginVariant }) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  const otpInputRef = useRef<HTMLInputElement>(null);
+  const otpVerifyInFlight = useRef(false);
+  const otpSubmittedCode = useRef('');
+  const loginRedirecting = useRef(false);
+
   const { login, verifyOtp } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -72,6 +77,8 @@ export default function LoginForm({ variant }: { variant: LoginVariant }) {
       const result = await login(formData.email, formData.password);
       if (result.requiresOtp) {
         setPendingEmail(result.email || formData.email);
+        otpSubmittedCode.current = '';
+        loginRedirecting.current = false;
         setStep('otp');
         setOtp('');
         showToast(result.message || 'Check your email for the verification code', 'info', 6000);
@@ -85,29 +92,68 @@ export default function LoginForm({ variant }: { variant: LoginVariant }) {
     }
   };
 
+  const submitOtp = useCallback(
+    async (code: string) => {
+      const trimmed = code.trim();
+      if (
+        !trimmed ||
+        trimmed.length < 6 ||
+        otpVerifyInFlight.current ||
+        loginRedirecting.current ||
+        otpSubmittedCode.current === trimmed
+      ) {
+        return;
+      }
+
+      otpVerifyInFlight.current = true;
+      otpSubmittedCode.current = trimmed;
+      setIsLoading(true);
+      try {
+        await verifyOtp(pendingEmail, trimmed);
+        loginRedirecting.current = true;
+        // Full navigation so auth state is read from storage reliably in production.
+        window.location.assign(from.startsWith('/') ? from : '/app');
+      } catch (err: any) {
+        otpSubmittedCode.current = '';
+        showToast(err.response?.data?.message || 'Invalid verification code', 'error', 5000);
+        setOtp('');
+        setIsLoading(false);
+        otpVerifyInFlight.current = false;
+        requestAnimationFrame(() => otpInputRef.current?.focus());
+      }
+    },
+    [pendingEmail, verifyOtp, from, showToast]
+  );
+
+  useEffect(() => {
+    if (step !== 'otp') return;
+    const id = requestAnimationFrame(() => otpInputRef.current?.focus());
+    return () => cancelAnimationFrame(id);
+  }, [step]);
+
+  useEffect(() => {
+    if (step === 'otp' && otp.length === 6) {
+      submitOtp(otp);
+    }
+  }, [otp, step, submitOtp]);
+
   const handleOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!otp.trim()) {
       showToast('Enter the verification code from your email', 'error');
+      otpInputRef.current?.focus();
       return;
     }
-
-    setIsLoading(true);
-    try {
-      await verifyOtp(pendingEmail, otp.trim());
-      // Full navigation so auth state is read from storage reliably in production.
-      window.location.assign(from.startsWith('/') ? from : '/app');
-    } catch (err: any) {
-      showToast(err.response?.data?.message || 'Invalid verification code', 'error', 5000);
-    } finally {
-      setIsLoading(false);
-    }
+    await submitOtp(otp);
   };
 
   const backToCredentials = () => {
     setStep('credentials');
     setOtp('');
     setPendingEmail('');
+    otpSubmittedCode.current = '';
+    loginRedirecting.current = false;
+    otpVerifyInFlight.current = false;
   };
 
   return (
@@ -207,6 +253,7 @@ export default function LoginForm({ variant }: { variant: LoginVariant }) {
                     Verification code
                   </label>
                   <input
+                    ref={otpInputRef}
                     type="text"
                     id="otp"
                     name="otp"
@@ -219,7 +266,6 @@ export default function LoginForm({ variant }: { variant: LoginVariant }) {
                     disabled={isLoading}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none text-center text-2xl tracking-[0.4em] font-mono disabled:bg-gray-100"
                     placeholder="000000"
-                    autoFocus
                   />
                   <p className="text-xs text-gray-500 text-center">Code expires in 10 minutes</p>
                 </div>
