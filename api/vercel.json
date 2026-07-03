@@ -1,6 +1,7 @@
 {
   "version": 2,
   "installCommand": "npm install && npm run build --prefix shared",
+  "buildCommand": "npm run build --prefix shared",
   "builds": [{ "src": "src/vercel.ts", "use": "@vercel/node" }],
   "routes": [{ "src": "/(.*)", "dest": "src/vercel.ts" }]
 }

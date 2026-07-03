@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { ApiError } from '../lib/ApiError.js';
 import { logger } from '../lib/logger.js';
+import { applyCorsHeaders } from '../config/cors.js';
 
 /**
  * 404 catch-all for unmatched routes. Mount AFTER all real routes.
@@ -64,5 +65,6 @@ export function errorHandler(
     body.stack = err.stack;
   }
 
+  applyCorsHeaders(req.headers.origin, res);
   res.status(status).json(body);
 }

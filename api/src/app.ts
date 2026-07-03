@@ -2,6 +2,7 @@ import express, { type Express, type Request, type Response, type NextFunction }
 import cors from 'cors';
 
 import connectToDatabase from './config/db.js';
+import { corsOptions, applyCorsHeaders } from './config/cors.js';
 import routes from './routes/index.js';
 import { notFoundHandler, errorHandler } from './middleware/index.js';
 
@@ -14,12 +15,8 @@ export function createApp(): Express {
 
   app.disable('x-powered-by');
 
-  app.use(
-    cors({
-      origin: true,
-      credentials: true
-    })
-  );
+  app.use(cors(corsOptions));
+  app.options('*', cors(corsOptions));
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -34,11 +31,17 @@ export function createApp(): Express {
   // On Vercel (serverless), connect to MongoDB before API routes. /health stays
   // available without a DB connection so deploy health checks still pass.
   if (process.env.VERCEL) {
-    app.use('/api', async (_req: Request, res: Response, next: NextFunction) => {
+    app.use('/api', async (req: Request, res: Response, next: NextFunction) => {
+      if (req.method === 'OPTIONS') {
+        next();
+        return;
+      }
+
       try {
         await connectToDatabase();
         next();
       } catch {
+        applyCorsHeaders(req.headers.origin, res);
         res.status(503).json({
           success: false,
           message: 'Database connection failed'
