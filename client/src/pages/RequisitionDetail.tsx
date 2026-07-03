@@ -4,7 +4,10 @@ import api, { departmentAPI, procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency } from '../lib/constants';
+import { PR_CANCELLATION_REASONS } from '@fossil/shared';
 import PageHeader from '../components/PageHeader';
+import CancelWorkflowModal from '../components/CancelWorkflowModal';
+import { canCancelRequisition, requisitionCancelApiBase } from '../lib/cancellationAccess';
 import { 
   FileText, 
   Calendar, 
@@ -71,9 +74,12 @@ export default function RequisitionDetail() {
   const [editingItemId, setEditingItemId] = useState<any>(null);
   const [editQty, setEditQty] = useState<any>('');
   const [savingQty, setSavingQty] = useState<any>(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const isProcurement = user?.role === 'procurement_officer' || user?.role === 'admin';
   const isDepartment = user?.role === 'department_head' || user?.role === 'admin';
+  const mayCancelRequisition = canCancelRequisition(user, requisition);
 
   // An approver may drop line items they don't want purchased before approving.
   const canEditItems =
@@ -187,6 +193,32 @@ export default function RequisitionDetail() {
     }
   };
 
+  const handleCancelRequisition = async ({
+    reasonCode,
+    comments
+  }: {
+    reasonCode: string;
+    comments?: string;
+  }) => {
+    try {
+      setCancelling(true);
+      const base = requisitionCancelApiBase(user, requisition?.status);
+      const payload = { reasonCode, comments };
+      if (base === '/procurement') {
+        await procurementAPI.cancelRequisition(id, payload);
+      } else {
+        await departmentAPI.cancelRequisition(id, payload);
+      }
+      showToast('Requisition cancelled', 'success');
+      fetchRequisition();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to cancel requisition', 'error');
+      throw error;
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-8">
@@ -241,9 +273,35 @@ export default function RequisitionDetail() {
                 Submit
               </button>
             )}
+            {mayCancelRequisition && (
+              <button
+                type="button"
+                onClick={() => setShowCancelModal(true)}
+                disabled={cancelling}
+                className="px-4 py-2.5 border border-red-200 text-red-700 rounded-xl font-medium hover:bg-red-50 transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                <XCircle className="h-4 w-4" />
+                Cancel requisition
+              </button>
+            )}
           </>
         }
       />
+
+      <CancelWorkflowModal
+        isOpen={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        title="Cancel requisition"
+        description="Open RFQs and draft purchase orders linked to this requisition will also be cancelled. This cannot be undone."
+        reasons={PR_CANCELLATION_REASONS}
+        onConfirm={handleCancelRequisition}
+      />
+
+      {requisition.status === 'cancelled' && requisition.cancellationReason && (
+        <div className="mb-6 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <strong>Cancellation reason:</strong> {requisition.cancellationReason}
+        </div>
+      )}
 
       {/* IR header — mirrors paper Internal Requisition form */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">

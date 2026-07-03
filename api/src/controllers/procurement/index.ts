@@ -36,6 +36,9 @@ import getEvaluations from './getEvaluations.controller.js';
 import getSupplierReports from './getSupplierReports.controller.js';
 import authorizeQuotation from './authorizeQuotation.controller.js';
 import approveQuotationWaiver from './approveQuotationWaiver.controller.js';
+import cancelPurchaseOrder from './cancelPurchaseOrder.controller.js';
+import { getPurchaseOrderCancellationMeta } from './getCancellationMeta.controller.js';
+import cancelRequisition from '../department/cancelRequisition.controller.js';
 
 export default {
   getSuppliers,
@@ -75,5 +78,8 @@ export default {
   getRequisitionById,
   acceptRequisition,
   rejectRequisition,
-  updateRequisitionStatus
+  updateRequisitionStatus,
+  cancelRequisition,
+  cancelPurchaseOrder,
+  getPurchaseOrderCancellationMeta
 };

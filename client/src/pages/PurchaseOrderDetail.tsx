@@ -4,7 +4,10 @@ import { procurementAPI, financeAPI, cooAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency } from '../lib/constants';
+import { PO_CANCELLATION_REASONS } from '@fossil/shared';
 import PageHeader from '../components/PageHeader';
+import CancelWorkflowModal from '../components/CancelWorkflowModal';
+import { canCancelPurchaseOrder, purchaseOrderCancelApiBase } from '../lib/cancellationAccess';
 import { 
   ShoppingCart, 
   Calendar, 
@@ -39,10 +42,13 @@ export default function PurchaseOrderDetail() {
   const [loading, setLoading] = useState<any>(true);
   const [po, setPo] = useState<any>(null);
   const [submitting, setSubmitting] = useState<any>(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const isProcurement = user?.role === 'procurement_officer' || user?.role === 'admin';
   const isFinance = user?.role === 'finance';
   const isCOO = user?.role === 'coo';
+  const mayCancelPo = canCancelPurchaseOrder(user, po);
 
   useEffect(() => {
     fetchPurchaseOrder();
@@ -81,6 +87,34 @@ export default function PurchaseOrderDetail() {
       showToast(error.response?.data?.message || 'Failed to submit purchase order', 'error');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleCancelPurchaseOrder = async ({
+    reasonCode,
+    comments
+  }: {
+    reasonCode: string;
+    comments?: string;
+  }) => {
+    try {
+      setCancelling(true);
+      const payload = { reasonCode, comments };
+      const base = purchaseOrderCancelApiBase(user);
+      if (base === '/finance') {
+        await financeAPI.cancelPurchaseOrder(id, payload);
+      } else if (base === '/coo') {
+        await cooAPI.cancelPurchaseOrder(id, payload);
+      } else {
+        await procurementAPI.cancelPurchaseOrder(id, payload);
+      }
+      showToast('Purchase order cancelled', 'success');
+      fetchPurchaseOrder();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to cancel purchase order', 'error');
+      throw error;
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -126,9 +160,35 @@ export default function PurchaseOrderDetail() {
                 Submit for Approval
               </button>
             )}
+            {mayCancelPo && (
+              <button
+                type="button"
+                onClick={() => setShowCancelModal(true)}
+                disabled={cancelling}
+                className="px-4 py-2 border border-red-200 text-red-700 rounded-lg hover:bg-red-50 transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                <XCircle className="h-4 w-4" />
+                Cancel PO
+              </button>
+            )}
           </>
         }
       />
+
+      <CancelWorkflowModal
+        isOpen={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        title="Cancel purchase order"
+        description="The supplier will be notified. Cancellation is blocked if goods have been received or an invoice is active."
+        reasons={PO_CANCELLATION_REASONS}
+        onConfirm={handleCancelPurchaseOrder}
+      />
+
+      {po.status === 'cancelled' && po.cancellationReason && (
+        <div className="mb-6 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <strong>Cancellation reason:</strong> {po.cancellationReason}
+        </div>
+      )}
 
       {/* Details */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">

@@ -15,6 +15,7 @@ router.get('/purchase-orders', finance.getPurchaseOrders);
 router.get('/purchase-orders/:id', finance.getPurchaseOrderById);
 router.put('/purchase-orders/:id/approve', finance.approvePurchaseOrder);
 router.put('/purchase-orders/:id/reject', finance.rejectPurchaseOrder);
+router.put('/purchase-orders/:id/cancel', finance.cancelPurchaseOrder);
 
 // Accounts payable
 router.get('/invoices', finance.getInvoices);

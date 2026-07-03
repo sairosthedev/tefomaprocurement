@@ -15,6 +15,7 @@ import hodSelectQuotation from './hodSelectQuotation.controller.js';
 import searchCatalogItems from './searchCatalogItems.controller.js';
 import rejectPurchaseOrder from './rejectPurchaseOrder.controller.js';
 import getPendingEvaluations from './getPendingEvaluations.controller.js';
+import cancelRequisition, { getRequisitionCancellationMeta } from './cancelRequisition.controller.js';
 
 export default {
   createRequisition,
@@ -33,5 +34,7 @@ export default {
   getPendingEvaluations,
   hodReviewEvaluation,
   hodSelectQuotation,
-  searchCatalogItems
+  searchCatalogItems,
+  cancelRequisition,
+  getRequisitionCancellationMeta
 };

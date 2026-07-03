@@ -27,7 +27,7 @@ export interface IRequisitionItem {
 }
 
 export interface IStatusHistory {
-  action: 'submitted' | 'hod_approved' | 'stores_reviewed' | 'fulfilled_from_stock' | 'forwarded_to_procurement' | 'accepted' | 'rejected' | 'returned' | 'rfq_created' | 'po_created' | 'item_removed';
+  action: 'submitted' | 'hod_approved' | 'stores_reviewed' | 'fulfilled_from_stock' | 'forwarded_to_procurement' | 'accepted' | 'rejected' | 'returned' | 'rfq_created' | 'po_created' | 'item_removed' | 'cancelled';
   by: mongoose.Types.ObjectId | any;
   role?: string;
   comments?: string;
@@ -59,6 +59,9 @@ export interface IPurchaseRequisition extends Document {
   processedBy?: mongoose.Types.ObjectId | any;
   rfq?: mongoose.Types.ObjectId | any;
   notes?: string;
+  cancelledBy?: mongoose.Types.ObjectId | any;
+  cancelledAt?: Date;
+  cancellationReason?: string;
   isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -108,7 +111,7 @@ const RequisitionItemSchema = new Schema<IRequisitionItem>({
 const StatusHistorySchema = new Schema<IStatusHistory>({
   action: {
     type: String,
-    enum: ['submitted', 'hod_approved', 'stores_reviewed', 'fulfilled_from_stock', 'forwarded_to_procurement', 'accepted', 'rejected', 'returned', 'rfq_created', 'po_created', 'item_removed'],
+    enum: ['submitted', 'hod_approved', 'stores_reviewed', 'fulfilled_from_stock', 'forwarded_to_procurement', 'accepted', 'rejected', 'returned', 'rfq_created', 'po_created', 'item_removed', 'cancelled'],
     required: true
   },
   by: {
@@ -186,6 +189,9 @@ const PurchaseRequisitionSchema = new Schema<IPurchaseRequisition>({
   storesReviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   storesReviewedAt: Date,
   storesReviewNotes: String,
+  cancelledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  cancelledAt: Date,
+  cancellationReason: String,
   isDeleted: {
     type: Boolean,
     default: false

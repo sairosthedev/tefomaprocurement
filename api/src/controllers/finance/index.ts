@@ -11,6 +11,7 @@ import getPayments from './getPayments.controller.js';
 import createPayment from './createPayment.controller.js';
 import getBudgets from './getBudgets.controller.js';
 import upsertDepartmentBudget from './upsertDepartmentBudget.controller.js';
+import cancelPurchaseOrder from '../procurement/cancelPurchaseOrder.controller.js';
 
 export default {
   getPendingApprovals,
@@ -25,5 +26,6 @@ export default {
   getPayments,
   createPayment,
   getBudgets,
-  upsertDepartmentBudget
+  upsertDepartmentBudget,
+  cancelPurchaseOrder
 };

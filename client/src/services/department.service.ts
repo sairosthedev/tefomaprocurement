@@ -12,5 +12,6 @@ export const departmentAPI: any = {
   rejectPO: (id: any, data: any) => http.put(`/department/purchase-orders/${id}/reject`, data),
   getPendingEvaluations: () => http.get('/department/evaluations/pending'),
   hodReviewEvaluation: (id: any, data: any) => http.put(`/department/evaluations/${id}/review`, data),
-  hodSelectQuotation: (rfqId: any, data: any) => http.put(`/department/rfqs/${rfqId}/select-quotation`, data)
+  hodSelectQuotation: (rfqId: any, data: any) => http.put(`/department/rfqs/${rfqId}/select-quotation`, data),
+  cancelRequisition: (id: any, data: any) => http.put(`/department/requisitions/${id}/cancel`, data)
 };

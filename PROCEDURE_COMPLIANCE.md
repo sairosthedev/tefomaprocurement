@@ -68,8 +68,8 @@ This report maps major procurement policy areas to the current system implementa
 
 | Ref | Requirement | Status |
 |-----|-------------|--------|
-| 6.4.x | Requisition cancellation rules | 🟡 Partial — `cancelled` status exists; auto-cancel rules not implemented |
-| 6.5.x | PO cancellation rules | 🟡 Partial — `cancelled` status; formal cancellation workflow missing |
+| 6.4.x | Requisition cancellation rules | ✅ Implemented | Role-based cancel + reason + downstream RFQ/PO cancel |
+| 6.5.x | PO cancellation rules | ✅ Implemented | Role-based cancel; blocked if delivery/invoice exists |
 
 ---
 

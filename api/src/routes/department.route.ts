@@ -12,6 +12,7 @@ const requester = authorize('end_user', 'department_head', 'admin');
 router.get('/catalog-items', requester, department.searchCatalogItems);
 router.post('/requisitions', requester, department.createRequisition);
 router.get('/requisitions', requester, department.getRequisitions);
+router.get('/requisitions/cancellation-meta', requester, department.getRequisitionCancellationMeta);
 router.get('/requisitions/:id', requester, department.getRequisitionById);
 router.put('/requisitions/:id/submit', requester, department.submitRequisition);
 
@@ -19,6 +20,7 @@ router.put('/requisitions/:id/submit', requester, department.submitRequisition);
 const hod = authorize('department_head', 'admin');
 router.put('/requisitions/:id/approve', hod, department.approveRequisition);
 router.put('/requisitions/:id/reject', hod, department.rejectRequisition);
+router.put('/requisitions/:id/cancel', requester, department.cancelRequisition);
 // Approver may drop unwanted line items or adjust quantities before approving
 router.patch('/requisitions/:id/items/:itemId', hod, department.updateRequisitionItem);
 router.delete('/requisitions/:id/items/:itemId', hod, department.removeRequisitionItem);

@@ -58,7 +58,7 @@ export default function Performance() {
   }, [registry])
 
   const unratedOnPage = useMemo(
-    () => registry.filter((row) => !row.overallScore).length,
+    () => registry.filter((row: any) => !row.overallScore).length,
     [registry]
   )
 

@@ -44,7 +44,7 @@ export default function Compliance() {
   }, [registry])
 
   const documentHeavy = useMemo(
-    () => registry.filter((row) => row.documentCount >= 3).length,
+    () => registry.filter((row: any) => row.documentCount >= 3).length,
     [registry]
   )
 

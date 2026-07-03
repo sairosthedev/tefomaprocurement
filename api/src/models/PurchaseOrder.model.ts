@@ -13,7 +13,7 @@ export interface IPOItem {
 }
 
 export interface IApprovalHistory {
-  action: 'created' | 'submitted' | 'hod_approved' | 'hod_rejected' | 'finance_approved' | 'finance_rejected' | 'coo_approved' | 'coo_rejected' | 'issued' | 'acknowledged';
+  action: 'created' | 'submitted' | 'hod_approved' | 'hod_rejected' | 'finance_approved' | 'finance_rejected' | 'coo_approved' | 'coo_rejected' | 'issued' | 'acknowledged' | 'cancelled';
   by: mongoose.Types.ObjectId | any;
   role?: string;
   comments?: string;
@@ -59,6 +59,9 @@ export interface IPurchaseOrder extends Document {
   totalInvoiced: number;
   totalPaid: number;
   notes?: string;
+  cancelledBy?: mongoose.Types.ObjectId | any;
+  cancelledAt?: Date;
+  cancellationReason?: string;
   isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -95,7 +98,7 @@ const POItemSchema = new Schema<IPOItem>({
 const ApprovalHistorySchema = new Schema<IApprovalHistory>({
   action: {
     type: String,
-    enum: ['created', 'submitted', 'hod_approved', 'hod_rejected', 'finance_approved', 'finance_rejected', 'coo_approved', 'coo_rejected', 'issued', 'acknowledged'],
+    enum: ['created', 'submitted', 'hod_approved', 'hod_rejected', 'finance_approved', 'finance_rejected', 'coo_approved', 'coo_rejected', 'issued', 'acknowledged', 'cancelled'],
     required: true
   },
   by: {
@@ -221,6 +224,9 @@ const PurchaseOrderSchema = new Schema<IPurchaseOrder>({
     default: 0
   },
   notes: String,
+  cancelledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  cancelledAt: Date,
+  cancellationReason: String,
   isDeleted: {
     type: Boolean,
     default: false

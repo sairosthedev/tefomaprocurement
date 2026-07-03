@@ -44,6 +44,14 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: any) {
 // Default export for backward compatibility
 export default Modal;
 
+export function ModalFooter({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex justify-end gap-3 pt-2 border-t border-gray-100 mt-2">
+      {children}
+    </div>
+  );
+}
+
 export function ConfirmModal({ isOpen, onClose, onConfirm, title, message, confirmText = 'Confirm', confirmStyle = 'danger', loading = false }: any) {
   if (!isOpen) return null;
 
