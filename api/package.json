@@ -1,7 +1,7 @@
 {
   "name": "api",
   "version": "1.0.0",
-  "description": "Express API for fossilProcure",
+  "description": "Express API for Tefoma Procurement",
   "type": "module",
   "main": "dist/server.js",
   "scripts": {

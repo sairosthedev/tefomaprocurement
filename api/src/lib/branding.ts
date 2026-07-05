@@ -1,7 +1,7 @@
 /** Canonical Tefoma branding — used in emails, OTP, and system copy. */
 export const DEFAULT_COMPANY_NAME = 'Tefoma Construction';
 export const DEFAULT_PRODUCT_NAME = 'Tefoma Procurement';
-export const DEFAULT_CLIENT_URL = 'https://fossilprocure.vercel.app';
+export const DEFAULT_CLIENT_URL = 'https://tefomaprocurement.vercel.app';
 
 export function getCompanyName(): string {
   return process.env.COMPANY_NAME?.trim() || DEFAULT_COMPANY_NAME;

@@ -1,6 +1,8 @@
-# fossilProcure
+# Tefoma Procurement
 
-MERN-stack monorepo for the fossilProcure procurement system.
+MERN-stack monorepo for **Tefoma Construction** — procurement, stores, supplier KYS, RFQ/PO workflows, and finance integration.
+
+**Repository:** [github.com/sairosthedev/tefomaprocurement](https://github.com/sairosthedev/tefomaprocurement)
 
 - **api/** — Express 4 + Mongoose, layered architecture (routes → controllers → services → models)
 - **client/** — React 18 + Vite + Tailwind, services-based data layer
@@ -9,7 +11,7 @@ MERN-stack monorepo for the fossilProcure procurement system.
 ## Repository layout
 
 ```
-fossilProcure/
+tefomaprocurement/
 ├── api/                        # Express API
 │   └── src/
 │       ├── app.js              # Pure factory that builds the Express app
@@ -58,7 +60,7 @@ fossilProcure/
 
 - **Services layer** — `client/src/services/` contains the axios instance (`http.js`) plus one file per domain (`auth.service.js`, `procurement.service.js`, ...). Pages import from `@/services` rather than touching axios directly.
 - **`client/src/lib/api.js`** is now a thin re-export shim kept for backward compatibility with existing pages.
-- **Env-driven API URL** — `import.meta.env.VITE_API_URL` (see [client/.env.example](client/.env.example)). Falls back to the deployed URL only when unset.
+- **Env-driven API URL** — set `VITE_API_URL` in Vercel (see [client/.env.example](client/.env.example)). Local dev defaults to `http://localhost:3001/api`.
 
 ### Shared package
 

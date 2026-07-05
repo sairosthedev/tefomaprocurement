@@ -2,7 +2,7 @@
 
 This guide is for **business testers** using the **live system**. You do not need access to the code or database.
 
-**Live application:** [https://fossilprocure.vercel.app](https://fossilprocure.vercel.app)
+**Live application:** [https://tefomaprocurement.vercel.app](https://tefomaprocurement.vercel.app) *(after Vercel deploy)*
 
 ---
 
@@ -66,9 +66,9 @@ Keep a simple spreadsheet: **Name | Email | Role | Password (shared securely)**.
 
 | Who | Login page |
 |-----|------------|
-| **Staff** (admin, procurement, finance, stores, etc.) | [https://fossilprocure.vercel.app/login](https://fossilprocure.vercel.app/login) |
-| **Suppliers** | [https://fossilprocure.vercel.app/supplier/login](https://fossilprocure.vercel.app/supplier/login) |
-| **New supplier self-registration** | [https://fossilprocure.vercel.app/register](https://fossilprocure.vercel.app/register) |
+| **Staff** (admin, procurement, finance, stores, etc.) | `https://tefomaprocurement.vercel.app/login` |
+| **Suppliers** | `https://tefomaprocurement.vercel.app/supplier/login` |
+| **New supplier self-registration** | `https://tefomaprocurement.vercel.app/register` |
 
 ### Login steps (all users)
 

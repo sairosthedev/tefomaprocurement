@@ -1,7 +1,7 @@
 # Tefoma Procurement — What This System Does
 
 **Product name:** Tefoma Procurement (Tefoma Construction)  
-**Live application:** https://fossilprocure.vercel.app  
+**Live application:** https://tefomaprocurement.vercel.app *(deploy from [tefomaprocurement](https://github.com/sairosthedev/tefomaprocurement))*
 **Audience:** Business users, management, and UAT testers  
 
 This document explains **what the system is for**, **who uses it**, and **how the main processes work** — without technical detail.
