@@ -15,7 +15,9 @@
     "seed": "tsx src/scripts/seed.ts",
     "seed:all": "tsx src/scripts/seed-all.ts",
     "seed:ict-suppliers": "tsx src/scripts/seed-ict-suppliers.ts",
-    "migrate:sites": "tsx src/scripts/migrate-sites.ts"
+    "migrate:sites": "tsx src/scripts/migrate-sites.ts",
+    "e2e:local": "node src/scripts/e2e-localhost.mjs",
+    "smoke": "node src/scripts/smoke-test.mjs http://localhost:3001"
   },
   "dependencies": {
     "@fossil/shared": "file:./shared",
