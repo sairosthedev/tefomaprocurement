@@ -1,9 +1,17 @@
 import axios from 'axios';
 import { clearSession, hasStoredSession } from '../lib/session';
 
-const baseURL =
-  import.meta.env.VITE_API_URL ||
-  (import.meta.env.DEV ? 'http://localhost:3001/api' : '/api');
+/** Ensure production calls hit /api/auth/... not /auth/... */
+function resolveApiBaseUrl(): string {
+  const raw =
+    import.meta.env.VITE_API_URL ||
+    (import.meta.env.DEV ? 'http://localhost:3001/api' : '/api');
+  const trimmed = String(raw).trim().replace(/\/$/, '');
+  if (!trimmed) return '/api';
+  return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+}
+
+const baseURL = resolveApiBaseUrl();
 
 const http = axios.create({
   baseURL,
