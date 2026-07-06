@@ -17,7 +17,13 @@ import {
   DollarSign,
   UserCheck,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  ShieldCheck,
+  Building2,
+  MapPin,
+  ClipboardList,
+  BarChart3,
+  FileCheck
 } from 'lucide-react';
 
 const iconMap: any = {
@@ -59,7 +65,15 @@ const iconMap: any = {
   inProgressRequisitions: TrendingUp,
   draftRequisitions: FileText,
   pendingAcceptance: Clock,
-  completedRequisitions: CheckCircle
+  completedRequisitions: CheckCircle,
+  pendingSuppliers: UserCheck,
+  pendingPOApprovals: Clock,
+  kysIncomplete: ShieldCheck,
+  evaluationsDue: ClipboardList,
+  pendingRequisitions: FileText,
+  departments: Building2,
+  sites: MapPin,
+  failedLogins: AlertCircle
 };
 
 const colorMap: any = {
@@ -101,7 +115,15 @@ const colorMap: any = {
   inProgressRequisitions: 'bg-blue-500',
   draftRequisitions: 'bg-gray-500',
   pendingAcceptance: 'bg-amber-500',
-  completedRequisitions: 'bg-green-500'
+  completedRequisitions: 'bg-green-500',
+  pendingSuppliers: 'bg-amber-500',
+  pendingPOApprovals: 'bg-orange-500',
+  kysIncomplete: 'bg-red-500',
+  evaluationsDue: 'bg-purple-500',
+  pendingRequisitions: 'bg-indigo-500',
+  departments: 'bg-blue-500',
+  sites: 'bg-teal-500',
+  failedLogins: 'bg-red-500'
 };
 
 const activityIconMap: any = {
@@ -124,12 +146,19 @@ const activityColorMap: any = {
   login_failed: 'text-red-500'
 };
 
+const attentionSeverityStyles: Record<string, string> = {
+  high: 'border-red-200 bg-red-50 hover:bg-red-100',
+  medium: 'border-amber-200 bg-amber-50 hover:bg-amber-100',
+  low: 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+};
+
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState<any>({});
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [additionalStats, setAdditionalStats] = useState<any>({});
+  const [attentionItems, setAttentionItems] = useState<any[]>([]);
   const [loading, setLoading] = useState<any>(true);
   const [error, setError] = useState<any>(null);
 
@@ -146,6 +175,7 @@ export default function Dashboard() {
         setStats(response.data.data.stats);
         setRecentActivity(response.data.data.recentActivity || []);
         setAdditionalStats(response.data.data.additionalStats || {});
+        setAttentionItems(response.data.data.attentionItems || []);
       }
     } catch (err: any) {
       console.error('Failed to fetch dashboard data:', err);
@@ -177,9 +207,10 @@ export default function Dashboard() {
     const actions: any = {
       admin: [
         { label: 'Manage Users', icon: Users, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/users' },
-        { label: 'View Suppliers', icon: Users, color: 'bg-purple-50 hover:bg-purple-100 text-purple-700', href: '/app/suppliers' },
-        { label: 'Purchase Orders', icon: ShoppingCart, color: 'bg-green-50 hover:bg-green-100 text-green-700', href: '/app/purchase-orders' },
-        { label: 'View RFQs', icon: FileSearch, color: 'bg-blue-50 hover:bg-blue-100 text-blue-700', href: '/app/rfqs' }
+        { label: 'Supplier Compliance', icon: ShieldCheck, color: 'bg-red-50 hover:bg-red-100 text-red-700', href: '/app/suppliers/analytics/compliance' },
+        { label: 'Supplier Evaluations', icon: ClipboardList, color: 'bg-purple-50 hover:bg-purple-100 text-purple-700', href: '/app/suppliers/evaluations' },
+        { label: 'Audit Logs', icon: FileCheck, color: 'bg-gray-50 hover:bg-gray-100 text-gray-700', href: '/app/audit-logs' },
+        { label: 'Reports', icon: BarChart3, color: 'bg-blue-50 hover:bg-blue-100 text-blue-700', href: '/app/reports' }
       ],
       procurement_officer: [
         { label: 'Create New RFQ', icon: FileSearch, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/rfqs' },
@@ -221,6 +252,42 @@ export default function Dashboard() {
     return additionalStats;
   };
 
+  const renderStatCard = (key: string, stat: any) => {
+    const Icon = iconMap[key] || FileText;
+    const color = colorMap[key] || 'bg-gray-500';
+    const className =
+      'bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow text-left w-full';
+    const content = (
+      <>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-500">{stat.label}</p>
+            <p className="text-3xl font-bold text-gray-900 mt-2">{stat.value}</p>
+          </div>
+          <div className={`${color} p-4 rounded-xl`}>
+            <Icon className="h-6 w-6 text-white" />
+          </div>
+        </div>
+      </>
+    );
+
+    if (stat.href) {
+      return (
+        <button key={key} type="button" onClick={() => navigate(stat.href)} className={className}>
+          {content}
+        </button>
+      );
+    }
+
+    return (
+      <div key={key} className={className}>
+        {content}
+      </div>
+    );
+  };
+
+  const isAdmin = user?.role === 'admin';
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -255,72 +322,128 @@ export default function Dashboard() {
       )}
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {Object.entries(stats).map(([key, stat]: any) => {
-          const Icon = iconMap[key] || FileText;
-          const color = colorMap[key] || 'bg-gray-500';
-          return (
-            <div
-              key={key}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">{stat.label}</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">{stat.value}</p>
-                </div>
-                <div className={`${color} p-4 rounded-xl`}>
-                  <Icon className="h-6 w-6 text-white" />
-                </div>
-              </div>
-            </div>
-          );
-        })}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+        {Object.entries(stats).map(([key, stat]: any) => renderStatCard(key, stat))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Activity (Admin only) or Additional Stats (Other roles) */}
-        {user?.role === 'admin' ? (
-        <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
-          </div>
-          <div className="space-y-4">
-            {recentActivity.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Clock className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                <p>No recent activity</p>
-              </div>
-            ) : (
-              recentActivity.map((activity: any) => {
-                const Icon = activityIconMap[activity.type] || FileText;
-                const iconColor = activityColorMap[activity.type] || 'text-gray-500';
-                return (
-                  <div
-                    key={activity.id}
-                    className="flex items-start gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="p-2 rounded-lg bg-gray-100">
-                      <Icon className={`h-5 w-5 ${iconColor}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">{activity.message}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-gray-500">{activity.time}</span>
-                        {activity.user && (
-                          <>
-                            <span className="text-xs text-gray-300">•</span>
-                            <span className="text-xs text-gray-500">{activity.user}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
+      {isAdmin && Object.keys(additionalStats).length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">System overview</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            {Object.entries(additionalStats).map(([key, stat]: any) => {
+              const Icon = iconMap[key] || FileText;
+              const color = colorMap[key] || 'bg-gray-500';
+              const inner = (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-gray-500">{stat.label}</p>
+                    <p className="text-xl font-bold text-gray-900 mt-1">{stat.value}</p>
                   </div>
+                  <div className={`${color} p-2.5 rounded-lg`}>
+                    <Icon className="h-4 w-4 text-white" />
+                  </div>
+                </div>
+              );
+              if (stat.href) {
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => navigate(stat.href)}
+                    className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow text-left w-full"
+                  >
+                    {inner}
+                  </button>
                 );
-              })
-            )}
+              }
+              return (
+                <div key={key} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                  {inner}
+                </div>
+              );
+            })}
           </div>
         </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {isAdmin ? (
+          <div className="lg:col-span-2 space-y-6">
+            {attentionItems.length > 0 && (
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-gray-900">Needs attention</h2>
+                  <span className="text-xs font-medium text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full">
+                    {attentionItems.length} item{attentionItems.length === 1 ? '' : 's'}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {attentionItems.map((item: any) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => navigate(item.href)}
+                      className={`w-full flex items-center justify-between gap-4 p-4 rounded-xl border transition-colors text-left ${attentionSeverityStyles[item.severity] || attentionSeverityStyles.low}`}
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{item.label}</p>
+                        <p className="text-xs text-gray-600 mt-0.5">Click to review</p>
+                      </div>
+                      <span className="text-2xl font-bold text-gray-900 tabular-nums">{item.count}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
+                <button
+                  type="button"
+                  onClick={() => navigate('/app/audit-logs')}
+                  className="text-sm font-medium text-primary hover:underline"
+                >
+                  View all
+                </button>
+              </div>
+              <div className="space-y-4">
+                {recentActivity.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Clock className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                    <p>No recent activity</p>
+                  </div>
+                ) : (
+                  recentActivity.map((activity: any) => {
+                    const Icon = activityIconMap[activity.type] || FileText;
+                    const iconColor = activityColorMap[activity.type] || 'text-gray-500';
+                    return (
+                      <div
+                        key={activity.id}
+                        className="flex items-start gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="p-2 rounded-lg bg-gray-100">
+                          <Icon className={`h-5 w-5 ${iconColor}`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900">{activity.message}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs text-gray-500">{activity.time}</span>
+                            {activity.user && (
+                              <>
+                                <span className="text-xs text-gray-300">•</span>
+                                <span className="text-xs text-gray-500">{activity.user}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-6">

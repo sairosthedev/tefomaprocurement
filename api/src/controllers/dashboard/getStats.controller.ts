@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { isProcurementHead } from '@fossil/shared';
-import { User, SupplierProfile, RFQ, Quotation, PurchaseOrder, Inventory, PurchaseRequisition, AuditLog } from '../../models/index.js';
+import { User, SupplierProfile, RFQ, Quotation, PurchaseOrder, Inventory, PurchaseRequisition, AuditLog, Department, Site } from '../../models/index.js';
 import { buildRoleReportCharts } from '../../lib/reportAnalytics.js';
 
 /** Build a department-scoped filter for requisition queries. */
@@ -40,17 +40,86 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
 
     const deptFilter = deptRequisitionFilter(req.user);
 
+    let additionalStats: any = {};
+    let attentionItems: Array<{ id: string; label: string; count: number; href: string; severity: 'high' | 'medium' | 'low' }> = [];
+
     // Role-specific stats
     switch (userRole) {
       case 'admin': {
         const totalUsers = await User.countDocuments({ isDeleted: false });
         const activeUsers = await User.countDocuments({ isDeleted: false, status: 'active' });
+        const pendingSuppliers = await SupplierProfile.countDocuments({ status: 'pending', isDeleted: false });
+        const kysIncomplete = await SupplierProfile.countDocuments({
+          status: 'active',
+          kysComplete: false,
+          kysExempt: { $ne: true },
+          isDeleted: false
+        });
+        const pendingRequisitions = await PurchaseRequisition.countDocuments({
+          status: { $in: ['pending_hod', 'stores_review', 'pending_acceptance', 'sourcing'] },
+          isDeleted: false
+        });
+        const evaluationsDue = await SupplierProfile.countDocuments({
+          status: 'active',
+          isDeleted: false,
+          nextEvaluationDue: { $lte: new Date() }
+        });
+        const monthlyPOValue = await PurchaseOrder.aggregate([
+          {
+            $match: {
+              status: { $in: ['approved', 'issued', 'partially_received', 'completed'] },
+              isDeleted: false,
+              createdAt: { $gte: new Date(new Date().setMonth(new Date().getMonth() - 1)) }
+            }
+          },
+          { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+        ]);
+        const lowStockItems = await Inventory.countDocuments({
+          quantityOnHand: { $lte: 5 },
+          isDeleted: false
+        });
+        const totalDepartments = await Department.countDocuments({ isDeleted: false });
+        const totalSites = await Site.countDocuments({ isDeleted: false });
+        const failedLogins = await AuditLog.countDocuments({
+          action: 'login_failed',
+          createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+        });
+
         stats = {
-          totalUsers: { value: totalUsers, label: 'Total Users' },
-          activeUsers: { value: activeUsers, label: 'Active Users' },
-          totalSuppliers: { value: activeSuppliers, label: 'Active Suppliers' },
-          totalPOs: { value: totalPOs, label: 'Purchase Orders' }
+          totalUsers: { value: totalUsers, label: 'Total Users', href: '/app/users' },
+          activeUsers: { value: activeUsers, label: 'Active Users', href: '/app/users' },
+          pendingSuppliers: { value: pendingSuppliers, label: 'Suppliers Pending Review', href: '/app/suppliers' },
+          openRFQs: { value: openRFQs, label: 'Open RFQs', href: '/app/rfqs' },
+          pendingQuotations: { value: pendingQuotations, label: 'Quotations to Review', href: '/app/quotations' },
+          pendingPOApprovals: { value: pendingPOs, label: 'POs Pending Approval', href: '/app/purchase-orders' }
         };
+
+        additionalStats = {
+          activeSuppliers: { value: activeSuppliers, label: 'Active Suppliers', href: '/app/suppliers' },
+          totalPOs: { value: totalPOs, label: 'All Purchase Orders', href: '/app/purchase-orders' },
+          pendingRequisitions: { value: pendingRequisitions, label: 'Requisitions In Progress', href: '/app/requisitions' },
+          monthlyPOValue: {
+            value: `$${(monthlyPOValue[0]?.total || 0).toLocaleString()}`,
+            label: 'PO Value (30 days)'
+          },
+          kysIncomplete: { value: kysIncomplete, label: 'KYS Incomplete', href: '/app/suppliers/analytics/compliance' },
+          evaluationsDue: { value: evaluationsDue, label: 'Evaluations Due', href: '/app/suppliers/evaluations' },
+          lowStock: { value: lowStockItems, label: 'Low Stock Items', href: '/app/reports' },
+          departments: { value: totalDepartments, label: 'Departments', href: '/app/departments' },
+          sites: { value: totalSites, label: 'Sites', href: '/app/sites' },
+          failedLogins: { value: failedLogins, label: 'Failed Logins (7d)', href: '/app/audit-logs' }
+        };
+
+        const attentionCandidates = [
+          { id: 'pending-suppliers', label: 'Suppliers awaiting activation', count: pendingSuppliers, href: '/app/suppliers', severity: 'high' as const },
+          { id: 'pending-pos', label: 'Purchase orders pending approval', count: pendingPOs, href: '/app/purchase-orders', severity: 'high' as const },
+          { id: 'pending-quotations', label: 'Quotations awaiting review', count: pendingQuotations, href: '/app/quotations', severity: 'medium' as const },
+          { id: 'kys-incomplete', label: 'Active suppliers with incomplete KYS', count: kysIncomplete, href: '/app/suppliers/analytics/compliance', severity: 'medium' as const },
+          { id: 'evaluations-due', label: 'Supplier evaluations overdue', count: evaluationsDue, href: '/app/suppliers/evaluations', severity: 'medium' as const },
+          { id: 'low-stock', label: 'Inventory items below reorder level', count: lowStockItems, href: '/app/reports', severity: 'low' as const },
+          { id: 'failed-logins', label: 'Failed login attempts (7 days)', count: failedLogins, href: '/app/audit-logs', severity: failedLogins >= 5 ? 'high' as const : 'low' as const }
+        ];
+        attentionItems = attentionCandidates.filter((item) => item.count > 0);
         break;
       }
 
@@ -240,8 +309,7 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
       purchaseOrders: pendingPOs
     };
 
-    // Additional stats for non-admin roles
-    let additionalStats: any = {};
+    // Additional stats for non-admin roles (admin gets additionalStats in its case block)
     if (userRole !== 'admin') {
       switch (userRole) {
         case 'procurement_officer': {
@@ -442,6 +510,7 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
         recentActivity,
         pendingItems,
         additionalStats,
+        attentionItems,
         ...(chartData ? { chartData } : {})
       }
     });
