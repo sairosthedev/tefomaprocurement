@@ -35,4 +35,8 @@ coverage/
 *.tgz
 .cache/
 
+# Legacy database dumps (contain PII — never commit)
+*.dump
+droplet_backup.sql
+
 .vercel
