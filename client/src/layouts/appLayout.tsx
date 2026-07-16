@@ -28,7 +28,10 @@ import {
   Send,
   Archive,
   Settings,
-  ShieldCheck
+  ShieldCheck,
+  ChevronLeft,
+  ChevronRight,
+  LogOut
 } from 'lucide-react'
 import { ChevronDown } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -236,31 +239,60 @@ export function SidebarLayout({ children }: any) {
 
   const toggleOpen = (name: string) => setOpenItems(prev => ({ ...prev, [name]: !prev[name] }))
 
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem('sidebar-collapsed') === '1' } catch { return false }
+  })
+
+  const toggleCollapsed = () => setCollapsed(prev => {
+    const next = !prev
+    try { localStorage.setItem('sidebar-collapsed', next ? '1' : '0') } catch { /* ignore */ }
+    return next
+  })
+
   return (
     <div className="flex min-h-screen">
       {/* Sidebar */}
-      <aside className="fixed z-30 h-full w-64 border-r border-primary-light bg-primary text-gray-100">
+      <aside className={cn(
+        "fixed z-30 h-full border-r border-primary-light bg-primary text-gray-100 transition-[width] duration-300",
+        collapsed ? "w-[4.5rem]" : "w-64"
+      )}>
+        {/* Collapse toggle */}
+        <button
+          onClick={toggleCollapsed}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="absolute -right-3 top-7 z-40 h-6 w-6 flex items-center justify-center rounded-full bg-primary border border-primary-light text-gray-100 hover:text-white hover:bg-primary-light shadow-md transition-colors"
+        >
+          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        </button>
+
         <div className="flex flex-col h-full py-6">
           {/* Logo/Brand */}
-          <div className="px-4 mb-6">
+          <div className={cn("mb-6", collapsed ? "px-2" : "px-4")}>
             <Link to="/app" className="block hover:opacity-90 transition-opacity">
-              <Logo variant="compact" showText={true} className="text-white" />
+              {collapsed
+                ? <Logo variant="icon" showText={false} />
+                : <Logo variant="compact" showText={true} className="text-white" />}
             </Link>
           </div>
 
           {/* User Info */}
-          <div className="px-4 mb-5">
-            <div className="bg-white/10 rounded-xl p-3">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 bg-white/20 rounded-full flex items-center justify-center">
+          <div className={cn("mb-5", collapsed ? "px-2" : "px-4")}>
+            <div className={cn("bg-white/10 rounded-xl", collapsed ? "p-2" : "p-3")}>
+              <div className={cn("flex items-center", collapsed ? "justify-center" : "gap-3")}>
+                <div
+                  className="h-9 w-9 bg-white/20 rounded-full flex items-center justify-center shrink-0"
+                  title={collapsed ? `${user?.firstName} ${user?.lastName} — ${getRoleDisplayName(user?.role)}` : undefined}
+                >
                   <span className="text-sm font-semibold text-white">
                     {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
                   </span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{user?.firstName} {user?.lastName}</p>
-                  <p className="text-[11px] text-gray-400">{getRoleDisplayName(user?.role)}</p>
-                </div>
+                {!collapsed && (
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">{user?.firstName} {user?.lastName}</p>
+                    <p className="text-[11px] text-gray-400">{getRoleDisplayName(user?.role)}</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -278,9 +310,18 @@ export function SidebarLayout({ children }: any) {
                 return (
                   <div key={item.name}>
                     <button
-                      onClick={() => toggleOpen(item.name)}
+                      onClick={() => {
+                        if (collapsed) {
+                          toggleCollapsed()
+                          setOpenItems(prev => ({ ...prev, [item.name]: true }))
+                        } else {
+                          toggleOpen(item.name)
+                        }
+                      }}
+                      title={collapsed ? item.name : undefined}
                       className={cn(
-                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[14px] font-medium transition-all duration-200",
+                        "w-full flex items-center gap-3 py-2.5 rounded-lg text-[14px] font-medium transition-all duration-200",
+                        collapsed ? "px-0 justify-center" : "px-3",
                         "outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
                         "focus-visible:bg-primary-light focus-visible:text-white",
                         anyChildActive
@@ -289,11 +330,15 @@ export function SidebarLayout({ children }: any) {
                       )}
                     >
                       <Icon className="h-[18px] w-[18px] shrink-0" />
-                      <span className="flex-1 text-left">{item.name}</span>
-                      <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen ? "rotate-180" : "rotate-0")} />
+                      {!collapsed && (
+                        <>
+                          <span className="flex-1 text-left">{item.name}</span>
+                          <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen ? "rotate-180" : "rotate-0")} />
+                        </>
+                      )}
                     </button>
 
-                    {isOpen && (
+                    {isOpen && !collapsed && (
                       <div className="mt-1 ml-3 flex flex-col gap-1">
                         {item.children.map((child: any) => {
                           // If the child itself has children (nested group), render another collapsible group
@@ -386,8 +431,10 @@ export function SidebarLayout({ children }: any) {
                 <Link
                   key={item.name}
                   to={item.href}
+                  title={collapsed ? item.name : undefined}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-[14px] font-medium transition-all duration-200",
+                    "flex items-center gap-3 py-2.5 rounded-lg text-[14px] font-medium transition-all duration-200",
+                    collapsed ? "px-0 justify-center relative" : "px-3",
                     "outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
                     "focus-visible:bg-primary-light focus-visible:text-white",
                     isActive
@@ -396,11 +443,15 @@ export function SidebarLayout({ children }: any) {
                   )}
                 >
                   <Icon className="h-[18px] w-[18px] shrink-0" />
-                  <span className="flex-1">{item.name}</span>
+                  {!collapsed && <span className="flex-1">{item.name}</span>}
                   {item.href === '/app/notifications' && unreadCount > 0 && (
-                    <span className="min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center rounded-full bg-red-500 text-white text-[11px] font-semibold">
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </span>
+                    collapsed ? (
+                      <span className="absolute top-1.5 right-3 h-2 w-2 rounded-full bg-red-500" />
+                    ) : (
+                      <span className="min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center rounded-full bg-red-500 text-white text-[11px] font-semibold">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )
                   )}
                 </Link>
               )
@@ -408,19 +459,24 @@ export function SidebarLayout({ children }: any) {
           </nav>
 
           {/* Logout Button */}
-          <div className="px-3 mt-4">
+          <div className={cn("mt-4", collapsed ? "px-2" : "px-3")}>
             <button
               onClick={() => setShowLogoutModal(true)}
-              className="w-full flex items-center justify-center px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 bg-red-600 hover:bg-red-700 text-white"
+              title={collapsed ? "Logout" : undefined}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 bg-red-600 hover:bg-red-700 text-white"
             >
-              Logout
+              <LogOut className="h-4 w-4 shrink-0" />
+              {!collapsed && <span>Logout</span>}
             </button>
           </div>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="ml-64 min-h-screen min-w-0 w-[calc(100%-16rem)] overflow-x-hidden bg-gray-50 px-4 md:px-8">
+      <main className={cn(
+        "min-h-screen min-w-0 overflow-x-hidden bg-gray-50 px-4 md:px-8 transition-[margin,width] duration-300",
+        collapsed ? "ml-[4.5rem] w-[calc(100%-4.5rem)]" : "ml-64 w-[calc(100%-16rem)]"
+      )}>
         {children}
       </main>
       {showLogoutModal && (

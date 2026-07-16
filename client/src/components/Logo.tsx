@@ -17,11 +17,11 @@ const Logo = ({
   if (variant === 'icon') {
     return (
       <div className={`flex items-center justify-center ${className}`}>
-        <div className="bg-white rounded-lg p-1.5 inline-flex">
+        <div className="bg-white rounded-lg p-1.5 inline-flex max-w-full">
           <img
             src={logoImage}
             alt="Tefoma Construction"
-            className="h-10 w-auto object-contain"
+            className="h-10 w-auto max-w-full object-contain"
             onError={(e: any) => {
               e.target.style.display = 'none';
               const fallback = e.target.nextSibling;
