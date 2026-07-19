@@ -24,7 +24,7 @@ const getInvoiceById = async (req: Request, res: Response): Promise<any> => {
         }).sort({ deliveryDate: -1 })
       : [];
 
-    const freshMatch = po ? performThreeWayMatch(po, invoice.items) : null;
+    const freshMatch = po ? performThreeWayMatch(po, invoice.items, invoice.vatAmount ?? 0) : null;
 
     res.status(200).json({
       success: true,

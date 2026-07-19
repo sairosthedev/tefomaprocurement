@@ -53,7 +53,7 @@ const submitInvoice = async (req: Request, res: Response): Promise<any> => {
       poItemIndex: item.poItemIndex ?? index
     }));
 
-    const matchResult = performThreeWayMatch(po, invoiceItems);
+    const matchResult = performThreeWayMatch(po, invoiceItems, Number(vatAmount) || 0);
     const status = matchResult.matched ? 'submitted' : 'variance';
 
     const invoice = await Invoice.create({

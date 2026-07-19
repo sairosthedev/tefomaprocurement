@@ -24,7 +24,7 @@ const approveInvoice = async (req: Request, res: Response): Promise<any> => {
       return res.status(404).json({ success: false, message: 'Purchase order not found' });
     }
 
-    const matchResult = performThreeWayMatch(po, invoice.items);
+    const matchResult = performThreeWayMatch(po, invoice.items, invoice.vatAmount ?? 0);
     if (!matchResult.matched && !forceApprove) {
       invoice.status = 'variance';
       invoice.matchResult = matchResult;

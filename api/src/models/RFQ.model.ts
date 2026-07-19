@@ -1,5 +1,13 @@
 import mongoose, { Schema, type Document } from 'mongoose';
 
+/** Allowed reasons for waiving the minimum-quotation competitive requirement. */
+export const QUOTATION_WAIVER_TYPES = [
+  'service_agreement', 'single_source', 'approved_contract', 'no_quotes',
+  'unique_product', 'coo_directed', 'custom_manufacture', 'coo_instruction', 'other'
+] as const;
+
+export type QuotationWaiverType = (typeof QUOTATION_WAIVER_TYPES)[number];
+
 export interface IRFQItem {
   description: string;
   categoryName?: string;
@@ -163,10 +171,7 @@ const RFQSchema = new Schema<IRFQ>({
     reason: String,
     waiverType: {
       type: String,
-      enum: [
-        'service_agreement', 'single_source', 'approved_contract', 'no_quotes',
-        'unique_product', 'coo_directed', 'custom_manufacture', 'coo_instruction', 'other'
-      ]
+      enum: QUOTATION_WAIVER_TYPES
     },
     approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     approvedAt: Date

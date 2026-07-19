@@ -12,12 +12,18 @@ function withinTolerance(expected: number, actual: number): boolean {
 
 export function performThreeWayMatch(
   po: IPurchaseOrder,
-  invoiceItems: IInvoiceItem[]
+  invoiceItems: IInvoiceItem[],
+  invoiceVatAmount = 0
 ): IThreeWayMatchResult {
   const messages: string[] = [];
   const lines: IMatchLineResult[] = [];
 
-  const poTotal = po.totalAmount;
+  // Line totals on both the PO and the invoice are VAT-exclusive, so the
+  // line-level and net-of-VAT comparisons below must use the PO subtotal, not
+  // totalAmount (which includes VAT). Comparing a VAT-exclusive invoice total
+  // against a VAT-inclusive PO total would flag every VAT-bearing PO as a
+  // variance even when the invoice is correct.
+  const poNetTotal = po.subtotal ?? po.totalAmount;
   let receivedValue = 0;
 
   po.items.forEach((poItem, index) => {
@@ -63,10 +69,12 @@ export function performThreeWayMatch(
     });
   });
 
+  // Invoice total compared here is VAT-exclusive (sum of line totals), matching
+  // the VAT-exclusive po subtotal and received value.
   const invoicedTotal = invoiceItems.reduce((s, i) => s + i.totalPrice, 0);
   const varianceAmount = invoicedTotal - receivedValue;
   const totalMatched =
-    withinTolerance(poTotal, invoicedTotal) &&
+    withinTolerance(poNetTotal, invoicedTotal) &&
     withinTolerance(receivedValue, invoicedTotal) &&
     lines.every((l) => l.matched || l.invoicedLineTotal === 0);
 
@@ -80,14 +88,24 @@ export function performThreeWayMatch(
     );
   }
 
+  // VAT is reconciled separately: the invoiced VAT should agree with the PO VAT.
+  const poVat = po.vatAmount ?? 0;
+  if (!withinTolerance(poVat, invoiceVatAmount)) {
+    messages.push(
+      `Invoice VAT (${invoiceVatAmount.toFixed(2)}) does not match PO VAT (${poVat.toFixed(2)})`
+    );
+  }
+  const vatMatched = withinTolerance(poVat, invoiceVatAmount);
+
   return {
+    // Expose the VAT-inclusive PO total for display continuity with prior reports.
+    poTotal: po.totalAmount,
     poNumber: po.poNumber,
-    poTotal,
     receivedValue,
     invoicedTotal,
     varianceAmount,
-    matched: totalMatched && receivedValue > 0,
-    withinTolerance: withinTolerance(receivedValue, invoicedTotal),
+    matched: totalMatched && vatMatched && receivedValue > 0,
+    withinTolerance: withinTolerance(receivedValue, invoicedTotal) && vatMatched,
     lines,
     messages,
     matchedAt: new Date()
