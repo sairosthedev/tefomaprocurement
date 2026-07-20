@@ -22,12 +22,18 @@ const submitPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       });
     }
 
-    // Sequential: Procurement → HOD → Finance → COO (if > USD 5k)
-    po.status = 'pending_hod';
+    // Sequential: Procurement → Requesting-dept HOD → Procurement HOD → Finance → COO (if > USD 5k)
+    po.status = 'pending_dept_hod';
+    po.deptHodApproved = false;
+    po.procHodApproved = false;
     po.hodApproved = false;
     po.financeApproved = false;
     po.cooApproved = false;
     po.requiresCooApproval = requiresCooApproval(po.totalAmount);
+    po.deptHodApprovedBy = undefined;
+    po.deptHodApprovedAt = undefined;
+    po.procHodApprovedBy = undefined;
+    po.procHodApprovedAt = undefined;
     po.hodApprovedBy = undefined;
     po.hodApprovedAt = undefined;
     po.financeApprovedBy = undefined;
@@ -49,15 +55,15 @@ const submitPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       entityId: po._id,
       user: req.user,
       description: `Submitted PO: ${po.poNumber} for HOD approval`,
-      newData: { status: 'pending_hod', requiresCooApproval: po.requiresCooApproval },
+      newData: { status: 'pending_dept_hod', requiresCooApproval: po.requiresCooApproval },
       req
     });
 
     res.status(200).json({
       success: true,
       message: po.requiresCooApproval
-        ? 'Purchase order submitted. Awaiting HOD → Finance → COO approval (amount ≥ USD 5,000).'
-        : 'Purchase order submitted. Awaiting HOD → Finance approval.',
+        ? 'Purchase order submitted. Awaiting Dept HOD → Procurement HOD → Finance → COO approval (amount ≥ USD 5,000).'
+        : 'Purchase order submitted. Awaiting Dept HOD → Procurement HOD → Finance approval.',
       data: po
     });
   } catch (error: any) {

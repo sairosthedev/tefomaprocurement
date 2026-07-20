@@ -14,6 +14,8 @@ import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagi
 
 const statusColors: any = {
   pending_hod: 'bg-purple-100 text-purple-700',
+  pending_dept_hod: 'bg-purple-100 text-purple-700',
+  pending_proc_hod: 'bg-fuchsia-100 text-fuchsia-700',
   pending_finance: 'bg-amber-100 text-amber-700',
   pending_coo: 'bg-indigo-100 text-indigo-700',
   pending_approvals: 'bg-blue-100 text-blue-700',
@@ -22,7 +24,9 @@ const statusColors: any = {
 };
 
 const statusLabels: any = {
-  pending_hod: 'Awaiting HOD',
+  pending_hod: 'Awaiting Dept HOD',
+  pending_dept_hod: 'Awaiting Dept HOD',
+  pending_proc_hod: 'Awaiting Procurement HOD',
   pending_finance: 'Awaiting Finance',
   pending_coo: 'Awaiting COO',
   pending_approvals: 'Pending Approvals',
@@ -88,7 +92,12 @@ export default function Approvals() {
       
       switch (user?.role) {
         case 'department_head':
-          endpoint = `/department/purchase-orders/${selectedItem._id}/approve`;
+          // Second HOD step (Procurement HOD) uses a distinct endpoint; the
+          // requesting-department HOD step uses the standard approve endpoint.
+          endpoint =
+            selectedItem.status === 'pending_proc_hod'
+              ? `/department/purchase-orders/${selectedItem._id}/proc-approve`
+              : `/department/purchase-orders/${selectedItem._id}/approve`;
           break;
         case 'finance':
         case 'admin':
@@ -100,7 +109,7 @@ export default function Approvals() {
         default:
           return;
       }
-      
+
       await api.put(endpoint, { comments: comment });
       showToast('Purchase Order approved successfully', 'success');
       setShowModal(false);

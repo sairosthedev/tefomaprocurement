@@ -13,7 +13,7 @@ export interface IPOItem {
 }
 
 export interface IApprovalHistory {
-  action: 'created' | 'submitted' | 'hod_approved' | 'hod_rejected' | 'finance_approved' | 'finance_rejected' | 'coo_approved' | 'coo_rejected' | 'issued' | 'acknowledged' | 'cancelled';
+  action: 'created' | 'submitted' | 'hod_approved' | 'dept_hod_approved' | 'proc_hod_approved' | 'hod_rejected' | 'finance_approved' | 'finance_rejected' | 'coo_approved' | 'coo_rejected' | 'issued' | 'acknowledged' | 'cancelled';
   by: mongoose.Types.ObjectId | any;
   role?: string;
   comments?: string;
@@ -41,7 +41,17 @@ export interface IPurchaseOrder extends Document {
   expectedDeliveryDate?: Date;
   paymentTerms?: string;
   termsAndConditions?: string;
-  status: 'draft' | 'pending_hod' | 'pending_finance' | 'pending_coo' | 'pending_approvals' | 'approved' | 'rejected' | 'issued' | 'partially_received' | 'completed' | 'cancelled';
+  status: 'draft' | 'pending_hod' | 'pending_dept_hod' | 'pending_proc_hod' | 'pending_finance' | 'pending_coo' | 'pending_approvals' | 'approved' | 'rejected' | 'issued' | 'partially_received' | 'completed' | 'cancelled';
+  // Requesting-department HOD approval (first step).
+  deptHodApproved: boolean;
+  deptHodApprovedBy?: mongoose.Types.ObjectId | any;
+  deptHodApprovedAt?: Date;
+  // Procurement HOD approval (second step).
+  procHodApproved: boolean;
+  procHodApprovedBy?: mongoose.Types.ObjectId | any;
+  procHodApprovedAt?: Date;
+  // Legacy combined HOD flag — set true once BOTH HOD steps pass, so existing
+  // Finance queries and status panels keep working.
   hodApproved: boolean;
   hodApprovedBy?: mongoose.Types.ObjectId | any;
   hodApprovedAt?: Date;
@@ -98,7 +108,7 @@ const POItemSchema = new Schema<IPOItem>({
 const ApprovalHistorySchema = new Schema<IApprovalHistory>({
   action: {
     type: String,
-    enum: ['created', 'submitted', 'hod_approved', 'hod_rejected', 'finance_approved', 'finance_rejected', 'coo_approved', 'coo_rejected', 'issued', 'acknowledged', 'cancelled'],
+    enum: ['created', 'submitted', 'hod_approved', 'dept_hod_approved', 'proc_hod_approved', 'hod_rejected', 'finance_approved', 'finance_rejected', 'coo_approved', 'coo_rejected', 'issued', 'acknowledged', 'cancelled'],
     required: true
   },
   by: {
@@ -171,9 +181,27 @@ const PurchaseOrderSchema = new Schema<IPurchaseOrder>({
   termsAndConditions: String,
   status: {
     type: String,
-    enum: ['draft', 'pending_hod', 'pending_finance', 'pending_coo', 'pending_approvals', 'approved', 'rejected', 'issued', 'partially_received', 'completed', 'cancelled'],
+    enum: ['draft', 'pending_hod', 'pending_dept_hod', 'pending_proc_hod', 'pending_finance', 'pending_coo', 'pending_approvals', 'approved', 'rejected', 'issued', 'partially_received', 'completed', 'cancelled'],
     default: 'draft'
   },
+  deptHodApproved: {
+    type: Boolean,
+    default: false
+  },
+  deptHodApprovedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  deptHodApprovedAt: Date,
+  procHodApproved: {
+    type: Boolean,
+    default: false
+  },
+  procHodApprovedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  procHodApprovedAt: Date,
   hodApproved: {
     type: Boolean,
     default: false

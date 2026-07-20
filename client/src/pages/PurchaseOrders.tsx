@@ -26,6 +26,8 @@ import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagi
 const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
   pending_hod: 'bg-purple-100 text-purple-700',
+  pending_dept_hod: 'bg-purple-100 text-purple-700',
+  pending_proc_hod: 'bg-fuchsia-100 text-fuchsia-700',
   pending_finance: 'bg-amber-100 text-amber-700',
   pending_coo: 'bg-indigo-100 text-indigo-700',
   pending_approvals: 'bg-blue-100 text-blue-700',
@@ -39,6 +41,9 @@ const statusColors: any = {
 
 const statusIcons: any = {
   draft: Clock,
+  pending_hod: Clock,
+  pending_dept_hod: Clock,
+  pending_proc_hod: Clock,
   pending_finance: Clock,
   pending_coo: Clock,
   pending_approvals: Clock,

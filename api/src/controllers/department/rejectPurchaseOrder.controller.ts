@@ -24,7 +24,7 @@ const rejectPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       });
     }
 
-    const validStatuses = ['pending_hod', 'pending_approvals'];
+    const validStatuses = ['pending_dept_hod', 'pending_proc_hod', 'pending_hod', 'pending_approvals'];
     if (!validStatuses.includes(po.status) || po.hodApproved) {
       return res.status(400).json({
         success: false,

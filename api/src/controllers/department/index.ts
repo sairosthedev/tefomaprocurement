@@ -9,6 +9,7 @@ import updateRequisitionItem from './updateRequisitionItem.controller.js';
 import createStoreRequisition from './createStoreRequisition.controller.js';
 import getStoreRequisitions from './getStoreRequisitions.controller.js';
 import approvePurchaseOrder from './approvePurchaseOrder.controller.js';
+import procApprovePurchaseOrder from './procApprovePurchaseOrder.controller.js';
 import getPendingPoApprovals from './getPendingPoApprovals.controller.js';
 import hodReviewEvaluation from './hodReviewEvaluation.controller.js';
 import hodSelectQuotation from './hodSelectQuotation.controller.js';
@@ -29,6 +30,7 @@ export default {
   createStoreRequisition,
   getStoreRequisitions,
   approvePurchaseOrder,
+  procApprovePurchaseOrder,
   rejectPurchaseOrder,
   getPendingPoApprovals,
   getPendingEvaluations,

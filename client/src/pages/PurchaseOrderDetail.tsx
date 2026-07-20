@@ -262,27 +262,54 @@ export default function PurchaseOrderDetail() {
               </span>
             )}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* HOD */}
-            <div className={`p-4 rounded-lg ${po.hodApproved ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Dept HOD */}
+            <div className={`p-4 rounded-lg ${po.deptHodApproved ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
               <div className="flex items-center gap-2 mb-2">
-                {po.hodApproved ? (
+                {po.deptHodApproved ? (
                   <CheckCircle className="h-5 w-5 text-green-600" />
                 ) : (
                   <Clock className="h-5 w-5 text-amber-600" />
                 )}
-                <span className="font-medium text-gray-900">1. HOD Approval</span>
+                <span className="font-medium text-gray-900">1. Dept HOD</span>
               </div>
-              {po.hodApproved ? (
+              {po.deptHodApproved ? (
                 <div>
                   <p className="text-sm text-green-700">Approved</p>
-                  {po.hodApprovedBy && (
+                  {po.deptHodApprovedBy && (
                     <p className="text-xs text-gray-600 mt-1">
-                      By: {po.hodApprovedBy.firstName} {po.hodApprovedBy.lastName}
+                      By: {po.deptHodApprovedBy.firstName} {po.deptHodApprovedBy.lastName}
                     </p>
                   )}
-                  {po.hodApprovedAt && (
-                    <p className="text-xs text-gray-600">On: {new Date(po.hodApprovedAt).toLocaleDateString()}</p>
+                  {po.deptHodApprovedAt && (
+                    <p className="text-xs text-gray-600">On: {new Date(po.deptHodApprovedAt).toLocaleDateString()}</p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-amber-700">Pending</p>
+              )}
+            </div>
+
+            {/* Procurement HOD */}
+            <div className={`p-4 rounded-lg ${po.procHodApproved ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
+              <div className="flex items-center gap-2 mb-2">
+                {po.procHodApproved ? (
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                ) : (
+                  <Clock className="h-5 w-5 text-amber-600" />
+                )}
+                <span className="font-medium text-gray-900">2. Procurement HOD</span>
+              </div>
+              {po.procHodApproved ? (
+                <div>
+                  <p className="text-sm text-green-700">Approved</p>
+                  {po.procHodApprovedBy && (
+                    <p className="text-xs text-gray-600 mt-1">
+                      By: {po.procHodApprovedBy.firstName} {po.procHodApprovedBy.lastName}
+                    </p>
+                  )}
+                  {po.procHodApprovedAt && (
+                    <p className="text-xs text-gray-600">On: {new Date(po.procHodApprovedAt).toLocaleDateString()}</p>
                   )}
                 </div>
               ) : (
@@ -298,7 +325,7 @@ export default function PurchaseOrderDetail() {
                 ) : (
                   <Clock className="h-5 w-5 text-amber-600" />
                 )}
-                <span className="font-medium text-gray-900">2. Finance Approval</span>
+                <span className="font-medium text-gray-900">3. Finance Approval</span>
               </div>
               {po.financeApproved ? (
                 <div>
@@ -333,7 +360,7 @@ export default function PurchaseOrderDetail() {
                 ) : (
                   <CheckCircle className="h-5 w-5 text-gray-400" />
                 )}
-                <span className="font-medium text-gray-900">3. COO Authorization</span>
+                <span className="font-medium text-gray-900">4. COO Authorization</span>
               </div>
               {po.cooApproved ? (
                 <div>
