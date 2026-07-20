@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { RFQ, Quotation } from '../../models/index.js';
+import { hasValidQuotationWaiver } from '../../services/quotationCompliance.service.js';
 import { createAuditLog } from '../../middleware/index.js';
 
 /** Procurement Manager authorizes the quotation */
@@ -13,15 +14,21 @@ const authorizeQuotation = async (req: Request, res: Response): Promise<any> => 
       return res.status(404).json({ success: false, message: 'RFQ not found' });
     }
 
+    // With an approved waiver, the PM may authorize directly and must name the
+    // quotation (there is no HOD selection to fall back on). Otherwise the HOD
+    // selection is required and drives which quotation can be authorized.
+    const waived = hasValidQuotationWaiver(rfq);
     const qid = quotationId || rfq.hodSelection?.quotation;
     if (!qid) {
       return res.status(400).json({
         success: false,
-        message: 'HOD must select a quotation before PM authorization'
+        message: waived
+          ? 'Select a quotation to authorize'
+          : 'HOD must select a quotation before PM authorization'
       });
     }
 
-    if (!rfq.hodSelection?.quotation || String(rfq.hodSelection.quotation) !== String(qid)) {
+    if (!waived && (!rfq.hodSelection?.quotation || String(rfq.hodSelection.quotation) !== String(qid))) {
       return res.status(400).json({
         success: false,
         message: 'Can only authorize the quotation selected by HOD'

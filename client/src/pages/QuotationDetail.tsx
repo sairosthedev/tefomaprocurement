@@ -528,16 +528,26 @@ export default function QuotationDetail() {
                     <p className="text-xs text-gray-500 mt-0.5">Authorized.</p>
                   ) : canPmAuthorize ? (
                     <div className="mt-2 space-y-2">
-                      {!c.hodSelected && (
+                      {/* With an approved waiver, HOD selection is not required and
+                          the PM may authorize directly. */}
+                      {c.waived ? (
+                        <p className="text-xs text-gray-500">
+                          Waiver approved — you can authorize directly without HOD selection.
+                        </p>
+                      ) : !c.hodSelected ? (
                         <p className="text-xs text-amber-600">
                           Complete HOD selection (step 2) before you can authorize here.
                         </p>
-                      )}
+                      ) : null}
                       <button
                         type="button"
                         onClick={handlePmAuthorize}
-                        disabled={authorizing || !c.hodSelected}
-                        title={!c.hodSelected ? 'HOD must select this quotation first' : 'Authorize as Procurement Manager'}
+                        disabled={authorizing || (!c.hodSelected && !c.waived)}
+                        title={
+                          !c.hodSelected && !c.waived
+                            ? 'HOD must select this quotation first'
+                            : 'Authorize as Procurement Manager'
+                        }
                         className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50"
                       >
                         {authorizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
