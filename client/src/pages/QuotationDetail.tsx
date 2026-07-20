@@ -35,6 +35,20 @@ const statusColors: any = {
   expired: 'bg-amber-100 text-amber-700'
 };
 
+/** PRAZ-aligned reasons for waiving the minimum-3-quotation requirement.
+ *  Values must match the RFQ.quotationWaiver.waiverType enum on the API. */
+const WAIVER_TYPES: { value: string; label: string }[] = [
+  { value: 'single_source', label: 'Single/sole source — only one capable supplier' },
+  { value: 'no_quotes', label: 'Insufficient quotations received' },
+  { value: 'service_agreement', label: 'Existing service agreement' },
+  { value: 'approved_contract', label: 'Approved framework / contract' },
+  { value: 'unique_product', label: 'Unique / proprietary product' },
+  { value: 'custom_manufacture', label: 'Custom manufacture / bespoke item' },
+  { value: 'coo_directed', label: 'COO directed procurement' },
+  { value: 'coo_instruction', label: 'COO written instruction' },
+  { value: 'other', label: 'Other (state reason below)' }
+];
+
 /** HOD selection is done by the head of the department that raised the requisition. */
 function canUserHodSelect(user: any, compliance: any): boolean {
   if (user?.role === 'admin') return true;
@@ -60,6 +74,7 @@ export default function QuotationDetail() {
   const [closingRfq, setClosingRfq] = useState<any>(false);
   const [hodJustification, setHodJustification] = useState<any>('');
   const [waiverReason, setWaiverReason] = useState<any>('');
+  const [waiverType, setWaiverType] = useState<string>('');
   const [approvingWaiver, setApprovingWaiver] = useState<any>(false);
   const [authorizing, setAuthorizing] = useState<any>(false);
   const [showAcceptModal, setShowAcceptModal] = useState<any>(false);
@@ -141,6 +156,10 @@ export default function QuotationDetail() {
   };
 
   const handleApproveWaiver = async () => {
+    if (!waiverType) {
+      showToast('Please select a waiver type', 'error');
+      return;
+    }
     if (!waiverReason.trim()) {
       showToast('A waiver reason is required', 'error');
       return;
@@ -151,10 +170,11 @@ export default function QuotationDetail() {
       setApprovingWaiver(true);
       await procurementAPI.approveQuotationWaiver(quotation.rfq._id, {
         reason: waiverReason.trim(),
-        waiverType: 'insufficient_quotations'
+        waiverType
       });
       showToast('Quotation waiver approved', 'success');
       setWaiverReason('');
+      setWaiverType('');
       fetchQuotation();
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to approve waiver', 'error');
@@ -430,6 +450,16 @@ export default function QuotationDetail() {
                   </p>
                   {!c.minQuotationsMet && !c.waived && canApproveWaiver && (
                     <div className="mt-2 space-y-2">
+                      <select
+                        value={waiverType}
+                        onChange={(e: any) => setWaiverType(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      >
+                        <option value="">Select waiver type…</option>
+                        {WAIVER_TYPES.map((w) => (
+                          <option key={w.value} value={w.value}>{w.label}</option>
+                        ))}
+                      </select>
                       <textarea
                         value={waiverReason}
                         onChange={(e: any) => setWaiverReason(e.target.value)}
@@ -440,7 +470,7 @@ export default function QuotationDetail() {
                       <button
                         type="button"
                         onClick={handleApproveWaiver}
-                        disabled={approvingWaiver}
+                        disabled={approvingWaiver || !waiverType || !waiverReason.trim()}
                         className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50"
                       >
                         {approvingWaiver ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
