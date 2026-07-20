@@ -36,5 +36,12 @@ export const procurementAPI: any = {
   authorizeQuotation: (rfqId: any, data?: any) => http.put(`/procurement/rfqs/${rfqId}/authorize-quotation`, data),
   approveQuotationWaiver: (rfqId: any, data: any) => http.put(`/procurement/rfqs/${rfqId}/quotation-waiver`, data),
   cancelRequisition: (id: any, data: any) => http.put(`/procurement/requisitions/${id}/cancel`, data),
-  cancelPurchaseOrder: (id: any, data: any) => http.put(`/procurement/purchase-orders/${id}/cancel`, data)
+  cancelPurchaseOrder: (id: any, data: any) => http.put(`/procurement/purchase-orders/${id}/cancel`, data),
+  // Per-line (split) award
+  getLineAwards: (rfqId: any) => http.get(`/procurement/rfqs/${rfqId}/line-awards`),
+  hodSelectLine: (rfqId: any, data: any) => http.put(`/department/rfqs/${rfqId}/line-awards/hod-select`, data),
+  pmAuthorizeLine: (rfqId: any, data: any) => http.put(`/procurement/rfqs/${rfqId}/line-awards/pm-authorize`, data),
+  waiveLine: (rfqId: any, data: any) => http.put(`/procurement/rfqs/${rfqId}/line-awards/waive`, data),
+  generateLineAwardPOs: (rfqId: any, data: any) => http.post(`/procurement/rfqs/${rfqId}/line-awards/generate-pos`, data),
+  resourceUnawardedLines: (rfqId: any, data: any) => http.post(`/procurement/rfqs/${rfqId}/line-awards/resource-unawarded`, data)
 };

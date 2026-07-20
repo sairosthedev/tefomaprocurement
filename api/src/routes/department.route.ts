@@ -41,5 +41,8 @@ router.put('/evaluations/:id/review', hod, department.hodReviewEvaluation);
 
 // HOD quotation selection
 router.put('/rfqs/:id/select-quotation', hod, department.hodSelectQuotation);
+// Per-line award: HOD selects the winning supplier per RFQ line.
+router.get('/rfqs/:id/line-awards', hod, department.getLineAwardMatrix);
+router.put('/rfqs/:id/line-awards/hod-select', hod, department.hodSelectLine);
 
 export default router;

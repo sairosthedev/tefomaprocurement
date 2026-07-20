@@ -27,6 +27,7 @@ import Suppliers from './pages/Suppliers';
 import SupplierDetails from './pages/SupplierDetails';
 import RFQs from './pages/RFQs';
 import RFQDetail from './pages/RFQDetail';
+import AwardMatrix from './pages/AwardMatrix';
 import CreateRFQ from './pages/CreateRFQ';
 import Quotations from './pages/Quotations';
 import QuotationDetail from './pages/QuotationDetail';
@@ -200,6 +201,11 @@ function App() {
             <Route path="/app/rfqs/:id" element={
               <AppLayout allowedRoles={['admin', 'procurement_officer']}>
                 <RFQDetail />
+              </AppLayout>
+            } />
+            <Route path="/app/rfqs/:id/award" element={
+              <AppLayout allowedRoles={['admin', 'procurement_officer', 'department_head']}>
+                <AwardMatrix />
               </AppLayout>
             } />
             <Route path="/app/quotations" element={

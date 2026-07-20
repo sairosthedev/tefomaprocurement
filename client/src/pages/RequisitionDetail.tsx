@@ -7,6 +7,7 @@ import { formatCurrency } from '../lib/constants';
 import { PR_CANCELLATION_REASONS } from '@fossil/shared';
 import PageHeader from '../components/PageHeader';
 import CancelWorkflowModal from '../components/CancelWorkflowModal';
+import EquipmentDetailsView from '../components/EquipmentDetailsView';
 import { canCancelRequisition, requisitionCancelApiBase } from '../lib/cancellationAccess';
 import { 
   FileText, 
@@ -388,6 +389,11 @@ export default function RequisitionDetail() {
                           {(item.specification || item.specifications) && (
                             <p className="text-xs text-gray-400 mt-0.5">{item.specification || item.specifications}</p>
                           )}
+                          <EquipmentDetailsView
+                            equipment={item.equipment}
+                            attachments={item.attachments}
+                            compact
+                          />
                         </td>
                         <td className="py-3 px-4 text-sm text-gray-600">{item.unit}</td>
                         <td className="py-3 px-4 text-right">

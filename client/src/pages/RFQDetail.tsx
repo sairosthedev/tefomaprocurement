@@ -3,13 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
-import { 
-  Calendar, 
-  Users, 
+import {
+  Calendar,
+  Users,
   Send,
   Loader2,
   CheckCircle,
-  XCircle
+  XCircle,
+  Split
 } from 'lucide-react';
 
 const statusColors: any = {
@@ -139,6 +140,16 @@ export default function RFQDetail() {
               >
                 {closing ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
                 Close RFQ & Reveal Bids
+              </button>
+            )}
+            {['closed', 'evaluating', 'awarded'].includes(rfq.status) && (
+              <button
+                onClick={() => navigate(`/app/rfqs/${rfq._id}/award`)}
+                className="px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors flex items-center gap-2"
+                title="Award each line to the best supplier (split across suppliers)"
+              >
+                <Split className="h-4 w-4" />
+                Split Award
               </button>
             )}
           </>

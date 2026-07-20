@@ -77,6 +77,15 @@ router.put('/rfqs/:id/close', procurement.closeRFQ);
 router.put('/rfqs/:id/authorize-quotation', procurement.authorizeQuotation);
 router.put('/rfqs/:id/quotation-waiver', procurement.approveQuotationWaiver);
 
+// Per-line (split) award — compare bids by line and award to different suppliers.
+// HOD line selection lives on the department route (dept heads reach it there);
+// PM authorization and per-line waivers are procurement actions.
+router.get('/rfqs/:id/line-awards', procurement.getLineAwardMatrix);
+router.put('/rfqs/:id/line-awards/pm-authorize', procurement.pmAuthorizeLine);
+router.put('/rfqs/:id/line-awards/waive', procurement.waiveLine);
+router.post('/rfqs/:id/line-awards/generate-pos', procurement.generateLineAwardPOs);
+router.post('/rfqs/:id/line-awards/resource-unawarded', procurement.resourceUnawardedLines);
+
 // Quotations
 router.get('/quotations', procurement.getQuotations);
 router.get('/quotations/:id', procurement.getQuotationById);

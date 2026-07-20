@@ -16,6 +16,14 @@ import getQuotationById from './getQuotationById.controller.js';
 import acceptQuotation from './acceptQuotation.controller.js';
 import rejectQuotation from './rejectQuotation.controller.js';
 import requestQuotationRevision from './requestQuotationRevision.controller.js';
+import {
+  getLineAwardMatrix,
+  hodSelectLine,
+  pmAuthorizeLine,
+  waiveLine
+} from './lineAward.controller.js';
+import generateLineAwardPOs from './generateLineAwardPOs.controller.js';
+import resourceUnawardedLines from './resourceUnawardedLines.controller.js';
 import createPurchaseOrder from './createPurchaseOrder.controller.js';
 import getPurchaseOrders from './getPurchaseOrders.controller.js';
 import getPurchaseOrderById from './getPurchaseOrderById.controller.js';
@@ -72,6 +80,12 @@ export default {
   acceptQuotation,
   rejectQuotation,
   requestQuotationRevision,
+  getLineAwardMatrix,
+  hodSelectLine,
+  pmAuthorizeLine,
+  waiveLine,
+  generateLineAwardPOs,
+  resourceUnawardedLines,
   createPurchaseOrder,
   getPurchaseOrders,
   getPurchaseOrderById,
