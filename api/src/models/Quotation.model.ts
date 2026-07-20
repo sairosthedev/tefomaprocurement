@@ -1,6 +1,9 @@
 import mongoose, { Schema, type Document } from 'mongoose';
 
 export interface IQuotationItem {
+  /** The RFQ line this quote line answers, for per-line comparison and award.
+   *  Falls back to description match for legacy quotes without it. */
+  rfqLineId?: mongoose.Types.ObjectId | any;
   description: string;
   specifications?: string;
   quantity: number;
@@ -58,6 +61,9 @@ export interface IQuotation extends Document {
 }
 
 const QuotationItemSchema = new Schema<IQuotationItem>({
+  rfqLineId: {
+    type: mongoose.Schema.Types.ObjectId
+  },
   description: {
     type: String,
     required: true

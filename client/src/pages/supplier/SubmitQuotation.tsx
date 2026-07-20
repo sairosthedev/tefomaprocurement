@@ -90,6 +90,7 @@ export default function SubmitQuotation() {
         validityPeriod: formData.validityDays,
         notes: formData.notes,
         items: formData.items.map((item: any) => ({
+          rfqLineId: item.itemId,
           description: item.description,
           quantity: item.quantity,
           unit: item.unit,

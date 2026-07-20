@@ -85,9 +85,24 @@ const submitQuotation = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
+    // Bind each quote line to the RFQ line it answers, so lines can be compared
+    // and awarded independently. Fall back to a description match when the client
+    // did not send rfqLineId (legacy quote forms).
+    const normalize = (s: string) => (s || '').toLowerCase().trim();
+    const boundItems = items.map((item: any) => {
+      let rfqLineId = item.rfqLineId;
+      if (!rfqLineId) {
+        const match = rfq.items.find(
+          (rl: any) => normalize(rl.description) === normalize(item.description)
+        );
+        rfqLineId = match?._id;
+      }
+      return { ...item, rfqLineId };
+    });
+
     // Calculate totals
-    const subtotal = items.reduce((sum: any, item: any) => sum + item.totalPrice, 0);
-    const vatAmount = items.some((item: any) => !item.vatIncluded) ? subtotal * 0.15 : 0;
+    const subtotal = boundItems.reduce((sum: any, item: any) => sum + item.totalPrice, 0);
+    const vatAmount = boundItems.some((item: any) => !item.vatIncluded) ? subtotal * 0.15 : 0;
     const totalAmount = subtotal + vatAmount;
 
     // Generate quotation number
@@ -102,7 +117,7 @@ const submitQuotation = async (req: Request, res: Response): Promise<any> => {
       site: rfq.site,
       supplier: profile._id,
       submittedBy: req.user!._id,
-      items,
+      items: boundItems,
       subtotal,
       vatAmount,
       totalAmount,

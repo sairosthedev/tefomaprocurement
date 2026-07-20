@@ -1,6 +1,9 @@
 import mongoose, { Schema, type Document } from 'mongoose';
 
 export interface IRFQItem {
+  /** Stable per-line identity (Mongoose subdocument _id). Quotation lines and
+   *  the award map reference this so lines can be awarded independently. */
+  _id?: mongoose.Types.ObjectId | any;
   description: string;
   categoryName?: string;
   specifications?: string;
