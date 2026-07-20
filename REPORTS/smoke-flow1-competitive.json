@@ -1,0 +1,254 @@
+{
+  "runId": "1784458385767",
+  "target": "https://tefomaprocurement-api.vercel.app",
+  "startedAt": "2026-07-19T10:53:05.767Z",
+  "steps": [
+    {
+      "phase": "auth",
+      "name": "Admin login + OTP verify",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "phase": "setup",
+      "name": "Found working + procurement departments",
+      "status": "PASS",
+      "detail": "work=AUDIT proc=Procurement"
+    },
+    {
+      "phase": "users",
+      "name": "Create end_user (smoke.enduser.1784458385767@smoke.test)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "phase": "users",
+      "name": "Create department_head (smoke.hod.1784458385767@smoke.test)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "phase": "users",
+      "name": "Create department_head (smoke.prochead.1784458385767@smoke.test)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "phase": "users",
+      "name": "Create finance (smoke.finance.1784458385767@smoke.test)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "phase": "users",
+      "name": "Create coo (smoke.coo.1784458385767@smoke.test)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "phase": "users",
+      "name": "Create stores_officer (smoke.stores.1784458385767@smoke.test)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "phase": "supplier",
+      "name": "Supplier self-registration",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "phase": "auth",
+      "name": "All 7 smoke roles authenticate",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "phase": "supplier",
+      "name": "Procurement sees pending smoke supplier",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "phase": "supplier",
+      "name": "Procurement activates supplier (KYS override)",
+      "status": "PASS",
+      "detail": "Supplier activated without KYS (override applied)"
+    },
+    {
+      "phase": "requisition",
+      "name": "End user creates requisition (draft)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "phase": "requisition",
+      "name": "End user submits requisition",
+      "status": "PASS",
+      "detail": "Requisition submitted for Department Head approval"
+    },
+    {
+      "phase": "requisition",
+      "name": "HOD approves requisition",
+      "status": "PASS",
+      "detail": "Requisition approved and forwarded to stores"
+    },
+    {
+      "phase": "stores",
+      "name": "Stores forwards requisition to procurement",
+      "status": "PASS",
+      "detail": "Requisition forwarded to procurement queue"
+    },
+    {
+      "phase": "procurement",
+      "name": "Procurement accepts requisition",
+      "status": "PASS",
+      "detail": "Requisition accepted"
+    },
+    {
+      "phase": "rfq",
+      "name": "Procurement creates & publishes RFQ",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "phase": "rfq",
+      "name": "Supplier can see invited RFQ",
+      "status": "PASS",
+      "detail": "count=1"
+    },
+    {
+      "phase": "quotation",
+      "name": "Supplier submits quotation",
+      "status": "PASS",
+      "detail": "Quotation submitted successfully"
+    },
+    {
+      "phase": "rfq",
+      "name": "Procurement closes RFQ",
+      "status": "PASS",
+      "detail": "RFQ closed. Bids are now visible for evaluation."
+    },
+    {
+      "phase": "quotation",
+      "name": "HOD selects winning quotation",
+      "status": "FAIL",
+      "detail": "Minimum 3 quotations required or an approved waiver (currently 1)"
+    },
+    {
+      "phase": "quotation",
+      "name": "Procurement authorizes quotation",
+      "status": "FAIL",
+      "detail": "Can only authorize the quotation selected by HOD"
+    },
+    {
+      "phase": "quotation",
+      "name": "Procurement accepts quotation",
+      "status": "FAIL",
+      "detail": "Requires at least 3 quotations or approved waiver (found 1)"
+    },
+    {
+      "phase": "po",
+      "name": "Procurement creates PO",
+      "status": "FAIL",
+      "detail": "Can only create PO from accepted quotations"
+    },
+    {
+      "phase": "po",
+      "name": "Procurement submits PO for approval",
+      "status": "FAIL",
+      "detail": "Cast to ObjectId failed for value \"undefined\" (type string) at path \"_id\" for model \"PurchaseOrder\""
+    },
+    {
+      "phase": "po",
+      "name": "HOD approves PO",
+      "status": "FAIL",
+      "detail": "Server error"
+    },
+    {
+      "phase": "po",
+      "name": "Finance approves PO",
+      "status": "FAIL",
+      "detail": "Server error"
+    },
+    {
+      "phase": "po",
+      "name": "COO approval (PO below 5k threshold)",
+      "status": "SKIP",
+      "detail": "total=0"
+    },
+    {
+      "phase": "po",
+      "name": "Supplier acknowledges PO",
+      "status": "FAIL",
+      "detail": "Cast to ObjectId failed for value \"undefined\" (type string) at path \"_id\" for model \"PurchaseOrder\""
+    },
+    {
+      "phase": "delivery",
+      "name": "Stores receives goods (GRV)",
+      "status": "FAIL",
+      "detail": "Purchase order not found"
+    },
+    {
+      "phase": "delivery",
+      "name": "Delivery auto-accepted on receive",
+      "status": "FAIL",
+      "detail": ""
+    },
+    {
+      "phase": "invoice",
+      "name": "Supplier submits invoice",
+      "status": "FAIL",
+      "detail": "Purchase order, invoice date, and line items are required"
+    },
+    {
+      "phase": "invoice",
+      "name": "Finance approves invoice",
+      "status": "FAIL",
+      "detail": "Server error"
+    },
+    {
+      "phase": "payment",
+      "name": "Finance records payment",
+      "status": "FAIL",
+      "detail": "All invoices must be approved and not fully paid"
+    },
+    {
+      "phase": "reads",
+      "name": "Admin audit logs",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "phase": "reads",
+      "name": "Finance budgets",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "phase": "reads",
+      "name": "Procurement dashboard stats",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "phase": "reads",
+      "name": "End user notifications",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "phase": "reads",
+      "name": "Supplier sees own PO",
+      "status": "PASS",
+      "detail": ""
+    }
+  ],
+  "finishedAt": "2026-07-19T10:54:38.409Z",
+  "summary": {
+    "pass": 26,
+    "fail": 13,
+    "skip": 1,
+    "total": 40
+  }
+}

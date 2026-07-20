@@ -5,8 +5,16 @@ import { protect, authorize } from '../middleware/index.js';
 const { stores } = controllers;
 const router = express.Router();
 
-// All routes require stores_officer role
 router.use(protect);
+
+// Printable GRV — stores raise it, but procurement/finance need it for the 3-way match
+router.get(
+  '/deliveries/:id/print',
+  authorize('stores_officer', 'admin', 'procurement_officer', 'finance'),
+  stores.printGrv
+);
+
+// All remaining routes require stores_officer role
 router.use(authorize('stores_officer', 'admin'));
 
 // Deliveries / GRV

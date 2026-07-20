@@ -6,6 +6,7 @@ import { useToast } from '../components/Toast';
 import { formatCurrency } from '../lib/constants';
 import { isProcurementHead } from '@fossil/shared';
 import PageHeader from '../components/PageHeader';
+import EquipmentDetailsView from '../components/EquipmentDetailsView';
 import { 
   FileText, 
   Calendar, 
@@ -722,6 +723,24 @@ export default function QuotationDetail() {
                         {item.specifications && (
                           <p className="text-xs text-gray-500 mt-1">{item.specifications}</p>
                         )}
+                        {item.isAlternative && (
+                          <div className="mt-1.5 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                            <p className="text-xs font-medium text-amber-800">
+                              Alternative offered — not the exact part requested
+                            </p>
+                            {item.alternativeDescription && (
+                              <p className="text-xs text-amber-700 mt-0.5">
+                                {item.alternativeDescription}
+                              </p>
+                            )}
+                            {item.alternativePartNumber && (
+                              <p className="text-xs text-amber-700">
+                                Part number: {item.alternativePartNumber}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        <EquipmentDetailsView attachments={item.attachments} compact />
                       </td>
                       <td className="py-3 px-4 text-right text-sm text-gray-900">{item.quantity}</td>
                       <td className="py-3 px-4 text-right text-sm text-gray-900">{item.unit}</td>

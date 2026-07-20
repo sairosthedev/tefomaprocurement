@@ -40,3 +40,4 @@ coverage/
 droplet_backup.sql
 
 .vercel
+.env*

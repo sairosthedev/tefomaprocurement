@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import { Quotation, RFQ, SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole } from '../../services/notification.service.js';
+import { sanitiseAttachments } from '../../services/lineAttachments.service.js';
 
 const submitQuotation = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -89,7 +90,8 @@ const submitQuotation = async (req: Request, res: Response): Promise<any> => {
     // and awarded independently. Fall back to a description match when the client
     // did not send rfqLineId (legacy quote forms).
     const normalize = (s: string) => (s || '').toLowerCase().trim();
-    const boundItems = items.map((item: any) => {
+    const boundItems: any[] = [];
+    for (const item of items) {
       let rfqLineId = item.rfqLineId;
       if (!rfqLineId) {
         const match = rfq.items.find(
@@ -97,8 +99,22 @@ const submitQuotation = async (req: Request, res: Response): Promise<any> => {
         );
         rfqLineId = match?._id;
       }
-      return { ...item, rfqLineId };
-    });
+
+      // A supplier may offer an equivalent part — validate any data plate they attach.
+      const attachments = sanitiseAttachments(item.attachments, req.user!._id);
+      if (!attachments.ok) {
+        return res.status(400).json({ success: false, message: attachments.message });
+      }
+
+      boundItems.push({
+        ...item,
+        rfqLineId,
+        isAlternative: Boolean(item.isAlternative),
+        alternativeDescription: item.alternativeDescription?.trim() || undefined,
+        alternativePartNumber: item.alternativePartNumber?.trim() || undefined,
+        attachments: attachments.value
+      });
+    }
 
     // Calculate totals
     const subtotal = boundItems.reduce((sum: any, item: any) => sum + item.totalPrice, 0);

@@ -10,6 +10,35 @@ export interface IStoreAvailability {
   checkedBy?: mongoose.Types.ObjectId | any;
 }
 
+/** Machine identification for plant/vehicle spares. Every field optional —
+ *  data plates are often painted over or missing on older fleets, so a line
+ *  must never be blocked on them. */
+export interface IEquipmentDetails {
+  make?: string;
+  model?: string;
+  plantNumber?: string;
+  registrationNumber?: string;
+  chassisNumber?: string;
+  engineNumber?: string;
+  serialNumber?: string;
+  componentSerial?: string;
+  partNumber?: string;
+  hourMeter?: string;
+}
+
+/** Photo or document attached to a requisition line — typically a data plate
+ *  shot so the supplier can read the serial themselves. */
+export interface ILineAttachment {
+  kind: 'data_plate' | 'item_photo' | 'damage' | 'other';
+  fileName: string;
+  /** Data URI, consistent with how KYS compliance documents are stored. */
+  fileData: string;
+  mimeType?: string;
+  caption?: string;
+  uploadedBy?: mongoose.Types.ObjectId | any;
+  uploadedAt?: Date;
+}
+
 export interface IRequisitionItem {
   item?: mongoose.Types.ObjectId | any;
   /** PACKAGE column on the paper IR form (e.g. box, carton, unit pack). */
@@ -24,6 +53,8 @@ export interface IRequisitionItem {
   estimatedTotalPrice?: number;
   quantityFulfilledFromStock?: number;
   storeAvailability?: IStoreAvailability;
+  equipment?: IEquipmentDetails;
+  attachments?: ILineAttachment[];
 }
 
 export interface IStatusHistory {
@@ -67,6 +98,33 @@ export interface IPurchaseRequisition extends Document {
   updatedAt: Date;
 }
 
+const EquipmentDetailsSchema = new Schema<IEquipmentDetails>({
+  make: { type: String, trim: true },
+  model: { type: String, trim: true },
+  plantNumber: { type: String, trim: true },
+  registrationNumber: { type: String, trim: true },
+  chassisNumber: { type: String, trim: true },
+  engineNumber: { type: String, trim: true },
+  serialNumber: { type: String, trim: true },
+  componentSerial: { type: String, trim: true },
+  partNumber: { type: String, trim: true },
+  hourMeter: { type: String, trim: true }
+}, { _id: false });
+
+const LineAttachmentSchema = new Schema<ILineAttachment>({
+  kind: {
+    type: String,
+    enum: ['data_plate', 'item_photo', 'damage', 'other'],
+    default: 'data_plate'
+  },
+  fileName: { type: String, required: true },
+  fileData: { type: String, required: true },
+  mimeType: String,
+  caption: { type: String, trim: true },
+  uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  uploadedAt: { type: Date, default: Date.now }
+}, { _id: false });
+
 const RequisitionItemSchema = new Schema<IRequisitionItem>({
   item: {
     type: mongoose.Schema.Types.ObjectId,
@@ -91,6 +149,8 @@ const RequisitionItemSchema = new Schema<IRequisitionItem>({
   },
   estimatedUnitPrice: Number,
   estimatedTotalPrice: Number,
+  equipment: { type: EquipmentDetailsSchema, default: undefined },
+  attachments: { type: [LineAttachmentSchema], default: undefined },
   // How much of this line was issued from existing stock during stores review.
   quantityFulfilledFromStock: { type: Number, default: 0 },
   storeAvailability: {

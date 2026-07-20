@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
+import EquipmentDetailsView from '../components/EquipmentDetailsView';
 import {
   Calendar,
   Users,
@@ -209,6 +210,10 @@ export default function RFQDetail() {
                       {item.specifications && (
                         <p className="text-sm text-gray-600 mt-1">{item.specifications}</p>
                       )}
+                      <EquipmentDetailsView
+                        equipment={item.equipment}
+                        attachments={item.attachments}
+                      />
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium text-gray-900">

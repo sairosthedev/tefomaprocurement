@@ -1,0 +1,72 @@
+{
+  "runId": "1784458385767",
+  "mark": "SMOKE-1784458385767",
+  "users": [
+    {
+      "id": "6a5caca844978c62524d24b6",
+      "email": "smoke.enduser.1784458385767@smoke.test",
+      "role": "end_user"
+    },
+    {
+      "id": "6a5cacaa44978c62524d24bd",
+      "email": "smoke.hod.1784458385767@smoke.test",
+      "role": "department_head"
+    },
+    {
+      "id": "6a5cacab44978c62524d24c3",
+      "email": "smoke.prochead.1784458385767@smoke.test",
+      "role": "department_head"
+    },
+    {
+      "id": "6a5cacad44978c62524d24c9",
+      "email": "smoke.finance.1784458385767@smoke.test",
+      "role": "finance"
+    },
+    {
+      "id": "6a5cacaf44978c62524d24cf",
+      "email": "smoke.coo.1784458385767@smoke.test",
+      "role": "coo"
+    },
+    {
+      "id": "6a5cacb044978c62524d24d5",
+      "email": "smoke.stores.1784458385767@smoke.test",
+      "role": "stores_officer"
+    },
+    {
+      "id": "6a5cacb144978c62524d24da",
+      "email": "smoke.supplier.1784458385767@smoke.test",
+      "role": "supplier"
+    }
+  ],
+  "requisitions": [
+    "6a5caccb44978c62524d2690",
+    "6a5cad5a44978c62524d27d2",
+    "6a5cadaa44978c62524d28ef",
+    "6a5cae0d44978c62524d2a10"
+  ],
+  "rfqs": [
+    "6a5cacd544978c62524d26d9",
+    "6a5cad6444978c62524d281b",
+    "6a5cadb444978c62524d2938",
+    "6a5cae1744978c62524d2a59"
+  ],
+  "quotations": [
+    "6a5cacd944978c62524d26f6",
+    "6a5cad6744978c62524d2830",
+    "6a5cadb644978c62524d294d",
+    "6a5cae1944978c62524d2a6e"
+  ],
+  "purchaseOrders": [
+    "6a5cae2844978c62524d2ac4"
+  ],
+  "deliveries": [
+    "6a5cae3244978c62524d2b1c"
+  ],
+  "invoices": [
+    "6a5cae3b44978c62524d2b6b"
+  ],
+  "payments": [
+    "6a5cae3f44978c62524d2b95"
+  ],
+  "supplierProfileId": "6a5cacb244978c62524d24dc"
+}

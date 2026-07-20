@@ -7,6 +7,20 @@ import { UNITS_OF_MEASUREMENT } from '../lib/constants';
 import { CategorySelect } from '../components/CategorySelect';
 import { ItemSelect, type CatalogItem } from '../components/ItemSelect';
 import PageHeader from '../components/PageHeader';
+import EquipmentDetailsPanel from '../components/EquipmentDetailsPanel';
+import { categoryNeedsEquipmentDetails } from '@fossil/shared';
+
+const emptyItem = () => ({
+  description: '',
+  category: '',
+  quantity: 1,
+  unit: 'Each',
+  package: '',
+  specification: '',
+  equipment: {} as Record<string, string>,
+  attachments: [] as any[],
+  catalogItem: null as CatalogItem | null
+});
 
 export default function CreateRequisition() {
   const navigate = useNavigate();
@@ -17,13 +31,13 @@ export default function CreateRequisition() {
     workOrder: '',
     description: '',
     urgency: 'normal',
-    items: [{ description: '', category: '', quantity: 1, unit: 'Each', package: '', specification: '', catalogItem: null as CatalogItem | null }]
+    items: [emptyItem()]
   });
 
   const addItem = () => {
     setFormData({
       ...formData,
-      items: [...formData.items, { description: '', category: '', quantity: 1, unit: 'Each', package: '', specification: '', catalogItem: null as CatalogItem | null }]
+      items: [...formData.items, emptyItem()]
     });
   };
 
@@ -38,6 +52,21 @@ export default function CreateRequisition() {
   const updateItem = (index: any, field: any, value: any) => {
     const newItems = [...formData.items];
     newItems[index][field] = value;
+    setFormData({ ...formData, items: newItems });
+  };
+
+  const updateEquipmentField = (index: number, key: string, value: string) => {
+    const newItems = [...formData.items];
+    newItems[index] = {
+      ...newItems[index],
+      equipment: { ...(newItems[index].equipment || {}), [key]: value }
+    };
+    setFormData({ ...formData, items: newItems });
+  };
+
+  const updateAttachments = (index: number, attachments: any[]) => {
+    const newItems = [...formData.items];
+    newItems[index] = { ...newItems[index], attachments };
     setFormData({ ...formData, items: newItems });
   };
 
@@ -83,7 +112,9 @@ export default function CreateRequisition() {
           package: item.package,
           quantity: item.quantity,
           unit: item.unit,
-          specification: item.specification
+          specification: item.specification,
+          equipment: item.equipment,
+          attachments: item.attachments
         })),
         status: submit ? 'pending' : 'draft'
       });
@@ -281,6 +312,15 @@ export default function CreateRequisition() {
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     />
                   </div>
+
+                  <EquipmentDetailsPanel
+                    equipment={item.equipment || {}}
+                    attachments={item.attachments || []}
+                    onEquipmentChange={(key, value) => updateEquipmentField(index, key, value)}
+                    onAttachmentsChange={(next) => updateAttachments(index, next)}
+                    defaultOpen={categoryNeedsEquipmentDetails(item.category)}
+                    onError={(message) => showToast(message, 'error')}
+                  />
                 </div>
               </div>
             ))}

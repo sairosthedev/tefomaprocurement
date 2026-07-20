@@ -140,8 +140,10 @@ const acceptDelivery = async (req: Request, res: Response): Promise<any> => {
       }
     }
 
-    // Update delivery status
+    // Update delivery status — the accepting user is the inspecting officer of record
     delivery.status = status;
+    delivery.inspectedBy = req.user!._id;
+    delivery.inspectedAt = new Date();
     if (notes) delivery.notes = notes;
     await delivery.save();
 

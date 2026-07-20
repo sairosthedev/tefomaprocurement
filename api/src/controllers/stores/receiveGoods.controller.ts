@@ -7,13 +7,28 @@ import { resolveSiteId, findOrCreateInventory } from '../../lib/siteScope.js';
 
 const receiveGoods = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { 
-      purchaseOrderId, 
-      deliveryNoteNumber, 
-      deliveryDate, 
-      items, 
-      notes 
+    const {
+      purchaseOrderId,
+      deliveryNoteNumber,
+      deliveryDate,
+      items,
+      notes,
+      deliveredBy
     } = req.body;
+
+    // Person who physically handed over the goods (supplier's driver/rep)
+    const deliveredByRecord = deliveredBy?.name
+      ? {
+          name: String(deliveredBy.name).trim(),
+          idNumber: deliveredBy.idNumber ? String(deliveredBy.idNumber).trim() : undefined,
+          company: deliveredBy.company ? String(deliveredBy.company).trim() : undefined,
+          vehicleRegistration: deliveredBy.vehicleRegistration
+            ? String(deliveredBy.vehicleRegistration).trim()
+            : undefined,
+          contactNumber: deliveredBy.contactNumber ? String(deliveredBy.contactNumber).trim() : undefined,
+          signedAt: new Date()
+        }
+      : undefined;
 
     const po = await PurchaseOrder.findById(purchaseOrderId);
     if (!po || po.isDeleted) {
@@ -59,6 +74,8 @@ const receiveGoods = async (req: Request, res: Response): Promise<any> => {
       delivery.deliveryDate = new Date(deliveryDate);
       delivery.receivedAtSite = receiveSiteId;
       delivery.receivedBy = req.user!._id;
+      delivery.receivedAt = new Date();
+      if (deliveredByRecord) delivery.deliveredBy = deliveredByRecord;
       delivery.items = items;
       delivery.isPartialDelivery = !allReceived;
       delivery.isFinalDelivery = allReceived;
@@ -74,6 +91,8 @@ const receiveGoods = async (req: Request, res: Response): Promise<any> => {
         deliveryNoteNumber,
         deliveryDate: new Date(deliveryDate),
         receivedBy: req.user!._id,
+        receivedAt: new Date(),
+        deliveredBy: deliveredByRecord,
         items,
         isPartialDelivery: !allReceived,
         isFinalDelivery: allReceived,

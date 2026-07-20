@@ -7,6 +7,7 @@ import {
   suggestAction
 } from '../../services/inventoryAvailability.service.js';
 import { hasEnteredLineItems } from '../../lib/lineItems.js';
+import { sanitiseEquipment, sanitiseAttachments } from '../../services/lineAttachments.service.js';
 
 const createRequisition = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -56,6 +57,15 @@ const createRequisition = async (req: Request, res: Response): Promise<any> => {
           ? item.estimatedUnitPrice * item.quantity
           : 0
       };
+
+      // Optional machine identification + data-plate photos
+      line.equipment = sanitiseEquipment(item.equipment);
+
+      const attachments = sanitiseAttachments(item.attachments, req.user!._id);
+      if (!attachments.ok) {
+        return res.status(400).json({ success: false, message: attachments.message });
+      }
+      line.attachments = attachments.value;
 
       if (line.item) {
         const { atSite, elsewhere, total } = await checkItemAvailability(line.item, siteId);

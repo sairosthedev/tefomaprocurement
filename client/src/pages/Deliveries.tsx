@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../components/Toast';
 import api, { storesAPI } from '../lib/api';
-import { 
-  Plus, Search, Truck, CheckCircle, 
-  Loader2, Package, Calendar, FileText, AlertCircle, Clock
+import {
+  Plus, Search, Truck, CheckCircle,
+  Loader2, Package, Calendar, FileText, AlertCircle, Clock, Printer
 } from 'lucide-react';
 import ViewButton from '../components/ViewButton';
 import PageHeader from '../components/PageHeader';
@@ -37,8 +37,10 @@ export default function Deliveries() {
   const [selectedPO, setSelectedPO] = useState<any>(null);
   const [receiveData, setReceiveData] = useState<any>({
     deliveryNote: '',
-    items: []
+    items: [],
+    deliveredBy: { name: '', idNumber: '', vehicleRegistration: '', contactNumber: '' }
   });
+  const [printingId, setPrintingId] = useState<string | null>(null);
   const [isReceiving, setIsReceiving] = useState<any>(false);
   const [acceptNotes, setAcceptNotes] = useState('');
   const [acceptStatus, setAcceptStatus] = useState<'accepted' | 'partially_accepted' | 'rejected'>('accepted');
@@ -85,6 +87,13 @@ export default function Deliveries() {
     setSelectedPO(po);
     setReceiveData({
       deliveryNote: po.pendingDelivery?.deliveryNoteNumber || '',
+      deliveredBy: {
+        name: '',
+        idNumber: '',
+        company: po.supplier?.companyName || '',
+        vehicleRegistration: '',
+        contactNumber: ''
+      },
       items: po.items.map((item: any) => ({
         _id: item._id,
         description: item.description,
@@ -104,6 +113,11 @@ export default function Deliveries() {
         return;
       }
 
+      if (!receiveData.deliveredBy?.name?.trim()) {
+        showToast("Please record who delivered the goods", 'error');
+        return;
+      }
+
       setIsReceiving(true);
       await api.post('/stores/deliveries', {
         purchaseOrderId: selectedPO._id,
@@ -118,18 +132,36 @@ export default function Deliveries() {
             quantityReceived: item.receivedQuantity || 0,
             condition: 'good'
           })),
+        deliveredBy: {
+          name: receiveData.deliveredBy.name.trim(),
+          idNumber: receiveData.deliveredBy.idNumber?.trim() || undefined,
+          company: receiveData.deliveredBy.company?.trim() || undefined,
+          vehicleRegistration: receiveData.deliveredBy.vehicleRegistration?.trim() || undefined,
+          contactNumber: receiveData.deliveredBy.contactNumber?.trim() || undefined
+        },
         notes: ''
       });
 
       showToast('Goods received successfully', 'success');
       setShowReceiveModal(false);
-      setReceiveData({ deliveryNote: '', items: [] });
+      setReceiveData({
+        deliveryNote: '',
+        items: [],
+        deliveredBy: { name: '', idNumber: '', vehicleRegistration: '', contactNumber: '' }
+      });
       fetchData();
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to receive goods', 'error');
     } finally {
       setIsReceiving(false);
     }
+  };
+
+  const updateDeliveredBy = (field: string, value: string) => {
+    setReceiveData((prev: any) => ({
+      ...prev,
+      deliveredBy: { ...prev.deliveredBy, [field]: value }
+    }));
   };
 
   const updateReceivedQty = (index: any, qty: any) => {
@@ -140,6 +172,44 @@ export default function Deliveries() {
 
   const canAcceptDelivery = (delivery: any) =>
     ['received', 'inspected'].includes(delivery?.status);
+
+  const canPrintGrv = (delivery: any) => delivery?.status && delivery.status !== 'pending';
+
+  const handlePrintGrv = async (delivery: any) => {
+    try {
+      setPrintingId(delivery._id);
+      const res = await storesAPI.printGrv(delivery._id);
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const win = window.open(url, '_blank');
+      if (win) {
+        // Give the viewer a moment to render before invoking the print dialog
+        win.addEventListener('load', () => win.print());
+      } else {
+        // Popup blocked — fall back to a download
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${delivery.grvNumber || 'GRV'}.pdf`;
+        link.click();
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (error: any) {
+      // Errors on a blob request arrive as a Blob, not parsed JSON
+      let message = 'Failed to generate GRV';
+      const payload = error.response?.data;
+      if (payload instanceof Blob) {
+        try {
+          message = JSON.parse(await payload.text())?.message || message;
+        } catch {
+          /* keep default message */
+        }
+      } else if (payload?.message) {
+        message = payload.message;
+      }
+      showToast(message, 'error');
+    } finally {
+      setPrintingId(null);
+    }
+  };
 
   const openAcceptFlow = (delivery: any) => {
     setSelectedDelivery(delivery);
@@ -308,6 +378,21 @@ export default function Deliveries() {
                             Accept
                           </button>
                         )}
+                        {canPrintGrv(delivery) && (
+                          <button
+                            onClick={() => handlePrintGrv(delivery)}
+                            disabled={printingId === delivery._id}
+                            title="Print GRV"
+                            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-100 disabled:opacity-50"
+                          >
+                            {printingId === delivery._id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Printer className="h-3.5 w-3.5" />
+                            )}
+                            Print
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -379,6 +464,64 @@ export default function Deliveries() {
               <p className="text-xs text-gray-500 mt-1">
                 This is the number from the supplier's delivery note document that accompanies the goods.
                 {selectedPO.pendingDelivery?.deliveryNoteNumber ? ' The supplier has already provided a delivery note number above.' : ' If the supplier provided a delivery note number when acknowledging the PO, it will be pre-filled.'}
+              </p>
+            </div>
+
+            <div className="border border-gray-200 rounded-xl p-4">
+              <label className="block text-sm font-semibold text-gray-800 mb-1">
+                Delivered by <span className="text-red-500">*</span>
+              </label>
+              <p className="text-xs text-gray-500 mb-3">
+                Record the driver or supplier representative who physically handed over the goods.
+                This is printed on the GRV for signature.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Full name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={receiveData.deliveredBy?.name || ''}
+                    onChange={(e: any) => updateDeliveredBy('name', e.target.value)}
+                    placeholder="e.g. John Moyo"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">ID number</label>
+                  <input
+                    type="text"
+                    value={receiveData.deliveredBy?.idNumber || ''}
+                    onChange={(e: any) => updateDeliveredBy('idNumber', e.target.value)}
+                    placeholder="National ID / licence"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Vehicle registration</label>
+                  <input
+                    type="text"
+                    value={receiveData.deliveredBy?.vehicleRegistration || ''}
+                    onChange={(e: any) => updateDeliveredBy('vehicleRegistration', e.target.value)}
+                    placeholder="e.g. AEB 1234"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Contact number</label>
+                  <input
+                    type="text"
+                    value={receiveData.deliveredBy?.contactNumber || ''}
+                    onChange={(e: any) => updateDeliveredBy('contactNumber', e.target.value)}
+                    placeholder="Phone number"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-3">
+                You are recorded as the receiving officer. The inspecting officer is captured when the
+                delivery is accepted into stock.
               </p>
             </div>
 
@@ -510,15 +653,59 @@ export default function Deliveries() {
                   {selectedDelivery.deliveryNoteNumber || (selectedDelivery.status === 'pending' ? 'Not yet provided' : '-')}
                 </p>
               </div>
-              {selectedDelivery.receivedBy && (
-                <div>
-                  <label className="text-sm text-gray-500">Received By</label>
-                  <p className="text-gray-900">
-                    {selectedDelivery.receivedBy.firstName} {selectedDelivery.receivedBy.lastName}
-                  </p>
-                </div>
-              )}
             </div>
+
+            {/* Signatories */}
+            {selectedDelivery.status !== 'pending' && (
+              <div>
+                <label className="text-sm text-gray-500 mb-2 block">Signatories</label>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="border border-gray-200 rounded-xl p-3">
+                    <p className="text-xs font-semibold text-primary uppercase tracking-wide">Delivered by</p>
+                    <p className="text-sm text-gray-900 mt-1">
+                      {selectedDelivery.deliveredBy?.name || <span className="text-gray-400">Not recorded</span>}
+                    </p>
+                    {selectedDelivery.deliveredBy?.idNumber && (
+                      <p className="text-xs text-gray-500 mt-0.5">ID: {selectedDelivery.deliveredBy.idNumber}</p>
+                    )}
+                    {selectedDelivery.deliveredBy?.vehicleRegistration && (
+                      <p className="text-xs text-gray-500">Vehicle: {selectedDelivery.deliveredBy.vehicleRegistration}</p>
+                    )}
+                    {selectedDelivery.deliveredBy?.contactNumber && (
+                      <p className="text-xs text-gray-500">Tel: {selectedDelivery.deliveredBy.contactNumber}</p>
+                    )}
+                  </div>
+
+                  <div className="border border-gray-200 rounded-xl p-3">
+                    <p className="text-xs font-semibold text-primary uppercase tracking-wide">Received by</p>
+                    <p className="text-sm text-gray-900 mt-1">
+                      {selectedDelivery.receivedBy
+                        ? `${selectedDelivery.receivedBy.firstName} ${selectedDelivery.receivedBy.lastName}`
+                        : <span className="text-gray-400">Not recorded</span>}
+                    </p>
+                    {(selectedDelivery.receivedAt || selectedDelivery.deliveryDate) && (
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {new Date(selectedDelivery.receivedAt || selectedDelivery.deliveryDate).toLocaleString('en-ZA')}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="border border-gray-200 rounded-xl p-3">
+                    <p className="text-xs font-semibold text-primary uppercase tracking-wide">Inspected by</p>
+                    <p className="text-sm text-gray-900 mt-1">
+                      {selectedDelivery.inspectedBy
+                        ? `${selectedDelivery.inspectedBy.firstName} ${selectedDelivery.inspectedBy.lastName}`
+                        : <span className="text-gray-400">Pending inspection</span>}
+                    </p>
+                    {selectedDelivery.inspectedAt && (
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {new Date(selectedDelivery.inspectedAt).toLocaleString('en-ZA')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="text-sm text-gray-500 mb-2 block">Items Received</label>
@@ -545,6 +732,23 @@ export default function Deliveries() {
                 </table>
               </div>
             </div>
+
+            {canPrintGrv(selectedDelivery) && (
+              <div className="flex justify-end border-t border-gray-100 pt-4">
+                <button
+                  onClick={() => handlePrintGrv(selectedDelivery)}
+                  disabled={printingId === selectedDelivery._id}
+                  className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-100 disabled:opacity-50"
+                >
+                  {printingId === selectedDelivery._id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Printer className="h-4 w-4" />
+                  )}
+                  Print GRV
+                </button>
+              </div>
+            )}
 
             {canAcceptDelivery(selectedDelivery) && (
               <div className="border-t border-gray-100 pt-6 space-y-4">

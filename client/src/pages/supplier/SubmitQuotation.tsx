@@ -4,6 +4,8 @@ import { useToast } from '../../components/Toast';
 import api from '../../lib/api';
 import { Send, Loader2, FileText, AlertTriangle } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
+import EquipmentDetailsView from '../../components/EquipmentDetailsView';
+import QuoteLinePhotos from '../../components/QuoteLinePhotos';
 import { CURRENCIES, formatCurrency } from '../../lib/constants';
 
 export default function SubmitQuotation() {
@@ -46,6 +48,10 @@ export default function SubmitQuotation() {
             description: item.description,
             quantity: item.quantity,
             unit: item.unit,
+            // Carried for display so the supplier can price against the exact machine
+            specifications: item.specifications,
+            equipment: item.equipment,
+            attachments: item.attachments,
             unitPrice: 0,
             brand: '',
             notes: ''
@@ -98,7 +104,11 @@ export default function SubmitQuotation() {
           totalPrice: item.quantity * parseFloat(item.unitPrice),
           brand: item.brand,
           notes: item.notes,
-          vatIncluded: false
+          vatIncluded: false,
+          isAlternative: Boolean(item.isAlternative),
+          alternativeDescription: item.alternativeDescription,
+          alternativePartNumber: item.alternativePartNumber,
+          attachments: item.quoteAttachments
         })),
         totalAmount: calculateTotal()
       });
@@ -215,9 +225,18 @@ export default function SubmitQuotation() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {formData.items.map((item: any, index: any) => (
-                  <tr key={index}>
+                  <React.Fragment key={index}>
+                  <tr>
                     <td className="py-3 px-4">
                       <p className="text-sm font-medium text-gray-900">{item.description}</p>
+                      {item.specifications && (
+                        <p className="text-xs text-gray-500 mt-0.5">{item.specifications}</p>
+                      )}
+                      <EquipmentDetailsView
+                        equipment={item.equipment}
+                        attachments={item.attachments}
+                        compact
+                      />
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-600">
                       {item.quantity} {item.unit}
@@ -246,6 +265,56 @@ export default function SubmitQuotation() {
                       {formatCurrency(item.quantity * (parseFloat(item.unitPrice) || 0), formData.currency)}
                     </td>
                   </tr>
+                  <tr className="bg-gray-50/60">
+                    <td colSpan={5} className="px-4 pb-3">
+                      <label className="inline-flex items-center gap-2 text-xs text-gray-700">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(item.isAlternative)}
+                          onChange={(e: any) => updateItemPrice(index, 'isAlternative', e.target.checked)}
+                          className="rounded border-gray-300 text-primary focus:ring-primary/30"
+                        />
+                        I am offering an equivalent / alternative part for this line
+                      </label>
+
+                      {item.isAlternative && (
+                        <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">
+                              What are you supplying?
+                            </label>
+                            <input
+                              type="text"
+                              value={item.alternativeDescription || ''}
+                              onChange={(e: any) => updateItemPrice(index, 'alternativeDescription', e.target.value)}
+                              placeholder="e.g. Donaldson equivalent filter"
+                              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">
+                              Its part number
+                            </label>
+                            <input
+                              type="text"
+                              value={item.alternativePartNumber || ''}
+                              onChange={(e: any) => updateItemPrice(index, 'alternativePartNumber', e.target.value)}
+                              placeholder="e.g. P552100"
+                              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <QuoteLinePhotos
+                              attachments={item.quoteAttachments || []}
+                              onChange={(next: any[]) => updateItemPrice(index, 'quoteAttachments', next)}
+                              onError={(m: string) => showToast(m, 'error')}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                  </React.Fragment>
                 ))}
               </tbody>
               <tfoot className="bg-gray-50">

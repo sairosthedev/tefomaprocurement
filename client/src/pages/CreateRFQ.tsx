@@ -166,7 +166,17 @@ export default function CreateRFQ() {
           categoryName: item.category, // carry the canonical category code
           specifications: item.specification || item.specifications,
           quantity: item.quantity,
-          unit: item.unit || 'Each'
+          unit: item.unit || 'Each',
+          // Machine identification and data-plate photos travel with the line so
+          // suppliers can match the exact part.
+          equipment: item.equipment,
+          attachments: item.attachments?.map((a: any) => ({
+            kind: a.kind,
+            fileName: a.fileName,
+            fileData: a.fileData,
+            mimeType: a.mimeType,
+            caption: a.caption
+          }))
         })) || [],
         invitedSuppliers: selectedSuppliers.map((s: any) => s._id),
         submissionDeadline: formData.submissionDeadline,

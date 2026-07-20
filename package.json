@@ -23,9 +23,12 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
     "install:all": "npm install",
-    "ngrok": "powershell -ExecutionPolicy Bypass -File ./scripts/start-ngrok.ps1"
+    "ngrok": "powershell -ExecutionPolicy Bypass -File ./scripts/start-ngrok.ps1",
+    "deploy:client": "vercel link --yes --project tefomaprocurement --scope macdonald-sairos-projects && vercel --prod",
+    "deploy:api": "vercel link --yes --project tefomaprocurement-api --scope macdonald-sairos-projects && vercel --prod"
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.3",
     "concurrently": "^8.2.2",
     "prettier": "^3.3.3"
   },
@@ -33,4 +36,3 @@
     "node": ">=18.0.0"
   }
 }
-

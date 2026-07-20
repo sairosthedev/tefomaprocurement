@@ -17,6 +17,16 @@ export interface IDeliveryAttachment {
   uploadedAt: Date;
 }
 
+/** Person who physically delivered the goods — supplier's driver/rep, not a system user. */
+export interface IDeliveredBy {
+  name?: string;
+  idNumber?: string;
+  company?: string;
+  vehicleRegistration?: string;
+  contactNumber?: string;
+  signedAt?: Date;
+}
+
 export interface IDelivery extends Document {
   grvNumber?: string;
   purchaseOrder: mongoose.Types.ObjectId | any;
@@ -26,6 +36,8 @@ export interface IDelivery extends Document {
   expectedDeliveryDate?: Date;
   receivedAtSite?: mongoose.Types.ObjectId | any;
   receivedBy?: mongoose.Types.ObjectId | any;
+  receivedAt?: Date;
+  deliveredBy?: IDeliveredBy;
   items: IDeliveryItem[];
   isPartialDelivery: boolean;
   isFinalDelivery: boolean;
@@ -97,6 +109,15 @@ const DeliverySchema = new Schema<IDelivery>({
   receivedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
+  },
+  receivedAt: Date,
+  deliveredBy: {
+    name: { type: String, trim: true },
+    idNumber: { type: String, trim: true },
+    company: { type: String, trim: true },
+    vehicleRegistration: { type: String, trim: true },
+    contactNumber: { type: String, trim: true },
+    signedAt: Date
   },
   items: [DeliveryItemSchema],
   isPartialDelivery: {

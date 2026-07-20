@@ -1,5 +1,15 @@
 import mongoose, { Schema, type Document } from 'mongoose';
 
+/** Photo a supplier attaches to a quote line — typically the data plate of an
+ *  equivalent part they are offering in place of the exact one requested. */
+export interface IQuotationLineAttachment {
+  kind: 'data_plate' | 'item_photo' | 'damage' | 'other';
+  fileName: string;
+  fileData: string;
+  mimeType?: string;
+  caption?: string;
+}
+
 export interface IQuotationItem {
   /** The RFQ line this quote line answers, for per-line comparison and award.
    *  Falls back to description match for legacy quotes without it. */
@@ -11,6 +21,12 @@ export interface IQuotationItem {
   unitPrice: number;
   totalPrice: number;
   vatIncluded: boolean;
+  /** Set when the supplier is offering an equivalent rather than the exact
+   *  part requested — procurement must be able to see what they'd receive. */
+  isAlternative?: boolean;
+  alternativeDescription?: string;
+  alternativePartNumber?: string;
+  attachments?: IQuotationLineAttachment[];
 }
 
 export interface IRevisionRequest {
@@ -86,6 +102,23 @@ const QuotationItemSchema = new Schema<IQuotationItem>({
   vatIncluded: {
     type: Boolean,
     default: false
+  },
+  isAlternative: { type: Boolean, default: false },
+  alternativeDescription: { type: String, trim: true },
+  alternativePartNumber: { type: String, trim: true },
+  attachments: {
+    type: [new Schema<IQuotationLineAttachment>({
+      kind: {
+        type: String,
+        enum: ['data_plate', 'item_photo', 'damage', 'other'],
+        default: 'data_plate'
+      },
+      fileName: { type: String, required: true },
+      fileData: { type: String, required: true },
+      mimeType: String,
+      caption: { type: String, trim: true }
+    }, { _id: false })],
+    default: undefined
   }
 });
 
