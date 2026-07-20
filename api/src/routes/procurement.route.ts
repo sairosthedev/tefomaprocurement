@@ -82,6 +82,7 @@ router.get('/quotations', procurement.getQuotations);
 router.get('/quotations/:id', procurement.getQuotationById);
 router.put('/quotations/:id/accept', procurement.acceptQuotation);
 router.put('/quotations/:id/reject', procurement.rejectQuotation);
+router.put('/quotations/:id/request-revision', procurement.requestQuotationRevision);
 
 // Purchase Orders
 router.post('/purchase-orders', procurement.createPurchaseOrder);

@@ -49,6 +49,28 @@ const WAIVER_TYPES: { value: string; label: string }[] = [
   { value: 'other', label: 'Other (state reason below)' }
 ];
 
+/** One row of the acceptance-authorization checklist.
+ *  Defined at module scope so it keeps a stable component identity — declaring it
+ *  inside the page body would remount its children (and drop input focus) on every
+ *  keystroke. */
+function Step({ done, title, children }: any) {
+  return (
+    <div className="flex gap-3">
+      <div className="mt-0.5">
+        {done ? (
+          <CheckCircle className="h-5 w-5 text-green-600" />
+        ) : (
+          <Circle className="h-5 w-5 text-gray-300" />
+        )}
+      </div>
+      <div className="flex-1">
+        <p className={`text-sm font-medium ${done ? 'text-gray-900' : 'text-gray-700'}`}>{title}</p>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 /** HOD selection is done by the head of the department that raised the requisition. */
 function canUserHodSelect(user: any, compliance: any): boolean {
   if (user?.role === 'admin') return true;
@@ -81,6 +103,9 @@ export default function QuotationDetail() {
   const [showRejectModal, setShowRejectModal] = useState<any>(false);
   const [rejectReason, setRejectReason] = useState<any>('');
   const [rejectComments, setRejectComments] = useState<any>('');
+  const [showReviseModal, setShowReviseModal] = useState<any>(false);
+  const [reviseReason, setReviseReason] = useState<any>('');
+  const [reviseTarget, setReviseTarget] = useState<any>('');
   const [processing, setProcessing] = useState<any>(false);
   const [showCreatePOModal, setShowCreatePOModal] = useState<any>(false);
   const [poFormData, setPOFormData] = useState<any>({
@@ -236,6 +261,29 @@ export default function QuotationDetail() {
     }
   };
 
+  const handleRequestRevision = async () => {
+    if (!reviseReason.trim()) {
+      showToast('Please provide a reason for the revision request', 'error');
+      return;
+    }
+    try {
+      setProcessing(true);
+      await procurementAPI.requestQuotationRevision(id, {
+        reason: reviseReason,
+        targetNote: reviseTarget
+      });
+      showToast('Price revision requested — supplier notified', 'success');
+      setShowReviseModal(false);
+      setReviseReason('');
+      setReviseTarget('');
+      fetchQuotation();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to request revision', 'error');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const handleCreatePO = async () => {
     try {
       setProcessing(true);
@@ -358,6 +406,14 @@ export default function QuotationDetail() {
                   Accept
                 </button>
                 <button
+                  onClick={() => setShowReviseModal(true)}
+                  title="Ask the supplier to submit a revised (lower) price"
+                  className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+                >
+                  <DollarSign className="h-4 w-4" />
+                  Request Revision
+                </button>
+                <button
                   onClick={() => setShowRejectModal(true)}
                   className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
                 >
@@ -365,6 +421,12 @@ export default function QuotationDetail() {
                   Reject
                 </button>
               </>
+            )}
+            {quotation.status === 'revision_requested' && (
+              <span className="flex items-center gap-2 bg-amber-50 text-amber-700 border border-amber-200 font-medium py-2 px-4 rounded-xl text-sm">
+                <DollarSign className="h-4 w-4" />
+                Awaiting supplier's revised price
+              </span>
             )}
             {quotation.status === 'accepted' && !quotation.existingPurchaseOrder && (
               <button
@@ -408,21 +470,6 @@ export default function QuotationDetail() {
             );
           }
           if (!c.pmAuthorized) missingSteps.push('Procurement Manager authorization');
-          const Step = ({ done, title, children }: any) => (
-            <div className="flex gap-3">
-              <div className="mt-0.5">
-                {done ? (
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                ) : (
-                  <Circle className="h-5 w-5 text-gray-300" />
-                )}
-              </div>
-              <div className="flex-1">
-                <p className={`text-sm font-medium ${done ? 'text-gray-900' : 'text-gray-700'}`}>{title}</p>
-                {children}
-              </div>
-            </div>
-          );
           return (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
@@ -814,6 +861,68 @@ export default function QuotationDetail() {
               <XCircle className="h-4 w-4" />
             )}
             Reject Quotation
+          </button>
+        </div>
+      </Modal>
+
+      {/* Request Revision Modal */}
+      <Modal
+        isOpen={showReviseModal}
+        onClose={() => {
+          setShowReviseModal(false);
+          setReviseReason('');
+          setReviseTarget('');
+        }}
+        title="Request Price Revision"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            The supplier will be notified to resubmit a revised quotation. Their current
+            quotation is set aside until they respond; the new price supersedes it.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Reason for revision *
+            </label>
+            <input
+              type="text"
+              value={reviseReason}
+              onChange={(e: any) => setReviseReason(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              placeholder="e.g. Price above budget — request improved pricing"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Target / guidance (optional)
+            </label>
+            <textarea
+              value={reviseTarget}
+              onChange={(e: any) => setReviseTarget(e.target.value)}
+              rows={2}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              placeholder="e.g. Target unit price USD 550, or a total below USD 5,000"
+            />
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 mt-6">
+          <button
+            onClick={() => {
+              setShowReviseModal(false);
+              setReviseReason('');
+              setReviseTarget('');
+            }}
+            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleRequestRevision}
+            disabled={processing || !reviseReason.trim()}
+            className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 flex items-center gap-2"
+          >
+            {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <DollarSign className="h-4 w-4" />}
+            Request Revision
           </button>
         </div>
       </Modal>

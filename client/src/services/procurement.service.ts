@@ -18,6 +18,7 @@ export const procurementAPI: any = {
   getQuotation: (id: any) => http.get(`/procurement/quotations/${id}`),
   acceptQuotation: (id: any, data: any) => http.put(`/procurement/quotations/${id}/accept`, data),
   rejectQuotation: (id: any, data: any) => http.put(`/procurement/quotations/${id}/reject`, data),
+  requestQuotationRevision: (id: any, data: any) => http.put(`/procurement/quotations/${id}/request-revision`, data),
   getPurchaseOrders: (params?: any) => http.get('/procurement/purchase-orders', { params }),
   getPurchaseOrder: (id: any) => http.get(`/procurement/purchase-orders/${id}`),
   createPurchaseOrder: (data: any) => http.post('/procurement/purchase-orders', data),

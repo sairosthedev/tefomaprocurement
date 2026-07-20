@@ -51,11 +51,17 @@ const getMyRFQs = async (req: Request, res: Response): Promise<any> => {
         const quotation = invitation.quotation;
         quotationStatus = quotation.status || null;
       }
-      
+
+      // When procurement asks for a revised price the supplier must be able to
+      // submit again, so treat a revision request as "not yet submitted".
+      const revisionRequested = quotationStatus === 'revision_requested';
+      const hasSubmitted = (invitation?.responded || false) && !revisionRequested;
+
       return {
         ...rfq.toObject(),
         hasResponded: invitation?.responded || false,
-        hasSubmitted: invitation?.responded || false,
+        hasSubmitted,
+        revisionRequested,
         quotationStatus: quotationStatus
       };
     });

@@ -39,18 +39,32 @@ const submitQuotation = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    if (rfq.status !== 'open') {
-      return res.status(400).json({
-        success: false,
-        message: 'RFQ is not open for submissions'
-      });
-    }
+    // A prior quotation for this RFQ+supplier blocks resubmission UNLESS it is a
+    // revision that procurement asked for — then the new quote supersedes it.
+    const existingQuotation = await Quotation.findOne({
+      rfq: rfqId,
+      supplier: profile._id,
+      isDeleted: false,
+      status: { $nin: ['superseded'] }
+    });
+    const isRevision = existingQuotation?.status === 'revision_requested';
 
-    if (new Date() > new Date(rfq.submissionDeadline)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Submission deadline has passed'
-      });
+    // A revision resubmission is allowed after close/deadline (procurement
+    // explicitly re-opened it). A fresh submission still requires an open RFQ
+    // within the deadline.
+    if (!isRevision) {
+      if (rfq.status !== 'open') {
+        return res.status(400).json({
+          success: false,
+          message: 'RFQ is not open for submissions'
+        });
+      }
+      if (new Date() > new Date(rfq.submissionDeadline)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Submission deadline has passed'
+        });
+      }
     }
 
     // Check if supplier was invited
@@ -64,13 +78,7 @@ const submitQuotation = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    // Check if already submitted
-    const existingQuotation = await Quotation.findOne({
-      rfq: rfqId,
-      supplier: profile._id,
-      isDeleted: false
-    });
-    if (existingQuotation) {
+    if (existingQuotation && !isRevision) {
       return res.status(400).json({
         success: false,
         message: 'You have already submitted a quotation for this RFQ'
@@ -107,8 +115,17 @@ const submitQuotation = async (req: Request, res: Response): Promise<any> => {
       isLocked: true,
       lockedAt: new Date(),
       submittedAt: new Date(),
-      validUntil: new Date(Date.now() + validityDays * 24 * 60 * 60 * 1000)
+      validUntil: new Date(Date.now() + validityDays * 24 * 60 * 60 * 1000),
+      revisionOf: isRevision ? existingQuotation!._id : undefined,
+      revisionRound: isRevision ? (existingQuotation!.revisionRound || 0) + 1 : 0
     });
+
+    // Archive the superseded quotation and link it forward.
+    if (isRevision && existingQuotation) {
+      existingQuotation.status = 'superseded';
+      existingQuotation.supersededBy = quotation._id;
+      await existingQuotation.save();
+    }
 
     // Update RFQ invitation status
     await RFQ.updateOne(

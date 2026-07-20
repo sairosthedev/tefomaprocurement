@@ -51,8 +51,11 @@ export default function SupplierRFQDetail() {
   if (!rfq) return null;
 
   const remaining = getRemainingTime(rfq.submissionDeadline);
+  // A revision request lets the supplier resubmit even after the RFQ has closed
+  // and past the original deadline — procurement explicitly re-opened it for them.
   const canSubmit =
-    rfq.status === 'open' && !rfq.hasSubmitted && remaining.canSubmit;
+    rfq.revisionRequested ||
+    (rfq.status === 'open' && !rfq.hasSubmitted && remaining.canSubmit);
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
@@ -68,11 +71,23 @@ export default function SupplierRFQDetail() {
               className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-medium rounded-xl hover:bg-primary-dark"
             >
               <Send className="h-4 w-4" />
-              Submit Quote
+              {rfq.revisionRequested ? 'Submit Revised Quote' : 'Submit Quote'}
             </button>
           ) : undefined
         }
       />
+
+      {rfq.revisionRequested && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
+          <Send className="h-6 w-6 text-amber-600" />
+          <div>
+            <p className="font-semibold text-amber-800">Price revision requested</p>
+            <p className="text-sm text-amber-700">
+              Procurement has asked you to resubmit with a revised price. Submit a new quote to supersede your previous one.
+            </p>
+          </div>
+        </div>
+      )}
 
       {rfq.quotationStatus === 'accepted' && (
         <div className="mb-6 bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3">

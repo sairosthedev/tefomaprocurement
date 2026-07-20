@@ -15,6 +15,7 @@ import getQuotations from './getQuotations.controller.js';
 import getQuotationById from './getQuotationById.controller.js';
 import acceptQuotation from './acceptQuotation.controller.js';
 import rejectQuotation from './rejectQuotation.controller.js';
+import requestQuotationRevision from './requestQuotationRevision.controller.js';
 import createPurchaseOrder from './createPurchaseOrder.controller.js';
 import getPurchaseOrders from './getPurchaseOrders.controller.js';
 import getPurchaseOrderById from './getPurchaseOrderById.controller.js';
@@ -70,6 +71,7 @@ export default {
   getQuotationById,
   acceptQuotation,
   rejectQuotation,
+  requestQuotationRevision,
   createPurchaseOrder,
   getPurchaseOrders,
   getPurchaseOrderById,
