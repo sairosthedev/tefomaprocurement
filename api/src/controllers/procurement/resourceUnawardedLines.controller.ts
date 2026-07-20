@@ -53,7 +53,13 @@ const resourceUnawardedLines = async (req: Request, res: Response): Promise<any>
       ? new Date(submissionDeadline)
       : new Date(Date.now() + 7 * 86400000);
 
+    // rfqNumber is required and the model's pre-save hook runs after validation,
+    // so set it explicitly (mirrors createRFQ).
+    const rfqCount = await RFQ.countDocuments();
+    const rfqNumber = `RFQ-${new Date().getFullYear()}-${String(rfqCount + 1).padStart(5, '0')}`;
+
     const newRfq = await RFQ.create({
+      rfqNumber,
       title: `${rfq.title} — re-source (unawarded lines)`,
       description: `Re-sourcing unresolved lines from RFQ ${rfq.rfqNumber}`,
       site: rfq.site,
