@@ -30,4 +30,8 @@ router.delete('/sites/:id', admin.deleteSite);
 // Audit logs
 router.get('/audit-logs', admin.getAuditLogs);
 
+// Danger zone — wipe all transactional records for a clean testing slate.
+// Keeps users, supplier profiles, departments and sites. Requires a confirm phrase.
+router.post('/reset-transactions', admin.resetTransactions);
+
 export default router;

@@ -11,6 +11,7 @@ import getSites from './getSites.controller.js';
 import updateSite from './updateSite.controller.js';
 import deleteSite from './deleteSite.controller.js';
 import getAuditLogs from './getAuditLogs.controller.js';
+import resetTransactions from './resetTransactions.controller.js';
 
 export default {
   createUser,
@@ -25,5 +26,6 @@ export default {
   getSites,
   updateSite,
   deleteSite,
-  getAuditLogs
+  getAuditLogs,
+  resetTransactions
 };
