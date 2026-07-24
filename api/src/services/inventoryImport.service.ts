@@ -24,6 +24,8 @@ export interface InventoryRowInput {
   reorderLevel?: number | string;
   quantity?: number | string;
   unitPrice?: number | string;
+  /** Bin / shelf reference within the store (e.g. "A1", "Tyre Bay"). */
+  location?: string;
   /** Ledger note when an opening-balance transaction is recorded */
   transactionNotes?: string;
 }
@@ -104,16 +106,22 @@ export async function processInventoryRow(
       inventory.quantityReserved = 0;
     }
   }
+  const location = (row.location || '').toString().trim();
+
   if (!inventory) {
     inventory = await Inventory.create({
       item: item._id,
       site: siteId,
       quantityOnHand: 0,
       quantityReserved: 0,
-      unitCost: unitPrice
+      unitCost: unitPrice,
+      location: location || undefined
     });
-  } else if (unitPrice > 0) {
-    inventory.unitCost = unitPrice;
+  } else {
+    if (unitPrice > 0) inventory.unitCost = unitPrice;
+    // Bin locations move; the sheet being imported is the latest word on where
+    // an item lives, so refresh it when one is supplied.
+    if (location) inventory.location = location;
   }
 
   // Opening balance: set on-hand to the imported quantity and log the delta.
