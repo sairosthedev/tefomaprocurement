@@ -30,6 +30,8 @@ const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
   submitted: 'bg-blue-100 text-blue-700',
   under_review: 'bg-purple-100 text-purple-700',
+  revision_requested: 'bg-amber-100 text-amber-700',
+  superseded: 'bg-gray-100 text-gray-500',
   accepted: 'bg-green-100 text-green-700',
   rejected: 'bg-red-100 text-red-700',
   expired: 'bg-amber-100 text-amber-700'
@@ -39,6 +41,8 @@ const statusIcons: any = {
   draft: Clock,
   submitted: FileText,
   under_review: Eye,
+  revision_requested: DollarSign,
+  superseded: XCircle,
   accepted: CheckCircle,
   rejected: XCircle,
   expired: Clock
@@ -48,10 +52,17 @@ const statusLabels: any = {
   draft: 'Draft',
   submitted: 'Received from Supplier',
   under_review: 'Under Review',
+  revision_requested: 'Revision Requested',
+  superseded: 'Superseded',
   accepted: 'Accepted',
   rejected: 'Rejected',
   expired: 'Expired'
 };
+
+// Fallbacks so an unrecognised status can never crash the list (React #130
+// throws if StatusIcon resolves to undefined and is rendered as <undefined/>).
+const DEFAULT_STATUS_COLOR = 'bg-gray-100 text-gray-700';
+const DEFAULT_STATUS_ICON = FileText;
 
 export default function Quotations() {
   const { showToast } = useToast();
@@ -304,7 +315,7 @@ export default function Quotations() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {quotations.map((quotation: any) => {
-                  const StatusIcon = statusIcons[quotation.status];
+                  const StatusIcon = statusIcons[quotation.status] || DEFAULT_STATUS_ICON;
                   return (
                     <tr key={quotation._id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
@@ -337,7 +348,7 @@ export default function Quotations() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${statusColors[quotation.status]}`}>
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${statusColors[quotation.status] || DEFAULT_STATUS_COLOR}`}>
                           <StatusIcon className="h-3.5 w-3.5" />
                           {statusLabels[quotation.status] || quotation.status.replace('_', ' ').charAt(0).toUpperCase() + quotation.status.replace('_', ' ').slice(1)}
                         </span>
