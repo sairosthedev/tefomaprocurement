@@ -32,6 +32,6 @@ export function brandSubject(title: string): string {
 export function getEmailFromAddress(): string {
   return (
     process.env.EMAIL_FROM?.trim() ||
-    `${getProductName()} <notifications@miccstechnologies.co.zw>`
+    `${getProductName()} <notifications@miccstech.co.zw>`
   );
 }

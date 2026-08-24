@@ -1,0 +1,47 @@
+[
+  {
+    "email": "teste2e.supplier.149375@tefoma-test.local",
+    "role": "supplier",
+    "deactivated": true
+  },
+  {
+    "email": "teste2e.supplier.940017@tefoma-test.local",
+    "role": "supplier",
+    "deactivated": true
+  },
+  {
+    "email": "teste2e.coo.821190@tefoma-test.local",
+    "role": "coo",
+    "deactivated": true
+  },
+  {
+    "email": "teste2e.finance.821190@tefoma-test.local",
+    "role": "finance",
+    "deactivated": true
+  },
+  {
+    "email": "teste2e.prochod.821190@tefoma-test.local",
+    "role": "department_head",
+    "deactivated": true
+  },
+  {
+    "email": "teste2e.procure.821190@tefoma-test.local",
+    "role": "procurement_officer",
+    "deactivated": true
+  },
+  {
+    "email": "teste2e.stores.821190@tefoma-test.local",
+    "role": "stores_officer",
+    "deactivated": true
+  },
+  {
+    "email": "teste2e.hod.821190@tefoma-test.local",
+    "role": "department_head",
+    "deactivated": true
+  },
+  {
+    "email": "teste2e.enduser.821190@tefoma-test.local",
+    "role": "end_user",
+    "deactivated": true
+  }
+]

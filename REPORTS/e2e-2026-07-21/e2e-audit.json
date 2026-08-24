@@ -1,0 +1,142 @@
+[
+  {
+    "action": "view",
+    "entity": "Delivery",
+    "user": "teste2e.stores.821190@tefoma-test.local",
+    "description": "Printed GRV GRV-2026-00005",
+    "at": "2026-07-21T20:52:41.426Z"
+  },
+  {
+    "action": "login",
+    "entity": "User",
+    "user": "teste2e.enduser.821190@tefoma-test.local",
+    "description": "User logged in successfully (OTP verified)",
+    "at": "2026-07-21T20:52:39.944Z"
+  },
+  {
+    "action": "login",
+    "entity": "User",
+    "user": "teste2e.stores.821190@tefoma-test.local",
+    "description": "User logged in successfully (OTP verified)",
+    "at": "2026-07-21T20:52:36.533Z"
+  },
+  {
+    "action": "login",
+    "entity": "User",
+    "user": "macdonaldsairos01@gmail.com",
+    "description": "User logged in successfully (OTP verified)",
+    "at": "2026-07-21T20:52:33.369Z"
+  },
+  {
+    "action": "login",
+    "entity": "User",
+    "user": "teste2e.stores.821190@tefoma-test.local",
+    "description": "User logged in successfully (OTP verified)",
+    "at": "2026-07-21T20:51:02.853Z"
+  },
+  {
+    "action": "view",
+    "entity": "Delivery",
+    "user": "teste2e.stores.821190@tefoma-test.local",
+    "description": "Printed GRV GRV-2026-00005",
+    "at": "2026-07-21T20:50:08.604Z"
+  },
+  {
+    "action": "create",
+    "entity": "Payment",
+    "user": "teste2e.finance.821190@tefoma-test.local",
+    "description": "Created payment PAY-2026-00002 for 322.25",
+    "at": "2026-07-21T20:50:05.640Z"
+  },
+  {
+    "action": "login",
+    "entity": "User",
+    "user": "teste2e.stores.821190@tefoma-test.local",
+    "description": "User logged in successfully (OTP verified)",
+    "at": "2026-07-21T20:50:02.739Z"
+  },
+  {
+    "action": "login",
+    "entity": "User",
+    "user": "teste2e.finance.821190@tefoma-test.local",
+    "description": "User logged in successfully (OTP verified)",
+    "at": "2026-07-21T20:49:59.559Z"
+  },
+  {
+    "action": "approve",
+    "entity": "Invoice",
+    "user": "teste2e.finance.821190@tefoma-test.local",
+    "description": "Approved invoice INV-2026-00003 (forced)",
+    "at": "2026-07-21T20:47:31.569Z"
+  },
+  {
+    "action": "login",
+    "entity": "User",
+    "user": "teste2e.stores.821190@tefoma-test.local",
+    "description": "User logged in successfully (OTP verified)",
+    "at": "2026-07-21T20:47:14.296Z"
+  },
+  {
+    "action": "login",
+    "entity": "User",
+    "user": "teste2e.finance.821190@tefoma-test.local",
+    "description": "User logged in successfully (OTP verified)",
+    "at": "2026-07-21T20:47:11.133Z"
+  },
+  {
+    "action": "create",
+    "entity": "Invoice",
+    "user": "teste2e.supplier.149375@tefoma-test.local",
+    "description": "Supplier submitted invoice INV-2026-00003 for PO PO-2026-00008",
+    "at": "2026-07-21T20:43:31.078Z"
+  },
+  {
+    "action": "view",
+    "entity": "Delivery",
+    "user": "teste2e.stores.821190@tefoma-test.local",
+    "description": "Printed GRV GRV-2026-00005",
+    "at": "2026-07-21T20:43:28.702Z"
+  },
+  {
+    "action": "create",
+    "entity": "Delivery",
+    "user": "teste2e.stores.821190@tefoma-test.local",
+    "description": "Received goods: GRV-2026-00005 for PO PO-2026-00008",
+    "at": "2026-07-21T20:43:08.027Z"
+  },
+  {
+    "action": "status_change",
+    "entity": "PurchaseRequisition",
+    "user": "teste2e.stores.821190@tefoma-test.local",
+    "description": "Requisition PR-2026-00014 completed - all goods delivered",
+    "at": "2026-07-21T20:43:06.406Z"
+  },
+  {
+    "action": "login",
+    "entity": "User",
+    "user": "teste2e.supplier.149375@tefoma-test.local",
+    "description": "User logged in successfully (OTP verified)",
+    "at": "2026-07-21T20:42:55.553Z"
+  },
+  {
+    "action": "login",
+    "entity": "User",
+    "user": "teste2e.finance.821190@tefoma-test.local",
+    "description": "User logged in successfully (OTP verified)",
+    "at": "2026-07-21T20:42:52.029Z"
+  },
+  {
+    "action": "login",
+    "entity": "User",
+    "user": "teste2e.stores.821190@tefoma-test.local",
+    "description": "User logged in successfully (OTP verified)",
+    "at": "2026-07-21T20:42:48.521Z"
+  },
+  {
+    "action": "login",
+    "entity": "User",
+    "user": "teste2e.procure.821190@tefoma-test.local",
+    "description": "User logged in successfully (OTP verified)",
+    "at": "2026-07-21T20:42:45.213Z"
+  }
+]

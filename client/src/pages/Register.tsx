@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { authAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
@@ -167,10 +167,10 @@ export default function Register() {
             You'll receive an email once your account is activated.
           </p>
           <Link
-            to="/supplier/login"
+            to="/"
             className="inline-flex items-center justify-center w-full px-4 py-3 bg-primary hover:bg-primary-dark text-white font-medium rounded-xl transition-colors"
           >
-            Go to Supplier Login
+            Go to Sign In
           </Link>
         </div>
       </div>
@@ -206,7 +206,7 @@ export default function Register() {
                   step > idx + 1 ? 'bg-primary text-white' :
                   step === idx + 1 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'
                 }`}>
-                  {step > idx + 1 ? '✓' : idx + 1}
+                  {step > idx + 1 ? 'âœ“' : idx + 1}
                 </div>
                 <span className={`ml-2 text-sm font-medium ${
                   step === idx + 1 ? 'text-primary' : 'text-gray-500'
@@ -359,7 +359,7 @@ export default function Register() {
                 <CategoryMultiSelect
                   value={formData.categories}
                   onChange={(codes) => setFormData((prev: any) => ({ ...prev, categories: codes }))}
-                  placeholder="Select categories your company supplies…"
+                  placeholder="Select categories your company suppliesâ€¦"
                   placement="top"
                 />
               </div>

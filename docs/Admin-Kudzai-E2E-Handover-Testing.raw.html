@@ -1,0 +1,564 @@
+<h1>FossilProcure Full-System End-to-End (E2E) Handover Test Pack</h1>
+<p><strong>Prepared for:</strong> Kudzai (<code>kudzai@fossilzim.co.zw</code>)<br><strong>Role:</strong> System Administrator / UAT Owner<br><strong>Purpose:</strong> Validate all critical workflows and controls before client handover<br><strong>Date:</strong> 2026-07-29</p>
+<hr>
+<h2>1. Test objective</h2>
+<p>Run a complete business-process and role-based test of the full FossilProcure system to confirm:</p>
+<ul>
+<li>All core procurement and stores workflows work end-to-end.</li>
+<li>Role permissions are correctly enforced.</li>
+<li>Supplier onboarding, RFQ, quotation, PO, delivery, invoice, and payment workflows complete without blockers.</li>
+<li>Audit and notification trails are complete and reviewable.</li>
+<li>The platform is ready for client handover.</li>
+</ul>
+<p><strong>Go/No-Go rule:</strong> handover can proceed only if all Priority 1 tests pass and no unresolved Critical/High defects remain.</p>
+<hr>
+<h2>2. Scope: what must be tested</h2>
+<h3>Priority 1 (must pass)</h3>
+<ol>
+<li>Authentication and OTP login for all roles.</li>
+<li>Admin setup: departments, sites, users, supplier activation readiness.</li>
+<li>End-user requisition to HOD approval.</li>
+<li>Stores issue/forward and inventory impact.</li>
+<li>Procurement RFQ creation and supplier invitation.</li>
+<li>Supplier quotation submission.</li>
+<li>Quote evaluation, selection, and PO creation.</li>
+<li>PO approval chain (HOD -&gt; Finance -&gt; COO when threshold is met).</li>
+<li>Supplier PO acknowledgement.</li>
+<li>Delivery receipt (GRV) and accept into stock.</li>
+<li>Invoice submission, finance approval, and payment recording.</li>
+<li>Notifications and audit log trace completeness.</li>
+</ol>
+<h3>Priority 2 (strongly recommended)</h3>
+<ol>
+<li>Supplier KYS document workflow and verification status behavior.</li>
+<li>Supplier evaluations and analytics visibility.</li>
+<li>Store requisitions and stock transfers between sites.</li>
+<li>Budget page visibility and finance-role access checks.</li>
+<li>Reports visibility by role.</li>
+<li>Reject/cancel/waiver branches (negative and exception paths).</li>
+</ol>
+<hr>
+<h2>3. Test environment and prerequisites</h2>
+<ul>
+<li>Environment URL: use the active UAT/live URL provided by the project owner.</li>
+<li>Browser: latest Chrome or Edge.</li>
+<li>Valid mailboxes for OTP for every test account.</li>
+<li>Stable internet connection.</li>
+<li>1 tester can execute by switching roles (log out/log in), or use separate browser profiles.</li>
+</ul>
+<h3>Estimated duration</h3>
+<ul>
+<li>First complete run: 2 to 4 hours.</li>
+<li>Retest after fixes: 60 to 120 minutes.</li>
+</ul>
+<hr>
+<h2>4. Test users and accounts</h2>
+<h2>4.1 Primary admin account</h2>
+<ul>
+<li>Admin under test: <code>kudzai@fossilzim.co.zw</code></li>
+</ul>
+<h2>4.2 Supporting role accounts</h2>
+<p>Use production/UAT role accounts supplied by project owner. If running local seeded data, default password is <code>Admin@123</code> for seeded users.</p>
+<p>Minimum roles required:</p>
+<ol>
+<li>End user</li>
+<li>Department head</li>
+<li>Stores officer</li>
+<li>Procurement officer</li>
+<li>Finance</li>
+<li>COO</li>
+<li>Supplier account(s), ideally 3 active suppliers for competitive RFQ scenario</li>
+</ol>
+<hr>
+<h2>5. Execution plan (full system)</h2>
+<h2>Phase A: Access and security checks (15-20 min)</h2>
+<ol>
+<li>Sign in as admin (<code>kudzai@fossilzim.co.zw</code>) and verify OTP flow.</li>
+<li>Confirm staff login page and supplier login page are reachable.</li>
+<li>Confirm password reset flow opens and accepts a valid email.</li>
+<li>Verify role separation basics:<ul>
+<li>End user cannot access admin pages.</li>
+<li>Supplier cannot access staff pages.</li>
+<li>Finance cannot access admin-only maintenance pages unless intended.</li>
+</ul>
+</li>
+</ol>
+<p><strong>Expected outcome:</strong> all logins work; no obvious permission leakage.</p>
+<h2>Phase B: Admin baseline setup checks (20-30 min)</h2>
+<ol>
+<li>Admin -&gt; Departments: create/update at least one test department.</li>
+<li>Admin -&gt; Sites: verify Head Office and add a second site for transfer testing.</li>
+<li>Admin -&gt; Staff Team: verify each required role account exists and is active.</li>
+<li>Admin -&gt; Suppliers: verify at least 3 suppliers are active for RFQ competition tests.</li>
+<li>Admin -&gt; Audit Logs: verify admin actions are recorded.</li>
+</ol>
+<p><strong>Expected outcome:</strong> master data is complete and auditable.</p>
+<h2>Phase C: Core end-to-end business flow (75-120 min)</h2>
+<p>Execute one requisition all the way to payment.</p>
+<ol>
+<li>End user creates requisition with:<ul>
+<li>one stock-catalog line,</li>
+<li>one manual/free-text line,</li>
+<li>realistic quantity and category values.</li>
+</ul>
+</li>
+<li>Department head approves requisition (and separately rejects a throwaway requisition with reason).</li>
+<li>Stores reviews requisition:<ul>
+<li>issue in-stock line(s),</li>
+<li>forward non-stock line(s) to procurement.</li>
+</ul>
+</li>
+<li>Procurement creates RFQ from forwarded items and invites suppliers.</li>
+<li>Supplier submits quotation(s).</li>
+<li>Procurement reviews quotations and selects winner.<ul>
+<li>If fewer than 3 quotes, complete waiver path with reason.</li>
+</ul>
+</li>
+<li>Procurement creates PO and submits for approval.</li>
+<li>HOD approves PO.</li>
+<li>Finance approves PO.</li>
+<li>COO approval branch:<ul>
+<li>test one PO below threshold (COO not required),</li>
+<li>test one PO at/above threshold (COO required).</li>
+</ul>
+</li>
+<li>Supplier acknowledges PO.</li>
+<li>Stores receives goods (GRV) and accepts into stock.</li>
+<li>Supplier submits invoice linked to PO.</li>
+<li>Finance approves invoice and records payment.</li>
+<li>Admin validates complete audit and notification trail for the transaction.</li>
+</ol>
+<p><strong>Expected outcome:</strong> end-to-end lifecycle completes with correct status transitions.</p>
+<h2>Phase D: Extended module checks (30-60 min)</h2>
+<ol>
+<li>Supplier KYS flow:<ul>
+<li>upload documents,</li>
+<li>verify checklist progress,</li>
+<li>confirm activate/verify behavior.</li>
+</ul>
+</li>
+<li>Supplier evaluation flow:<ul>
+<li>create an evaluation score,</li>
+<li>verify score appears in analytics/performance.</li>
+</ul>
+</li>
+<li>Stores extras:<ul>
+<li>test store requisition,</li>
+<li>test stock transfer between two sites.</li>
+</ul>
+</li>
+<li>Finance extras:<ul>
+<li>verify invoice state transitions,</li>
+<li>verify payments ledger entry visibility.</li>
+</ul>
+</li>
+<li>Reports and dashboards:<ul>
+<li>verify each role sees the correct report scope.</li>
+</ul>
+</li>
+</ol>
+<p><strong>Expected outcome:</strong> non-core but business-critical modules are stable and role-correct.</p>
+<hr>
+<h2>6. Detailed pass/fail checklist</h2>
+<p>Mark each row as PASS, FAIL, or BLOCKED.</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Test item</th>
+<th>Priority</th>
+<th>Result</th>
+<th>Evidence (screenshot/video/log)</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>A1</td>
+<td>Admin OTP login works for <code>kudzai@fossilzim.co.zw</code></td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>A2</td>
+<td>Staff login page available</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>A3</td>
+<td>Supplier login page available</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>A4</td>
+<td>Password reset initiation works</td>
+<td>P2</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>A5</td>
+<td>Role permission boundaries enforced</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>B1</td>
+<td>Departments can be created/updated</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>B2</td>
+<td>Sites can be created/updated</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>B3</td>
+<td>Required staff users exist and are active</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>B4</td>
+<td>At least 3 active suppliers available</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>B5</td>
+<td>Admin actions appear in Audit Logs</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>C1</td>
+<td>End user requisition creation succeeds</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>C2</td>
+<td>HOD requisition approval succeeds</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>C3</td>
+<td>HOD rejection with reason succeeds</td>
+<td>P2</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>C4</td>
+<td>Stores issue from stock updates inventory</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>C5</td>
+<td>Stores forwarding to procurement works</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>C6</td>
+<td>RFQ creation and publication works</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>C7</td>
+<td>Suppliers receive and can open RFQ</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>C8</td>
+<td>Supplier quotation submission works</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>C9</td>
+<td>Procurement quote selection works</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>C10</td>
+<td>Waiver path works when quotes &lt; 3</td>
+<td>P2</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>C11</td>
+<td>PO creation from winning quotation works</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>C12</td>
+<td>HOD PO approval works</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>C13</td>
+<td>Finance PO approval works</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>C14</td>
+<td>COO threshold logic behaves correctly</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>C15</td>
+<td>Supplier PO acknowledgement works</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>C16</td>
+<td>Delivery (GRV) creation works</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>C17</td>
+<td>Accept into stock updates inventory</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>C18</td>
+<td>Supplier invoice submission works</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>C19</td>
+<td>Finance invoice approval works</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>C20</td>
+<td>Payment recording works</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>C21</td>
+<td>Notifications visible to expected roles</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>C22</td>
+<td>Complete audit trail exists end-to-end</td>
+<td>P1</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>D1</td>
+<td>Supplier KYS upload and verification flow works</td>
+<td>P2</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>D2</td>
+<td>Supplier evaluations save and display in analytics</td>
+<td>P2</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>D3</td>
+<td>Store requisition flow works</td>
+<td>P2</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>D4</td>
+<td>Stock transfer between sites works</td>
+<td>P2</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>D5</td>
+<td>Budgets page behaves correctly for finance/admin</td>
+<td>P2</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>D6</td>
+<td>Reports access is role-appropriate</td>
+<td>P2</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+<hr>
+<h2>7. Defect logging template</h2>
+<p>Use one defect record per issue.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value to capture</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Defect ID</td>
+<td>e.g., FP-UAT-001</td>
+</tr>
+<tr>
+<td>Severity</td>
+<td>Critical / High / Medium / Low</td>
+</tr>
+<tr>
+<td>Role used</td>
+<td>Admin / End user / Stores / etc.</td>
+</tr>
+<tr>
+<td>Test step ID</td>
+<td>e.g., C14</td>
+</tr>
+<tr>
+<td>Expected result</td>
+<td>What should happen</td>
+</tr>
+<tr>
+<td>Actual result</td>
+<td>What happened</td>
+</tr>
+<tr>
+<td>Repro steps</td>
+<td>Numbered steps to reproduce</td>
+</tr>
+<tr>
+<td>Evidence</td>
+<td>Screenshot/video/log reference</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>Open / Fixed / Retest Pass / Retest Fail</td>
+</tr>
+</tbody></table>
+<p>Severity guide:</p>
+<ul>
+<li><strong>Critical:</strong> blocks end-to-end completion or security/compliance risk.</li>
+<li><strong>High:</strong> major function broken with no practical workaround.</li>
+<li><strong>Medium:</strong> function works partially; workaround exists.</li>
+<li><strong>Low:</strong> cosmetic or minor usability issue.</li>
+</ul>
+<hr>
+<h2>8. Handover sign-off template</h2>
+<p><strong>Test owner:</strong> Kudzai (<code>kudzai@fossilzim.co.zw</code>)<br><strong>Execution date:</strong> ____________________<br><strong>Environment tested:</strong> ____________________</p>
+<p>Summary:</p>
+<ul>
+<li>Total test cases executed: ______</li>
+<li>Passed: ______</li>
+<li>Failed: ______</li>
+<li>Blocked: ______</li>
+<li>Critical defects open: ______</li>
+<li>High defects open: ______</li>
+</ul>
+<p>Final decision (tick one):</p>
+<ul>
+<li><input disabled="" type="checkbox"> GO for client handover</li>
+<li><input disabled="" type="checkbox"> NO-GO (fixes required before handover)</li>
+</ul>
+<p>Comments:</p>
+<hr>
+<hr>
+<p>Name: ____________________  Signature: ____________________  Date: ____________________</p>
+<hr>
+<h2>9. Evidence package to attach</h2>
+<p>Before final sign-off, attach:</p>
+<ol>
+<li>Completed checklist (Section 6).</li>
+<li>Defect log (Section 7 format).</li>
+<li>Screenshots/videos for all failed or blocked tests.</li>
+<li>Export/screenshot samples of audit logs and notifications.</li>
+<li>Final summary page with GO/NO-GO decision.</li>
+</ol>

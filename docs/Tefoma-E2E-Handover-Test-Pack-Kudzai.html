@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tefoma Procurement — E2E Handover Test Pack</title>
+<style>
+  @page { size: A4; margin: 17mm 15mm 17mm 15mm; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", Calibri, Arial, sans-serif;
+    font-size: 10.5pt; line-height: 1.45; color: #1e293b;
+  }
+  h1, h2, h3, h4 { color: #0f2e4c; line-height: 1.25; page-break-after: avoid; }
+  h2 {
+    font-size: 15pt; margin: 26px 0 10px;
+    border-bottom: 2.5px solid #0f2e4c; padding-bottom: 5px;
+  }
+  h2 .num { color: #b45309; margin-right: 6px; }
+  h3 { font-size: 12pt; margin: 18px 0 6px; }
+  h4 { font-size: 10.5pt; margin: 14px 0 4px; text-transform: uppercase; letter-spacing: .04em; color: #334155; }
+  p { margin: 6px 0; }
+  ul, ol { margin: 6px 0 6px 4px; padding-left: 18px; }
+  li { margin: 3px 0; }
+  code {
+    font-family: Consolas, "Courier New", monospace; font-size: 9.5pt;
+    background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 3px; padding: 0 3px;
+  }
+  table {
+    width: 100%; border-collapse: collapse; margin: 8px 0 12px; font-size: 9.5pt;
+    page-break-inside: auto;
+  }
+  tr { page-break-inside: avoid; }
+  th {
+    background: #0f2e4c; color: #fff; text-align: left; padding: 5px 7px;
+    font-size: 9pt; text-transform: uppercase; letter-spacing: .03em;
+  }
+  td { border: 1px solid #cbd5e1; padding: 4px 7px; vertical-align: top; }
+  tbody tr:nth-child(even) td { background: #f8fafc; }
+  .cover {
+    page-break-after: always; text-align: left;
+    padding-top: 90px;
+  }
+  .cover .brand {
+    font-size: 13pt; letter-spacing: .25em; text-transform: uppercase; color: #b45309; font-weight: 600;
+  }
+  .cover h1 {
+    font-size: 27pt; margin: 12px 0 6px; color: #0f2e4c;
+  }
+  .cover .subtitle { font-size: 13pt; color: #475569; margin-bottom: 40px; }
+  .cover table { width: auto; min-width: 70%; font-size: 10.5pt; }
+  .cover td { padding: 6px 12px; }
+  .cover td:first-child { font-weight: 600; color: #0f2e4c; white-space: nowrap; background: #f1f5f9; }
+  .cover .rule { height: 4px; background: linear-gradient(90deg, #0f2e4c 60%, #b45309); width: 220px; margin: 18px 0 26px; }
+  .cover .footer-note { margin-top: 60px; font-size: 9.5pt; color: #64748b; }
+  .callout {
+    border-left: 4px solid #b45309; background: #fffbeb; padding: 8px 12px; margin: 10px 0;
+    page-break-inside: avoid;
+  }
+  .callout.blue { border-left-color: #0f2e4c; background: #eff6ff; }
+  .callout.red { border-left-color: #b91c1c; background: #fef2f2; }
+  .callout .t { font-weight: 700; color: #92400e; text-transform: uppercase; font-size: 8.5pt; letter-spacing: .05em; }
+  .callout.blue .t { color: #0f2e4c; }
+  .callout.red .t { color: #b91c1c; }
+  .expect {
+    background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px; padding: 7px 11px; margin: 8px 0;
+    page-break-inside: avoid;
+  }
+  .expect .t { font-weight: 700; color: #166534; font-size: 9pt; text-transform: uppercase; letter-spacing: .04em; }
+  .fail {
+    background: #fef2f2; border: 1px solid #fecaca; border-radius: 4px; padding: 7px 11px; margin: 8px 0;
+    page-break-inside: avoid;
+  }
+  .fail .t { font-weight: 700; color: #991b1b; font-size: 9pt; text-transform: uppercase; letter-spacing: .04em; }
+  .role {
+    display: inline-block; background: #0f2e4c; color: #fff; font-size: 8.5pt; font-weight: 600;
+    padding: 2px 9px; border-radius: 10px; letter-spacing: .03em;
+  }
+  .phase-meta { color: #64748b; font-size: 9.5pt; font-style: italic; margin: -4px 0 10px; }
+  .checkbox { font-size: 12pt; }
+  .pagebreak { page-break-before: always; }
+  .sig-line { border-bottom: 1px solid #334155; display: inline-block; min-width: 190px; }
+  .toc td { border: none; border-bottom: 1px dotted #cbd5e1; padding: 4px 4px; }
+  .toc tr:nth-child(even) td { background: none; }
+  .small { font-size: 9pt; color: #475569; }
+  .id-cell { font-weight: 700; color: #0f2e4c; white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<!-- ============================ COVER ============================ -->
+<div class="cover">
+  <div class="brand">Tefoma Procurement</div>
+  <h1>End-to-End Handover<br>Test Pack</h1>
+  <div class="subtitle">Full-system UAT script — every role, every module, before client handover</div>
+  <div class="rule"></div>
+  <table>
+    <tr><td>Prepared for</td><td>Kudzai — Test Engineer / UAT Owner (<code>kudzai@fossilzim.co.zw</code>)</td></tr>
+    <tr><td>System</td><td>Tefoma Procurement (Tefoma Construction)</td></tr>
+    <tr><td>Environment</td><td><code>https://tefomaprocurement.vercel.app</code></td></tr>
+    <tr><td>Document date</td><td>29 July 2026</td></tr>
+    <tr><td>Version</td><td>1.0</td></tr>
+    <tr><td>First full run</td><td>Approx. 4–6 hours (can be split across a day)</td></tr>
+    <tr><td>Retest after fixes</td><td>Approx. 1–2 hours</td></tr>
+  </table>
+  <p class="footer-note">
+    Confidential — internal testing document. You will sign in as <strong>every role in the system</strong>,
+    not only as admin: end user, department heads, stores, procurement, finance, COO, suppliers and admin.
+    The goal is a GO / NO-GO decision for client handover, backed by the completed checklist at the back
+    of this pack.
+  </p>
+</div>
+
+<!-- ============================ TOC ============================ -->
+<h2><span class="num">§</span>Contents</h2>
+<table class="toc">
+  <tr><td>1</td><td>Objective and Go/No-Go rule</td></tr>
+  <tr><td>2</td><td>What you are testing — module map</td></tr>
+  <tr><td>3</td><td>Environment, signing in, and ground rules</td></tr>
+  <tr><td>4</td><td>Test accounts (all roles)</td></tr>
+  <tr><td>5</td><td>Test data conventions</td></tr>
+  <tr><td>Phase A</td><td>Access &amp; security checks</td></tr>
+  <tr><td>Phase B</td><td>Admin baseline &amp; master data</td></tr>
+  <tr><td>Phase C</td><td>Core lifecycle: requisition → payment (the long walk)</td></tr>
+  <tr><td>Phase D</td><td>New features deep-dive: negotiation, split award, multi-PO, re-sourcing, stock import</td></tr>
+  <tr><td>Phase E</td><td>Extended modules: KYS, evaluations, stores extras, finance extras, reports</td></tr>
+  <tr><td>Phase F</td><td>Negative, exception &amp; permission tests</td></tr>
+  <tr><td>6</td><td>Master pass/fail checklist</td></tr>
+  <tr><td>7</td><td>Things that look like faults but are not</td></tr>
+  <tr><td>8</td><td>Known issues already logged</td></tr>
+  <tr><td>9</td><td>Defect logging template and severity guide</td></tr>
+  <tr><td>10</td><td>Evidence package and handover sign-off</td></tr>
+</table>
+
+<!-- ============================ 1 OBJECTIVE ============================ -->
+<h2><span class="num">1</span>Objective and Go/No-Go rule</h2>
+<p>Run a complete business-process and role-based test of Tefoma Procurement to confirm:</p>
+<ul>
+  <li>All core procurement and stores workflows complete end-to-end with correct status transitions.</li>
+  <li>Role permissions are enforced — nobody can act outside their role.</li>
+  <li>The recently shipped features work: equipment details &amp; photos on requisition lines, supplier
+      alternative-part offers, price-revision negotiation, per-line split awards, multi-PO generation,
+      re-sourcing of unawarded lines, GRV printing, and the stock-code import.</li>
+  <li>Audit and notification trails are complete and reviewable.</li>
+</ul>
+<div class="callout red">
+  <span class="t">Go / No-Go rule</span><br>
+  Handover proceeds only if <strong>all Priority 1 items pass</strong> (marked P1 in the master checklist)
+  and <strong>no Critical or High defect remains open</strong>. Anything else is a NO-GO with a fix list.
+</div>
+
+<!-- ============================ 2 MODULE MAP ============================ -->
+<h2><span class="num">2</span>What you are testing — module map</h2>
+<table>
+  <tr><th>Module</th><th>Where</th><th>Main roles</th></tr>
+  <tr><td>Authentication &amp; OTP</td><td>/login · /supplier/login · /register · /forgot-password</td><td>Everyone</td></tr>
+  <tr><td>Requisitions (with equipment details &amp; photos)</td><td>My Requisitions → New Requisition</td><td>End user, HOD, Procurement</td></tr>
+  <tr><td>Stores PR gate (issue from stock / forward)</td><td>Stores PR Review</td><td>Stores officer</td></tr>
+  <tr><td>RFQs (sealed bidding)</td><td>RFQs</td><td>Procurement</td></tr>
+  <tr><td>Quotations, alternative parts, price revision</td><td>Quotations · Supplier portal: My RFQs</td><td>Procurement, Supplier</td></tr>
+  <tr><td>Award Matrix — per-line split award, multi-PO, re-source</td><td>RFQ detail → Award</td><td>HOD, Procurement</td></tr>
+  <tr><td>Purchase orders &amp; 4-stage approval chain</td><td>Purchase Orders · Approvals</td><td>Dept HOD, Procurement HOD, Finance, COO</td></tr>
+  <tr><td>Deliveries / GRV + printed GRV document</td><td>Deliveries</td><td>Stores officer, Supplier</td></tr>
+  <tr><td>Inventory, stock movements, transfers, store requisitions</td><td>Inventory · Stock Movements · Stock Transfers · Store Requisitions</td><td>Stores, HOD</td></tr>
+  <tr><td>Invoices, three-way match, payments, budgets</td><td>Invoices · Payments · Budgets</td><td>Finance, Supplier</td></tr>
+  <tr><td>Suppliers, KYS compliance, evaluations, analytics</td><td>Suppliers · Evaluations · Analytics</td><td>Procurement, COO, Admin</td></tr>
+  <tr><td>Admin: users, departments, sites, audit logs</td><td>Users · Departments · Sites · Audit Logs</td><td>Admin</td></tr>
+  <tr><td>Reports, notifications, dashboards</td><td>Reports · Notifications · Dashboard</td><td>All staff</td></tr>
+</table>
+
+<!-- ============================ 3 ENVIRONMENT ============================ -->
+<h2><span class="num">3</span>Environment, signing in, and ground rules</h2>
+<table>
+  <tr><th>You need</th><th>Notes</th></tr>
+  <tr><td>Computer with Chrome or Edge (latest)</td><td>Phone works but is harder</td></tr>
+  <tr><td>System address</td><td><code>https://tefomaprocurement.vercel.app</code></td></tr>
+  <tr><td>Logins for each role</td><td>Section 4. Confirm live-environment passwords with the project owner</td></tr>
+  <tr><td>Access to each login's email inbox</td><td>Every sign-in emails a 6-digit one-time code (OTP)</td></tr>
+  <tr><td>This pack, printed or on a second screen</td><td>You switch users constantly</td></tr>
+</table>
+
+<h3>Signing in — you will do this a lot</h3>
+<ol>
+  <li>Go to the system address. Choose <strong>Tefoma Staff</strong> (or <strong>Supplier Portal</strong> for supplier steps).</li>
+  <li>Enter email and password.</li>
+  <li>A <strong>6-digit code is emailed</strong> to that address — fetch it and type it in. If it doesn't arrive
+      within 30 seconds, check spam; if it expires, simply sign in again for a fresh one.</li>
+</ol>
+<div class="callout blue">
+  <span class="t">Ground rule</span><br>
+  You are one person pretending to be many. The system deliberately stops one person doing everything —
+  the requester cannot approve, the approver cannot pay. Keep one role in a normal window and another in an
+  Incognito/Private window (Chrome <code>Ctrl+Shift+N</code>, Edge <code>Ctrl+Shift+P</code>) so two people
+  stay signed in at once.
+</div>
+<div class="callout">
+  <span class="t">Record as you go</span><br>
+  Write down every reference number the moment it appears — <code>PR-2026-000xx</code>,
+  <code>RFQ-2026-000xx</code>, <code>QT-2026-000xx</code>, <code>PO-2026-000xx</code>,
+  <code>GRV-2026-000xx</code>, invoice numbers. The audit-trail check at the end depends on them.
+  Screenshot anything that looks wrong immediately (<code>Win+Shift+S</code>).
+</div>
+
+<!-- ============================ 4 ACCOUNTS ============================ -->
+<h2><span class="num">4</span>Test accounts (all roles)</h2>
+<p>These are the standard seeded test accounts. On the live UAT environment, confirm with the project owner
+that these accounts exist and get the current passwords (seeded default is <code>Admin@123</code> —
+never reuse it on a production database).</p>
+<table>
+  <tr><th>Email</th><th>Role</th><th>Department</th><th>Used for</th></tr>
+  <tr><td><code>james@fossilzim.com</code></td><td>End user</td><td>ICT</td><td>Raises requisitions</td></tr>
+  <tr><td><code>mac@fossilzim.com</code></td><td>Department head</td><td>ICT</td><td>First requisition approval; dept-HOD PO approval</td></tr>
+  <tr><td><code>alfred@fossilzim.com</code></td><td>Stores officer</td><td>Stores</td><td>Stores PR gate, inventory, deliveries/GRV, transfers</td></tr>
+  <tr><td><code>macdonald@fossilzim.com</code></td><td>Procurement officer</td><td>Procurement</td><td>RFQs, quotations, awards, POs, suppliers</td></tr>
+  <tr><td><code>jb@fossilzim.com</code></td><td>Department head</td><td>Procurement</td><td><strong>Procurement HOD</strong> — second PO approval, award-matrix HOD selection</td></tr>
+  <tr><td><code>paul@fossilzim.com</code></td><td>Finance</td><td>Finance</td><td>PO finance approval, invoices, payments, budgets</td></tr>
+  <tr><td><code>tino@fossilzim.com</code></td><td>COO</td><td>—</td><td>PO approval ≥ USD 5,000; evaluation SEC approval</td></tr>
+  <tr><td><code>admin@fossilzim.com</code></td><td>Admin</td><td>—</td><td>Users, departments, sites, audit logs</td></tr>
+  <tr><td><code>kudzai@fossilzim.co.zw</code></td><td>Admin (you)</td><td>—</td><td>Your own admin access for verification throughout</td></tr>
+</table>
+<h4>Supplier accounts (supplier portal)</h4>
+<table>
+  <tr><th>Email</th><th>Company</th></tr>
+  <tr><td><code>ict.hw@techzone.co.zw</code></td><td>TechZone Hardware</td></tr>
+  <tr><td><code>ict.sw@codebridge.co.zw</code></td><td>CodeBridge</td></tr>
+  <tr><td><code>ict.maint@profix.co.zw</code></td><td>ProFix ICT</td></tr>
+  <tr><td><code>ict.telecom@netlink.co.zw</code></td><td>NetLink Telecom</td></tr>
+  <tr><td><code>ict.radio@radiocom.co.zw</code></td><td>RadioCom</td></tr>
+  <tr><td><code>ict.calib@precisioncal.co.zw</code></td><td>PrecisionCal</td></tr>
+</table>
+<div class="callout blue">
+  <span class="t">Why the Procurement HOD matters</span><br>
+  <code>jb@fossilzim.com</code> is a department head <em>in the Procurement department</em>. The system
+  treats this as a distinct persona: full procurement access <strong>plus</strong> the HOD approvals queue,
+  and the second step of the PO approval chain. Several tests below specifically need this account —
+  don't substitute the ICT department head.
+</div>
+
+<!-- ============================ 5 DATA CONVENTIONS ============================ -->
+<h2><span class="num">5</span>Test data conventions</h2>
+<ul>
+  <li>Prefix every title/reference you type with <code>KUD-</code> (e.g. <code>KUD-Hydraulic pump seal kit</code>)
+      so your test data is instantly identifiable and cleanable afterwards.</li>
+  <li>Suppliers with names starting <code>SPLIT-</code>, <code>SMOKE-</code> or <code>NEG-</code> are leftovers
+      from earlier automated testing — ignore them, they are not real vendors and not part of this pass.</li>
+  <li>Use small amounts (tens of dollars) except where a step explicitly asks you to cross the
+      <strong>USD 5,000 COO threshold</strong>.</li>
+</ul>
+
+<!-- ============================ PHASE A ============================ -->
+<div class="pagebreak"></div>
+<h2><span class="num">A</span>Phase A — Access &amp; security checks</h2>
+<p class="phase-meta">15–20 minutes · Roles: all</p>
+<table>
+  <tr><th style="width:42px">ID</th><th>Do this</th><th>Expect</th></tr>
+  <tr><td class="id-cell">A1</td><td>Sign in as your admin account <code>kudzai@fossilzim.co.zw</code> via the staff login. Complete the OTP step.</td><td>OTP arrives by email; dashboard loads with admin menu (Users, Departments, Sites, Audit Logs visible).</td></tr>
+  <tr><td class="id-cell">A2</td><td>Open the supplier portal login page and sign in as one supplier.</td><td>Supplier dashboard — staff pages absent from the menu.</td></tr>
+  <tr><td class="id-cell">A3</td><td>Open the supplier self-registration page (<code>/register</code>) and start (don't finish) a registration.</td><td>Form loads and validates required fields.</td></tr>
+  <tr><td class="id-cell">A4</td><td>Use <strong>Forgot password</strong> with a valid staff email.</td><td>Reset email flow initiates without error.</td></tr>
+  <tr><td class="id-cell">A5</td><td>As <strong>end user</strong> (james), paste an admin URL into the address bar (e.g. <code>/app/users</code>, <code>/app/audit-logs</code>).</td><td>Access denied / unauthorized page — not the data.</td></tr>
+  <tr><td class="id-cell">A6</td><td>As a <strong>supplier</strong>, try staff URLs (e.g. <code>/app/requisitions</code>, <code>/app/invoices</code>).</td><td>Blocked. Supplier sees only portal pages.</td></tr>
+</table>
+
+<!-- ============================ PHASE B ============================ -->
+<h2><span class="num">B</span>Phase B — Admin baseline &amp; master data</h2>
+<p class="phase-meta">20–30 minutes · Role: <span class="role">Admin</span></p>
+<table>
+  <tr><th style="width:42px">ID</th><th>Do this</th><th>Expect</th></tr>
+  <tr><td class="id-cell">B1</td><td><strong>Departments</strong>: create a test department <code>KUD-TEST</code>, then edit its name.</td><td>Both changes save and list correctly.</td></tr>
+  <tr><td class="id-cell">B2</td><td><strong>Sites</strong>: verify Head Office exists; add a second site (needed later for the stock-transfer test E5).</td><td>Second site appears and is selectable.</td></tr>
+  <tr><td class="id-cell">B3</td><td><strong>Users</strong>: verify every role account in §4 exists and is active. Create one throwaway user, assign role + department + home site, then deactivate it.</td><td>Create/edit/deactivate all work; deactivated user cannot sign in.</td></tr>
+  <tr><td class="id-cell">B4</td><td><strong>Suppliers</strong>: confirm at least 3 suppliers are <strong>active</strong> (needed for the competitive RFQ).</td><td>≥ 3 active suppliers listed.</td></tr>
+  <tr><td class="id-cell">B5</td><td><strong>Audit Logs</strong>: open and filter to today.</td><td>Your Phase A/B actions (logins, user created, department created) are recorded.</td></tr>
+  <tr><td class="id-cell">B6</td><td><strong>Inventory pre-load</strong> (sign in as stores officer): add 2–3 catalog items with quantity on hand — the Phase C requisition must contain at least one line that is <em>in stock</em> and one that is <em>not</em>.</td><td>Items appear in Inventory with quantities.</td></tr>
+</table>
+
+<!-- ============================ PHASE C ============================ -->
+<div class="pagebreak"></div>
+<h2><span class="num">C</span>Phase C — Core lifecycle: requisition → payment</h2>
+<p class="phase-meta">90–120 minutes · Roles: all — this is the long walk through the whole system</p>
+
+<p><strong>The story:</strong> a JCB 3CX backhoe at a site has a leaking hydraulic pump. Nobody on site knows
+the part number, so the operator photographs the machine's data plate and attaches it. The supplier doesn't
+stock the genuine part and offers an <em>equivalent</em>. We also order A4 paper on the same requisition —
+deliberately, to prove office lines stay simple — plus one line that stores already holds, to exercise the
+issue-from-stock path.</p>
+
+<h3>C1–C4 · Requisition <span class="role">End user — james</span></h3>
+<ol>
+  <li><strong>My Requisitions → + New Requisition.</strong> Title
+      <code>KUD-Hydraulic pump seal kit - JCB 3CX</code>, urgency <strong>High</strong>.</li>
+  <li><strong>Item 1 (machine part):</strong> details <code>Hydraulic pump seal kit</code>, category
+      <strong>Motor Vehicle Spares, Tyres &amp; Accessories</strong>, qty 2.
+      <div class="callout"><span class="t">Watch closely — C2</span><br>
+      The moment you pick the vehicle-spares category, the grey
+      <strong>“Equipment details &amp; photos”</strong> panel must <strong>open by itself</strong>.
+      Fill in Make <code>JCB</code>, Model <code>3CX Sitemaster</code>, fleet no. <code>FC-EX-014</code>,
+      registration, chassis/VIN, engine no., serial, hours <code>7450</code> — leave OEM part number blank
+      (that's the realistic scenario). <strong>Add a photo</strong>, set its type to
+      <strong>Data plate / serial plate</strong>, caption it.</div></li>
+  <li><strong>Item 2 (office):</strong> <code>A4 Bond Paper</code>, stationery category, 5 reams,
+      spec <code>80gsm white</code>. The equipment panel on this line must <strong>stay closed</strong>.</li>
+  <li><strong>Item 3 (in stock):</strong> one of the items you pre-loaded into inventory in B6.</li>
+  <li><strong>Submit for approval.</strong></li>
+</ol>
+<div class="expect"><span class="t">Expect</span> — success message; requisition listed with status
+<strong>Pending HOD Approval</strong>; a <code>PR-2026-000xx</code> number. Open it: the seal-kit line shows
+every machine field as neat labelled lines with a clickable photo thumbnail that opens readable-size;
+the paper line shows <em>no</em> machine fields.</div>
+<div class="fail"><span class="t">Report if</span> — the panel didn't auto-open for vehicle spares; the photo
+vanished after saving; typing dropped letters in any box; machine fields appear on the paper line.</div>
+
+<h3>C5 · HOD approval <span class="role">Dept head ICT — mac</span></h3>
+<p><strong>Approvals</strong> → open your PR → confirm the machine details are visible to the approver →
+<strong>Approve</strong> with a comment. Also create a second throwaway requisition (as james) and
+<strong>Reject</strong> it with a reason — check james is notified with the reason (this is checklist item F2).</p>
+<div class="expect"><span class="t">Expect</span> — status moves to <strong>Stores Review</strong>; requester notified.</div>
+
+<h3>C6–C7 · Stores gate <span class="role">Stores officer — alfred</span></h3>
+<p><strong>Stores PR Review</strong> → open the PR:</p>
+<ul>
+  <li><strong>Issue</strong> the in-stock line (Item 3) from inventory — per-line issue or Auto-process stock.</li>
+  <li><strong>Forward to Procurement</strong> the seal kit and paper lines.</li>
+</ul>
+<div class="expect"><span class="t">Expect</span> — inventory quantity <strong>decreases</strong> for the
+issued line; the rest moves to the procurement queue; stores can see the machine details.</div>
+
+<h3>C8 · RFQ <span class="role">Procurement — macdonald</span></h3>
+<p>Create an <strong>RFQ</strong> from the forwarded requisition, deadline a few days ahead,
+<strong>invite at least 3 suppliers</strong>, publish.</p>
+<div class="expect"><span class="t">Expect</span> — <code>RFQ-2026-000xx</code> created; opening it shows the
+<strong>machine details and the data-plate photo carried over</strong> from the requisition. If they didn't
+carry across, that is a Critical defect — the entire point of the feature is that the supplier gets them.</div>
+
+<h3>C9–C10 · Supplier quotes <span class="role">Supplier portal</span></h3>
+<p>Sign in as <strong>each of the 3 invited suppliers</strong> in turn → <strong>My RFQs</strong> → open the RFQ.</p>
+<ul>
+  <li><strong>C9 — visibility:</strong> the supplier must see the machine identification <em>and open the
+      data-plate photo at readable size</em>.</li>
+  <li><strong>C10 — quote:</strong> each supplier submits prices on all lines. For <strong>one</strong> supplier,
+      on the seal-kit line tick <strong>“I am offering an equivalent / alternative part”</strong>, describe it
+      (<code>Donaldson equivalent seal kit</code>, part no. <code>P552100-EQ</code>) and
+      <strong>upload a photo</strong> of the alternative part. Vary the prices so there's a clear winner per line.</li>
+</ul>
+<div class="expect"><span class="t">Expect</span> — each supplier gets a <code>QT-2026-000xx</code> and sees it
+under My Quotations. Procurement is notified.</div>
+
+<h3>C11–C12 · Sealed bids, comparison &amp; waiver <span class="role">Procurement — macdonald</span></h3>
+<ul>
+  <li><strong>C11 — sealed bidding:</strong> before the deadline, open a quotation — you should see
+      <strong>“Bid is sealed”</strong>. That is correct behaviour. Use <strong>Close RFQ &amp; Reveal Bids</strong>
+      to proceed.</li>
+  <li><strong>C12 — alternative warning:</strong> on the seal-kit line of the alternative-offering supplier's
+      quote, an <strong>amber “Alternative offered — not the exact part requested”</strong> box must show the
+      description, part number and the supplier's photo — before you agree to buy anything.</li>
+  <li>If fewer than 3 quotes came in on any line, complete the <strong>waiver</strong>: pick a PRAZ waiver type
+      from the dropdown (e.g. <em>Insufficient quotations received</em>) and type a <strong>long, full
+      sentence</strong> as the reason — every letter must register (this box previously had a first-letter-only
+      fault; you are confirming the fix).</li>
+</ul>
+
+<h3>C13–C14 · PO and the four-stage approval chain</h3>
+<p>For this phase use the simple whole-quote path: accept the winning quotation and create the
+<strong>Purchase Order</strong> (delivery address + expected date), submit for approval.
+(The split-award multi-PO path is tested separately in Phase D.)</p>
+<p>The PO must then pass <strong>four gates in strict order</strong> — sign in as each in turn:</p>
+<table>
+  <tr><th>#</th><th>Who</th><th>Account</th><th>Where</th></tr>
+  <tr><td>1</td><td>Requesting dept HOD</td><td><code>mac@fossilzim.com</code></td><td>Approvals</td></tr>
+  <tr><td>2</td><td>Procurement HOD</td><td><code>jb@fossilzim.com</code></td><td>Approvals</td></tr>
+  <tr><td>3</td><td>Finance</td><td><code>paul@fossilzim.com</code></td><td>Approvals</td></tr>
+  <tr><td>4</td><td>COO — <em>only if total ≥ USD 5,000</em></td><td><code>tino@fossilzim.com</code></td><td>Approvals</td></tr>
+</table>
+<div class="expect"><span class="t">Expect</span> — the PO's Approval Status panel ticks each stage in order and
+reads <strong>Approved</strong> only after all required gates. For this small order, the COO box should read
+<strong>“Not required (below USD 5,000)”</strong>. Try approving out of order (e.g. finance before Procurement
+HOD) — it must be refused or simply not offered.</div>
+<div class="callout"><span class="t">C14 — COO threshold, both sides</span><br>
+Later (or now, if you prefer) run a second PO with a total <strong>≥ USD 5,000</strong>: the COO stage must
+become mandatory and the PO must not reach Approved without <code>tino</code>'s sign-off. Both sides of the
+threshold are P1.</div>
+
+<h3>C15 · Supplier acknowledges <span class="role">Supplier</span></h3>
+<p><strong>My Purchase Orders</strong> → open → <strong>Acknowledge</strong> with a note.</p>
+
+<h3>C16–C18 · Delivery, GRV &amp; printed voucher <span class="role">Stores officer — alfred</span></h3>
+<ol>
+  <li><strong>Deliveries → Receive</strong> against the PO. Fill the delivery note number, date, and the
+      courier block: <strong>who delivered</strong> (name <code>J. Moyo</code>), ID, company,
+      <strong>vehicle registration</strong> <code>ADZ 4471</code>, contact. Receive the full quantity.</li>
+  <li>A <strong>GRV number</strong> (<code>GRV-2026-000xx</code>) is created. Accept into stock.</li>
+  <li><strong>Print the GRV.</strong> A PDF must open: branded Tefoma document with PO, supplier, items and
+      <strong>three signature blocks</strong> — DELIVERED BY (showing J. Moyo + vehicle reg), RECEIVED BY,
+      INSPECTED BY.</li>
+</ol>
+<div class="callout"><span class="t">Known issue — confirm you see it too</span><br>
+<strong>INSPECTED BY prints as “—”.</strong> Full deliveries auto-accept without recording an inspector.
+Already logged; note whether your team considers it a handover blocker.</div>
+<div class="expect"><span class="t">Expect</span> — stock for the received items <strong>increases</strong> in
+Inventory; delivery status progresses (received → accepted); a stock-movement entry exists.</div>
+
+<h3>C19–C21 · Invoice, three-way match &amp; payment</h3>
+<ol>
+  <li><span class="role">Supplier</span> — submit an <strong>invoice</strong> against the PO for the full amount.</li>
+  <li><span class="role">Finance — paul</span> — <strong>Invoices</strong> → open → <strong>Approve</strong>.
+      If a <strong>three-way match failure</strong> blocks you, that is the control working (invoice vs order
+      vs goods received disagree). Review the variance, then force-approve <em>with a reason</em> — and later
+      confirm the forced approval is flagged in the audit log.</li>
+  <li>Record the <strong>payment</strong> against the approved invoice.</li>
+</ol>
+<div class="expect"><span class="t">Expect</span> — invoice status <strong>Paid</strong>, balance
+<strong>0.00</strong>; supplier notified.</div>
+
+<h3>C22 · The trail <span class="role">Admin</span></h3>
+<p><strong>Audit Logs</strong>: find the whole run — approvals, GRV, forced invoice approval (if any), payment.
+Then check <strong>Notifications</strong> as 2–3 different roles: each person should have been told when
+something needed their attention, and the notification should link to the right page.</p>
+
+<!-- ============================ PHASE D ============================ -->
+<div class="pagebreak"></div>
+<h2><span class="num">D</span>Phase D — New features deep-dive</h2>
+<p class="phase-meta">60–90 minutes · These shipped recently and have had the least real-world exposure —
+test them hardest. Set up one fresh requisition with <strong>4–5 line items</strong> and run it to a published
+RFQ (repeat C1→C8 quickly, no equipment details needed).</p>
+
+<h3>D1 · Price negotiation — request revision</h3>
+<ol>
+  <li><span class="role">Supplier A</span> quotes all lines. <span class="role">Procurement</span> closes the
+      RFQ, opens Supplier A's quotation and uses <strong>Request price revision</strong> with a reason and a
+      target-price note.</li>
+  <li><span class="role">Supplier A</span> — the portal shows <strong>“Revision requested — resubmit”</strong>.
+      Submit a new quotation with lower prices.</li>
+  <li><span class="role">Procurement</span> — open the new quotation: it should link back to the original;
+      the old one is archived as <strong>superseded</strong>, with the revision history (round, who asked, why)
+      visible.</li>
+</ol>
+<div class="expect"><span class="t">Expect — D1a regression check</span> — after the revision round-trip, the
+<strong>Quotations list page must load normally</strong> with the superseded and revision-requested quotes
+visible. (This page crashed on those statuses until a fix on 27 July — you are confirming the fix.)</div>
+
+<h3>D2 · Per-line split award — the Award Matrix</h3>
+<p>Have <strong>Supplier A quote lines 1–3 only</strong> and <strong>Supplier B quote lines 3–5 only</strong>
+(line 3 quoted by both; at least one line quoted by nobody). Close the RFQ.</p>
+<ol>
+  <li><span class="role">Procurement HOD — jb</span> — open the RFQ's <strong>Award</strong> page. You should see
+      a <strong>matrix</strong>: rows = RFQ lines, columns = suppliers, cells = quoted unit prices, blanks where
+      not quoted. <strong>Select a winner per line</strong> with a justification — split them: some lines to A,
+      some to B.</li>
+  <li><span class="role">Procurement — macdonald</span> — <strong>authorize each line</strong> (the two-key
+      control, now per line). Lines with fewer than 3 bids need a <strong>per-line waiver</strong> — complete one.</li>
+</ol>
+<div class="expect"><span class="t">Expect</span> — every line shows a status: awarded / unquoted / unawarded.
+A line cannot be authorized before HOD selection; a &lt;3-bid line cannot proceed without its waiver.</div>
+
+<h3>D3 · Multi-PO generation</h3>
+<p><span class="role">Procurement</span> — <strong>Generate POs</strong> from the award map.</p>
+<div class="expect"><span class="t">Expect</span> — <strong>one PO per winning supplier</strong>, each carrying
+only that supplier's awarded lines at the awarded prices. Each PO independently enters the Phase C approval
+chain (approve at least one all the way through). The requisition must <strong>not</strong> flip to
+ordered/completed while any line is still unresolved.</div>
+
+<h3>D4 · Re-sourcing unawarded lines</h3>
+<p><span class="role">Procurement</span> — on the RFQ detail, find the <strong>unresolved lines</strong> panel
+(the line nobody quoted, plus any quoted-but-not-awarded). Use <strong>Re-source</strong>.</p>
+<div class="expect"><span class="t">Expect</span> — a <strong>new RFQ is created with its own RFQ number</strong>,
+containing only the unresolved lines, pre-inviting the same suppliers, linked back to the original requisition.
+(A 25 July fix targeted exactly this — the new RFQ failing to get a number. Confirm it.) The original lines are
+marked unawarded and cannot be re-sourced twice.</div>
+
+<h3>D5 · Stock-code import &amp; bin locations <span class="role">Stores / Admin</span></h3>
+<p>The client's stock catalog (~Fossil stock codes) was bulk-imported. In <strong>Inventory</strong>:</p>
+<ul>
+  <li>Search for a handful of known stock codes from the source sheet — they should exist with correct
+      description, unit and <strong>bin location</strong>.</li>
+  <li>Imported items carry <strong>zero on-hand</strong> quantity by design (import never invents stock and never
+      overwrites existing balances) — confirm a few show 0 unless stock was received since.</li>
+  <li>Test the <strong>Import Excel</strong> button with a tiny 2-row file: re-importing an existing code must
+      update it, not duplicate it.</li>
+</ul>
+
+<!-- ============================ PHASE E ============================ -->
+<div class="pagebreak"></div>
+<h2><span class="num">E</span>Phase E — Extended modules</h2>
+<p class="phase-meta">45–75 minutes</p>
+<table>
+  <tr><th style="width:42px">ID</th><th>Do this</th><th>Expect</th></tr>
+  <tr><td class="id-cell">E1</td><td><strong>Supplier KYS</strong> <span class="role">Procurement/Admin</span>: open a <em>pending</em> supplier (or the one you started registering in A3) → Documents tab → upload documents, tick checklist items, watch the completion %. Try to <strong>activate before the checklist is complete</strong>.</td><td>Activation is blocked until required KYS items are complete; override demands a written reason.</td></tr>
+  <tr><td class="id-cell">E2</td><td><strong>Supplier evaluation</strong>: create an evaluation score for the Phase C supplier → HOD reviews it → COO (<code>tino</code>) gives SEC approval.</td><td>Full chain completes; score appears in Suppliers → Analytics → Performance.</td></tr>
+  <tr><td class="id-cell">E3</td><td><strong>Supplier analytics</strong>: open Performance and Compliance analytics pages as procurement and as COO.</td><td>Charts load; Phase C activity reflected.</td></tr>
+  <tr><td class="id-cell">E4</td><td><strong>Store requisition</strong> <span class="role">HOD</span>: create an internal store requisition; <span class="role">Stores</span> approves and issues it.</td><td>Status walks draft → pending → approved → issued; stock decreases.</td></tr>
+  <tr><td class="id-cell">E5</td><td><strong>Stock transfer</strong> <span class="role">Stores</span>: transfer an item from Head Office to the site you created in B2 — create → approve → ship → receive.</td><td>Quantities move between sites; movement history records it.</td></tr>
+  <tr><td class="id-cell">E6</td><td><strong>Stock movements</strong>: open the movements page.</td><td>Every stock change from this test run (issue, receipt, transfer) is listed.</td></tr>
+  <tr><td class="id-cell">E7</td><td><strong>Budgets</strong> <span class="role">Finance</span>: open Budgets, set/update a department budget.</td><td>Saves; visible to finance/admin only (spot-check an end user cannot open it).</td></tr>
+  <tr><td class="id-cell">E8</td><td><strong>Reports</strong>: open Reports (Overview + Suppliers tabs) as admin, finance and procurement.</td><td>Each role sees appropriate scope; figures are consistent with the test run.</td></tr>
+  <tr><td class="id-cell">E9</td><td><strong>Dashboard</strong>: check the role-aware dashboard for 3 different roles.</td><td>Stats differ sensibly by role; admin sees the ops command-center metrics.</td></tr>
+  <tr><td class="id-cell">E10</td><td><strong>UI pass</strong>: collapse/expand the sidebar (state should survive a refresh); resize the window; check the notification badge updates within a minute of a new event.</td><td>No layout breakage; badge polls through.</td></tr>
+  <tr><td class="id-cell">E11</td><td><strong>Cancellations</strong>: cancel a draft requisition and cancel a PO, each with a reason code.</td><td>Reason captured; status cancelled; audit-logged.</td></tr>
+</table>
+
+<!-- ============================ PHASE F ============================ -->
+<h2><span class="num">F</span>Phase F — Negative, exception &amp; permission tests</h2>
+<p class="phase-meta">30–45 minutes · The system is defined as much by what it refuses as what it allows.</p>
+<table>
+  <tr><th style="width:42px">ID</th><th>Try this (it should FAIL or be blocked)</th><th>Correct behaviour</th></tr>
+  <tr><td class="id-cell">F1</td><td>End user approves their own requisition.</td><td>No approve action available to the requester.</td></tr>
+  <tr><td class="id-cell">F2</td><td>HOD rejects a requisition without / with a reason.</td><td>Reason required; requester notified with the reason.</td></tr>
+  <tr><td class="id-cell">F3</td><td>Open a competitor's quotation as a supplier (guess URLs).</td><td>Suppliers see only their own quotes.</td></tr>
+  <tr><td class="id-cell">F4</td><td>View bid prices before the RFQ deadline/close.</td><td>“Bid is sealed” until reveal.</td></tr>
+  <tr><td class="id-cell">F5</td><td>Accept a quotation on a &lt;3-bid line without a waiver.</td><td>Blocked until a typed waiver with PRAZ type is approved.</td></tr>
+  <tr><td class="id-cell">F6</td><td>Approve a PO out of order, or reach Approved with a stage missing.</td><td>Strict order enforced; no skipping.</td></tr>
+  <tr><td class="id-cell">F7</td><td>Push a ≥ USD 5,000 PO through without COO.</td><td>COO stage mandatory at/above threshold.</td></tr>
+  <tr><td class="id-cell">F8</td><td>Approve an invoice that doesn't match PO + GRV.</td><td>Three-way match blocks; force-approve requires a reason and is audited.</td></tr>
+  <tr><td class="id-cell">F9</td><td>Activate a supplier with incomplete KYS.</td><td>Blocked without written override reason.</td></tr>
+  <tr><td class="id-cell">F10</td><td>Use an expired OTP code; then a wrong code twice.</td><td>Clean error, fresh sign-in issues a new code; no lockout confusion.</td></tr>
+  <tr><td class="id-cell">F11</td><td>Receive a delivery for <em>more</em> than the PO quantity, and separately record a partial delivery / reject a damaged line.</td><td>Over-receipt handled sanely (blocked or flagged); partial and reject-with-condition paths work, stock only increases by accepted quantity.</td></tr>
+</table>
+
+<!-- ============================ 6 MASTER CHECKLIST ============================ -->
+<div class="pagebreak"></div>
+<h2><span class="num">6</span>Master pass/fail checklist</h2>
+<p>Mark each row <strong>PASS</strong>, <strong>FAIL</strong> or <strong>BLOCKED</strong>. This completed table
+plus the defect log is the core of the handover evidence.</p>
+<table>
+  <tr><th style="width:40px">ID</th><th>Test item</th><th style="width:30px">Pri</th><th style="width:58px">Result</th><th style="width:110px">Evidence / notes</th></tr>
+  <tr><td class="id-cell">A1</td><td>Admin OTP login works</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">A2</td><td>Supplier portal login works</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">A3</td><td>Supplier self-registration reachable</td><td>P2</td><td></td><td></td></tr>
+  <tr><td class="id-cell">A4</td><td>Password reset initiates</td><td>P2</td><td></td><td></td></tr>
+  <tr><td class="id-cell">A5</td><td>End user blocked from admin pages</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">A6</td><td>Supplier blocked from staff pages</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">B1</td><td>Departments create/update</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">B2</td><td>Sites create/update</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">B3</td><td>User create/edit/deactivate; deactivated cannot log in</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">B4</td><td>≥ 3 active suppliers available</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">B5</td><td>Admin actions appear in audit logs</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">B6</td><td>Inventory items pre-loaded with stock</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">C1</td><td>Requisition created (machine + office + stock lines)</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">C2</td><td>Equipment panel auto-opens for vehicle-spares category</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">C3</td><td>Office line stays simple; photo uploads and persists</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">C4</td><td>All machine details + thumbnail shown on requisition detail</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">C5</td><td>HOD approval works (and notification sent)</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">C6</td><td>Stores issues in-stock line; inventory decreases</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">C7</td><td>Stores forwards remaining lines to procurement</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">C8</td><td>RFQ carries equipment details + photo to suppliers</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">C9</td><td>Supplier can read the data-plate photo</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">C10</td><td>3 quotes submitted; alternative part + photo offered</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">C11</td><td>Bids sealed until close/deadline</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">C12</td><td>Amber “Alternative offered” warning with photo shown to buyer</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">C13</td><td>PO approval chain: Dept HOD → Proc HOD → Finance, in order</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">C14</td><td>COO threshold correct both sides of USD 5,000</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">C15</td><td>Supplier acknowledges PO</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">C16</td><td>GRV created with courier details + vehicle registration</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">C17</td><td>Printed GRV: branded, correct data, 3 signature blocks</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">C18</td><td>Stock increases on acceptance; movement recorded</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">C19</td><td>Invoice submitted and approved (3-way match respected)</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">C20</td><td>Payment recorded; invoice Paid, balance 0.00</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">C21</td><td>Notifications reached every role at the right moments</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">C22</td><td>Audit log shows the complete trail</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">D1</td><td>Price revision round-trip (request → resubmit → superseded + history)</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">D1a</td><td>Quotations list loads with superseded/revision statuses (regression)</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">D2</td><td>Award Matrix: per-line HOD selection + PM authorization + per-line waiver</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">D3</td><td>Generate POs: one PO per supplier, correct lines/prices, each through chain</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">D3a</td><td>Requisition not marked ordered until all lines resolved</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">D4</td><td>Re-source creates new numbered RFQ with unresolved lines only</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">D5</td><td>Imported stock codes present with bins; zero-qty by design; re-import updates</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">E1</td><td>KYS blocks activation until complete; override needs reason</td><td>P2</td><td></td><td></td></tr>
+  <tr><td class="id-cell">E2</td><td>Evaluation chain incl. COO SEC approval; shows in analytics</td><td>P2</td><td></td><td></td></tr>
+  <tr><td class="id-cell">E3</td><td>Supplier analytics pages load with real data</td><td>P2</td><td></td><td></td></tr>
+  <tr><td class="id-cell">E4</td><td>Store requisition lifecycle works</td><td>P2</td><td></td><td></td></tr>
+  <tr><td class="id-cell">E5</td><td>Stock transfer between sites works</td><td>P2</td><td></td><td></td></tr>
+  <tr><td class="id-cell">E6</td><td>Stock movements page complete</td><td>P2</td><td></td><td></td></tr>
+  <tr><td class="id-cell">E7</td><td>Budgets save; access restricted correctly</td><td>P2</td><td></td><td></td></tr>
+  <tr><td class="id-cell">E8</td><td>Reports role-appropriate and consistent</td><td>P2</td><td></td><td></td></tr>
+  <tr><td class="id-cell">E9</td><td>Dashboards role-aware</td><td>P2</td><td></td><td></td></tr>
+  <tr><td class="id-cell">E10</td><td>Sidebar/UI pass; notification badge updates</td><td>P2</td><td></td><td></td></tr>
+  <tr><td class="id-cell">E11</td><td>Cancel requisition/PO with reason, audited</td><td>P2</td><td></td><td></td></tr>
+  <tr><td class="id-cell">F1</td><td>Self-approval impossible</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">F2</td><td>Reject requires reason; requester informed</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">F3</td><td>Suppliers cannot see competitors' quotes</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">F4</td><td>Sealed bids enforced</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">F5</td><td>3-quote rule blocks without waiver</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">F6</td><td>PO chain order enforced</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">F7</td><td>COO cannot be skipped ≥ USD 5,000</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">F8</td><td>Three-way match blocks; force-approve audited</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">F9</td><td>KYS gate enforced</td><td>P1</td><td></td><td></td></tr>
+  <tr><td class="id-cell">F10</td><td>OTP expiry/wrong-code handled cleanly</td><td>P2</td><td></td><td></td></tr>
+  <tr><td class="id-cell">F11</td><td>Over-receipt/partial/reject delivery paths behave</td><td>P1</td><td></td><td></td></tr>
+</table>
+
+<!-- ============================ 7 NOT-A-BUG ============================ -->
+<h2><span class="num">7</span>Things that look like faults but are not</h2>
+<p>Don't log these — they are the system working as designed:</p>
+<table>
+  <tr><th>What you see</th><th>Why it's correct</th></tr>
+  <tr><td><strong>“Bid is sealed”</strong> on a quotation</td><td>Prices stay hidden until the RFQ closes, so nobody can peek early</td></tr>
+  <tr><td><strong>Can't activate a supplier</strong> — KYS incomplete</td><td>Suppliers must pass compliance checks first; override needs a written reason</td></tr>
+  <tr><td><strong>“Three-way match failed”</strong> on an invoice</td><td>Finance won't pay when invoice, order and goods received disagree</td></tr>
+  <tr><td><strong>COO step greyed out / “Not required”</strong></td><td>Only required at or above USD 5,000</td></tr>
+  <tr><td><strong>“Access Denied”</strong></td><td>You're signed in as the wrong role for that page — that's the point</td></tr>
+  <tr><td><strong>A code is required at every sign-in</strong></td><td>Two-factor security, on purpose</td></tr>
+  <tr><td><strong>Imported stock items show 0 on hand</strong></td><td>The catalog import deliberately never invents stock quantities</td></tr>
+</table>
+
+<!-- ============================ 8 KNOWN ISSUES ============================ -->
+<h2><span class="num">8</span>Known issues already logged</h2>
+<p>You may hit these. Note if you do (it confirms reproducibility), but they are already reported:</p>
+<table>
+  <tr><th>#</th><th>Issue</th><th>Severity</th></tr>
+  <tr><td>1</td><td><strong>INSPECTED BY always blank on printed GRV</strong> — deliveries received in full auto-accept, so nobody is recorded as inspector. A GRV normally evidences who physically checked the goods; flag whether the client will accept this at handover.</td><td>Medium</td></tr>
+  <tr><td>2</td><td><strong>Stores gate can be bypassed</strong> — starting an RFQ while a requisition is still in stores review skips the stores check.</td><td>Low</td></tr>
+  <tr><td>3</td><td><strong>Legacy test data</strong> — suppliers named <code>SPLIT-*</code>, <code>SMOKE-*</code>, <code>NEG-*</code> are leftovers, not real vendors. They should be purged before handover.</td><td>Low</td></tr>
+</table>
+
+<!-- ============================ 9 DEFECTS ============================ -->
+<div class="pagebreak"></div>
+<h2><span class="num">9</span>Defect logging template and severity guide</h2>
+<p>One record per issue. Always include: the <strong>role</strong> you were signed in as, the
+<strong>checklist ID</strong>, expected vs actual (exact on-screen message), numbered repro steps, and a
+<strong>screenshot</strong>. Also say whether it stopped you completely or was merely confusing — that sets fix urgency.</p>
+<table>
+  <tr><th style="width:120px">Field</th><th>Value to capture</th></tr>
+  <tr><td>Defect ID</td><td>TP-UAT-001, TP-UAT-002, …</td></tr>
+  <tr><td>Severity</td><td>Critical / High / Medium / Low</td></tr>
+  <tr><td>Role used</td><td>e.g. Stores officer (alfred@fossilzim.com)</td></tr>
+  <tr><td>Checklist ID</td><td>e.g. D3</td></tr>
+  <tr><td>Expected result</td><td>What this pack says should happen</td></tr>
+  <tr><td>Actual result</td><td>What happened — exact message</td></tr>
+  <tr><td>Repro steps</td><td>Numbered, from sign-in</td></tr>
+  <tr><td>Evidence</td><td>Screenshot / video / reference numbers involved</td></tr>
+  <tr><td>Status</td><td>Open / Fixed / Retest Pass / Retest Fail</td></tr>
+</table>
+<h4>Severity guide</h4>
+<ul>
+  <li><strong>Critical</strong> — blocks end-to-end completion, or a security/compliance control fails
+      (e.g. sealed bids readable early, approval chain skippable).</li>
+  <li><strong>High</strong> — major function broken with no practical workaround.</li>
+  <li><strong>Medium</strong> — works partially; workaround exists.</li>
+  <li><strong>Low</strong> — cosmetic or minor usability.</li>
+</ul>
+
+<!-- ============================ 10 SIGN-OFF ============================ -->
+<h2><span class="num">10</span>Evidence package and handover sign-off</h2>
+<p>Before sign-off, assemble: (1) the completed master checklist; (2) the defect log; (3) screenshots for
+every FAIL/BLOCKED row; (4) audit-log and notification screenshots for the Phase C run; (5) this summary page.</p>
+
+<h3>Sign-off</h3>
+<table>
+  <tr><td style="width:50%"><strong>Test owner:</strong> Kudzai (<code>kudzai@fossilzim.co.zw</code>)</td>
+      <td><strong>Environment tested:</strong> <span class="sig-line"></span></td></tr>
+  <tr><td><strong>Execution date(s):</strong> <span class="sig-line"></span></td>
+      <td><strong>App version / deploy date:</strong> <span class="sig-line"></span></td></tr>
+</table>
+<table>
+  <tr><th>Summary</th><th style="width:90px">Count</th></tr>
+  <tr><td>Test cases executed</td><td></td></tr>
+  <tr><td>Passed</td><td></td></tr>
+  <tr><td>Failed</td><td></td></tr>
+  <tr><td>Blocked</td><td></td></tr>
+  <tr><td>Critical defects open</td><td></td></tr>
+  <tr><td>High defects open</td><td></td></tr>
+</table>
+<p style="font-size:12pt; margin-top:14px">
+  <span class="checkbox">☐</span>&nbsp; <strong>GO</strong> — ready for client handover&nbsp;&nbsp;&nbsp;&nbsp;
+  <span class="checkbox">☐</span>&nbsp; <strong>NO-GO</strong> — fixes required (attach defect log)
+</p>
+<p style="margin-top:8px"><strong>Comments:</strong></p>
+<div style="border:1px solid #cbd5e1; height:90px; border-radius:4px;"></div>
+<p style="margin-top:30px">
+  Name: <span class="sig-line"></span>&nbsp;&nbsp;&nbsp;
+  Signature: <span class="sig-line"></span>&nbsp;&nbsp;&nbsp;
+  Date: <span class="sig-line" style="min-width:110px"></span>
+</p>
+
+</body>
+</html>

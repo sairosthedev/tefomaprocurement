@@ -6,9 +6,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { SidebarLayout } from './layouts/appLayout';
 
 // Shared Pages
-import Home from './pages/Home';
 import Login from './pages/Login';
-import SupplierLogin from './pages/SupplierLogin';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Notifications from './pages/Notifications';
@@ -93,9 +91,9 @@ function App() {
         <ToastProvider>
           <Routes>
             {/* Public Routes */}
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/supplier/login" element={<SupplierLogin />} />
+            <Route path="/" element={<Login />} />
+            <Route path="/login" element={<Navigate to="/" replace />} />
+            <Route path="/supplier/login" element={<Navigate to="/" replace />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />

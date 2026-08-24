@@ -5,47 +5,21 @@ import { useToast } from './Toast';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import Logo from './Logo';
 
-type LoginVariant = 'staff' | 'supplier';
-
-const variantConfig = {
-  staff: {
-    title: 'Employee Sign In',
-    subtitle: 'For Tefoma staff and authorised internal users',
-    accentClass: 'from-primary/10 via-primary/5 to-primary/10',
-    footer: (
-      <p className="text-center text-sm text-gray-600">
-        Are you a supplier?{' '}
-        <Link to="/supplier/login" className="font-medium text-brand-blue hover:text-brand-blue-dark">
-          Go to Supplier Portal
-        </Link>
-      </p>
-    )
-  },
-  supplier: {
-    title: 'Supplier Portal',
-    subtitle: 'Manage RFQs, quotations, compliance documents, and deliveries',
-    accentClass: 'from-brand-blue/10 via-brand-green/5 to-brand-amber/10',
-    footer: (
-      <div className="space-y-3 text-center text-sm text-gray-600">
-        <p>
-          New supplier?{' '}
-          <Link to="/register" className="font-medium text-brand-green hover:text-brand-green-dark">
-            Register your company
-          </Link>
-        </p>
-        <p>
-          Tefoma employee?{' '}
-          <Link to="/login" className="font-medium text-brand-blue hover:text-brand-blue-dark">
-            Staff sign in
-          </Link>
-        </p>
-      </div>
-    )
-  }
+const config = {
+  title: 'Sign in',
+  subtitle: 'For Tefoma staff and registered suppliers',
+  accentClass: 'from-primary/10 via-brand-green/5 to-brand-blue/10',
+  footer: (
+    <p className="text-center text-sm text-gray-600">
+      New supplier?{' '}
+      <Link to="/register" className="font-medium text-brand-green hover:text-brand-green-dark">
+        Register your company
+      </Link>
+    </p>
+  )
 };
 
-export default function LoginForm({ variant }: { variant: LoginVariant }) {
-  const config = variantConfig[variant];
+export default function LoginForm() {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState<'credentials' | 'otp'>('credentials');
@@ -222,13 +196,11 @@ export default function LoginForm({ variant }: { variant: LoginVariant }) {
                       {showPassword ? 'HIDE' : 'SHOW'}
                     </button>
                   </div>
-                  {variant === 'staff' && (
-                    <div className="text-right">
-                      <Link to="/forgot-password" className="text-sm font-medium text-primary hover:text-primary-dark">
-                        Forgot password?
-                      </Link>
-                    </div>
-                  )}
+                  <div className="text-right">
+                    <Link to="/forgot-password" className="text-sm font-medium text-primary hover:text-primary-dark">
+                      Forgot password?
+                    </Link>
+                  </div>
                 </div>
 
                 <button
@@ -299,12 +271,6 @@ export default function LoginForm({ variant }: { variant: LoginVariant }) {
             {config.footer}
           </div>
         </div>
-
-        <p className="text-center mt-4">
-          <Link to="/" className="text-sm text-gray-500 hover:text-gray-700">
-            ← Back to portal selection
-          </Link>
-        </p>
       </div>
     </div>
   );
