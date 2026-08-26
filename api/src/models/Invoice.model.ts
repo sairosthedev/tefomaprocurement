@@ -29,9 +29,22 @@ export interface IThreeWayMatchResult {
   varianceAmount: number;
   matched: boolean;
   withinTolerance: boolean;
+  /** GRV numbers whose receipted quantities back this match. */
+  grvNumbers?: string[];
+  /** Whether stores has raised any GRV for the PO at all. */
+  hasGrv?: boolean;
   lines: IMatchLineResult[];
   messages: string[];
   matchedAt?: Date;
+}
+
+/** Record of a finance user approving an invoice despite a failed match. */
+export interface IVarianceOverride {
+  reason: string;
+  approvedBy: mongoose.Types.ObjectId;
+  approvedAt: Date;
+  varianceAmount: number;
+  hadGrv: boolean;
 }
 
 export interface IInvoice extends Document {
@@ -58,6 +71,7 @@ export interface IInvoice extends Document {
     | 'paid'
     | 'cancelled';
   matchResult?: IThreeWayMatchResult;
+  varianceOverride?: IVarianceOverride;
   approvedBy?: mongoose.Types.ObjectId;
   approvedAt?: Date;
   rejectedBy?: mongoose.Types.ObjectId;
@@ -98,9 +112,19 @@ const MatchResultSchema = new Schema<IThreeWayMatchResult>({
   varianceAmount: Number,
   matched: Boolean,
   withinTolerance: Boolean,
+  grvNumbers: [String],
+  hasGrv: Boolean,
   lines: [MatchLineSchema],
   messages: [String],
   matchedAt: Date
+}, { _id: false });
+
+const VarianceOverrideSchema = new Schema<IVarianceOverride>({
+  reason: { type: String, required: true },
+  approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  approvedAt: { type: Date, required: true },
+  varianceAmount: Number,
+  hadGrv: Boolean
 }, { _id: false });
 
 const InvoiceSchema = new Schema<IInvoice>({
@@ -135,6 +159,7 @@ const InvoiceSchema = new Schema<IInvoice>({
     default: 'submitted'
   },
   matchResult: MatchResultSchema,
+  varianceOverride: VarianceOverrideSchema,
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   approvedAt: Date,
   rejectedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

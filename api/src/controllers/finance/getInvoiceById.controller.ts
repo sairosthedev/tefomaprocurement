@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { Invoice, Delivery } from '../../models/index.js';
-import { performThreeWayMatch } from '../../services/threeWayMatch.service.js';
+import { collectGrvEvidence, performThreeWayMatch } from '../../services/threeWayMatch.service.js';
 
 const getInvoiceById = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -24,7 +24,11 @@ const getInvoiceById = async (req: Request, res: Response): Promise<any> => {
         }).sort({ deliveryDate: -1 })
       : [];
 
-    const freshMatch = po ? performThreeWayMatch(po, invoice.items) : null;
+    // Match against the GRVs stores raised, so the preview finance sees is the
+    // same evidence the approval gate will apply.
+    const freshMatch = po
+      ? performThreeWayMatch(po, invoice.items, await collectGrvEvidence(po))
+      : null;
 
     res.status(200).json({
       success: true,
