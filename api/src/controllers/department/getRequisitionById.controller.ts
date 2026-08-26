@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { PurchaseRequisition, PurchaseOrder, Quotation, Delivery, StoreRequisition } from '../../models/index.js';
+import { buildDepartmentFilter } from '../../lib/departmentScope.js';
 
 const getRequisitionById = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -9,7 +10,7 @@ const getRequisitionById = async (req: Request, res: Response): Promise<any> => 
     if (req.user!.role === 'end_user') {
       scope.requestedBy = req.user!._id;
     } else {
-      scope.department = req.user!.department;
+      Object.assign(scope, await buildDepartmentFilter(req.user));
     }
 
     const requisition: any = await PurchaseRequisition.findOne(scope)
@@ -83,7 +84,7 @@ const getRequisitionById = async (req: Request, res: Response): Promise<any> => 
 
       // Check store requisitions
       const storeRequisitions = await StoreRequisition.find({
-        department: req.user!.department,
+        ...(await buildDepartmentFilter(req.user)),
         isDeleted: false,
         status: { $in: ['issued', 'partially_issued'] }
       })

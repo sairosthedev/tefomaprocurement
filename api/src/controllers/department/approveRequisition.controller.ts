@@ -7,15 +7,7 @@ import {
   canFullyFulfillFromStock,
   processRequisitionAgainstStock
 } from '../../services/storesRequisitionProcess.service.js';
-
-// `req.user.department` is populated by the protect middleware, so it may be a
-// document ({ _id, name, code }) rather than a raw ObjectId. Normalize either
-// shape (and the requisition's unpopulated ObjectId) to a hex id for comparison.
-const toIdString = (value: any): string | undefined => {
-  if (!value) return undefined;
-  if (typeof value === 'object' && value._id) return value._id.toString();
-  return value.toString();
-};
+import { canActOnDepartment } from '../../lib/departmentScope.js';
 
 const approveRequisition = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -38,10 +30,7 @@ const approveRequisition = async (req: Request, res: Response): Promise<any> => 
     }
 
     // Verify department head is approving their own department's requisition
-    if (
-      req.user!.role !== 'admin' &&
-      toIdString(requisition.department) !== toIdString(req.user!.department)
-    ) {
+    if (!(await canActOnDepartment(req.user, requisition.department))) {
       return res.status(403).json({
         success: false,
         message: 'You can only approve requisitions from your department'

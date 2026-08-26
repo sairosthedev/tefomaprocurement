@@ -1,12 +1,13 @@
 import type { Request, Response } from 'express';
 import { StoreRequisition } from '../../models/index.js';
+import { buildDepartmentFilter } from '../../lib/departmentScope.js';
 
 const getStoreRequisitions = async (req: Request, res: Response): Promise<any> => {
   try {
     const { search, status, page = 1, limit = 20 } = req.query as any;
 
     const query: any = {
-      department: req.user!.department,
+      ...(await buildDepartmentFilter(req.user)),
       isDeleted: false
     };
 

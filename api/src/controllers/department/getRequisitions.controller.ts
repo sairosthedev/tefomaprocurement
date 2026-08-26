@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { PurchaseRequisition, PurchaseOrder, Quotation, Delivery, StoreRequisition, RFQ } from '../../models/index.js';
+import { buildDepartmentFilter } from '../../lib/departmentScope.js';
 
 const getRequisitions = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -12,7 +13,7 @@ const getRequisitions = async (req: Request, res: Response): Promise<any> => {
     if (req.user!.role === 'end_user') {
       query.requestedBy = req.user!._id;
     } else {
-      query.department = req.user!.department;
+      Object.assign(query, await buildDepartmentFilter(req.user));
     }
 
     if (status) query.status = status;
@@ -206,7 +207,7 @@ const getRequisitions = async (req: Request, res: Response): Promise<any> => {
 
     // Check which requisitions have store requisitions that are issued (items collected)
     const storeRequisitions = await StoreRequisition.find({
-      department: req.user!.department,
+      ...(await buildDepartmentFilter(req.user)),
       isDeleted: false,
       status: { $in: ['issued', 'partially_issued'] }
     })
