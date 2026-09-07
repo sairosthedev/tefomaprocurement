@@ -43,6 +43,7 @@ const submitRequisition = async (req: Request, res: Response): Promise<any> => {
     }
 
     // End user submits → Department Head approval first
+    const previousStatus = requisition.status;
     requisition.status = 'pending_hod';
     requisition.statusHistory = requisition.statusHistory || [];
     requisition.statusHistory.push({
@@ -59,8 +60,10 @@ const submitRequisition = async (req: Request, res: Response): Promise<any> => {
       entity: 'PurchaseRequisition',
       entityId: requisition._id,
       user: req.user,
+      entityLabel: requisition.requisitionNumber,
       description: `Submitted requisition: ${requisition.requisitionNumber}`,
       newData: { status: 'pending_hod' },
+      previousData: { status: previousStatus },
       req
     });
 

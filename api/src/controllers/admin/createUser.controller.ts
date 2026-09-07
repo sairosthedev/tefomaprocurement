@@ -47,6 +47,7 @@ const createUser = async (req: Request, res: Response): Promise<any> => {
       entity: 'User',
       entityId: user._id,
       user: req.user,
+      entityLabel: email,
       description: `Admin created new user: ${email} with role ${role}`,
       newData: { email, firstName, lastName, role, department },
       req

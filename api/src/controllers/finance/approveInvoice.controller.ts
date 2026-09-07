@@ -69,6 +69,8 @@ const approveInvoice = async (req: Request, res: Response): Promise<any> => {
       } as any;
     }
 
+    const previousStatus = invoice.status;
+
     invoice.status = 'approved';
     invoice.matchResult = matchResult;
     invoice.approvedBy = req.user!._id;
@@ -81,9 +83,11 @@ const approveInvoice = async (req: Request, res: Response): Promise<any> => {
       entity: 'Invoice',
       entityId: invoice._id,
       user: req.user,
+      entityLabel: invoice.invoiceNumber,
       description: `Approved invoice ${invoice.invoiceNumber}${
         invoice.varianceOverride ? ` (variance override: ${invoice.varianceOverride.reason})` : ''
       }`,
+      previousData: { status: previousStatus },
       newData: {
         status: 'approved',
         matched: matchResult.matched,

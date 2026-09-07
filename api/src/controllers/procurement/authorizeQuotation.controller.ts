@@ -52,6 +52,7 @@ const authorizeQuotation = async (req: Request, res: Response): Promise<any> => 
       entity: 'RFQ',
       entityId: rfq._id,
       user: req.user,
+      entityLabel: rfq.rfqNumber,
       description: `PM authorized quotation for RFQ ${rfq.rfqNumber}`,
       newData: { quotationId: qid, comments },
       req

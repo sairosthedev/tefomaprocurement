@@ -11,6 +11,12 @@ const updateProfile = async (req: Request, res: Response): Promise<any> => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
+    const before = {
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone
+    };
+
     if (firstName !== undefined) {
       const trimmed = String(firstName).trim();
       if (!trimmed) {
@@ -38,7 +44,10 @@ const updateProfile = async (req: Request, res: Response): Promise<any> => {
       entity: 'User',
       entityId: user._id,
       user: req.user,
-      description: 'Updated profile',
+      entityLabel: user.email,
+      description: 'Updated own profile',
+      previousData: before,
+      newData: { firstName: user.firstName, lastName: user.lastName, phone: user.phone },
       req
     });
 

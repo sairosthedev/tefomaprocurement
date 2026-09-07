@@ -42,6 +42,7 @@ const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> =
     po.cooApproved = true;
     po.cooApprovedBy = req.user!._id;
     po.cooApprovedAt = new Date();
+    const previousStatus = po.status;
     po.status = 'approved';
     po.approvalHistory.push({
       action: 'coo_approved',
@@ -57,8 +58,10 @@ const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> =
       entity: 'PurchaseOrder',
       entityId: po._id,
       user: req.user,
+      entityLabel: po.poNumber,
       description: `COO authorized PO: ${po.poNumber}`,
       newData: { status: 'approved', cooApproved: true },
+      previousData: { status: previousStatus },
       req
     });
 

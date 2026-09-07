@@ -38,7 +38,10 @@ const changePassword = async (req: Request, res: Response): Promise<any> => {
       entity: 'User',
       entityId: user._id,
       user: req.user,
-      description: 'Changed password',
+      entityLabel: user.email,
+      description: 'Changed own password',
+      // The value is never stored; the audit trail records only that it changed.
+      newData: { passwordChanged: true, passwordChangedAt: new Date() },
       req
     });
 

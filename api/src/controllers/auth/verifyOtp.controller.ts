@@ -22,6 +22,7 @@ const verifyOtp = async (req: Request, res: Response): Promise<any> => {
         await createAuditLog({
           action: 'login_failed',
           entity: 'User',
+          entityLabel: email,
           description: `Failed OTP verification for email: ${email}`,
           req
         });

@@ -37,6 +37,8 @@ const approveRequisition = async (req: Request, res: Response): Promise<any> => 
       });
     }
 
+    const previousStatus = requisition.status;
+
     // HOD approval → forward to stores review
     requisition.status = 'stores_review';
     requisition.hodApprovedBy = req.user!._id;
@@ -78,7 +80,9 @@ const approveRequisition = async (req: Request, res: Response): Promise<any> => 
       entity: 'PurchaseRequisition',
       entityId: requisition._id,
       user: req.user,
+      entityLabel: requisition.requisitionNumber,
       description: `Approved requisition: ${requisition.requisitionNumber}`,
+      previousData: { status: previousStatus, hodApproved: false },
       newData: { hodApproved: true, status: fresh?.status, autoProcessed },
       req
     });

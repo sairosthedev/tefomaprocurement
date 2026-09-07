@@ -10,7 +10,7 @@ import createSite from './createSite.controller.js';
 import getSites from './getSites.controller.js';
 import updateSite from './updateSite.controller.js';
 import deleteSite from './deleteSite.controller.js';
-import getAuditLogs from './getAuditLogs.controller.js';
+import getAuditLogs, { getAuditLogStats } from './getAuditLogs.controller.js';
 
 export default {
   createUser,
@@ -25,5 +25,6 @@ export default {
   getSites,
   updateSite,
   deleteSite,
-  getAuditLogs
+  getAuditLogs,
+  getAuditLogStats
 };

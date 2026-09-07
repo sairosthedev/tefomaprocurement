@@ -50,6 +50,7 @@ const rejectPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       return res.status(400).json({ success: false, message: 'Already authorized by COO' });
     }
 
+    const previousStatus = po.status;
     po.status = 'rejected';
     po.cooApproved = false;
     po.approvalHistory.push({
@@ -66,8 +67,10 @@ const rejectPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       entity: 'PurchaseOrder',
       entityId: po._id,
       user: req.user,
+      entityLabel: po.poNumber,
       description: `COO rejected PO: ${po.poNumber}. Reason: ${rejectionReason}`,
       newData: { status: 'rejected' },
+      previousData: { status: previousStatus },
       req
     });
 

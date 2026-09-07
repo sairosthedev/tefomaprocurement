@@ -31,6 +31,7 @@ const rejectRequisition = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
+    const previousStatus = requisition.status;
     requisition.status = 'rejected';
     requisition.statusHistory.push({
       action: 'rejected',
@@ -46,8 +47,10 @@ const rejectRequisition = async (req: Request, res: Response): Promise<any> => {
       entity: 'PurchaseRequisition',
       entityId: requisition._id,
       user: req.user,
+      entityLabel: requisition.requisitionNumber,
       description: `Rejected requisition: ${requisition.requisitionNumber}`,
       newData: { status: 'rejected' },
+      previousData: { status: previousStatus },
       req
     });
 

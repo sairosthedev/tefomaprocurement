@@ -20,7 +20,8 @@ const login = async (req: Request, res: Response): Promise<any> => {
       await createAuditLog({
         action: 'login_failed',
         entity: 'User',
-        description: `Failed login attempt for email: ${email}`,
+        entityLabel: email,
+        description: `Failed login attempt — no account for ${email}`,
         req
       });
 
@@ -38,7 +39,8 @@ const login = async (req: Request, res: Response): Promise<any> => {
         entity: 'User',
         entityId: user._id,
         user,
-        description: 'Failed login attempt - incorrect password',
+        entityLabel: user.email,
+        description: `Failed login attempt — incorrect password for ${user.email}`,
         req
       });
 

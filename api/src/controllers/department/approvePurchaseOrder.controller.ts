@@ -62,6 +62,8 @@ const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> =
       }
     }
 
+    const previousStatus = po.status;
+
     po.deptHodApproved = true;
     po.deptHodApprovedBy = req.user!._id;
     po.deptHodApprovedAt = new Date();
@@ -106,7 +108,9 @@ const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> =
       entity: 'PurchaseOrder',
       entityId: po._id,
       user: req.user,
+      entityLabel: po.poNumber,
       description: `Department HOD approved PO: ${po.poNumber}`,
+      previousData: { status: previousStatus, deptHodApproved: false },
       newData: { status: nextStatus, deptHodApproved: true, collapsed: requestingIsProcurement },
       req
     });

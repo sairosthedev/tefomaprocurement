@@ -26,7 +26,9 @@ export async function finalizeUserLogin(user: any, req: Request) {
     entity: 'User',
     entityId: user._id,
     user,
-    description: 'User logged in successfully (OTP verified)',
+    entityLabel: user.email,
+    description: `${user.role} signed in successfully (OTP verified)`,
+    newData: { role: user.role, lastLogin: user.lastLogin },
     req
   });
 
