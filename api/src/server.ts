@@ -1,25 +1,6 @@
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const envRoot = path.join(__dirname, '..');
-
-/**
- * Load env files in ascending priority. dotenv never overwrites a variable that
- * is already set, so the first file to define a key wins — which is why the
- * most specific file is read first. Real platform variables (Vercel, CI, the
- * shell) are already in process.env and therefore always win over any file.
- *
- *   .env.<env>.local  — personal overrides, git-ignored, never shared
- *   .env.<env>        — the environment's committed-shape settings
- *   .env              — shared defaults across every environment
- */
-const appEnvName = (process.env.APP_ENV || process.env.NODE_ENV || 'development').trim().toLowerCase();
-for (const file of [`.env.${appEnvName}.local`, `.env.${appEnvName}`, '.env']) {
-  dotenv.config({ path: path.join(envRoot, file) });
-}
+// MUST be first: populates process.env before any other module reads it.
+// ES modules hoist imports, so this import runs before the ones below.
+import './config/loadEnv.js';
 
 import { createApp } from './app.js';
 import connectDB from './config/db.js';

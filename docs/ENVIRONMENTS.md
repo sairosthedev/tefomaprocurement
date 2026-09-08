@@ -11,14 +11,35 @@ separate databases; nothing is shared between them.
 | **Database** | `fossil-procure-dev` | `fossil-procure-staging` | `fossil-procure` |
 | **Data** | Yours, disposable | Test data, wiped freely | Real. Never test here. |
 | **OTP in server log** | Yes | No | No |
-| **OTP in API response** | Optional | Blocked at startup | Blocked at startup |
+| **OTP auto-filled at login** | Yes | Yes | Never |
 | **Stack traces to caller** | Yes | No | No |
 | **UI badge** | Grey `DEV` | Amber `STAGING` | None |
 
-Staging is deliberately **not** a relaxed environment. It is reachable by other
-people, so it behaves like production for anything that could leak a credential
-or an internal detail. The only differences are which database it uses, which
-URLs it lives at, and that its data is disposable.
+Staging behaves like production for error detail and server-side logging. It
+differs in which database it uses, which URLs it lives at, that its data is
+disposable — and in one deliberate exception, described next.
+
+### OTP auto-fill, and what it costs
+
+In development and staging the login endpoint returns the one-time code in its
+response, and the sign-in form enters it automatically. A tester signs in with
+just an email and password; no inbox, no waiting.
+
+**This removes two-factor authentication in those environments.** Staging is a
+public URL, so while auto-fill is on, anyone who finds it can sign in as any
+user whose email address they know. That is an accepted trade for an
+environment holding disposable test data. It would not be acceptable anywhere
+holding real data.
+
+Production is refused unconditionally. The check is in code
+(`shouldExposeOtpInResponse()`), not in configuration, so no environment
+variable, deploy setting or later edit to a `.env` file can switch it on for the
+live system — `OTP_EXPOSE_IN_RESPONSE=true` in production is also a startup
+error.
+
+To exercise the real two-step flow in dev or staging, set
+`OTP_EXPOSE_IN_RESPONSE=false`. The staging API logs a warning on every boot
+while auto-fill is enabled.
 
 ## How the environment is chosen
 
@@ -99,7 +120,7 @@ What it refuses to start on:
 - A deployed environment with no `CLIENT_URL`, or a `CLIENT_URL` on localhost
 - A deployed environment with no `RESEND_API_KEY` (no email means no OTP, which
   means nobody can log in)
-- `OTP_EXPOSE_IN_RESPONSE=true` anywhere but development
+- `OTP_EXPOSE_IN_RESPONSE=true` in production (development and staging allow it)
 
 Staging additionally warns — but still starts — if its database name does not
 look like a staging database, since the expensive mistake is staging writing to

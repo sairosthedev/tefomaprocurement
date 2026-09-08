@@ -8,7 +8,7 @@
  * a duplicate being created. The password is hashed by the User model's
  * pre-save hook, so it is never stored in readable form.
  */
-import 'dotenv/config';
+import '../config/loadEnv.js';
 import mongoose from 'mongoose';
 import connectDB from '../config/db.js';
 import { User, Site } from '../models/index.js';

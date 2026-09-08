@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
+import { loadEnvFiles } from '../config/loadEnv.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -7,7 +7,7 @@ import { dirname } from 'path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Load env vars
-dotenv.config({ path: path.join(__dirname, '../../.env') });
+loadEnvFiles();
 
 import { User, Site } from '../models/index.js';
 

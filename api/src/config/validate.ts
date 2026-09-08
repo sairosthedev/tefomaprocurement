@@ -7,7 +7,7 @@
  * wrong is either an outage or a security problem.
  */
 
-import { getAppEnv, isDeployed, isProduction, type AppEnv } from './env.js';
+import { getAppEnv, isDeployed, isProduction, isStaging, type AppEnv } from './env.js';
 import { getJwtSecret } from './secrets.js';
 
 /** Database names that must never be what production connects to. */
@@ -112,10 +112,24 @@ function checkEmail(problems: string[]): void {
 }
 
 function checkOtpExposure(problems: string[]): void {
-  if (process.env.OTP_EXPOSE_IN_RESPONSE === 'true' && isDeployed()) {
+  // Production refuses the setting outright. Development and staging return the
+  // OTP so the sign-in form can fill it in, which is a deliberate removal of the
+  // second factor for those environments; see shouldExposeOtpInResponse().
+  if (process.env.OTP_EXPOSE_IN_RESPONSE === 'true' && isProduction()) {
     problems.push(
       'OTP_EXPOSE_IN_RESPONSE=true returns the login OTP to the caller, which ' +
-        'defeats two-factor auth. It is only permitted in development.'
+        'defeats two-factor auth. It is never permitted in production.'
+    );
+  }
+
+  if (isStaging() && process.env.OTP_EXPOSE_IN_RESPONSE !== 'false') {
+    // Loud, every boot. Staging is internet-reachable, so this is worth saying
+    // out loud rather than leaving buried in a config file.
+    console.warn(
+      '⚠️  OTP auto-fill is ON for staging: the login endpoint returns the code ' +
+        'to the caller, so anyone who can reach this deployment can sign in as ' +
+        'any user whose email they know. Set OTP_EXPOSE_IN_RESPONSE=false to ' +
+        'require the real emailed code.'
     );
   }
 }

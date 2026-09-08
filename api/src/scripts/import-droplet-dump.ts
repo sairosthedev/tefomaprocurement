@@ -11,7 +11,7 @@
  * Dry run:  npx tsx src/scripts/import-droplet-dump.ts --dry-run
  */
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
+import { loadEnvFiles } from '../config/loadEnv.js';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
@@ -19,7 +19,7 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, '../../.env') });
+loadEnvFiles();
 
 import { User, SupplierProfile, Site, Department } from '../models/index.js';
 

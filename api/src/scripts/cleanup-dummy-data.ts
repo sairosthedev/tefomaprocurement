@@ -18,14 +18,14 @@
  * Run: npx tsx src/scripts/cleanup-dummy-data.ts --yes [path\to\droplet_backup.sql]
  */
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
+import { loadEnvFiles } from '../config/loadEnv.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, '../../.env') });
+loadEnvFiles();
 
 import {
   User, SupplierProfile, Item, Inventory, Site, Department,

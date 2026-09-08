@@ -1,3 +1,8 @@
+// First, so any local .env files are read before other modules load. On Vercel
+// there are no .env files — the variables come from project settings — so this
+// is a no-op there.
+import './config/loadEnv.js';
+
 import { createApp } from './app.js';
 import { getAppEnv } from './config/env.js';
 import { validateEnvironment } from './config/validate.js';
@@ -7,8 +12,8 @@ import { validateEnvironment } from './config/validate.js';
  * checks have to happen here too — otherwise a Vercel project with a missing
  * variable deploys green and fails on the first request instead.
  *
- * No dotenv here: on Vercel the environment variables come from the project's
- * settings, scoped per environment, and there are no .env files in the bundle.
+ * Environment variables come from the project's settings on Vercel, scoped per
+ * environment; loadEnv is imported above only so local runs behave the same.
  */
 validateEnvironment();
 

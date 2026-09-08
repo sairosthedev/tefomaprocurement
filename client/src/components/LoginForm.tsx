@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from './Toast';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import Logo from './Logo';
+import { APP_ENV } from '../lib/env';
 
 const config = {
   title: 'Sign in',
@@ -54,6 +55,19 @@ export default function LoginForm() {
         otpSubmittedCode.current = '';
         loginRedirecting.current = false;
         setStep('otp');
+
+        // Outside production the API returns the code, so fill it in rather
+        // than making a tester copy it out of an inbox. The effect watching
+        // `otp` submits once six digits are present, so this signs them in.
+        // `debugOtp` is only ever present when the server chose to expose it —
+        // production never does — so no environment check is needed here.
+        const autoFill = result.debugOtp;
+        if (autoFill) {
+          setOtp(autoFill);
+          showToast(`Verification code filled in automatically (${APP_ENV})`, 'info', 4000);
+          return;
+        }
+
         setOtp('');
         showToast(result.message || 'Check your email for the verification code', 'info', 6000);
         return;

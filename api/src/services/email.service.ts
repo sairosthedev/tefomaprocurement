@@ -11,11 +11,8 @@ import {
   getEmailFromAddress
 } from '../lib/branding.js';
 import { emailPaths } from '../lib/emailLinks.js';
-import dotenv from 'dotenv';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-
-dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 // Initialize Resend client lazily
 let resend: Resend | null = null;
