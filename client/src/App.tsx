@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
+import { EnvironmentBanner } from './components/EnvironmentBanner';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { SidebarLayout } from './layouts/appLayout';
 
@@ -89,6 +90,8 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <ToastProvider>
+          {/* Renders nothing in production. */}
+          <EnvironmentBanner />
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<Login />} />

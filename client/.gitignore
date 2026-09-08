@@ -1,2 +1,11 @@
 .vercel
-.env*
+
+# Real environment files are never committed.
+.env
+.env.*
+
+# Templates carry no secrets and document what each environment needs.
+!.env.example
+!.env.development.example
+!.env.staging.example
+!.env.production.example

@@ -4,9 +4,12 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --mode development",
+    "dev:staging": "vite --mode staging",
     "prebuild": "tsc -p ../packages/shared",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build --mode production",
+    "build:staging": "tsc && vite build --mode staging",
+    "build:development": "tsc && vite build --mode development",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
   },

@@ -3,6 +3,7 @@ import cors from 'cors';
 
 import connectToDatabase from './config/db.js';
 import { corsOptions, applyCorsHeaders } from './config/cors.js';
+import { getAppEnv } from './config/env.js';
 import routes from './routes/index.js';
 import { notFoundHandler, errorHandler } from './middleware/index.js';
 
@@ -21,8 +22,11 @@ export function createApp(): Express {
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
   app.get('/health', (_req: Request, res: Response) => {
+    // `environment` makes it possible to confirm which deployment answered —
+    // the staging and production URLs are otherwise indistinguishable.
     res.json({
       status: 'ok',
+      environment: getAppEnv(),
       uptime: process.uptime(),
       timestamp: new Date().toISOString()
     });

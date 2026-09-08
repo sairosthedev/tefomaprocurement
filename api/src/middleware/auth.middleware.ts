@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import { isProcurementHead } from '@fossil/shared';
 import { User } from '../models/index.js';
+import { getJwtSecret } from '../config/secrets.js';
 
 interface DecodedToken {
   id: string;
@@ -28,10 +29,7 @@ export const protect = async (
       });
     }
 
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET || 'your-secret-key'
-    ) as DecodedToken;
+    const decoded = jwt.verify(token, getJwtSecret()) as DecodedToken;
 
     const user = await User.findById(decoded.id)
       .select('-password')

@@ -41,3 +41,8 @@ droplet_backup.sql
 
 .vercel
 .env*
+
+# Credential / handover documents — must never be committed. These contain live
+# account passwords; keep them in a password manager, not in version control.
+ACCESS_AND_CREDENTIALS.md
+REPORTS/pdf/04-Access-and-Credentials.pdf

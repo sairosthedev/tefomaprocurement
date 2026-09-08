@@ -3,6 +3,7 @@ import type { Request } from 'express';
 import { User, SupplierProfile } from '../models/index.js';
 import { createAuditLog } from '../middleware/index.js';
 import { createNotification } from './notification.service.js';
+import { getJwtSecret, getJwtExpiry } from '../config/secrets.js';
 
 export async function finalizeUserLogin(user: any, req: Request) {
   user.lastLogin = new Date();
@@ -10,8 +11,8 @@ export async function finalizeUserLogin(user: any, req: Request) {
 
   const token = jwt.sign(
     { id: user._id, role: user.role },
-    process.env.JWT_SECRET || 'your-secret-key',
-    { expiresIn: process.env.JWT_EXPIRE || process.env.JWT_EXPIRES_IN || '7d' } as SignOptions
+    getJwtSecret(),
+    { expiresIn: getJwtExpiry() } as SignOptions
   );
 
   await user.populate('department', 'name code');
