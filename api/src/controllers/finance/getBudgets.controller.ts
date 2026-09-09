@@ -1,112 +1,13 @@
-import mongoose from 'mongoose';
 import type { Request, Response } from 'express';
-import { Department, DepartmentBudget, PurchaseOrder, Payment } from '../../models/index.js';
-import { createAuditLog } from '../../middleware/index.js';
+import { Department } from '../../models/index.js';
+import { getBudgetPositions } from '../../services/budget.service.js';
 
-const COMMITTED_PO_STATUSES = ['pending_hod', 'pending_finance', 'pending_coo', 'pending_approvals'];
-
-async function sumPoAmountsByDepartment(
-  departmentIds: string[],
-  statuses: string[]
-): Promise<Map<string, number>> {
-  const totals = new Map<string, number>();
-  departmentIds.forEach((id) => totals.set(id, 0));
-
-  if (departmentIds.length === 0) return totals;
-
-  const rows = await PurchaseOrder.aggregate([
-    {
-      $match: {
-        isDeleted: false,
-        status: { $in: statuses },
-        purchaseRequisition: { $exists: true, $ne: null }
-      }
-    },
-    {
-      $lookup: {
-        from: 'purchaserequisitions',
-        localField: 'purchaseRequisition',
-        foreignField: '_id',
-        as: 'pr'
-      }
-    },
-    { $unwind: '$pr' },
-    {
-      $match: {
-        'pr.department': { $in: departmentIds.map((id) => new mongoose.Types.ObjectId(id)) }
-      }
-    },
-    {
-      $group: {
-        _id: '$pr.department',
-        total: { $sum: '$totalAmount' }
-      }
-    }
-  ]);
-
-  rows.forEach((row: { _id: { toString(): string }; total: number }) => {
-    totals.set(row._id.toString(), row.total || 0);
-  });
-
-  return totals;
-}
-
-async function sumPaidByDepartment(departmentIds: string[]): Promise<Map<string, number>> {
-  const totals = new Map<string, number>();
-  departmentIds.forEach((id) => totals.set(id, 0));
-
-  if (departmentIds.length === 0) return totals;
-
-  const rows = await Payment.aggregate([
-    { $match: { isDeleted: false, status: 'completed' } },
-    { $unwind: '$invoices' },
-    {
-      $lookup: {
-        from: 'invoices',
-        localField: 'invoices',
-        foreignField: '_id',
-        as: 'inv'
-      }
-    },
-    { $unwind: '$inv' },
-    {
-      $lookup: {
-        from: 'purchaseorders',
-        localField: 'inv.purchaseOrder',
-        foreignField: '_id',
-        as: 'po'
-      }
-    },
-    { $unwind: '$po' },
-    {
-      $lookup: {
-        from: 'purchaserequisitions',
-        localField: 'po.purchaseRequisition',
-        foreignField: '_id',
-        as: 'pr'
-      }
-    },
-    { $unwind: '$pr' },
-    {
-      $match: {
-        'pr.department': { $in: departmentIds.map((id) => new mongoose.Types.ObjectId(id)) }
-      }
-    },
-    {
-      $group: {
-        _id: '$pr.department',
-        total: { $sum: '$amount' }
-      }
-    }
-  ]);
-
-  rows.forEach((row: { _id: { toString(): string }; total: number }) => {
-    totals.set(row._id.toString(), row.total || 0);
-  });
-
-  return totals;
-}
-
+/**
+ * Budget position for every active department in a fiscal year (BRD FR-B2).
+ *
+ * The figures come from budget.service so this page and the check that runs
+ * when a requisition is submitted always agree.
+ */
 const getBudgets = async (req: Request, res: Response): Promise<any> => {
   try {
     const fiscalYear = Number(req.query.fiscalYear) || new Date().getFullYear();
@@ -115,52 +16,29 @@ const getBudgets = async (req: Request, res: Response): Promise<any> => {
       .sort({ name: 1 })
       .lean();
 
-    const departmentIds = departments.map((d) => String(d._id));
-
-    const [allocations, utilizedFromPayments, committedTotals] = await Promise.all([
-      DepartmentBudget.find({ fiscalYear, isDeleted: false }).lean(),
-      sumPaidByDepartment(departmentIds),
-      sumPoAmountsByDepartment(departmentIds, COMMITTED_PO_STATUSES)
-    ]);
-
-    const allocationMap = new Map(
-      allocations.map((a) => [String(a.department), a.allocatedAmount])
+    const departmentRows = await getBudgetPositions(
+      departments.map((d) => ({ _id: d._id, name: d.name, code: (d as { code?: string }).code })),
+      fiscalYear
     );
 
-    const departmentRows = departments.map((dept) => {
-      const deptId = String(dept._id);
-      const budget = allocationMap.get(deptId) || 0;
-      const utilized = utilizedFromPayments.get(deptId) || 0;
-      const committed = committedTotals.get(deptId) || 0;
-      const available = Math.max(0, budget - utilized - committed);
-      const percentage = budget > 0 ? Math.round((utilized / budget) * 100) : 0;
-
-      return {
-        departmentId: deptId,
-        name: dept.name,
-        code: dept.code,
-        budget,
-        utilized,
-        committed,
-        available,
-        percentage
-      };
-    });
-
     const totalBudget = departmentRows.reduce((sum, d) => sum + d.budget, 0);
-    const utilized = departmentRows.reduce((sum, d) => sum + d.utilized, 0);
+    const utilised = departmentRows.reduce((sum, d) => sum + d.utilised, 0);
     const committed = departmentRows.reduce((sum, d) => sum + d.committed, 0);
-    const available = Math.max(0, totalBudget - utilized - committed);
+    const available = totalBudget - utilised - committed;
 
     res.status(200).json({
       success: true,
       data: {
         fiscalYear,
         totalBudget,
-        utilized,
+        // `utilized` is kept alongside the corrected spelling so an older client
+        // bundle does not read undefined and render NaN mid-deploy.
+        utilized: utilised,
+        utilised,
         committed,
         available,
-        departments: departmentRows
+        departmentsOverBudget: departmentRows.filter((d) => d.isOverBudget).length,
+        departments: departmentRows.map((d) => ({ ...d, utilized: d.utilised }))
       }
     });
   } catch (error) {

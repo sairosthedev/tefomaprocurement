@@ -65,6 +65,10 @@ export default function Requisitions() {
   const [showActionModal, setShowActionModal] = useState<any>(false);
   const [actionType, setActionType] = useState<any>(''); // 'accept' or 'reject'
   const [actionComment, setActionComment] = useState<any>('');
+  // Set when the server refuses an approval for want of budget; holds the
+  // figures to show the approver so the decision is an informed one.
+  const [budgetWarning, setBudgetWarning] = useState<any>(null);
+  const [budgetOverrideReason, setBudgetOverrideReason] = useState<string>('');
   const [actionLoading, setActionLoading] = useState<any>(false);
   const [submittingId, setSubmittingId] = useState<any>(null);
   const [removingItemId, setRemovingItemId] = useState<any>(null);
@@ -176,9 +180,12 @@ export default function Requisitions() {
         reject: `/procurement/requisitions/${selectedRequisition._id}/reject`
       };
       const endpoint = endpointMap[actionType];
-      await api.put(endpoint, { 
+      await api.put(endpoint, {
         comments: actionComment,
-        reason: actionComment 
+        reason: actionComment,
+        // Empty unless the approver has confirmed an over-budget approval in
+        // the prompt below; the server refuses without it.
+        budgetOverrideReason: budgetOverrideReason.trim() || undefined
       });
       showToast(
         actionType === 'approve' ? 'Requisition approved and sent to stores'
@@ -188,8 +195,17 @@ export default function Requisitions() {
       );
       setShowActionModal(false);
       setActionComment('');
+      setBudgetOverrideReason('');
+      setBudgetWarning(null);
       fetchRequisitions();
     } catch (error: any) {
+      // The server refuses an over-budget approval until a reason is given.
+      // Show what the overrun is and ask for one, rather than a bare error.
+      if (error.response?.status === 409 && error.response?.data?.requiresBudgetOverride) {
+        setBudgetWarning(error.response.data.budgetCheck || null);
+        showToast('This requisition is over budget. A reason is required to approve it.', 'error');
+        return;
+      }
       showToast(error.response?.data?.message || `Failed to ${actionType}`, 'error');
     } finally {
       setActionLoading(false);
@@ -200,6 +216,12 @@ export default function Requisitions() {
     setSelectedRequisition(req);
     setActionType(type);
     setActionComment('');
+    setBudgetOverrideReason('');
+    // Show the position recorded at submission straight away, so an over-budget
+    // request is visible before the approver clicks rather than after.
+    setBudgetWarning(
+      type === 'approve' && req?.budgetCheck?.exceedsBudget ? req.budgetCheck : null
+    );
     setShowActionModal(true);
   };
 
@@ -1011,6 +1033,50 @@ export default function Requisitions() {
             </p>
           </div>
 
+          {/* Budget position. Shown before the approver acts, with the figures
+              that make the overrun concrete rather than just a warning word. */}
+          {budgetWarning && (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+              <p className="text-sm font-semibold text-red-800">
+                Over budget — {budgetWarning.departmentName || 'this department'} FY{budgetWarning.fiscalYear}
+              </p>
+              <dl className="mt-3 space-y-1 text-sm text-red-900">
+                <div className="flex justify-between gap-4">
+                  <dt className="text-red-700">Available before this request</dt>
+                  <dd className="tabular-nums font-medium">
+                    {Number(budgetWarning.availableBefore || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-red-700">This request</dt>
+                  <dd className="tabular-nums font-medium">
+                    {Number(budgetWarning.requestAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-4 border-t border-red-200 pt-1">
+                  <dt className="text-red-700">Would be over by</dt>
+                  <dd className="tabular-nums font-bold">
+                    {Math.abs(Number(budgetWarning.availableAfter || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </dd>
+                </div>
+              </dl>
+
+              <label className="mt-4 block text-sm font-medium text-red-800">
+                Reason for approving over budget <span className="text-red-600">(required)</span>
+              </label>
+              <textarea
+                value={budgetOverrideReason}
+                onChange={(e: any) => setBudgetOverrideReason(e.target.value)}
+                rows={2}
+                className="mt-1 w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:ring-2 focus:ring-red-200 focus:border-red-400 bg-white"
+                placeholder="e.g. Emergency plant breakdown, approved verbally by COO"
+              />
+              <p className="mt-2 text-xs text-red-700">
+                This is recorded against the requisition and Finance is notified.
+              </p>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               {actionType === 'approve' || actionType === 'accept' ? 'Comments (Optional)' : 'Reason for Rejection (Required)'}
@@ -1033,15 +1099,19 @@ export default function Requisitions() {
             </button>
             <button
               onClick={handleAction}
-              disabled={actionLoading}
+              disabled={actionLoading || (!!budgetWarning && !budgetOverrideReason.trim())}
               className={`flex-1 py-2.5 text-white rounded-xl font-medium ${
-                actionType === 'approve' || actionType === 'accept'
-                  ? 'bg-primary hover:bg-primary-dark' 
+                budgetWarning
+                  ? 'bg-red-600 hover:bg-red-700'
+                  : actionType === 'approve' || actionType === 'accept'
+                  ? 'bg-primary hover:bg-primary-dark'
                   : 'bg-red-600 hover:bg-red-700'
-              } disabled:opacity-50`}
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {actionLoading ? (
                 <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+              ) : budgetWarning ? (
+                'Approve over budget'
               ) : actionType === 'approve' ? (
                 'Approve'
               ) : actionType === 'accept' ? (

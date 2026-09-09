@@ -8,11 +8,12 @@ import {
   processRequisitionAgainstStock
 } from '../../services/storesRequisitionProcess.service.js';
 import { canActOnDepartment } from '../../lib/departmentScope.js';
+import { checkRequisitionAgainstBudget } from '../../services/budget.service.js';
 
 const approveRequisition = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
-    const { comments } = req.body;
+    const { comments, budgetOverrideReason } = req.body;
 
     const requisition = await PurchaseRequisition.findById(id);
     if (!requisition || requisition.isDeleted) {
@@ -37,17 +38,61 @@ const approveRequisition = async (req: Request, res: Response): Promise<any> => 
       });
     }
 
+    // Budget gate (BRD FR-B3). Approval is the point where money is genuinely
+    // committed, so the check is re-run here against the position as it stands
+    // now rather than trusting the snapshot taken at submission — other
+    // requests may have consumed the balance in between.
+    //
+    // An over-budget request is refused unless the approver supplies a reason.
+    // Refusing outright would leave no way to handle a genuine emergency, and
+    // the procurement procedure (Rev 9) sets no rule requiring one; recording
+    // who overrode it and why gives Finance the audit trail instead.
+    let budgetCheck = null;
+    try {
+      budgetCheck = await checkRequisitionAgainstBudget(requisition);
+    } catch (error) {
+      // A failure to compute must not silently permit an over-budget approval,
+      // but neither should it block ordinary work, so it is logged and the
+      // approval proceeds as it did before budgets existed.
+      console.error('Budget check failed on approval:', error);
+    }
+
+    const needsOverride = budgetCheck?.exceedsBudget === true;
+    const overrideReason = String(budgetOverrideReason || '').trim();
+
+    if (needsOverride && !overrideReason) {
+      return res.status(409).json({
+        success: false,
+        code: 'BUDGET_EXCEEDED',
+        message: budgetCheck!.message,
+        budgetCheck,
+        // The client shows a confirmation asking for a reason, then retries.
+        requiresBudgetOverride: true
+      });
+    }
+
     const previousStatus = requisition.status;
 
     // HOD approval → forward to stores review
     requisition.status = 'stores_review';
     requisition.hodApprovedBy = req.user!._id;
     requisition.hodApprovedAt = new Date();
+
+    if (needsOverride) {
+      requisition.budgetOverride = {
+        by: req.user!._id,
+        at: new Date(),
+        reason: overrideReason,
+        amountOverBudget: Math.abs(budgetCheck!.availableAfter)
+      };
+    }
     requisition.statusHistory.push({
       action: 'hod_approved',
       by: req.user!._id,
       role: req.user!.role,
-      comments: comments || 'Approved by Department Head'
+      comments: needsOverride
+        ? `${comments || 'Approved by Department Head'} — BUDGET OVERRIDE: ${overrideReason}`
+        : comments || 'Approved by Department Head'
     });
 
     // Stock enquiry — populate storeAvailability on each line (paper IR stores check).
@@ -81,11 +126,34 @@ const approveRequisition = async (req: Request, res: Response): Promise<any> => 
       entityId: requisition._id,
       user: req.user,
       entityLabel: requisition.requisitionNumber,
-      description: `Approved requisition: ${requisition.requisitionNumber}`,
+      description: needsOverride
+        ? `Approved requisition ${requisition.requisitionNumber} OVER BUDGET by ` +
+          `${Math.abs(budgetCheck!.availableAfter).toFixed(2)}. Reason: ${overrideReason}`
+        : `Approved requisition: ${requisition.requisitionNumber}`,
       previousData: { status: previousStatus, hodApproved: false },
-      newData: { hodApproved: true, status: fresh?.status, autoProcessed },
+      newData: {
+        hodApproved: true,
+        status: fresh?.status,
+        autoProcessed,
+        ...(needsOverride ? { budgetOverride: requisition.budgetOverride } : {})
+      },
       req
     });
+
+    // Finance owns budget discipline, so an override is told to them directly
+    // rather than waiting to be found in a report.
+    if (needsOverride) {
+      await notifyUsersByRole('finance', {
+        type: 'requisition_submitted',
+        title: 'Requisition approved over budget',
+        message:
+          `${requisition.requisitionNumber} was approved ${Math.abs(budgetCheck!.availableAfter).toFixed(2)} ` +
+          `over the ${budgetCheck!.departmentName} budget for ${budgetCheck!.fiscalYear}. Reason: ${overrideReason}`,
+        entity: 'PurchaseRequisition',
+        entityId: requisition._id,
+        relatedUser: req.user!._id
+      });
+    }
 
     // Notify the requester
     await createNotification({

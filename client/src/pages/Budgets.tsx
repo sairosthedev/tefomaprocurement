@@ -75,9 +75,11 @@ export default function Budgets() {
   };
 
   const totalBudget = budgetData.totalBudget || 0;
+  const utilisedTotal = budgetData.utilised ?? budgetData.utilized ?? 0;
   const utilizationPercentage = totalBudget > 0
-    ? ((budgetData.utilized / totalBudget) * 100).toFixed(1)
+    ? ((utilisedTotal / totalBudget) * 100).toFixed(1)
     : '0.0';
+  const overBudgetCount = budgetData.departmentsOverBudget || 0;
   const committedPercentage = totalBudget > 0
     ? ((budgetData.committed / totalBudget) * 100).toFixed(1)
     : '0.0';
@@ -94,8 +96,18 @@ export default function Budgets() {
     <div className="p-8">
       <PageHeader
         title="Budget Management"
-        subtitle={`FY ${budgetData.fiscalYear} — live spend from purchase orders and payments`}
+        subtitle={`FY ${budgetData.fiscalYear} — live spend from requisitions, purchase orders and payments`}
       />
+
+      {overBudgetCount > 0 && (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <span className="font-semibold">
+            {overBudgetCount} department{overBudgetCount === 1 ? ' is' : 's are'} over budget
+          </span>{' '}
+          for FY {budgetData.fiscalYear}. Committed spend includes approved requisitions that have not yet
+          reached a purchase order.
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
@@ -117,7 +129,7 @@ export default function Budgets() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Utilized (paid)</p>
-              <p className="text-2xl font-bold text-green-600">{formatCurrency(budgetData.utilized)}</p>
+              <p className="text-2xl font-bold text-green-600">{formatCurrency(utilisedTotal)}</p>
               <p className="text-xs text-gray-400">{utilizationPercentage}% of total</p>
             </div>
           </div>
@@ -143,9 +155,13 @@ export default function Budgets() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Available</p>
-              <p className="text-2xl font-bold text-purple-600">{formatCurrency(budgetData.available)}</p>
+              <p className={`text-2xl font-bold ${budgetData.available < 0 ? 'text-red-600' : 'text-purple-600'}`}>
+                {formatCurrency(budgetData.available)}
+              </p>
               <p className="text-xs text-gray-400">
-                {totalBudget > 0 ? ((budgetData.available / totalBudget) * 100).toFixed(1) : '0.0'}% remaining
+                {budgetData.available < 0
+                  ? 'Over allocation'
+                  : `${totalBudget > 0 ? ((budgetData.available / totalBudget) * 100).toFixed(1) : '0.0'}% remaining`}
               </p>
             </div>
           </div>
@@ -209,21 +225,39 @@ export default function Budgets() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {budgetData.departments.map((dept: any) => (
-                  <tr key={dept.departmentId} className="hover:bg-gray-50">
-                    <td className="py-4 px-6 font-medium text-gray-900">{dept.name}</td>
+                  <tr key={dept.departmentId} className={dept.isOverBudget ? 'bg-red-50/50 hover:bg-red-50' : 'hover:bg-gray-50'}>
+                    <td className="py-4 px-6 font-medium text-gray-900">
+                      {dept.name}
+                      {dept.isOverBudget && (
+                        <span className="ml-2 inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
+                          Over budget
+                        </span>
+                      )}
+                      {dept.budget === 0 && (
+                        <span className="ml-2 inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+                          No allocation
+                        </span>
+                      )}
+                    </td>
                     <td className="py-4 px-6 text-gray-600">{formatCurrency(dept.budget)}</td>
-                    <td className="py-4 px-6 text-gray-600">{formatCurrency(dept.utilized)}</td>
+                    <td className="py-4 px-6 text-gray-600">{formatCurrency(dept.utilised ?? dept.utilized)}</td>
                     <td className="py-4 px-6 text-gray-600">{formatCurrency(dept.committed)}</td>
-                    <td className="py-4 px-6 text-gray-600">{formatCurrency(dept.available)}</td>
+                    {/* Overspend shows as a negative figure rather than being
+                        floored at zero, which hid it entirely. */}
+                    <td className={`py-4 px-6 ${dept.available < 0 ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
+                      {formatCurrency(dept.available)}
+                    </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
                         <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden max-w-[100px]">
                           <div
-                            className={`h-full rounded-full ${dept.percentage > 75 ? 'bg-red-500' : dept.percentage > 50 ? 'bg-amber-500' : 'bg-green-500'}`}
+                            className={`h-full rounded-full ${dept.percentage > 100 ? 'bg-red-600' : dept.percentage > 75 ? 'bg-red-500' : dept.percentage > 50 ? 'bg-amber-500' : 'bg-green-500'}`}
                             style={{ width: `${Math.min(dept.percentage, 100)}%` }}
                           />
                         </div>
-                        <span className="text-sm text-gray-600">{dept.percentage}%</span>
+                        <span className={`text-sm ${dept.percentage > 100 ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
+                          {dept.percentage}%
+                        </span>
                       </div>
                     </td>
                     {isAdmin && (

@@ -15,6 +15,9 @@ const emptyItem = () => ({
   category: '',
   quantity: 1,
   unit: 'Each',
+  // Rough figure from the requester. It is what the budget check uses before a
+  // supplier has quoted, so an approximate number is far more useful than none.
+  estimatedUnitPrice: '',
   package: '',
   specification: '',
   equipment: {} as Record<string, string>,
@@ -33,6 +36,13 @@ export default function CreateRequisition() {
     urgency: 'normal',
     items: [emptyItem()]
   });
+
+  /** What this request is worth, used for the running total shown below. */
+  const estimatedTotal = (formData.items || []).reduce(
+    (sum: number, item: any) =>
+      sum + (Number(item.estimatedUnitPrice) || 0) * (Number(item.quantity) || 0),
+    0
+  );
 
   const addItem = () => {
     setFormData({
@@ -112,6 +122,7 @@ export default function CreateRequisition() {
           package: item.package,
           quantity: item.quantity,
           unit: item.unit,
+          estimatedUnitPrice: Number(item.estimatedUnitPrice) || 0,
           specification: item.specification,
           equipment: item.equipment,
           attachments: item.attachments
@@ -279,7 +290,7 @@ export default function CreateRequisition() {
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     />
                   </div>
-                  <div className="col-span-4 md:col-span-4">
+                  <div className="col-span-4 md:col-span-3">
                     <label className="block text-xs text-gray-500 mb-1">Quantity</label>
                     <input
                       type="number"
@@ -289,7 +300,7 @@ export default function CreateRequisition() {
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     />
                   </div>
-                  <div className="col-span-4 md:col-span-4">
+                  <div className="col-span-4 md:col-span-3">
                     <label className="block text-xs text-gray-500 mb-1">Unit</label>
                     <select
                       value={item.unit}
@@ -300,6 +311,33 @@ export default function CreateRequisition() {
                         <option key={unit} value={unit}>{unit}</option>
                       ))}
                     </select>
+                  </div>
+                  {/* Drives the budget check. Left optional so a requester who
+                      genuinely cannot estimate is not blocked from asking. */}
+                  <div className="col-span-8 md:col-span-4">
+                    <label className="block text-xs text-gray-500 mb-1">
+                      Est. unit price <span className="text-gray-400">(optional)</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={item.estimatedUnitPrice}
+                      onChange={(e: any) => updateItem(index, 'estimatedUnitPrice', e.target.value)}
+                      placeholder="0.00"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    />
+                  </div>
+                  <div className="col-span-4 md:col-span-2">
+                    <label className="block text-xs text-gray-500 mb-1">Line total</label>
+                    <div className="px-3 py-2 text-sm text-gray-700 font-medium tabular-nums">
+                      {(Number(item.estimatedUnitPrice) || 0) * (Number(item.quantity) || 0)
+                        ? ((Number(item.estimatedUnitPrice) || 0) * (Number(item.quantity) || 0)).toLocaleString(
+                            undefined,
+                            { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+                          )
+                        : '—'}
+                    </div>
                   </div>
 
                   <div className="col-span-12">
@@ -325,6 +363,25 @@ export default function CreateRequisition() {
               </div>
             ))}
           </div>
+
+          {/* Running total, so the requester sees the size of what they are
+              asking for before it reaches an approver. */}
+          {estimatedTotal > 0 && (
+            <div className="mt-4 flex items-center justify-end gap-3 text-sm">
+              <span className="text-gray-500">Estimated total</span>
+              <span className="text-lg font-semibold text-gray-900 tabular-nums">
+                {estimatedTotal.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })}
+              </span>
+            </div>
+          )}
+          {estimatedTotal === 0 && (formData.items || []).length > 0 && (
+            <p className="mt-3 text-xs text-gray-500 text-right">
+              Add estimated prices so this request can be checked against your department budget.
+            </p>
+          )}
         </div>
 
         {/* Actions */}

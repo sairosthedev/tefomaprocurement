@@ -87,6 +87,30 @@ export interface IPurchaseRequisition extends Document {
   storesReviewedAt?: Date;
   storesReviewNotes?: string;
   statusHistory: IStatusHistory[];
+  /**
+   * The department's budget position at the moment this was submitted, kept so
+   * the approver sees what was true then and an auditor can see what the
+   * approver was shown. Absent on requisitions submitted before budget checks
+   * existed, and on drafts.
+   */
+  budgetCheck?: {
+    checkedAt: Date;
+    fiscalYear: number;
+    requestAmount: number;
+    availableBefore: number;
+    availableAfter: number;
+    exceedsBudget: boolean;
+    hasAllocation: boolean;
+    unpriced: boolean;
+    message: string;
+  };
+  /** Set when an approver knowingly approved a request that was over budget. */
+  budgetOverride?: {
+    by: mongoose.Types.ObjectId | any;
+    at: Date;
+    reason: string;
+    amountOverBudget: number;
+  };
   processedBy?: mongoose.Types.ObjectId | any;
   rfq?: mongoose.Types.ObjectId | any;
   notes?: string;
@@ -235,6 +259,37 @@ const PurchaseRequisitionSchema = new Schema<IPurchaseRequisition>({
     default: 'draft'
   },
   statusHistory: [StatusHistorySchema],
+  // Snapshot, not a live figure: it records what the approver was shown at
+  // submission. The current position always comes from budget.service.
+  budgetCheck: {
+    type: new Schema(
+      {
+        checkedAt: Date,
+        fiscalYear: Number,
+        requestAmount: Number,
+        availableBefore: Number,
+        availableAfter: Number,
+        exceedsBudget: Boolean,
+        hasAllocation: Boolean,
+        unpriced: Boolean,
+        message: String
+      },
+      { _id: false }
+    ),
+    default: undefined
+  },
+  budgetOverride: {
+    type: new Schema(
+      {
+        by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        at: Date,
+        reason: String,
+        amountOverBudget: Number
+      },
+      { _id: false }
+    ),
+    default: undefined
+  },
   processedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
