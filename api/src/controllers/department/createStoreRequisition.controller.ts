@@ -21,7 +21,7 @@ const createStoreRequisition = async (req: Request, res: Response): Promise<any>
     // Process items - find or create Item records
     const processedItems: any[] = [];
     for (const itemData of items) {
-      const { itemCode, description, quantity } = itemData;
+      const { itemId, itemCode, description, quantity } = itemData;
 
       if (!description || !quantity || quantity < 1) {
         continue; // Skip invalid items
@@ -29,8 +29,15 @@ const createStoreRequisition = async (req: Request, res: Response): Promise<any>
 
       let item: any;
 
+      // A line picked from the stock catalogue carries the item's id, so use it
+      // directly. Re-matching such a line by name is how a typo ends up
+      // creating a near-duplicate item that stores can never issue against.
+      if (itemId) {
+        item = await Item.findOne({ _id: itemId, isDeleted: false });
+      }
+
       // Try to find existing item by code or name/description
-      if (itemCode) {
+      if (!item && itemCode) {
         item = await Item.findOne({
           code: { $regex: new RegExp(`^${itemCode}$`, 'i') },
           isDeleted: false

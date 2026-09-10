@@ -10,6 +10,7 @@ import PageHeader from '../components/PageHeader';
 import ViewButton from '../components/ViewButton';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
+import { ItemSelect } from '../components/ItemSelect';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 const statusColors: any = {
@@ -43,7 +44,7 @@ export default function StoreRequisitions() {
   const [actionComment, setActionComment] = useState<any>('');
   const [actionLoading, setActionLoading] = useState<any>(false);
   const [formData, setFormData] = useState<any>({
-    items: [{ itemCode: '', description: '', quantity: 1 }]
+    items: [{ itemId: '', itemCode: '', description: '', quantity: 1, catalogItem: null }]
   });
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(emptyPagination());
@@ -85,10 +86,20 @@ export default function StoreRequisitions() {
         return;
       }
 
-      await api.post('/department/store-requisitions', { items: validItems });
+      // Send only what the API expects. catalogItem is view state — the link is
+      // carried by itemId, which lets the server use the picked item directly
+      // instead of re-matching it by name.
+      await api.post('/department/store-requisitions', {
+        items: validItems.map((item: any) => ({
+          itemId: item.itemId || undefined,
+          itemCode: item.itemCode || undefined,
+          description: item.description,
+          quantity: item.quantity
+        }))
+      });
       showToast('Store requisition submitted', 'success');
       setShowCreateModal(false);
-      setFormData({ items: [{ itemCode: '', description: '', quantity: 1 }] });
+      setFormData({ items: [{ itemId: '', itemCode: '', description: '', quantity: 1, catalogItem: null }] });
       fetchRequisitions();
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to create requisition', 'error');
@@ -197,7 +208,7 @@ export default function StoreRequisitions() {
   const addItem = () => {
     setFormData({
       ...formData,
-      items: [...formData.items, { itemCode: '', description: '', quantity: 1 }]
+      items: [...formData.items, { itemId: '', itemCode: '', description: '', quantity: 1, catalogItem: null }]
     });
   };
 
@@ -372,14 +383,49 @@ export default function StoreRequisitions() {
             <div key={index} className="bg-gray-50 rounded-xl p-4">
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-2">
-                  <label className="block text-xs text-gray-500 mb-1">Item Description</label>
-                  <input
-                    type="text"
-                    value={item.description}
-                    onChange={(e: any) => updateItem(index, 'description', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
-                    placeholder="e.g., A4 Paper"
+                  <label className="block text-xs text-gray-500 mb-1">Item</label>
+                  {/* Picked from the stock catalogue so the line points at a real
+                      inventory item. Free text still works for something not yet
+                      carried, but then stores cannot match it against stock. */}
+                  <ItemSelect
+                    value={item.catalogItem || null}
+                    freeTextValue={item.description}
+                    onChange={(catalogItem) => {
+                      const newItems = [...formData.items];
+                      newItems[index] = {
+                        ...newItems[index],
+                        catalogItem,
+                        itemId: catalogItem?._id || '',
+                        itemCode: catalogItem?.code || '',
+                        description: catalogItem?.name || newItems[index].description
+                      };
+                      setFormData({ ...formData, items: newItems });
+                    }}
+                    onFreeText={(text) => {
+                      const newItems = [...formData.items];
+                      newItems[index] = {
+                        ...newItems[index],
+                        catalogItem: null,
+                        itemId: '',
+                        itemCode: '',
+                        description: text
+                      };
+                      setFormData({ ...formData, items: newItems });
+                    }}
+                    placeholder="Search stock catalog or type description…"
+                    className="w-full"
                   />
+                  {item.catalogItem ? (
+                    <p className="text-xs text-emerald-600 mt-1">
+                      Linked to catalog · {item.catalogItem.quantityAvailable} available at your site
+                    </p>
+                  ) : (
+                    item.description?.trim() && (
+                      <p className="text-xs text-amber-600 mt-1">
+                        Not linked to a catalog item — stores will have to match this by hand.
+                      </p>
+                    )
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">Quantity</label>
