@@ -23,7 +23,11 @@ export default function Budgets() {
   const [editAmount, setEditAmount] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const isAdmin = user?.role === 'admin';
+  // Finance owns budget allocation (BRD FR-B1, "Finance shall allocate a budget
+  // to each department"), and the API already accepts finance on this route.
+  // Gating the edit control on admin alone left the Finance Manager able to see
+  // the page but not do the one thing it exists for.
+  const canEditAllocations = user?.role === 'finance' || user?.role === 'admin';
 
   useEffect(() => {
     fetchBudgetData();
@@ -203,7 +207,7 @@ export default function Budgets() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="font-semibold text-gray-900">Department Budgets</h2>
-          {isAdmin && (
+          {canEditAllocations && (
             <p className="text-xs text-gray-500">Click edit to set FY allocations</p>
           )}
         </div>
@@ -220,7 +224,7 @@ export default function Budgets() {
                   <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Committed</th>
                   <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Available</th>
                   <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Utilization</th>
-                  {isAdmin && <th className="text-right py-4 px-6 text-sm font-semibold text-gray-600">Actions</th>}
+                  {canEditAllocations && <th className="text-right py-4 px-6 text-sm font-semibold text-gray-600">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -260,7 +264,7 @@ export default function Budgets() {
                         </span>
                       </div>
                     </td>
-                    {isAdmin && (
+                    {canEditAllocations && (
                       <td className="py-4 px-6 text-right">
                         <button
                           type="button"
