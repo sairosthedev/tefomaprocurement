@@ -7,6 +7,8 @@ import { User } from '../models/index.js';
 import {
   getBrandLabel,
   getProductName,
+  getCompanyName,
+  getAppUrl,
   brandSubject,
   getEmailFromAddress
 } from '../lib/branding.js';
@@ -60,7 +62,8 @@ const sendEmailNotification = async ({
   subText,
   subSubText,
   actionButtonText,
-  actionButtonLink
+  actionButtonLink,
+  attachments
 }: {
   emailTo?: string | null;
   subject?: string;
@@ -69,6 +72,12 @@ const sendEmailNotification = async ({
   subSubText?: string | null;
   actionButtonText?: string;
   actionButtonLink?: string;
+  /**
+   * Files to send with the message. Needed because Rev 9 clause 6.3.14 requires
+   * the purchase order to reach the supplier as a document, not a link they
+   * must log in to fetch.
+   */
+  attachments?: Array<{ filename: string; content: Buffer }>;
 }): Promise<any> => {
   const resendClient = getResendClient();
 
@@ -137,6 +146,9 @@ const sendEmailNotification = async ({
       to: emailTo,
       subject: subject || '',
       html: emailHtml,
+      // Omitted entirely when there is nothing to attach: Resend rejects an
+      // empty attachments array.
+      ...(attachments && attachments.length > 0 ? { attachments } : {})
     });
 
     if (error) {
@@ -526,8 +538,54 @@ const sendPasswordResetEmail = async (
   return result != null;
 };
 
+/**
+ * Send the purchase order to the supplier as a PDF (Rev 9 clause 6.3.14).
+ *
+ * The document is attached rather than linked: the clause requires the supplier
+ * to be *sent* the order, and a link would make acting on it conditional on
+ * having portal credentials and remembering to log in.
+ *
+ * Returns false rather than throwing when there is no address or delivery
+ * fails, so a mail problem never rolls back a purchase order that was
+ * legitimately created. The caller records the outcome.
+ */
+const sendPurchaseOrderEmail = async (
+  po: any,
+  pdf: Buffer,
+  emailTo?: string | null
+): Promise<boolean> => {
+  if (!emailTo) {
+    console.warn(`No supplier email for PO ${po?.poNumber}; document not sent.`);
+    return false;
+  }
+
+  const total =
+    typeof po?.totalAmount === 'number'
+      ? `${po.currency || 'USD'} ${po.totalAmount.toLocaleString('en-ZA', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        })}`
+      : '';
+
+  const result = await sendEmailNotification({
+    emailTo,
+    subject: brandSubject(`Purchase Order ${po?.poNumber || ''}`),
+    headingText: `Purchase Order ${po?.poNumber || ''}`,
+    subText:
+      `Please find attached purchase order ${po?.poNumber || ''} from ${getCompanyName()}` +
+      `${total ? ` to the value of ${total}` : ''}.`,
+    subSubText: 'Kindly acknowledge receipt and confirm the delivery date.',
+    actionButtonText: 'View in portal',
+    actionButtonLink: `${getAppUrl()}/purchase-orders`,
+    attachments: [{ filename: `${po?.poNumber || 'purchase-order'}.pdf`, content: pdf }]
+  });
+
+  return Boolean(result);
+};
+
 export {
   sendEmailNotification,
+  sendPurchaseOrderEmail,
   sendNotificationEmail,
   sendOtpEmail,
   sendPasswordResetEmail,

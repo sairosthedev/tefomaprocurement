@@ -5,6 +5,17 @@ import { createAuditLog } from '../../middleware/index.js';
 import { resolveSiteId } from '../../lib/siteScope.js';
 import { hasEnteredLineItems } from '../../lib/lineItems.js';
 
+/**
+ * Requisition statuses from which sourcing may legitimately begin (BR-4).
+ *
+ * `accepted` means stores confirmed the goods are not on a shelf and
+ * procurement took the request on; `sourcing` allows a second RFQ against a
+ * requisition already being sourced, which happens when a first round draws no
+ * usable quotes. Everything earlier — draft, pending_hod, stores_review — is
+ * still upstream of the stock check, and everything later is already ordered.
+ */
+const RFQ_ELIGIBLE_REQUISITION_STATUSES = ['accepted', 'sourcing'];
+
 const createRFQ = async (req: Request, res: Response): Promise<any> => {
   try {
     const { 
@@ -55,8 +66,30 @@ const createRFQ = async (req: Request, res: Response): Promise<any> => {
     // site, then an explicit body value, else fall back to the user's site/HQ.
     let requisitionSiteId = null;
     if (purchaseRequisitionId) {
-      const pr = await PurchaseRequisition.findById(purchaseRequisitionId).select('site');
-      requisitionSiteId = pr?.site || null;
+      const pr = await PurchaseRequisition.findById(purchaseRequisitionId).select('site status requisitionNumber');
+
+      if (!pr) {
+        return res.status(404).json({
+          success: false,
+          message: 'Linked purchase requisition not found'
+        });
+      }
+
+      // BR-4: stores must confirm the goods cannot be met from existing stock
+      // before anything is sourced externally. Nothing previously checked the
+      // requisition's status here, so an RFQ raised while it sat in
+      // stores_review skipped that check entirely and Tefoma could buy what it
+      // already had on a shelf.
+      if (!RFQ_ELIGIBLE_REQUISITION_STATUSES.includes(pr.status)) {
+        return res.status(400).json({
+          success: false,
+          message:
+            `Requisition ${pr.requisitionNumber || ''} is at "${String(pr.status).replace(/_/g, ' ')}" and ` +
+            'is not ready for sourcing. It must clear the stores stock check and be accepted by procurement first.'
+        });
+      }
+
+      requisitionSiteId = pr.site || null;
     }
     const siteId = await resolveSiteId(req.user, req.body.siteId || requisitionSiteId);
 

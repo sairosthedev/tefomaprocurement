@@ -44,6 +44,9 @@ router.use(authorizeProcurement);
 router.get('/suppliers', procurement.getSuppliers);
 router.post('/suppliers', procurement.createSupplier);
 router.post('/suppliers/bulk-import', procurement.bulkImportSuppliers);
+// Category-matched suppliers for RFQ invitation (exact + related). Must precede
+// '/suppliers/:id' so 'match' is not read as a supplier id.
+router.get('/suppliers/match', procurement.matchSuppliers);
 router.get('/suppliers/:id', procurement.getSupplierById);
 router.put('/suppliers/:id', procurement.updateSupplier);
 router.put('/suppliers/:id/approve', procurement.approveSupplier);
@@ -98,6 +101,8 @@ router.post('/purchase-orders', procurement.createPurchaseOrder);
 router.get('/purchase-orders', procurement.getPurchaseOrders);
 router.get('/purchase-orders/cancellation-meta', procurement.getPurchaseOrderCancellationMeta);
 router.get('/purchase-orders/:id', procurement.getPurchaseOrderById);
+// Rev 9 clause 6.3.14: the formal PO document, as sent to the supplier.
+router.get('/purchase-orders/:id/print', procurement.printPurchaseOrder);
 router.put('/purchase-orders/:id/submit', procurement.submitPurchaseOrder);
 router.put('/purchase-orders/:id/cancel', procurement.cancelPurchaseOrder);
 

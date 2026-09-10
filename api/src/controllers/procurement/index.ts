@@ -6,6 +6,7 @@ import blacklistSupplier from './blacklistSupplier.controller.js';
 import setSupplierStatus from './setSupplierStatus.controller.js';
 import createSupplier from './createSupplier.controller.js';
 import bulkImportSuppliers from './bulkImportSuppliers.controller.js';
+import matchSuppliers from './matchSuppliers.controller.js';
 import createRFQ from './createRFQ.controller.js';
 import getRFQs from './getRFQs.controller.js';
 import getRFQById from './getRFQById.controller.js';
@@ -28,6 +29,7 @@ import createPurchaseOrder from './createPurchaseOrder.controller.js';
 import getPurchaseOrders from './getPurchaseOrders.controller.js';
 import getPurchaseOrderById from './getPurchaseOrderById.controller.js';
 import submitPurchaseOrder from './submitPurchaseOrder.controller.js';
+import printPurchaseOrder from './printPurchaseOrder.controller.js';
 import getPendingRequisitions from './getPendingRequisitions.controller.js';
 import getRequisitionById from './getRequisitionById.controller.js';
 import acceptRequisition from './acceptRequisition.controller.js';
@@ -58,6 +60,7 @@ export default {
   setSupplierStatus,
   createSupplier,
   bulkImportSuppliers,
+  matchSuppliers,
   updateKysChecklist,
   verifyKys,
   uploadSupplierDocument,
@@ -90,6 +93,7 @@ export default {
   getPurchaseOrders,
   getPurchaseOrderById,
   submitPurchaseOrder,
+  printPurchaseOrder,
   getPendingRequisitions,
   getRequisitionById,
   acceptRequisition,
