@@ -4,8 +4,6 @@ import { PurchaseOrder, Quotation, RFQ, PurchaseRequisition, Site } from '../../
 import { createAuditLog } from '../../middleware/index.js';
 import { notifySupplier, notifyUsersByRole } from '../../services/notification.service.js';
 import { resolveSiteId } from '../../lib/siteScope.js';
-import { renderPurchaseOrderPdfBuffer } from '../../services/purchaseOrderDocument.service.js';
-import { sendPurchaseOrderEmail } from '../../services/email.service.js';
 
 const createPurchaseOrder = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -179,42 +177,11 @@ const createPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       metadata: { poNumber: po.poNumber, totalAmount: po.totalAmount, isSupplier: true }
     });
 
-    // Rev 9 clause 6.3.14: send the purchase order to the supplier by email.
-    // The in-app notification above tells them something happened; the clause
-    // requires they also receive the order itself as a document.
-    //
-    // Wrapped so a mail failure cannot roll back a purchase order that was
-    // legitimately created — the PO exists either way, and the outcome is
-    // recorded so procurement can resend from the PO screen.
-    try {
-      const poForDocument: any = await PurchaseOrder.findById(po._id)
-        .populate('supplier', 'companyName email phone address contactPersons')
-        .populate('createdBy', 'firstName lastName role')
-        .populate('deliverToSite', 'name code address');
-
-      const supplierEmail =
-        poForDocument?.supplier?.email ||
-        poForDocument?.supplier?.contactPersons?.find((c: any) => c.isPrimary)?.email ||
-        poForDocument?.supplier?.contactPersons?.[0]?.email ||
-        null;
-
-      const pdf = await renderPurchaseOrderPdfBuffer(poForDocument);
-      const sent = await sendPurchaseOrderEmail(poForDocument, pdf, supplierEmail);
-
-      await createAuditLog({
-        action: 'update',
-        entity: 'PurchaseOrder',
-        entityId: po._id,
-        user: req.user,
-        entityLabel: po.poNumber,
-        description: sent
-          ? `Emailed purchase order ${po.poNumber} to ${supplierEmail}`
-          : `Could not email purchase order ${po.poNumber} to the supplier`,
-        req
-      });
-    } catch (error) {
-      console.error(`Failed to email PO ${po.poNumber} to supplier:`, error);
-    }
+    // The purchase order is NOT emailed here. It is created as a draft, and
+    // Rev 9 clause 6.3.14 concerns sending the supplier an order they can act
+    // on — which only exists once the last required approval lands. Finance or
+    // the COO may still reject it. The send happens in those approval
+    // controllers instead, via emailApprovedPurchaseOrderToSupplier().
 
     // Notify finance and COO for approval
     await notifyUsersByRole(['finance', 'coo'], {

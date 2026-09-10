@@ -291,6 +291,68 @@ export function buildPurchaseOrderPdf(doc: any, po: any): void {
 }
 
 /**
+ * Send the approved purchase order to the supplier (Rev 9 clause 6.3.14).
+ *
+ * Called from the approval controllers rather than from PO creation: a PO is
+ * created as a draft and only becomes an order the supplier may act on once the
+ * last required approval lands. Sending at creation would put an unapproved
+ * order in a supplier's inbox, and Finance or the COO could still reject it.
+ *
+ * There are two terminal approval paths — Finance for orders below the COO
+ * threshold, and the COO above it — so this lives here and both call it.
+ *
+ * Never throws. A mail failure must not roll back an approval that has
+ * legitimately happened, so the outcome is written to the audit log either way
+ * and the caller carries on.
+ */
+export async function emailApprovedPurchaseOrderToSupplier(
+  purchaseOrderId: unknown,
+  actor: any,
+  req?: unknown
+): Promise<void> {
+  // Imported here rather than at module scope: the document service is pulled
+  // in by the PDF route, and a top-level import of the mailer would drag the
+  // Resend client into that path for no reason.
+  const [{ PurchaseOrder }, { createAuditLog }, { sendPurchaseOrderEmail }] = await Promise.all([
+    import('../models/index.js'),
+    import('../middleware/index.js'),
+    import('./email.service.js')
+  ]);
+
+  try {
+    const po: any = await PurchaseOrder.findById(purchaseOrderId as any)
+      .populate('supplier', 'companyName email phone address contactPersons')
+      .populate('createdBy', 'firstName lastName role')
+      .populate('deliverToSite', 'name code address');
+
+    if (!po) return;
+
+    const supplierEmail =
+      po.supplier?.email ||
+      po.supplier?.contactPersons?.find((c: any) => c.isPrimary)?.email ||
+      po.supplier?.contactPersons?.[0]?.email ||
+      null;
+
+    const pdf = await renderPurchaseOrderPdfBuffer(po);
+    const sent = await sendPurchaseOrderEmail(po, pdf, supplierEmail);
+
+    await createAuditLog({
+      action: 'update',
+      entity: 'PurchaseOrder',
+      entityId: po._id,
+      user: actor,
+      entityLabel: po.poNumber,
+      description: sent
+        ? `Emailed purchase order ${po.poNumber} to ${supplierEmail}`
+        : `Could not email purchase order ${po.poNumber} to the supplier`,
+      req
+    } as any);
+  } catch (error) {
+    console.error(`Failed to email PO ${String(purchaseOrderId)} to supplier:`, error);
+  }
+}
+
+/**
  * Render the purchase order to a buffer, for attaching to an email.
  *
  * Resolves only once pdfkit has flushed every page, so the attachment is never

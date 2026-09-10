@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { PurchaseOrder } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole, notifySupplier } from '../../services/notification.service.js';
+import { emailApprovedPurchaseOrderToSupplier } from '../../services/purchaseOrderDocument.service.js';
 
 const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -80,6 +81,11 @@ const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> =
         entityId: po._id,
         relatedUser: req.user!._id
       });
+      // Below the COO threshold, Finance is the last approval — so this is the
+      // point the order becomes one the supplier may act on (Rev 9 clause
+      // 6.3.14). Above the threshold the COO controller sends it instead.
+      await emailApprovedPurchaseOrderToSupplier(po._id, req.user, req);
+
       await notifySupplier(po.supplier, {
         type: 'po_coo_approved',
         title: 'Purchase Order Approved',
