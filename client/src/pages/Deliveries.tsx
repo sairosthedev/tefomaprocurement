@@ -38,7 +38,12 @@ export default function Deliveries() {
   const [receiveData, setReceiveData] = useState<any>({
     deliveryNote: '',
     items: [],
-    deliveredBy: { name: '', idNumber: '', vehicleRegistration: '', contactNumber: '' }
+    deliveredBy: { name: '', idNumber: '', vehicleRegistration: '', contactNumber: '' },
+    // Rev 9 clause 6.6.2 puts the quality check with a department
+    // representative, who is usually not a system user — so it is a name, not a
+    // picker. Optional: left blank when nobody attended.
+    inspectedByName: '',
+    inspectedByDepartment: ''
   });
   const [printingId, setPrintingId] = useState<string | null>(null);
   const [isReceiving, setIsReceiving] = useState<any>(false);
@@ -139,6 +144,8 @@ export default function Deliveries() {
           vehicleRegistration: receiveData.deliveredBy.vehicleRegistration?.trim() || undefined,
           contactNumber: receiveData.deliveredBy.contactNumber?.trim() || undefined
         },
+        inspectedByName: receiveData.inspectedByName?.trim() || undefined,
+        inspectedByDepartment: receiveData.inspectedByDepartment?.trim() || undefined,
         notes: ''
       });
 
@@ -520,9 +527,45 @@ export default function Deliveries() {
                 </div>
               </div>
               <p className="text-xs text-gray-500 mt-3">
-                You are recorded as the receiving officer. The inspecting officer is captured when the
-                delivery is accepted into stock.
+                You are recorded as the receiving officer.
               </p>
+            </div>
+
+            <div className="border border-gray-200 rounded-xl p-4">
+              <label className="block text-sm font-semibold text-gray-800 mb-1">
+                Inspected by <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <p className="text-xs text-gray-500 mb-3">
+                The department representative who checked the goods for damage and quality
+                (procedure clause 6.6.2). Leave blank if nobody attended — the GRV then prints an
+                empty block to sign by hand.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Full name</label>
+                  <input
+                    type="text"
+                    value={receiveData.inspectedByName || ''}
+                    onChange={(e: any) =>
+                      setReceiveData((prev: any) => ({ ...prev, inspectedByName: e.target.value }))
+                    }
+                    placeholder="e.g. Tendai Chikwana"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Department</label>
+                  <input
+                    type="text"
+                    value={receiveData.inspectedByDepartment || ''}
+                    onChange={(e: any) =>
+                      setReceiveData((prev: any) => ({ ...prev, inspectedByDepartment: e.target.value }))
+                    }
+                    placeholder="e.g. Workshop"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                </div>
+              </div>
             </div>
 
             <div>

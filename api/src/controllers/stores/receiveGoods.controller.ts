@@ -13,8 +13,18 @@ const receiveGoods = async (req: Request, res: Response): Promise<any> => {
       deliveryDate,
       items,
       notes,
-      deliveredBy
+      deliveredBy,
+      inspectedByName,
+      inspectedByDepartment
     } = req.body;
+
+    // Rev 9 clause 6.6.2: quality checks are performed by a department
+    // representative, who is usually not a system user — hence a name rather
+    // than a User reference. Left undefined when nobody attended, so the GRV
+    // prints an empty block to sign by hand instead of asserting an inspection
+    // that never took place.
+    const inspectorName = inspectedByName ? String(inspectedByName).trim() : undefined;
+    const inspectorDepartment = inspectedByDepartment ? String(inspectedByDepartment).trim() : undefined;
 
     // Person who physically handed over the goods (supplier's driver/rep)
     const deliveredByRecord = deliveredBy?.name
@@ -76,6 +86,11 @@ const receiveGoods = async (req: Request, res: Response): Promise<any> => {
       delivery.receivedBy = req.user!._id;
       delivery.receivedAt = new Date();
       if (deliveredByRecord) delivery.deliveredBy = deliveredByRecord;
+      if (inspectorName) {
+        delivery.inspectedByName = inspectorName;
+        delivery.inspectedByDepartment = inspectorDepartment;
+        delivery.inspectedAt = new Date();
+      }
       delivery.items = items;
       delivery.isPartialDelivery = !allReceived;
       delivery.isFinalDelivery = allReceived;
@@ -93,6 +108,9 @@ const receiveGoods = async (req: Request, res: Response): Promise<any> => {
         receivedBy: req.user!._id,
         receivedAt: new Date(),
         deliveredBy: deliveredByRecord,
+        inspectedByName: inspectorName,
+        inspectedByDepartment: inspectorDepartment,
+        inspectedAt: inspectorName ? new Date() : undefined,
         items,
         isPartialDelivery: !allReceived,
         isFinalDelivery: allReceived,

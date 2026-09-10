@@ -7,6 +7,23 @@ export interface IStoreRequisitionItem {
   notes?: string;
 }
 
+/**
+ * The person who physically took the goods away from the store.
+ *
+ * Mirrors the `deliveredBy` block captured when goods are received: stock
+ * leaving is as much a custody hand-over as stock arriving, and Rev 9 clause
+ * 6.4.4 prohibits "any collection of products done without procurement
+ * authorization or an order" — which can only be evidenced if the collection
+ * itself is recorded.
+ */
+export interface ICollectedBy {
+  name?: string;
+  idNumber?: string;
+  department?: string;
+  contactNumber?: string;
+  signedAt?: Date;
+}
+
 export interface IStoreRequisition extends Document {
   requisitionNumber: string;
   site: mongoose.Types.ObjectId | any;
@@ -20,6 +37,10 @@ export interface IStoreRequisition extends Document {
   approvedAt?: Date;
   issuedBy?: mongoose.Types.ObjectId | any;
   issuedAt?: Date;
+  /** Who carried the goods away. Absent on requisitions issued before this was captured. */
+  collectedBy?: ICollectedBy;
+  /** Document number for the printed issue note, assigned on first issue. */
+  issueNoteNumber?: string;
   notes?: string;
   isDeleted: boolean;
   createdAt: Date;
@@ -86,6 +107,17 @@ const StoreRequisitionSchema = new Schema<IStoreRequisition>({
     ref: 'User'
   },
   issuedAt: Date,
+  collectedBy: {
+    name: { type: String, trim: true },
+    idNumber: { type: String, trim: true },
+    department: { type: String, trim: true },
+    contactNumber: { type: String, trim: true },
+    signedAt: Date
+  },
+  issueNoteNumber: {
+    type: String,
+    trim: true
+  },
   notes: String,
   isDeleted: {
     type: Boolean,

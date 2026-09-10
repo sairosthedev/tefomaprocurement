@@ -6,6 +6,7 @@ import getMovements from './getMovements.controller.js';
 import issueStock from './issueStock.controller.js';
 import acceptDelivery from './acceptDelivery.controller.js';
 import printGrv from './printGrv.controller.js';
+import printStoreIssueNote from './printStoreIssueNote.controller.js';
 import getStoreRequisitions from './getStoreRequisitions.controller.js';
 import approveStoreRequisition from './approveStoreRequisition.controller.js';
 import rejectStoreRequisition from './rejectStoreRequisition.controller.js';
@@ -32,6 +33,7 @@ export default {
   issueStock,
   acceptDelivery,
   printGrv,
+  printStoreIssueNote,
   getStoreRequisitions,
   approveStoreRequisition,
   rejectStoreRequisition,

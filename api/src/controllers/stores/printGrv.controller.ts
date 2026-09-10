@@ -252,10 +252,20 @@ const printGrv = async (req: Request, res: Response): Promise<any> => {
       ['Date', formatDateTime(delivery.receivedAt || delivery.deliveryDate)]
     ], ruleY);
 
+    // Rev 9 clause 6.6.2 assigns the quality check to a department
+    // representative, who is usually not a system user — so a recorded name
+    // takes precedence over the accepting user. When neither exists the block
+    // prints blank to be signed by hand, rather than naming someone who did not
+    // inspect the goods.
     signatureBlock(doc, MARGIN + (signWidth + 15) * 2, signY, signWidth, 'Inspected by', [
-      ['Name', fullName(delivery.inspectedBy)],
-      ['Designation', formatRole(delivery.inspectedBy?.role)],
-      ['Date', formatDateTime(delivery.inspectedAt)]
+      ['Name', delivery.inspectedByName || fullName(delivery.inspectedBy)],
+      [
+        'Designation',
+        delivery.inspectedByName
+          ? delivery.inspectedByDepartment || 'Department representative'
+          : formatRole(delivery.inspectedBy?.role)
+      ],
+      ['Date', formatDateTime(delivery.inspectedAt || delivery.receivedAt)]
     ], ruleY);
 
     // ── Footer on every page ──

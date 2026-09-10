@@ -44,6 +44,17 @@ export interface IDelivery extends Document {
   status: 'pending' | 'received' | 'inspected' | 'accepted' | 'partially_accepted' | 'rejected';
   inspectedBy?: mongoose.Types.ObjectId | any;
   inspectedAt?: Date;
+  /**
+   * The department representative who performed the quality check.
+   *
+   * Rev 9 clause 6.6.2 assigns quality checks to department representatives,
+   * not the receiving clerk, and they are typically not system users — so the
+   * name is recorded as text rather than as a User reference. Left empty when
+   * nobody attended, so the GRV prints a blank block to be signed by hand
+   * rather than asserting an inspection that did not happen.
+   */
+  inspectedByName?: string;
+  inspectedByDepartment?: string;
   notes?: string;
   attachments: IDeliveryAttachment[];
   isDeleted: boolean;
@@ -138,6 +149,8 @@ const DeliverySchema = new Schema<IDelivery>({
     ref: 'User'
   },
   inspectedAt: Date,
+  inspectedByName: { type: String, trim: true },
+  inspectedByDepartment: { type: String, trim: true },
   notes: String,
   attachments: [{
     fileName: String,

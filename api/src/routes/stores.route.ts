@@ -14,6 +14,14 @@ router.get(
   stores.printGrv
 );
 
+// Printable stores issue note - the counterpart to the GRV. Department heads
+// need it to evidence what their department collected.
+router.get(
+  '/requisitions/:id/issue-note',
+  authorize('stores_officer', 'admin', 'department_head'),
+  stores.printStoreIssueNote
+);
+
 // All remaining routes require stores_officer role
 router.use(authorize('stores_officer', 'admin'));
 

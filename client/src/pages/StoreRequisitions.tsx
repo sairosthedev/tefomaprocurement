@@ -31,6 +31,14 @@ export default function StoreRequisitions() {
   const [showViewModal, setShowViewModal] = useState<any>(false);
   const [showApproveModal, setShowApproveModal] = useState<any>(false);
   const [showRejectModal, setShowRejectModal] = useState<any>(false);
+  const [showIssueModal, setShowIssueModal] = useState<any>(false);
+  const [collectedBy, setCollectedBy] = useState({
+    name: '',
+    idNumber: '',
+    department: '',
+    contactNumber: ''
+  });
+  const [printingId, setPrintingId] = useState<string | null>(null);
   const [selectedRequisition, setSelectedRequisition] = useState<any>(null);
   const [actionComment, setActionComment] = useState<any>('');
   const [actionLoading, setActionLoading] = useState<any>(false);
@@ -130,13 +138,59 @@ export default function StoreRequisitions() {
     }
   };
 
-  const handleIssue = async (id: any) => {
+  /**
+   * Issue the stock, recording who collected it.
+   *
+   * The collector is optional so an issue is never blocked, but it is asked for
+   * every time: stock leaving the store is a custody hand-over, and without it
+   * nothing evidences who took the goods.
+   */
+  const handleIssue = async () => {
+    if (!selectedRequisition) return;
     try {
-      await storesAPI.issueStock(id, {});
+      setActionLoading(true);
+      await storesAPI.issueStock(selectedRequisition._id, {
+        collectedBy: collectedBy.name.trim()
+          ? {
+              name: collectedBy.name.trim(),
+              idNumber: collectedBy.idNumber.trim() || undefined,
+              department: collectedBy.department.trim() || undefined,
+              contactNumber: collectedBy.contactNumber.trim() || undefined
+            }
+          : undefined
+      });
       showToast('Items issued successfully', 'success');
+      setShowIssueModal(false);
+      setCollectedBy({ name: '', idNumber: '', department: '', contactNumber: '' });
       fetchRequisitions();
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to issue items', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  /** Open the signed issue note for goods that have already left the store. */
+  const handlePrintIssueNote = async (requisition: any) => {
+    try {
+      setPrintingId(requisition._id);
+      const res = await storesAPI.printIssueNote(requisition._id);
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const win = window.open(url, '_blank');
+      if (win) {
+        win.addEventListener('load', () => win.print());
+      } else {
+        // Popup blocked — fall back to a download.
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${requisition.issueNoteNumber || 'issue-note'}.pdf`;
+        link.click();
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (error: any) {
+      showToast('Failed to open the issue note', 'error');
+    } finally {
+      setPrintingId(null);
     }
   };
 
@@ -268,12 +322,25 @@ export default function StoreRequisitions() {
                             </button>
                           </>
                         )}
-                        {isStoresOfficer && req.status === 'approved' && (
+                        {isStoresOfficer && ['approved', 'partially_issued'].includes(req.status) && (
                           <button
-                            onClick={() => handleIssue(req._id)}
+                            onClick={() => {
+                              setSelectedRequisition(req);
+                              setCollectedBy({ name: '', idNumber: '', department: '', contactNumber: '' });
+                              setShowIssueModal(true);
+                            }}
                             className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
                           >
                             Issue Items
+                          </button>
+                        )}
+                        {['partially_issued', 'issued'].includes(req.status) && (
+                          <button
+                            onClick={() => handlePrintIssueNote(req)}
+                            disabled={printingId === req._id}
+                            className="px-3 py-1.5 text-xs font-medium border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                          >
+                            {printingId === req._id ? 'Opening…' : 'Issue Note'}
                           </button>
                         )}
                       </div>
@@ -525,6 +592,100 @@ export default function StoreRequisitions() {
                   <XCircle className="h-4 w-4" />
                   Reject
                 </>
+              )}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Issue Modal — captures who carried the goods away */}
+      <Modal
+        isOpen={showIssueModal}
+        onClose={() => {
+          setShowIssueModal(false);
+          setCollectedBy({ name: '', idNumber: '', department: '', contactNumber: '' });
+          setSelectedRequisition(null);
+        }}
+        title="Issue Stock"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Record who is collecting the goods. This prints on the issue note for them to sign,
+            and is the record of who took the stock.
+          </p>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Full name</label>
+              <input
+                type="text"
+                value={collectedBy.name}
+                onChange={(e: any) => setCollectedBy((prev) => ({ ...prev, name: e.target.value }))}
+                placeholder="e.g. Tapiwa Ncube"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">ID / Employee no.</label>
+              <input
+                type="text"
+                value={collectedBy.idNumber}
+                onChange={(e: any) => setCollectedBy((prev) => ({ ...prev, idNumber: e.target.value }))}
+                placeholder="Employee or national ID"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Department</label>
+              <input
+                type="text"
+                value={collectedBy.department}
+                onChange={(e: any) => setCollectedBy((prev) => ({ ...prev, department: e.target.value }))}
+                placeholder="e.g. Workshop"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Contact number</label>
+              <input
+                type="text"
+                value={collectedBy.contactNumber}
+                onChange={(e: any) => setCollectedBy((prev) => ({ ...prev, contactNumber: e.target.value }))}
+                placeholder="Phone number"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              />
+            </div>
+          </div>
+
+          <p className="text-xs text-gray-500">
+            Leave blank only if nobody is available to sign — the issue note then prints an empty
+            block to complete by hand.
+          </p>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <button
+              onClick={() => {
+                setShowIssueModal(false);
+                setCollectedBy({ name: '', idNumber: '', department: '', contactNumber: '' });
+                setSelectedRequisition(null);
+              }}
+              disabled={actionLoading}
+              className="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 rounded-lg disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleIssue}
+              disabled={actionLoading}
+              className="px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark disabled:opacity-50 flex items-center gap-2"
+            >
+              {actionLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Issuing...
+                </>
+              ) : (
+                'Issue Items'
               )}
             </button>
           </div>
