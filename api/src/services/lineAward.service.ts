@@ -13,6 +13,12 @@ export interface LineBid {
   unitPrice: number;
   totalPrice: number;
   quantity: number;
+  /** Header terms carried down to the line so bids can be ranked and compared.
+   *  Price is only comparable within a single currency — see bidRanking.service. */
+  currency: string;
+  deliveryPeriod?: number;
+  validUntil?: Date;
+  isAlternative?: boolean;
 }
 
 /**
@@ -25,7 +31,7 @@ export async function collectLineBids(rfq: IRFQ): Promise<Map<string, LineBid[]>
     rfq: rfq._id,
     isDeleted: false,
     status: { $in: ['submitted', 'under_review', 'accepted'] }
-  }).populate('supplier', 'companyName');
+  }).populate('supplier', 'companyName categories');
 
   const byLine = new Map<string, LineBid[]>();
   for (const line of rfq.items as any[]) {
@@ -47,7 +53,11 @@ export async function collectLineBids(rfq: IRFQ): Promise<Map<string, LineBid[]>
         supplierName: (q as any).supplier?.companyName,
         unitPrice: qi.unitPrice,
         totalPrice: qi.totalPrice,
-        quantity: qi.quantity
+        quantity: qi.quantity,
+        currency: (q as any).currency || 'USD',
+        deliveryPeriod: (q as any).deliveryPeriod,
+        validUntil: (q as any).validUntil,
+        isAlternative: Boolean(qi.isAlternative)
       });
     }
   }

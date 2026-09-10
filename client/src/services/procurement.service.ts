@@ -6,6 +6,9 @@ export const procurementAPI: any = {
   updateSupplier: (id: any, data: any) => http.put(`/procurement/suppliers/${id}`, data),
   createSupplier: (data: any) => http.post('/procurement/suppliers', data),
   bulkImportSuppliers: (data: any) => http.post('/procurement/suppliers/bulk-import', data),
+  // Category-matched suppliers for RFQ invitation: exact matches plus related
+  // (same-section) suggestions, matched across all suppliers server-side.
+  matchSuppliers: (params: any) => http.get('/procurement/suppliers/match', { params }),
   approveSupplier: (id: any, data?: any) => http.put(`/procurement/suppliers/${id}/approve`, data),
   blacklistSupplier: (id: any, data: any) => http.put(`/procurement/suppliers/${id}/blacklist`, data),
   setSupplierStatus: (id: any, data: any) => http.put(`/procurement/suppliers/${id}/status`, data),

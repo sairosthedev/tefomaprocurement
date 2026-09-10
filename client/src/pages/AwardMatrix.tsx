@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
-import { Loader2, CheckCircle, Circle, ShieldCheck, DollarSign, Package, RefreshCw, Send } from 'lucide-react';
+import { Loader2, CheckCircle, Circle, ShieldCheck, DollarSign, Package, RefreshCw, Send, Sparkles, AlertTriangle } from 'lucide-react';
 
 const WAIVER_TYPES = [
   { value: 'single_source', label: 'Single/sole source' },
@@ -49,8 +49,15 @@ export default function AwardMatrix() {
   };
 
   const selectLine = (line: any, bid: any) => {
+    // Make the benchmark explicit in the prompt: an award above the lowest bid
+    // is exactly the case an auditor will want the justification to address.
+    const context = bid.isLowest
+      ? ' (lowest bid)'
+      : bid.percentAboveLowest
+      ? ` (+${bid.percentAboveLowest}% above the lowest bid of ${line.lowestUnitPrice})`
+      : '';
     const justification = window.prompt(
-      `Justification for awarding "${line.description}" to ${bid.supplierName} at ${bid.unitPrice}:`
+      `Justification for awarding "${line.description}" to ${bid.supplierName} at ${bid.unitPrice}${context}:`
     );
     if (!justification?.trim()) return;
     act(
@@ -106,6 +113,15 @@ export default function AwardMatrix() {
         subtitle="Award each line to the best supplier, authorize, then generate a PO per supplier."
       />
 
+      <div className="flex items-start gap-2 mb-4 p-3 bg-amber-50 border border-amber-100 rounded-xl text-sm text-amber-800">
+        <Sparkles className="h-4 w-4 mt-0.5 shrink-0" />
+        <span>
+          Bids are ranked cheapest-first and the highlighted price is the system's
+          recommendation (lowest compliant bid, with supplier evaluation scores
+          breaking near-ties). It is advisory — you still choose and justify the award.
+        </span>
+      </div>
+
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -126,6 +142,18 @@ export default function AwardMatrix() {
                   <td className="py-3 px-4">
                     <p className="font-medium text-gray-900">{line.description}</p>
                     <p className="text-xs text-gray-500">Qty {line.quantity}</p>
+                    {line.mixedCurrency ? (
+                      <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-amber-700">
+                        <AlertTriangle className="h-3 w-3" />
+                        Bids in {line.currencies?.join(', ')} — not price-comparable
+                      </p>
+                    ) : (
+                      line.bidCount > 1 && (
+                        <p className="mt-1 text-[11px] text-gray-400">
+                          {line.bidCount} bids · {line.spreadPercent}% spread
+                        </p>
+                      )
+                    )}
                   </td>
                   {suppliers.map((s) => {
                     const bid = line.bids.find((b: any) => b.supplierId === s.supplierId);
@@ -136,10 +164,29 @@ export default function AwardMatrix() {
                           <button
                             disabled={busy || line.poGenerated}
                             onClick={() => selectLine(line, bid)}
-                            className={`px-2 py-1 rounded-lg ${isAwarded ? 'bg-green-100 text-green-800 font-semibold' : 'hover:bg-primary/10 text-gray-800'} disabled:opacity-50`}
-                            title={isAwarded ? 'Awarded' : 'Award this line to this supplier'}
+                            className={`px-2 py-1 rounded-lg ${
+                              isAwarded
+                                ? 'bg-green-100 text-green-800 font-semibold'
+                                : bid.recommended
+                                ? 'bg-amber-50 ring-1 ring-amber-300 text-amber-900 font-medium hover:bg-amber-100'
+                                : 'hover:bg-primary/10 text-gray-800'
+                            } disabled:opacity-50`}
+                            title={
+                              isAwarded
+                                ? 'Awarded'
+                                : bid.recommendationReason || 'Award this line to this supplier'
+                            }
                           >
-                            {bid.unitPrice} {isAwarded && <CheckCircle className="inline h-3.5 w-3.5 ml-1" />}
+                            {bid.recommended && !isAwarded && (
+                              <Sparkles className="inline h-3 w-3 mr-1 text-amber-600" />
+                            )}
+                            {bid.unitPrice}
+                            {!bid.notComparable && !bid.isLowest && bid.percentAboveLowest > 0 && (
+                              <span className="ml-1 text-[10px] text-gray-500">
+                                +{bid.percentAboveLowest}%
+                              </span>
+                            )}
+                            {isAwarded && <CheckCircle className="inline h-3.5 w-3.5 ml-1" />}
                           </button>
                         ) : (
                           <span className="text-gray-300">—</span>

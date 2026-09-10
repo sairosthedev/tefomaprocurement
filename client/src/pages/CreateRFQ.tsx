@@ -23,6 +23,11 @@ export default function CreateRFQ() {
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [selectedSuppliers, setSelectedSuppliers] = useState<any[]>([]);
   const [supplierSearch, setSupplierSearch] = useState<any>('');
+  // Server-side category match: exact-code matches are auto-selected, related
+  // (same-section) suppliers are suggested but left unchecked.
+  const [matchByType, setMatchByType] = useState<Record<string, 'exact' | 'related'>>({});
+  const [matchedNames, setMatchedNames] = useState<Record<string, string[]>>({});
+  const [relatedCount, setRelatedCount] = useState(0);
   
   const [formData, setFormData] = useState<any>({
     title: '',
@@ -40,6 +45,7 @@ export default function CreateRFQ() {
       setLoading(false);
     }
     fetchSuppliers();
+    fetchMatches();
   }, [requisitionId]);
 
   const fetchRequisition = async () => {
@@ -69,11 +75,58 @@ export default function CreateRFQ() {
 
   const fetchSuppliers = async () => {
     try {
-      const response = await procurementAPI.getSuppliers({ status: 'active' });
+      // Ask for a full page of suppliers: the default page size is small, and
+      // anyone outside it could never be found or matched here.
+      const response = await procurementAPI.getSuppliers({ status: 'active', limit: 500 });
       setSuppliers(response.data.data || []);
     } catch (error: any) {
       console.error('Error fetching suppliers:', error);
       showToast('Failed to load suppliers', 'error');
+    }
+  };
+
+  /**
+   * Category matching runs on the server so it sees every active supplier, not
+   * just the ones already loaded into this page. Exact matches are pre-selected;
+   * related ones are surfaced as suggestions for the officer to opt into.
+   */
+  const fetchMatches = async () => {
+    if (!requisitionId) return;
+    try {
+      const res = await procurementAPI.matchSuppliers({ requisitionId });
+      const { exact = [], related = [] } = res.data.data || {};
+
+      const types: Record<string, 'exact' | 'related'> = {};
+      const names: Record<string, string[]> = {};
+      for (const m of exact) {
+        types[m.supplier._id] = 'exact';
+        names[m.supplier._id] = m.matchedCategoryNames;
+      }
+      for (const m of related) {
+        types[m.supplier._id] = 'related';
+        names[m.supplier._id] = m.matchedCategoryNames;
+      }
+      setMatchByType(types);
+      setMatchedNames(names);
+      setRelatedCount(related.length);
+
+      // Merge matched suppliers into the list so any that fell outside the
+      // fetched page are still selectable here.
+      const matchedSuppliers = [...exact, ...related].map((m: any) => m.supplier);
+      setSuppliers((prev: any[]) => {
+        const seen = new Set(prev.map((s) => s._id));
+        return [...prev, ...matchedSuppliers.filter((s: any) => !seen.has(s._id))];
+      });
+
+      if (exact.length > 0) {
+        setSelectedSuppliers((prev: any[]) => {
+          const seen = new Set(prev.map((s: any) => s._id));
+          return [...prev, ...exact.map((m: any) => m.supplier).filter((s: any) => !seen.has(s._id))];
+        });
+      }
+    } catch (error: any) {
+      console.error('Error matching suppliers:', error);
+      // Matching is an assist, not a gate — leave manual selection working.
     }
   };
 
@@ -91,37 +144,29 @@ export default function CreateRFQ() {
     [requisition]
   );
 
-  const supplierMatchedCategories = (supplier: any): string[] => {
-    const cats: string[] = supplier?.categories || [];
-    return cats.filter((c) => reqCategoryCodes.includes(c));
-  };
+  const supplierMatchedCategories = (supplier: any): string[] =>
+    matchedNames[supplier?._id] || [];
 
-  // Auto-select suppliers matching the requisition categories (once)
-  const [autoSelected, setAutoSelected] = useState(false);
-  useEffect(() => {
-    if (autoSelected) return;
-    if (reqCategoryCodes.length === 0 || suppliers.length === 0) return;
-    const matches = suppliers.filter((s) => supplierMatchedCategories(s).length > 0);
-    if (matches.length > 0) {
-      setSelectedSuppliers(matches);
-    }
-    setAutoSelected(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [suppliers, reqCategoryCodes, autoSelected]);
+  // Exact matches sort above related, which sort above everything else.
+  const matchWeight = (supplier: any): number => {
+    const type = matchByType[supplier?._id];
+    return type === 'exact' ? 2 : type === 'related' ? 1 : 0;
+  };
 
   const filteredSuppliers = suppliers
     .filter((s: any) =>
       s.companyName?.toLowerCase().includes(supplierSearch.toLowerCase()) ||
       s.contactEmail?.toLowerCase().includes(supplierSearch.toLowerCase())
     )
-    // Suppliers matching the requisition's categories float to the top
-    .sort((a: any, b: any) => supplierMatchedCategories(b).length - supplierMatchedCategories(a).length);
+    .sort((a: any, b: any) => matchWeight(b) - matchWeight(a));
 
+  /** Add the related-category suppliers — useful when exact matches alone
+   *  won't reach the three-quotation minimum. */
   const selectSuggested = () => {
-    const matches = suppliers.filter((s) => supplierMatchedCategories(s).length > 0);
+    const related = suppliers.filter((s: any) => matchByType[s._id] === 'related');
     setSelectedSuppliers((prev: any) => {
       const ids = new Set(prev.map((s: any) => s._id));
-      return [...prev, ...matches.filter((m) => !ids.has(m._id))];
+      return [...prev, ...related.filter((m) => !ids.has(m._id))];
     });
   };
 
@@ -388,16 +433,20 @@ export default function CreateRFQ() {
                   <Sparkles className="h-4 w-4 mt-0.5 shrink-0" />
                   <span>
                     Suppliers registered under this requisition's categories
-                    ({reqCategoryCodes.map((c) => getCategoryName(c)).join(', ')}) are suggested and pre-selected.
+                    ({reqCategoryCodes.map((c) => getCategoryName(c)).join(', ')}) are pre-selected.
+                    {relatedCount > 0 &&
+                      ` ${relatedCount} more in related categories are suggested below.`}
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={selectSuggested}
-                  className="shrink-0 text-xs font-medium text-amber-800 border border-amber-300 rounded-lg px-2.5 py-1.5 hover:bg-amber-100"
-                >
-                  Select suggested
-                </button>
+                {relatedCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={selectSuggested}
+                    className="shrink-0 text-xs font-medium text-amber-800 border border-amber-300 rounded-lg px-2.5 py-1.5 hover:bg-amber-100"
+                  >
+                    Add {relatedCount} related
+                  </button>
+                )}
               </div>
             )}
 
@@ -464,9 +513,20 @@ export default function CreateRFQ() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <p className="font-medium text-gray-900">{supplier.companyName}</p>
-                            {matched.length > 0 && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
-                                <Sparkles className="h-3 w-3" /> Suggested
+                            {matchByType[supplier._id] === 'exact' && (
+                              <span
+                                title={`Registered under: ${matched.join(', ')}`}
+                                className="inline-flex items-center gap-1 text-[10px] font-semibold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full"
+                              >
+                                <Sparkles className="h-3 w-3" /> Category match
+                              </span>
+                            )}
+                            {matchByType[supplier._id] === 'related' && (
+                              <span
+                                title={`Related category: ${matched.join(', ')}`}
+                                className="inline-flex items-center gap-1 text-[10px] font-semibold bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full"
+                              >
+                                Related
                               </span>
                             )}
                           </div>
@@ -479,7 +539,9 @@ export default function CreateRFQ() {
                                 key={c}
                                 title={c}
                                 className={`text-xs px-2 py-1 rounded-full ${
-                                  matched.includes(c) ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'
+                                  reqCategoryCodes.includes(c)
+                                    ? 'bg-amber-100 text-amber-700'
+                                    : 'bg-gray-100 text-gray-600'
                                 }`}
                               >
                                 {getCategoryName(c)}

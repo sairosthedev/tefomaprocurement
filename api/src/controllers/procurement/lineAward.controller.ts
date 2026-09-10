@@ -9,6 +9,7 @@ import {
   lineFullyAuthorized,
   lineIdStr
 } from '../../services/lineAward.service.js';
+import { getSupplierPerformanceScores, rankLineBids } from '../../services/bidRanking.service.js';
 
 const isProcOfficer = (user: any) =>
   user?.role === 'procurement_officer' || user?.role === 'admin' || isProcurementHead(user);
@@ -25,13 +26,28 @@ export const getLineAwardMatrix = async (req: Request, res: Response): Promise<a
     await rfq.save();
 
     const bids = await collectLineBids(rfq);
+
+    // Supplier evaluation scores break near-ties in the ranking. Fetched once
+    // for every bidding supplier rather than per line.
+    const supplierIds = Array.from(
+      new Set([...bids.values()].flat().map((b) => b.supplierId))
+    );
+    const performance = await getSupplierPerformanceScores(supplierIds);
+
     const lines = (rfq.lineAwards as any[]).map((la) => {
       const key = lineIdStr(la.rfqLineId);
       const lineBids = bids.get(key) || [];
+      const ranking = rankLineBids(lineBids, performance);
       return {
         ...(la.toObject?.() ?? la),
-        bids: lineBids,
-        bidCount: lineBids.length,
+        // Ranked cheapest-first, with one bid flagged `recommended`. Advisory
+        // only — the award still requires HOD selection and PM authorization.
+        bids: ranking.bids,
+        bidCount: ranking.bids.length,
+        lowestUnitPrice: ranking.lowestUnitPrice,
+        spreadPercent: ranking.spreadPercent,
+        mixedCurrency: ranking.mixedCurrency,
+        currencies: ranking.currencies,
         fullyAuthorized: lineFullyAuthorized(la, lineBids.length)
       };
     });
