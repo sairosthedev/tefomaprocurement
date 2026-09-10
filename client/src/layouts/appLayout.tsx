@@ -36,7 +36,7 @@ import {
 import { ChevronDown } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { isProcurementHead } from '@fossil/shared'
-import { notificationsAPI } from '../lib/api'
+import { notificationsAPI, dashboardAPI } from '../lib/api'
 
 // Role-based navigation configuration
 const roleNavigation: any = {
@@ -180,24 +180,38 @@ export function SidebarLayout({ children }: any) {
   const [showLogoutModal, setShowLogoutModal] = useState<any>(false)
   const [isLoggingOut, setIsLoggingOut] = useState<any>(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  // Work waiting on this user, keyed by nav href. The server decides which
+  // counts a role gets, so the sidebar needs no per-role rules of its own.
+  const [actionCounts, setActionCounts] = useState<Record<string, number>>({})
 
   useEffect(() => {
     let cancelled = false
 
-    const loadUnread = async () => {
+    const loadBadges = async () => {
       if (!user) return
-      try {
-        const res = await notificationsAPI.getUnreadCount()
-        if (!cancelled && res.data.success) {
-          setUnreadCount(res.data.count ?? res.data.data?.count ?? 0)
-        }
-      } catch {
-        // ignore — badge is optional
+
+      // Fetched together on one timer: two independent polls would double the
+      // request rate for what is drawn as a single row of numbers.
+      const [unread, actions] = await Promise.allSettled([
+        notificationsAPI.getUnreadCount(),
+        dashboardAPI.getActionCounts()
+      ])
+
+      if (cancelled) return
+
+      if (unread.status === 'fulfilled' && unread.value.data.success) {
+        setUnreadCount(unread.value.data.count ?? unread.value.data.data?.count ?? 0)
       }
+
+      if (actions.status === 'fulfilled' && actions.value.data.success) {
+        setActionCounts(actions.value.data.data || {})
+      }
+      // Failures are ignored: the badges are an aid, and a counting problem
+      // must never stop the navigation itself rendering.
     }
 
-    loadUnread()
-    const interval = setInterval(loadUnread, 60000)
+    loadBadges()
+    const interval = setInterval(loadBadges, 60000)
     return () => {
       cancelled = true
       clearInterval(interval)
@@ -444,15 +458,35 @@ export function SidebarLayout({ children }: any) {
                 >
                   <Icon className="h-[18px] w-[18px] shrink-0" />
                   {!collapsed && <span className="flex-1">{item.name}</span>}
-                  {item.href === '/app/notifications' && unreadCount > 0 && (
-                    collapsed ? (
-                      <span className="absolute top-1.5 right-3 h-2 w-2 rounded-full bg-red-500" />
+                  {(() => {
+                    // Notifications keep their unread count; every other tab
+                    // shows whatever the server says is waiting on this user.
+                    const badge =
+                      item.href === '/app/notifications'
+                        ? unreadCount
+                        : actionCounts[item.href] || 0
+
+                    if (badge <= 0) return null
+
+                    // Unread notifications stay red — they are the alert. Work
+                    // queues are amber so a full inbox and a full in-tray do not
+                    // read as the same kind of urgency.
+                    const tone =
+                      item.href === '/app/notifications' ? 'bg-red-500' : 'bg-amber-500'
+
+                    return collapsed ? (
+                      <span className={cn('absolute top-1.5 right-3 h-2 w-2 rounded-full', tone)} />
                     ) : (
-                      <span className="min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center rounded-full bg-red-500 text-white text-[11px] font-semibold">
-                        {unreadCount > 99 ? '99+' : unreadCount}
+                      <span
+                        className={cn(
+                          'min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center rounded-full text-white text-[11px] font-semibold',
+                          tone
+                        )}
+                      >
+                        {badge > 99 ? '99+' : badge}
                       </span>
                     )
-                  )}
+                  })()}
                 </Link>
               )
             })}

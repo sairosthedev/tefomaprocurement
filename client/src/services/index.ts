@@ -8,4 +8,5 @@ export { financeAPI } from './finance.service';
 export { cooAPI } from './coo.service';
 export { storesAPI } from './stores.service';
 export { notificationsAPI } from './notifications.service';
+export { dashboardAPI } from './dashboard.service';
 export { sitesAPI } from './sites.service';
