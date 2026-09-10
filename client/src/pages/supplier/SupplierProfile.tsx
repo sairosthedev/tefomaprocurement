@@ -12,17 +12,20 @@ export default function SupplierProfile() {
   const { showToast } = useToast();
   const [loading, setLoading] = useState<any>(true);
   const [saving, setSaving] = useState<any>(false);
+  // Banking is only submitted when actually touched: any change raises a
+  // verification-and-approval request rather than saving straight through.
+  const [bankDirty, setBankDirty] = useState(false);
   const [profile, setProfile] = useState<any>({
     companyName: '',
-    tradingAs: '',
+    // Schema field is `tradingName`; `tradingAs` was silently discarded.
+    tradingName: '',
     registrationNumber: '',
     taxNumber: '',
     vatNumber: '',
-    contactPerson: '',
-    email: '',
-    phone: '',
+    contactPersons: [],
     address: {
-      physical: '',
+      // Schema field is `street`; `physical` was silently discarded.
+      street: '',
       city: '',
       province: '',
       postalCode: ''
@@ -58,9 +61,28 @@ export default function SupplierProfile() {
   const handleSave = async () => {
     try {
       setSaving(true);
-      const response = await api.put('/supplier/profile', profile);
+      // Send only what the server accepts. Posting the whole profile made the
+      // form look like it saved company name, registration number and so on,
+      // which the controller ignores — the values silently reverted on reload.
+      const payload: any = {
+        tradingName: profile.tradingName,
+        address: profile.address,
+        contactPersons: profile.contactPersons,
+        categories: profile.categories
+      };
+      if (bankDirty) payload.bankDetails = profile.bankDetails;
+
+      const response = await api.put('/supplier/profile', payload);
       if (response.data.success) {
-        showToast('Profile updated successfully', 'success');
+        if (response.data.bankChangePending) {
+          setBankDirty(false);
+          showToast(
+            'Profile saved. Your banking change needs verification and approval before it takes effect.',
+            'success'
+          );
+        } else {
+          showToast('Profile updated successfully', 'success');
+        }
       }
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to update profile', 'error');
@@ -79,12 +101,29 @@ export default function SupplierProfile() {
   };
 
   const getStatusBadge = () => {
+    // Must match the SupplierProfile status enum: pending | active | suspended
+    // | blacklisted | dormant. 'approved' is not a member, and because it was
+    // the only success case, active suppliers previously showed no badge.
     switch (profile.status) {
-      case 'approved':
+      case 'active':
         return (
           <div className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-xl">
             <CheckCircle className="h-5 w-5" />
             <span className="font-medium">Approved Supplier</span>
+          </div>
+        );
+      case 'suspended':
+        return (
+          <div className="flex items-center gap-2 px-4 py-2 bg-orange-100 text-orange-700 rounded-xl">
+            <AlertCircle className="h-5 w-5" />
+            <span className="font-medium">Suspended</span>
+          </div>
+        );
+      case 'dormant':
+        return (
+          <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-600 rounded-xl">
+            <AlertCircle className="h-5 w-5" />
+            <span className="font-medium">Dormant</span>
           </div>
         );
       case 'pending':
@@ -132,20 +171,23 @@ export default function SupplierProfile() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Company Name *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
+              {/* Read-only: the registered identity is changed by procurement,
+                  not self-service. It used to look editable and silently revert. */}
               <input
                 type="text"
-                value={profile.companyName}
-                onChange={(e: any) => setProfile({ ...profile, companyName: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                value={profile.companyName || ''}
+                readOnly
+                title="Contact procurement to change your registered company name"
+                className="w-full px-4 py-2.5 border border-gray-200 bg-gray-50 text-gray-600 rounded-xl cursor-not-allowed"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Trading As</label>
               <input
                 type="text"
-                value={profile.tradingAs || ''}
-                onChange={(e: any) => setProfile({ ...profile, tradingAs: e.target.value })}
+                value={profile.tradingName || ''}
+                onChange={(e: any) => setProfile({ ...profile, tradingName: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
@@ -154,8 +196,9 @@ export default function SupplierProfile() {
               <input
                 type="text"
                 value={profile.registrationNumber || ''}
-                onChange={(e: any) => setProfile({ ...profile, registrationNumber: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                readOnly
+                title="Contact procurement to change your registration number"
+                className="w-full px-4 py-2.5 border border-gray-200 bg-gray-50 text-gray-600 rounded-xl cursor-not-allowed"
               />
             </div>
             <div>
@@ -163,8 +206,9 @@ export default function SupplierProfile() {
               <input
                 type="text"
                 value={profile.taxNumber || ''}
-                onChange={(e: any) => setProfile({ ...profile, taxNumber: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                readOnly
+                title="Contact procurement to change your tax number"
+                className="w-full px-4 py-2.5 border border-gray-200 bg-gray-50 text-gray-600 rounded-xl cursor-not-allowed"
               />
             </div>
             <div>
@@ -172,8 +216,9 @@ export default function SupplierProfile() {
               <input
                 type="text"
                 value={profile.vatNumber || ''}
-                onChange={(e: any) => setProfile({ ...profile, vatNumber: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                readOnly
+                title="Contact procurement to change your VAT number"
+                className="w-full px-4 py-2.5 border border-gray-200 bg-gray-50 text-gray-600 rounded-xl cursor-not-allowed"
               />
             </div>
           </div>
@@ -189,18 +234,26 @@ export default function SupplierProfile() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Contact Person *</label>
+              {/* The primary contact lives in contactPersons[]; a flat
+                  `contactPerson` field does not exist on the profile and was
+                  discarded on save. */}
               <input
                 type="text"
-                value={profile.contactPerson}
-                onChange={(e: any) => setProfile({ ...profile, contactPerson: e.target.value })}
+                value={profile.contactPersons?.[0]?.name || ''}
+                onChange={(e: any) => {
+                  const contacts = [...(profile.contactPersons || [])];
+                  contacts[0] = { ...(contacts[0] || { isPrimary: true }), name: e.target.value };
+                  setProfile({ ...profile, contactPersons: contacts });
+                }}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+              {/* Login email lives on the User record, not the supplier profile. */}
               <input
                 type="email"
-                value={profile.email}
+                value={profile.contactPersons?.[0]?.email || profile.user?.email || ''}
                 disabled
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-500"
               />
@@ -209,8 +262,12 @@ export default function SupplierProfile() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
               <input
                 type="tel"
-                value={profile.phone || ''}
-                onChange={(e: any) => setProfile({ ...profile, phone: e.target.value })}
+                value={profile.contactPersons?.[0]?.phone || ''}
+                onChange={(e: any) => {
+                  const contacts = [...(profile.contactPersons || [])];
+                  contacts[0] = { ...(contacts[0] || { isPrimary: true }), phone: e.target.value };
+                  setProfile({ ...profile, contactPersons: contacts });
+                }}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 placeholder="+263 77 123 4567"
               />
@@ -231,7 +288,7 @@ export default function SupplierProfile() {
               <input
                 type="text"
                 value={profile.address?.physical || ''}
-                onChange={(e: any) => setProfile({ ...profile, address: { ...profile.address, physical: e.target.value } })}
+                onChange={(e: any) => setProfile({ ...profile, address: { ...profile.address, street: e.target.value } })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
@@ -298,7 +355,7 @@ export default function SupplierProfile() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Bank Name</label>
               <select
                 value={profile.bankDetails?.bankName || ''}
-                onChange={(e: any) => setProfile({ ...profile, bankDetails: { ...profile.bankDetails, bankName: e.target.value } })}
+                onChange={(e: any) => { setBankDirty(true); setProfile({ ...profile, bankDetails: { ...profile.bankDetails, bankName: e.target.value } }); }}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               >
                 <option value="">Select Bank</option>
@@ -312,7 +369,7 @@ export default function SupplierProfile() {
               <input
                 type="text"
                 value={profile.bankDetails?.accountName || ''}
-                onChange={(e: any) => setProfile({ ...profile, bankDetails: { ...profile.bankDetails, accountName: e.target.value } })}
+                onChange={(e: any) => { setBankDirty(true); setProfile({ ...profile, bankDetails: { ...profile.bankDetails, accountName: e.target.value } }); }}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
@@ -321,7 +378,7 @@ export default function SupplierProfile() {
               <input
                 type="text"
                 value={profile.bankDetails?.accountNumber || ''}
-                onChange={(e: any) => setProfile({ ...profile, bankDetails: { ...profile.bankDetails, accountNumber: e.target.value } })}
+                onChange={(e: any) => { setBankDirty(true); setProfile({ ...profile, bankDetails: { ...profile.bankDetails, accountNumber: e.target.value } }); }}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
@@ -330,7 +387,7 @@ export default function SupplierProfile() {
               <input
                 type="text"
                 value={profile.bankDetails?.branchCode || ''}
-                onChange={(e: any) => setProfile({ ...profile, bankDetails: { ...profile.bankDetails, branchCode: e.target.value } })}
+                onChange={(e: any) => { setBankDirty(true); setProfile({ ...profile, bankDetails: { ...profile.bankDetails, branchCode: e.target.value } }); }}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>

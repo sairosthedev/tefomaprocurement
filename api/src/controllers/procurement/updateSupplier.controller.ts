@@ -98,13 +98,23 @@ const updateSupplier = async (req: Request, res: Response): Promise<any> => {
       if (!Array.isArray(contactPersons)) {
         return res.status(400).json({ success: false, message: 'contactPersons must be an array' });
       }
-      supplier.contactPersons = contactPersons.map((person: any) => ({
+      // Validate before assigning: empty required fields previously reached
+      // the sub-schema and surfaced as a 500 rather than a clear 400.
+      const mapped = contactPersons.map((person: any) => ({
         name: String(person.name || '').trim(),
         position: person.position ? String(person.position).trim() : undefined,
         email: String(person.email || '').trim(),
         phone: String(person.phone || '').trim(),
         isPrimary: Boolean(person.isPrimary)
       }));
+      const incomplete = mapped.findIndex((p) => !p.name || !p.email || !p.phone);
+      if (incomplete !== -1) {
+        return res.status(400).json({
+          success: false,
+          message: `Contact person ${incomplete + 1} needs a name, email and phone`
+        });
+      }
+      supplier.contactPersons = mapped;
     }
 
     if (clientReferrals !== undefined) {

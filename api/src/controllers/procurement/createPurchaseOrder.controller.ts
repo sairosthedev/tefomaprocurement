@@ -4,6 +4,7 @@ import { PurchaseOrder, Quotation, RFQ, PurchaseRequisition, Site } from '../../
 import { createAuditLog } from '../../middleware/index.js';
 import { notifySupplier, notifyUsersByRole } from '../../services/notification.service.js';
 import { resolveSiteId } from '../../lib/siteScope.js';
+import { checkSupplierEligibility } from '../../services/supplierEligibility.service.js';
 
 const createPurchaseOrder = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -45,6 +46,13 @@ const createPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
         success: false,
         message: 'Can only create PO from accepted quotations'
       });
+    }
+
+    // A PO commits company money, so the supplier's standing is re-checked here
+    // even though the quotation was already accepted — status can change in between.
+    const eligibility = checkSupplierEligibility(quotation.supplier, 'order');
+    if (!eligibility.eligible) {
+      return res.status(400).json({ success: false, message: eligibility.reason });
     }
 
     // Check if a PO already exists for this quotation

@@ -93,8 +93,11 @@ const createSupplier = async (req: Request, res: Response): Promise<any> => {
       }
     }
 
-    // Use provided password or default to "password"
-    const userPassword = password || 'password';
+    // Never fall back to a shared, guessable password: generate a random
+    // one-time credential instead. It is returned once so the officer can pass
+    // it on, and the supplier is told to log in and complete KYS.
+    const userPassword =
+      password || `${Math.random().toString(36).slice(-10)}A1!`;
 
     // Validate password length
     if (userPassword.length < 6) {

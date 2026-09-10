@@ -1,9 +1,27 @@
 import { useEffect, useRef, useState } from 'react';
 import { KYS_DOCUMENT_REQUIREMENTS } from '@fossil/shared';
 import { useToast } from './Toast';
-import { Upload, FileText, Trash2, CheckCircle, Loader2, Download, Eye, X } from 'lucide-react';
+import { Upload, FileText, Trash2, CheckCircle, Loader2, Download, Eye, X, CalendarClock, AlertTriangle, ShieldCheck, ShieldX } from 'lucide-react';
 
 const MAX_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Document types that carry a validity period. These must be uploaded with an
+ * expiry date — the server rejects them otherwise, because an expiry date that
+ * nothing records is an expiry date nothing can act on.
+ * Mirrors EXPIRING_DOCUMENT_TYPES in the API's documentExpiry service.
+ */
+const EXPIRING_DOCUMENT_TYPES = [
+  'tax_clearance',
+  'nssa_compliance',
+  'insurance',
+  'iso_certification',
+  'industry_licence',
+  'nec_registration',
+  'bee_certificate'
+];
+
+const isExpiringType = (documentType: string) => EXPIRING_DOCUMENT_TYPES.includes(documentType);
 
 export interface KysDocument {
   _id?: string;
@@ -12,7 +30,18 @@ export interface KysDocument {
   filePath: string;
   mimeType?: string;
   verified?: boolean;
+  verifiedAt?: string;
+  expiryDate?: string;
+  notes?: string;
   uploadedAt?: string;
+}
+
+/** Days until expiry, negative once lapsed. */
+function daysUntil(date?: string): number | undefined {
+  if (!date) return undefined;
+  const ms = new Date(date).getTime() - Date.now();
+  if (Number.isNaN(ms)) return undefined;
+  return Math.ceil(ms / (24 * 60 * 60 * 1000));
 }
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -66,13 +95,22 @@ export default function KysDocuments({
   documents,
   onUpload,
   onDelete,
+  onVerify,
   readOnly = false,
   includeTypes,
   title
 }: {
   documents: KysDocument[];
-  onUpload: (payload: { documentType: string; fileName: string; fileData: string; mimeType: string }) => Promise<void>;
+  onUpload: (payload: {
+    documentType: string;
+    fileName: string;
+    fileData: string;
+    mimeType: string;
+    expiryDate?: string;
+  }) => Promise<void>;
   onDelete?: (doc: KysDocument) => Promise<void>;
+  /** Supplied by procurement screens to verify or reject a document. */
+  onVerify?: (doc: KysDocument, verified: boolean, notes?: string) => Promise<void>;
   readOnly?: boolean;
   /** When provided, render only these document types as a single list (used by the step wizard). */
   includeTypes?: string[];
@@ -82,6 +120,8 @@ export default function KysDocuments({
   const { showToast } = useToast();
   const [busyType, setBusyType] = useState<string | null>(null);
   const [viewer, setViewer] = useState<{ doc: KysDocument; url: string; type: string } | null>(null);
+  // Expiry date staged per document type before the file is chosen.
+  const [expiryDrafts, setExpiryDrafts] = useState<Record<string, string>>({});
   const inputs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const byType = (t: string) => documents?.find((d) => d.documentType === t);
@@ -114,16 +154,57 @@ export default function KysDocuments({
       showToast('File exceeds the 5MB limit', 'error');
       return;
     }
+
+    const expiryDate = expiryDrafts[documentType];
+    if (isExpiringType(documentType)) {
+      if (!expiryDate) {
+        showToast('Set the expiry date before uploading this document', 'error');
+        if (inputs.current[documentType]) inputs.current[documentType]!.value = '';
+        return;
+      }
+      if (new Date(expiryDate).getTime() <= Date.now()) {
+        showToast('That expiry date has already passed', 'error');
+        if (inputs.current[documentType]) inputs.current[documentType]!.value = '';
+        return;
+      }
+    }
+
     try {
       setBusyType(documentType);
       const fileData = await readFileAsDataUrl(file);
-      await onUpload({ documentType, fileName: file.name, fileData, mimeType: file.type });
+      await onUpload({
+        documentType,
+        fileName: file.name,
+        fileData,
+        mimeType: file.type,
+        ...(expiryDate ? { expiryDate } : {})
+      });
+      setExpiryDrafts((prev) => ({ ...prev, [documentType]: '' }));
       showToast('Document uploaded', 'success');
     } catch (error: any) {
       showToast(error?.response?.data?.message || 'Upload failed', 'error');
     } finally {
       setBusyType(null);
       if (inputs.current[documentType]) inputs.current[documentType]!.value = '';
+    }
+  };
+
+  const handleVerify = async (doc: KysDocument, verified: boolean) => {
+    if (!onVerify) return;
+    let notes: string | undefined;
+    if (!verified) {
+      const reason = window.prompt(`Why is "${doc.fileName}" being rejected?`);
+      if (!reason?.trim()) return;
+      notes = reason.trim();
+    }
+    try {
+      setBusyType(doc.documentType);
+      await onVerify(doc, verified, notes);
+      showToast(verified ? 'Document verified' : 'Document rejected', 'success');
+    } catch (error: any) {
+      showToast(error?.response?.data?.message || 'Could not update the document', 'error');
+    } finally {
+      setBusyType(null);
     }
   };
 
@@ -161,17 +242,62 @@ export default function KysDocuments({
             )}
           </p>
           {existing ? (
-            <p className="text-xs text-gray-500 flex items-center gap-1 truncate">
-              <FileText className="h-3 w-3 shrink-0" />
-              <span className="truncate">{existing.fileName}</span>
-              {existing.verified && (
-                <span className="inline-flex items-center gap-0.5 text-green-600 ml-1">
-                  <CheckCircle className="h-3 w-3" /> verified
-                </span>
+            <>
+              <p className="text-xs text-gray-500 flex items-center gap-1 truncate">
+                <FileText className="h-3 w-3 shrink-0" />
+                <span className="truncate">{existing.fileName}</span>
+                {existing.verified ? (
+                  <span className="inline-flex items-center gap-0.5 text-green-600 ml-1 shrink-0">
+                    <CheckCircle className="h-3 w-3" /> verified
+                  </span>
+                ) : (
+                  <span className="text-amber-600 ml-1 shrink-0">awaiting review</span>
+                )}
+              </p>
+              {existing.expiryDate && (() => {
+                const left = daysUntil(existing.expiryDate);
+                const shown = new Date(existing.expiryDate).toLocaleDateString('en-ZA');
+                if (left === undefined) return null;
+                if (left <= 0) {
+                  return (
+                    <p className="text-xs text-red-600 flex items-center gap-1 mt-0.5">
+                      <AlertTriangle className="h-3 w-3" /> Expired {shown} — replace to stay compliant
+                    </p>
+                  );
+                }
+                return (
+                  <p className={`text-xs flex items-center gap-1 mt-0.5 ${left <= 60 ? 'text-amber-600' : 'text-gray-400'}`}>
+                    <CalendarClock className="h-3 w-3" />
+                    Expires {shown}{left <= 60 ? ` — ${left} day(s) left` : ''}
+                  </p>
+                );
+              })()}
+              {existing.notes && !existing.verified && (
+                <p className="text-xs text-red-600 mt-0.5 truncate" title={existing.notes}>
+                  Rejected: {existing.notes}
+                </p>
               )}
-            </p>
+            </>
           ) : (
             <p className="text-xs text-gray-400">{req.section} · not uploaded</p>
+          )}
+
+          {/* Documents with a validity period cannot be uploaded without one. */}
+          {!readOnly && isExpiringType(req.documentType) && (
+            <div className="flex items-center gap-2 mt-2">
+              <label className="text-[11px] text-gray-500 shrink-0">
+                Expiry date{!existing ? ' *' : ''}
+              </label>
+              <input
+                type="date"
+                value={expiryDrafts[req.documentType] || ''}
+                min={new Date(Date.now() + 86400000).toISOString().slice(0, 10)}
+                onChange={(e) =>
+                  setExpiryDrafts((prev) => ({ ...prev, [req.documentType]: e.target.value }))
+                }
+                className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
           )}
         </div>
 
@@ -195,6 +321,32 @@ export default function KysDocuments({
             >
               <Download className="h-4 w-4" />
             </a>
+          )}
+          {/* Verification is procurement opening the file and saying so —
+              uploading one is not verification. */}
+          {existing && onVerify && !readOnly && (
+            <>
+              {!existing.verified && (
+                <button
+                  type="button"
+                  onClick={() => handleVerify(existing, true)}
+                  disabled={busy}
+                  className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg disabled:opacity-50"
+                  title="Verify this document"
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => handleVerify(existing, false)}
+                disabled={busy}
+                className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg disabled:opacity-50"
+                title={existing.verified ? 'Withdraw verification' : 'Reject this document'}
+              >
+                <ShieldX className="h-4 w-4" />
+              </button>
+            </>
           )}
           {existing && onDelete && !existing.verified && !readOnly && (
             <button

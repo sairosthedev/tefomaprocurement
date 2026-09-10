@@ -20,6 +20,12 @@ export interface MatchedSupplier {
   /** The supplier's own codes that produced the match. */
   matchedCategories: string[];
   matchedCategoryNames: string[];
+  /**
+   * True when the supplier has not been activated yet. They may be invited to
+   * quote, but cannot be awarded until KYS verification completes — the caller
+   * should show this so nobody is surprised at award time.
+   */
+  notYetActivated: boolean;
 }
 
 export interface SupplierMatchResult {
@@ -40,8 +46,13 @@ export async function matchSuppliersByCategories(
 
   const related = getRelatedCategoryCodes(requested);
 
+  // Pending suppliers are matched as well as active ones: being invited to
+  // quote is not the same as being paid. The eligibility gate still refuses
+  // them at award and PO until KYS is complete, so widening invitation widens
+  // competition without widening who can receive money. Suspended, blacklisted
+  // and dormant suppliers stay excluded.
   const query: any = {
-    status: 'active',
+    status: { $in: ['active', 'pending'] },
     isDeleted: false,
     categories: { $in: [...requested, ...related] }
   };
@@ -59,12 +70,15 @@ export async function matchSuppliersByCategories(
     const own: string[] = (supplier as any).categories || [];
     const hitExact = own.filter((c) => requested.includes(c));
 
+    const notYetActivated = (supplier as any).status !== 'active';
+
     if (hitExact.length > 0) {
       exactMatches.push({
         supplier,
         matchType: 'exact',
         matchedCategories: hitExact,
-        matchedCategoryNames: hitExact.map(getCategoryName)
+        matchedCategoryNames: hitExact.map(getCategoryName),
+        notYetActivated
       });
       continue;
     }
@@ -75,7 +89,8 @@ export async function matchSuppliersByCategories(
         supplier,
         matchType: 'related',
         matchedCategories: hitRelated,
-        matchedCategoryNames: hitRelated.map(getCategoryName)
+        matchedCategoryNames: hitRelated.map(getCategoryName),
+        notYetActivated
       });
     }
   }

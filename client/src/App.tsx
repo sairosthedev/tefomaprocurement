@@ -30,6 +30,7 @@ import AwardMatrix from './pages/AwardMatrix';
 import CreateRFQ from './pages/CreateRFQ';
 import Quotations from './pages/Quotations';
 import QuotationDetail from './pages/QuotationDetail';
+import BankChanges from './pages/BankChanges';
 import Performance from './pages/suppliers/Performance';
 import Compliance from './pages/suppliers/Compliance';
 import Evaluations from './pages/suppliers/Evaluations';
@@ -183,6 +184,13 @@ function App() {
             } />
             <Route path="/app/suppliers/reports" element={
               <Navigate to="/app/reports?tab=suppliers" replace />
+            } />
+            {/* Banking changes are held here until callback-verified and
+                approved by a second person; payments pause meanwhile. */}
+            <Route path="/app/bank-changes" element={
+              <AppLayout allowedRoles={['admin', 'procurement_officer', 'finance', 'coo']}>
+                <BankChanges />
+              </AppLayout>
             } />
             <Route path="/app/suppliers/:id/kys" element={
               <AppLayout allowedRoles={['admin', 'procurement_officer', 'coo']}>

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { KYS_CHECKLIST_ITEMS, computeKysCompletion } from '@fossil/shared'
+import { KYS_CHECKLIST_ITEMS, computeKysCompletionForTier } from '@fossil/shared'
 import { procurementAPI } from '../services/procurement.service'
 import { useToast } from '../components/Toast'
 import PageHeader, { PageStatCard } from '../components/PageHeader'
@@ -19,7 +19,10 @@ export default function VerificationHub() {
   const [page, setPage] = useState(1)
   const [pagination, setPagination] = useState(emptyPagination())
 
-  const supplierCompletion = (supplier: any) => computeKysCompletion(supplier?.kysChecklist || {})
+  // Progress is measured against the supplier's tier, matching what the server
+  // requires at activation — otherwise the bar disagrees with the gate.
+  const supplierCompletion = (supplier: any) =>
+    computeKysCompletionForTier(supplier?.kysChecklist || {}, supplier?.tier)
 
   const verificationSections = useMemo(
     () => Array.from(new Set(KYS_CHECKLIST_ITEMS.map((item) => item.section))),
@@ -131,6 +134,8 @@ export default function VerificationHub() {
     }
   }
 
+  // These describe the current page only — the fetch is server-paginated, so
+  // labelling them as totals would misreport the supplier book.
   const total = filteredSuppliers.length
   const fully = filteredSuppliers.filter((supplier) => supplierCompletion(supplier).isComplete).length
   const partially = filteredSuppliers.filter((supplier) => {
@@ -138,6 +143,7 @@ export default function VerificationHub() {
     return completion.requiredComplete > 0 && !completion.isComplete
   }).length
   const notStarted = total - fully - partially
+  const pageLabel = pagination.total > total ? ' (this page)' : ''
   const visibleSections = selectedSection ? 1 : verificationSections.length
 
   return (
@@ -166,16 +172,16 @@ export default function VerificationHub() {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <PageStatCard label="Suppliers" value={total} />
-        <PageStatCard label="Verified" value={fully} valueClassName="text-emerald-600" />
-        <PageStatCard label="In Progress" value={partially} valueClassName="text-amber-600" />
-        <PageStatCard label="Not Started" value={notStarted} valueClassName="text-rose-600" />
+        <PageStatCard label="Suppliers (all)" value={pagination.total || total} />
+        <PageStatCard label={`Verified${pageLabel}`} value={fully} valueClassName="text-emerald-600" />
+        <PageStatCard label={`In Progress${pageLabel}`} value={partially} valueClassName="text-amber-600" />
+        <PageStatCard label={`Not Started${pageLabel}`} value={notStarted} valueClassName="text-rose-600" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_320px] items-start">
         <div className="space-y-6">
           <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-4 sm:p-5">
-            <div className="grid gap-3 lg:grid-cols-[1fr_220px_180px_auto] lg:items-center">
+            <div className="grid gap-3 lg:grid-cols-[1fr_220px_auto] lg:items-center">
               <div className="relative">
                 <input
                   value={search}
@@ -193,9 +199,6 @@ export default function VerificationHub() {
                 <option value="verified">Fully Verified</option>
                 <option value="in_progress">In Progress</option>
                 <option value="not_started">Not Started</option>
-              </select>
-              <select className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3 text-sm outline-none focus:border-blue-400 focus:bg-white">
-                <option>Filter by Department</option>
               </select>
               <button onClick={fetchSuppliers} className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800">
                 Refresh
@@ -259,10 +262,16 @@ export default function VerificationHub() {
                         <div>
                           <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
                             <span>Overall Progress</span>
-                            <span>{supplier.kysProgress || 0}%</span>
+                            <span>{completion.percentComplete}%</span>
                           </div>
                           <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-rose-400 rounded-full" style={{ width: `${supplier.kysProgress || 0}%` }} />
+                            {/* Computed client-side from the checklist: the API
+                                returns no kysProgress field, so reading one left
+                                every bar empty. */}
+                            <div
+                              className={`h-full rounded-full ${completion.isComplete ? 'bg-emerald-500' : completion.percentComplete > 0 ? 'bg-amber-400' : 'bg-rose-400'}`}
+                              style={{ width: `${completion.percentComplete}%` }}
+                            />
                           </div>
                         </div>
                         <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">

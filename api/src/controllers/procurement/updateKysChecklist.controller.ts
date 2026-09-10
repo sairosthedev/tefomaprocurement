@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { SupplierProfile } from '../../models/index.js';
-import { computeKysCompletion } from '@fossil/shared';
+import { computeKysCompletionForTier } from '@fossil/shared';
 import { createAuditLog } from '../../middleware/index.js';
 
 const updateKysChecklist = async (req: Request, res: Response): Promise<any> => {
@@ -24,7 +24,10 @@ const updateKysChecklist = async (req: Request, res: Response): Promise<any> => 
       }
     }
 
-    const completion = computeKysCompletion(supplier.kysChecklist as Record<string, boolean>);
+    const completion = computeKysCompletionForTier(
+      supplier.kysChecklist as Record<string, boolean>,
+      supplier.tier
+    );
     supplier.kysComplete = completion.isComplete;
 
     await supplier.save();

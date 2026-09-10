@@ -7,6 +7,15 @@ import setSupplierStatus from './setSupplierStatus.controller.js';
 import createSupplier from './createSupplier.controller.js';
 import bulkImportSuppliers from './bulkImportSuppliers.controller.js';
 import matchSuppliers from './matchSuppliers.controller.js';
+import verifySupplierDocument from './verifySupplierDocument.controller.js';
+import reinstateSupplier from './reinstateSupplier.controller.js';
+import { setSupplierTier, getSupplierTierSuggestion } from './setSupplierTier.controller.js';
+import {
+  getBankChangeRequests,
+  verifyBankChangeCallback,
+  approveBankChange,
+  rejectBankChange
+} from './bankChange.controller.js';
 import createRFQ from './createRFQ.controller.js';
 import getRFQs from './getRFQs.controller.js';
 import getRFQById from './getRFQById.controller.js';
@@ -61,6 +70,14 @@ export default {
   createSupplier,
   bulkImportSuppliers,
   matchSuppliers,
+  verifySupplierDocument,
+  reinstateSupplier,
+  setSupplierTier,
+  getSupplierTierSuggestion,
+  getBankChangeRequests,
+  verifyBankChangeCallback,
+  approveBankChange,
+  rejectBankChange,
   updateKysChecklist,
   verifyKys,
   uploadSupplierDocument,

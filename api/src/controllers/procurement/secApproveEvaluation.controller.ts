@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { getNextReviewDate } from '@fossil/shared';
 import { SupplierEvaluation, SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 
@@ -22,8 +23,11 @@ const secApproveEvaluation = async (req: Request, res: Response): Promise<any> =
     evaluation.secNotes = secNotes;
     evaluation.status = approved === false ? 'rejected' : 'approved';
 
-    const due = new Date();
-    due.setMonth(due.getMonth() + 3);
+    // The supplier's tier decides when they come round again.
+    const supplierForTier = evaluation.supplier
+      ? await SupplierProfile.findById(evaluation.supplier).select('tier')
+      : null;
+    const due = getNextReviewDate(supplierForTier?.tier);
     evaluation.nextReviewDue = due;
 
     await evaluation.save();
@@ -33,7 +37,11 @@ const secApproveEvaluation = async (req: Request, res: Response): Promise<any> =
       if (supplier) {
         supplier.lastEvaluationAt = new Date();
         supplier.nextEvaluationDue = due;
-        if (supplier.status === 'pending') supplier.status = 'active';
+        // A passing evaluation is not a substitute for KYS. Activation here is
+        // held to the same gate as approveSupplier and setSupplierStatus.
+        if (supplier.status === 'pending' && (supplier.kysComplete || supplier.kysExempt)) {
+          supplier.status = 'active';
+        }
         await supplier.save();
       }
     }

@@ -1,4 +1,9 @@
-import { runLowStockAlertJob, runRfqDeadlineAlertJob } from './alertJobs.js';
+import {
+  runLowStockAlertJob,
+  runRfqDeadlineAlertJob,
+  runDocumentExpiryAlertJob,
+  runSupplierReevaluationAlertJob
+} from './alertJobs.js';
 import { logger } from '../lib/logger.js';
 
 const INTERVAL_MS = parseInt(process.env.ALERT_JOBS_INTERVAL_MS || String(60 * 60 * 1000), 10);
@@ -10,6 +15,8 @@ async function tick(): Promise<void> {
   logger.debug('Running scheduled alert jobs…');
   await runLowStockAlertJob();
   await runRfqDeadlineAlertJob();
+  await runDocumentExpiryAlertJob();
+  await runSupplierReevaluationAlertJob();
 }
 
 export function startAlertScheduler(): void {

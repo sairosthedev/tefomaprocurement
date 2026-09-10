@@ -4,6 +4,7 @@ import { RFQ, SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifySupplier } from '../../services/notification.service.js';
 import { hasEnteredLineItems } from '../../lib/lineItems.js';
+import { partitionEligibleSuppliers } from '../../services/supplierEligibility.service.js';
 
 const publishRFQ = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -38,12 +39,30 @@ const publishRFQ = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
+    // Suppliers were validated when the draft was created, but that may have
+    // been long ago — re-check before actually inviting anyone.
+    const { eligible, ineligible } = await partitionEligibleSuppliers(
+      rfq.invitedSuppliers.map((i: any) => i.supplier),
+      'invite'
+    );
+
+    if (eligible.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No invited supplier is currently eligible to receive this RFQ.',
+        data: { ineligible }
+      });
+    }
+
+    const eligibleIds = new Set(eligible.map((id: any) => String(id)));
+
     rfq.status = 'open';
     rfq.publishedAt = new Date();
     await rfq.save();
 
-    // Notify all invited suppliers
+    // Notify only the suppliers still eligible to quote.
     for (const invitation of rfq.invitedSuppliers) {
+      if (!eligibleIds.has(String(invitation.supplier))) continue;
       await notifySupplier(invitation.supplier, {
         type: 'rfq_published',
         title: 'New RFQ Published',
@@ -63,16 +82,24 @@ const publishRFQ = async (req: Request, res: Response): Promise<any> => {
       entity: 'RFQ',
       entityId: rfq._id,
       user: req.user,
-      description: `Published RFQ: ${rfq.rfqNumber}`,
+      description:
+        `Published RFQ: ${rfq.rfqNumber}` +
+        (ineligible.length > 0
+          ? ` (${ineligible.length} invited supplier(s) skipped as ineligible)`
+          : ''),
       previousData: { status: 'draft' },
-      newData: { status: 'open' },
+      newData: { status: 'open', notified: eligible.length, skipped: ineligible.length },
       req
     });
 
     res.status(200).json({
       success: true,
-      message: 'RFQ published successfully',
-      data: rfq
+      message:
+        ineligible.length > 0
+          ? `RFQ published to ${eligible.length} supplier(s); ${ineligible.length} skipped as no longer eligible.`
+          : 'RFQ published successfully',
+      data: rfq,
+      ineligible
     });
   } catch (error: any) {
     console.error('Publish RFQ error:', error);

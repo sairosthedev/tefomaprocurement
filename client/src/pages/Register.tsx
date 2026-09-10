@@ -206,7 +206,7 @@ export default function Register() {
                   step > idx + 1 ? 'bg-primary text-white' :
                   step === idx + 1 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'
                 }`}>
-                  {step > idx + 1 ? 'âœ“' : idx + 1}
+                  {step > idx + 1 ? '✓' : idx + 1}
                 </div>
                 <span className={`ml-2 text-sm font-medium ${
                   step === idx + 1 ? 'text-primary' : 'text-gray-500'

@@ -9,6 +9,20 @@ export const procurementAPI: any = {
   // Category-matched suppliers for RFQ invitation: exact matches plus related
   // (same-section) suggestions, matched across all suppliers server-side.
   matchSuppliers: (params: any) => http.get('/procurement/suppliers/match', { params }),
+  // Document verification — a human confirming they opened the file.
+  verifySupplierDocument: (id: any, docId: any, data: any) =>
+    http.put(`/procurement/suppliers/${id}/documents/${docId}/verify`, data),
+  // Blacklisting is reversible; reinstatement returns the supplier to pending.
+  reinstateSupplier: (id: any, data: any) => http.put(`/procurement/suppliers/${id}/reinstate`, data),
+  // Diligence tier drives how much KYS is required.
+  getSupplierTierSuggestion: (id: any) => http.get(`/procurement/suppliers/${id}/tier-suggestion`),
+  setSupplierTier: (id: any, data: any) => http.put(`/procurement/suppliers/${id}/tier`, data),
+  // Supplier banking changes: held, callback-verified, then approved by a second person.
+  getBankChangeRequests: (params?: any) => http.get('/procurement/bank-changes', { params }),
+  verifyBankChangeCallback: (id: any, data: any) =>
+    http.put(`/procurement/bank-changes/${id}/verify-callback`, data),
+  approveBankChange: (id: any) => http.put(`/procurement/bank-changes/${id}/approve`),
+  rejectBankChange: (id: any, data: any) => http.put(`/procurement/bank-changes/${id}/reject`, data),
   approveSupplier: (id: any, data?: any) => http.put(`/procurement/suppliers/${id}/approve`, data),
   blacklistSupplier: (id: any, data: any) => http.put(`/procurement/suppliers/${id}/blacklist`, data),
   setSupplierStatus: (id: any, data: any) => http.put(`/procurement/suppliers/${id}/status`, data),

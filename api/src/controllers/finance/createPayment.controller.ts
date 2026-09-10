@@ -1,8 +1,9 @@
 import type { Request, Response } from 'express';
-import { Payment, Invoice } from '../../models/index.js';
+import { Payment, Invoice, SupplierProfile } from '../../models/index.js';
 import { syncPurchaseOrderFinancials } from '../../services/purchaseOrderFinancials.service.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { createNotification } from '../../services/notification.service.js';
+import { getOpenBankChange } from '../../services/bankChange.service.js';
 
 const createPayment = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -48,6 +49,24 @@ const createPayment = async (req: Request, res: Response): Promise<any> => {
       return res.status(400).json({ success: false, message: 'No balance due on selected invoices' });
     }
 
+    const supplier = await SupplierProfile.findById(supplierId).select('companyName bankDetails');
+    if (!supplier) {
+      return res.status(404).json({ success: false, message: 'Supplier not found' });
+    }
+
+    // Payments pause automatically while a banking change is unverified — the
+    // control only works if urgency cannot talk someone past it.
+    const openChange = await getOpenBankChange(supplierId);
+    if (openChange) {
+      return res.status(409).json({
+        success: false,
+        message: `Payments to ${supplier.companyName} are on hold: a banking change is awaiting ${
+          openChange.status === 'pending_verification' ? 'callback verification' : 'approval'
+        }.`,
+        data: { bankChangeRequestId: openChange._id, status: openChange.status }
+      });
+    }
+
     const payment = await Payment.create({
       supplier: supplierId,
       invoices: invoiceIds,
@@ -55,6 +74,15 @@ const createPayment = async (req: Request, res: Response): Promise<any> => {
       paymentDate: new Date(paymentDate),
       paymentMethod,
       reference,
+      // Snapshot the destination account as it stood at payment time, so the
+      // record survives any later change to the supplier's banking details.
+      paidToBankDetails: {
+        bankName: supplier.bankDetails?.bankName,
+        accountName: supplier.bankDetails?.accountName,
+        accountNumber: supplier.bankDetails?.accountNumber,
+        branchCode: supplier.bankDetails?.branchCode,
+        accountType: supplier.bankDetails?.accountType
+      },
       notes,
       status: complete ? 'completed' : 'draft',
       createdBy: req.user!._id,

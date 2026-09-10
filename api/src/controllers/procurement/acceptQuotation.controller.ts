@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 
 import { Quotation, RFQ } from '../../models/index.js';
 import { quotationFullyAuthorized, meetsMinimumQuotations } from '../../services/quotationCompliance.service.js';
+import { checkSupplierIdEligibility } from '../../services/supplierEligibility.service.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifySupplier } from '../../services/notification.service.js';
 
@@ -43,6 +44,13 @@ const acceptQuotation = async (req: Request, res: Response): Promise<any> => {
         success: false,
         message: 'HOD selection with justification and Procurement Manager authorization required before acceptance'
       });
+    }
+
+    // Re-check the supplier at the moment of award: they may have been
+    // suspended or blacklisted since this RFQ was issued.
+    const eligibility = await checkSupplierIdEligibility(quotation.supplier, 'award');
+    if (!eligibility.eligible) {
+      return res.status(400).json({ success: false, message: eligibility.reason });
     }
 
     const previousStatus = quotation.status;

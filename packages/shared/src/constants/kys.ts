@@ -104,6 +104,120 @@ export const SUPPLIER_EVALUATION_CRITERIA = Object.freeze([
   { key: 'consistentQuality', label: 'Consistent quality' }
 ] as const);
 
+/**
+ * Supplier diligence tiers.
+ *
+ * Depth of due diligence is proportionate to risk rather than uniform:
+ * ISO 37001 8.2 triggers due diligence only on "more than low" risk, and
+ * ISO 9001 8.4.2 c) scales control by potential impact. A stationery vendor
+ * and a sole-source plant supplier should not carry the same file.
+ */
+export const SUPPLIER_TIERS = Object.freeze([
+  { key: 'critical', label: 'Critical', description: 'Sole-source or business-stopping if they fail' },
+  { key: 'strategic', label: 'Strategic', description: 'High spend or long-term partnership' },
+  { key: 'tactical', label: 'Tactical', description: 'Routine, competitively sourced' },
+  { key: 'transactional', label: 'Transactional', description: 'Low value, low risk, easily replaced' },
+  { key: 'unclassified', label: 'Unclassified', description: 'Not yet assessed' }
+] as const);
+
+export type SupplierTier = (typeof SUPPLIER_TIERS)[number]['key'];
+
+/** Statutory core — the minimum any supplier being paid must hold. */
+const CORE_STATUTORY_KEYS = [
+  'cr14Directors',
+  'cr6Address',
+  'taxClearance',
+  'nssaCompliance',
+  'insuranceCoverage'
+] as const;
+
+/** The barest set: proof the entity exists and is tax-registered. */
+const MINIMAL_KEYS = ['cr14Directors', 'taxClearance'] as const;
+
+/**
+ * Checklist keys required for a given tier. Critical and strategic suppliers
+ * carry the full required set; lighter tiers carry a proportionate subset so
+ * low-risk vendors are actually onboardable.
+ */
+export function getRequiredChecklistKeys(tier?: string): string[] {
+  const allRequired = KYS_CHECKLIST_ITEMS.filter((i) => i.required).map((i) => i.key as string);
+
+  switch (tier) {
+    case 'transactional':
+      return [...MINIMAL_KEYS];
+    case 'tactical':
+      return [...CORE_STATUTORY_KEYS];
+    case 'critical':
+    case 'strategic':
+    default:
+      // Unclassified is treated as full depth: never assume low risk by omission.
+      return allRequired;
+  }
+}
+
+/**
+ * Months between periodic re-evaluations, by tier.
+ *
+ * A flat quarterly cycle for every supplier is unenforceable at any scale and
+ * misallocates attention. Cadence is proportionate instead, following the
+ * pattern published in the NSW Procurement SRM Guidelines: strategic suppliers
+ * reviewed frequently, transactional ones governed mainly at award and expiry.
+ *
+ * Note this is a review *cadence*, not a deadline: regulators such as the PRA
+ * deliberately avoid fixed intervals and expect off-cycle reassessment when
+ * something material changes (ownership, financial position, a serious breach).
+ */
+export const TIER_REVIEW_MONTHS: Readonly<Record<string, number>> = Object.freeze({
+  critical: 3,
+  strategic: 6,
+  tactical: 12,
+  transactional: 24,
+  unclassified: 3
+});
+
+/** Months until the next review for a tier (defaults to the tightest cycle). */
+export function getReviewIntervalMonths(tier?: string): number {
+  return TIER_REVIEW_MONTHS[tier || 'unclassified'] ?? 3;
+}
+
+/** The date a supplier of this tier next falls due for review. */
+export function getNextReviewDate(tier?: string, from: Date = new Date()): Date {
+  const due = new Date(from);
+  due.setMonth(due.getMonth() + getReviewIntervalMonths(tier));
+  return due;
+}
+
+/**
+ * Tier-aware completion. Falls back to the full required set when no tier is
+ * given, so an unassessed supplier is never let through on a light checklist.
+ */
+export function computeKysCompletionForTier(
+  checklist: Record<string, boolean | undefined>,
+  tier?: string
+): {
+  requiredTotal: number;
+  requiredComplete: number;
+  missingKeys: string[];
+  percentComplete: number;
+  isComplete: boolean;
+  tier: string;
+} {
+  const requiredKeys = getRequiredChecklistKeys(tier);
+  const missingKeys = requiredKeys.filter((k) => !checklist[k]);
+  const requiredComplete = requiredKeys.length - missingKeys.length;
+
+  return {
+    requiredTotal: requiredKeys.length,
+    requiredComplete,
+    missingKeys,
+    percentComplete: requiredKeys.length
+      ? Math.round((requiredComplete / requiredKeys.length) * 100)
+      : 100,
+    isComplete: missingKeys.length === 0,
+    tier: tier || 'unclassified'
+  };
+}
+
 export function computeKysCompletion(checklist: Record<string, boolean | undefined>): {
   requiredTotal: number;
   requiredComplete: number;

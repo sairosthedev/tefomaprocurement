@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { SupplierProfile } from '../../models/index.js';
-import { computeKysCompletion } from '@fossil/shared';
+import { computeKysCompletionForTier } from '@fossil/shared';
 import { createAuditLog } from '../../middleware/index.js';
 
 const verifyKys = async (req: Request, res: Response): Promise<any> => {
@@ -13,7 +13,24 @@ const verifyKys = async (req: Request, res: Response): Promise<any> => {
       return res.status(404).json({ success: false, message: 'Supplier not found' });
     }
 
-    const completion = computeKysCompletion(supplier.kysChecklist as Record<string, boolean>);
+    // A blacklisted supplier must be reinstated through the explicit
+    // reinstatement route, which returns them to `pending` for re-approval.
+    // Without this guard, verify-KYS with approveForActivation silently
+    // reactivated them and left the blacklist history dangling.
+    if (supplier.status === 'blacklisted') {
+      return res.status(400).json({
+        success: false,
+        message: 'This supplier is blacklisted. Lift the blacklisting before verifying KYS.'
+      });
+    }
+
+    // Judged against the supplier's tier: requiring all 20 items from a
+    // tactical supplier makes the proportionate checklist unusable at the one
+    // step that matters — activation.
+    const completion = computeKysCompletionForTier(
+      supplier.kysChecklist as Record<string, boolean>,
+      supplier.tier
+    );
 
     if (overrideKys) {
       if (!reason?.trim()) {
@@ -43,6 +60,10 @@ const verifyKys = async (req: Request, res: Response): Promise<any> => {
       supplier.status = 'active';
       supplier.approvedBy = req.user!._id;
       supplier.approvedAt = new Date();
+      // Activation is what grants the right to be paid.
+      supplier.transactability = 'spend_authorized';
+      supplier.transactabilityChangedBy = req.user!._id;
+      supplier.transactabilityChangedAt = new Date();
     }
 
     await supplier.save();

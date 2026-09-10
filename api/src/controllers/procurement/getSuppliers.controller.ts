@@ -33,14 +33,18 @@ const getSuppliers = async (req: Request, res: Response): Promise<any> => {
       ];
     }
 
-    const skip = (page - 1) * limit;
-    
+    // Parse once: these arrive as query strings, and the arithmetic below
+    // previously relied on string coercion to work by accident.
+    const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
+    const limitNum = Math.min(1000, Math.max(1, parseInt(String(limit), 10) || 20));
+    const skip = (pageNum - 1) * limitNum;
+
     const [suppliers, total] = await Promise.all([
       SupplierProfile.find(query)
         .populate('user', 'email firstName lastName phone')
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(parseInt(limit)),
+        .limit(limitNum),
       SupplierProfile.countDocuments(query)
     ]);
 
@@ -48,10 +52,10 @@ const getSuppliers = async (req: Request, res: Response): Promise<any> => {
       success: true,
       data: suppliers,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: pageNum,
+        limit: limitNum,
         total,
-        pages: Math.ceil(total / limit)
+        pages: Math.ceil(total / limitNum)
       }
     });
   } catch (error: any) {

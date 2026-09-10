@@ -30,6 +30,14 @@ export type NotificationType =
   | 'supplier_added'
   | 'supplier_approved'
   | 'supplier_status_change'
+  | 'supplier_document_expiring'
+  | 'supplier_document_expired'
+  | 'supplier_document_verified'
+  | 'supplier_document_rejected'
+  | 'supplier_bank_change_requested'
+  | 'supplier_bank_change_approved'
+  | 'supplier_bank_change_rejected'
+  | 'supplier_evaluation_due'
   | 'invoice_submitted'
   | 'invoice_approved'
   | 'invoice_rejected'
@@ -90,6 +98,14 @@ const NotificationSchema = new Schema<INotification>({
       'supplier_added',
       'supplier_approved',
       'supplier_status_change',
+      'supplier_document_expiring',
+      'supplier_document_expired',
+      'supplier_document_verified',
+      'supplier_document_rejected',
+      'supplier_bank_change_requested',
+      'supplier_bank_change_approved',
+      'supplier_bank_change_rejected',
+      'supplier_evaluation_due',
       'invoice_submitted',
       'invoice_approved',
       'invoice_rejected',

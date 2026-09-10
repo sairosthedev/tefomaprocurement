@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { computeKysCompletion, getChecklistKeyForDocType } from '@fossil/shared';
+import { computeKysCompletionForTier, getChecklistKeyForDocType } from '@fossil/shared';
 import { SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 
@@ -17,6 +17,16 @@ const deleteSupplierDocument = async (req: Request, res: Response): Promise<any>
       return res.status(404).json({ success: false, message: 'Document not found' });
     }
 
+    // Match the supplier-side guard: a verified document is evidence and is
+    // not removed casually. Rejecting it is the way to withdraw verification.
+    if (doc.verified && req.body?.force !== true) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'This document has been verified. Reject it first if the verification was wrong, or pass force to remove it anyway.'
+      });
+    }
+
     supplier.complianceDocuments = supplier.complianceDocuments.filter(
       (d: any) => d._id?.toString() !== docId
     );
@@ -27,7 +37,10 @@ const deleteSupplierDocument = async (req: Request, res: Response): Promise<any>
       (supplier.kysChecklist as any)[checklistKey] = false;
     }
 
-    const completion = computeKysCompletion(supplier.kysChecklist as Record<string, boolean>);
+    const completion = computeKysCompletionForTier(
+      supplier.kysChecklist as Record<string, boolean>,
+      supplier.tier
+    );
     supplier.kysComplete = completion.isComplete;
 
     await supplier.save();

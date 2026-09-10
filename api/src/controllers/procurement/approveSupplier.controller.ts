@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 
-import { computeKysCompletion } from '@fossil/shared';
+import { computeKysCompletionForTier } from '@fossil/shared';
 import { SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { createNotification } from '../../services/notification.service.js';
@@ -18,7 +18,17 @@ const approveSupplier = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    const completion = computeKysCompletion(supplier.kysChecklist as Record<string, boolean>);
+    if (supplier.status === 'blacklisted') {
+      return res.status(400).json({
+        success: false,
+        message: 'This supplier is blacklisted. Lift the blacklisting before approving them.'
+      });
+    }
+
+    const completion = computeKysCompletionForTier(
+      supplier.kysChecklist as Record<string, boolean>,
+      supplier.tier
+    );
 
     if (overrideKys) {
       if (!reason?.trim()) {
@@ -44,6 +54,9 @@ const approveSupplier = async (req: Request, res: Response): Promise<any> => {
     supplier.status = 'active';
     supplier.approvedBy = req.user!._id;
     supplier.approvedAt = new Date();
+    supplier.transactability = 'spend_authorized';
+    supplier.transactabilityChangedBy = req.user!._id;
+    supplier.transactabilityChangedAt = new Date();
 
     if (!overrideKys) {
       supplier.kysComplete = true;

@@ -42,17 +42,20 @@ const createRFQ = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    // Validate suppliers are active
+    // Pending suppliers may be invited to quote — competition is widened at
+    // invitation, not at payment. They still cannot be awarded or issued a PO
+    // until KYS completes (see supplierEligibility). Suspended, blacklisted and
+    // dormant suppliers remain excluded.
     const suppliers = await SupplierProfile.find({
       _id: { $in: supplierIdArray },
-      status: 'active',
+      status: { $in: ['active', 'pending'] },
       isDeleted: false
     });
 
     if (suppliers.length !== supplierIdArray.length) {
       return res.status(400).json({
         success: false,
-        message: 'Some suppliers are not active or do not exist'
+        message: 'Some suppliers cannot be invited (suspended, blacklisted, dormant, or not found)'
       });
     }
 

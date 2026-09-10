@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 
-import { isValidCategoryCode } from '@fossil/shared';
+import { isValidCategoryCode, mapLegacyCategory } from '@fossil/shared';
 import { User, SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 
@@ -42,15 +42,67 @@ const bulkImportSuppliers = async (req: Request, res: Response): Promise<any> =>
           bankBranchCode
         } = supplier;
 
-        // Validate required fields
-        if (!companyName || !email || !contactPerson) {
+        // Validate required fields. registrationNumber is required by the
+        // schema and by every other creation path, so it is required here too.
+        // `phone` is required by ContactPersonSchema — checking it here turns a
+        // raw Mongoose validation string into a reason the importer can act on.
+        const missing = [
+          !companyName && 'companyName',
+          !registrationNumber && 'registrationNumber',
+          !contactPerson && 'contactPerson',
+          !email && 'email',
+          !phone && 'phone'
+        ].filter(Boolean);
+
+        if (missing.length > 0) {
           results.failed.push({
             companyName: companyName || 'Unknown',
             email: email || 'Unknown',
-            reason: 'Missing required fields (companyName, email, contactPerson)'
+            reason: `Missing required field(s): ${missing.join(', ')}`
           });
           continue;
         }
+
+        // Parse categories if it's a string
+        let parsedCategories: string[] = Array.isArray(categories) ? categories : [];
+        if (typeof categories === 'string') {
+          parsedCategories = categories.split(',').map(c => c.trim()).filter(c => c);
+        }
+
+        // Resolve categories BEFORE creating the user — validating afterwards
+        // left orphaned logins behind.
+        //
+        // Spreadsheets in use predate the code taxonomy and hold free text
+        // like "VEHICLE REPAIRS AND SPARES", so legacy values are translated
+        // rather than rejected; only genuinely unrecognisable ones fail the row.
+        const resolvedCategories: string[] = [];
+        const translated: string[] = [];
+        const unrecognised: string[] = [];
+
+        for (const value of parsedCategories) {
+          if (isValidCategoryCode(value)) {
+            resolvedCategories.push(value);
+            continue;
+          }
+          const mapped = mapLegacyCategory(value);
+          if (mapped.length > 0) {
+            resolvedCategories.push(...mapped);
+            translated.push(`${value} -> ${mapped.join(', ')}`);
+          } else {
+            unrecognised.push(value);
+          }
+        }
+
+        if (unrecognised.length > 0) {
+          results.failed.push({
+            companyName,
+            email,
+            reason: `Unrecognised category value(s): ${unrecognised.join(', ')}. Use a canonical code, or omit the column and set categories after import.`
+          });
+          continue;
+        }
+
+        const finalCategories = Array.from(new Set(resolvedCategories));
 
         // Check if email already exists
         const existingUser = await User.findOne({ email: email.toLowerCase() });
@@ -77,57 +129,54 @@ const bulkImportSuppliers = async (req: Request, res: Response): Promise<any> =>
           status: 'active'
         });
 
-        // Parse categories if it's a string
-        let parsedCategories: string[] = Array.isArray(categories) ? categories : [];
-        if (typeof categories === 'string') {
-          parsedCategories = categories.split(',').map(c => c.trim()).filter(c => c);
-        }
-
-        // Reject rows referencing unknown category codes
-        const invalidCategories = parsedCategories.filter((c) => !isValidCategoryCode(c));
-        if (invalidCategories.length > 0) {
-          results.failed.push({
+        // Create supplier profile. If this throws, the user created just above
+        // is removed again so a failed row leaves nothing behind.
+        let supplierProfile;
+        try {
+          supplierProfile = await SupplierProfile.create({
+            user: user._id,
             companyName,
-            email,
-            reason: `Invalid category code(s): ${invalidCategories.join(', ')}`
+            registrationNumber,
+            taxNumber,
+            vatNumber,
+            tradingName: tradingAs,
+            contactPersons: [{
+              name: contactPerson,
+              email: email.toLowerCase(),
+              phone,
+              isPrimary: true
+            }],
+            address: {
+              street: physicalAddress,
+              city,
+              province,
+              postalCode
+            },
+            categories: finalCategories,
+            bankDetails: {
+              bankName,
+              accountName: bankAccountName,
+              accountNumber: bankAccountNumber,
+              branchCode: bankBranchCode
+            },
+            // Imported suppliers are NOT pre-approved: KYS still has to be
+            // collected and verified before they can be invited or awarded.
+            status: 'pending'
           });
-          continue;
+        } catch (profileErr: any) {
+          await User.deleteOne({ _id: user._id });
+          throw profileErr;
         }
-
-        // Create supplier profile
-        const supplierProfile = await SupplierProfile.create({
-          user: user._id,
-          companyName,
-          tradingAs,
-          registrationNumber,
-          taxNumber,
-          vatNumber,
-          contactPerson,
-          email: email.toLowerCase(),
-          phone,
-          address: {
-            physical: physicalAddress,
-            city,
-            province,
-            postalCode
-          },
-          categories: parsedCategories,
-          bankDetails: {
-            bankName,
-            accountName: bankAccountName,
-            accountNumber: bankAccountNumber,
-            branchCode: bankBranchCode
-          },
-          status: 'approved',
-          approvedBy: req.user!._id,
-          approvedAt: new Date()
-        });
 
         results.success.push({
           id: supplierProfile._id,
           companyName,
           email,
-          tempPassword
+          tempPassword,
+          categories: finalCategories,
+          // Surfaced so the importer can see what their free text became,
+          // rather than discovering it later in RFQ matching.
+          ...(translated.length > 0 ? { translatedCategories: translated } : {})
         });
       } catch (err: any) {
         results.failed.push({

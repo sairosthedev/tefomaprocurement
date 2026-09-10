@@ -111,6 +111,29 @@ export interface ISupplierProfile extends Document {
   lastEvaluationAt?: Date;
   nextEvaluationDue?: Date;
   status: 'pending' | 'active' | 'suspended' | 'blacklisted' | 'dormant';
+  /**
+   * Whether the supplier may be transacted with, kept separate from the
+   * lifecycle `status` above. Mature platforms all split these (Oracle:
+   * Prospective vs Spend Authorized; Zycus: Potential vs Operational),
+   * because one field with many writers is how a supplier accidentally
+   * becomes awardable. `prospective` may be invited to source and quote;
+   * only `spend_authorized` may be awarded or issued a PO.
+   */
+  transactability: 'none' | 'prospective' | 'spend_authorized';
+  transactabilityChangedBy?: mongoose.Types.ObjectId | any;
+  transactabilityChangedAt?: Date;
+  /**
+   * Diligence depth band. Required KYS coverage is proportionate to this
+   * rather than uniform: ISO 37001 8.2 triggers due diligence only on
+   * "more than low" risk, and ISO 9001 8.4.2(c) scales control by impact.
+   */
+  tier: 'critical' | 'strategic' | 'tactical' | 'transactional' | 'unclassified';
+  tierReason?: string;
+  tierSetBy?: mongoose.Types.ObjectId | any;
+  tierSetAt?: Date;
+  /** Set when a required compliance document has lapsed (see expiry job). */
+  hasExpiredDocuments: boolean;
+  expiredDocumentTypes?: string[];
   blacklistReason?: string;
   blacklistedBy?: mongoose.Types.ObjectId | any;
   blacklistedAt?: Date;
@@ -261,6 +284,25 @@ const SupplierProfileSchema = new Schema<ISupplierProfile>({
     enum: ['pending', 'active', 'suspended', 'blacklisted', 'dormant'],
     default: 'pending'
   },
+  transactability: {
+    type: String,
+    enum: ['none', 'prospective', 'spend_authorized'],
+    default: 'none',
+    index: true
+  },
+  transactabilityChangedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  transactabilityChangedAt: Date,
+  tier: {
+    type: String,
+    enum: ['critical', 'strategic', 'tactical', 'transactional', 'unclassified'],
+    default: 'unclassified',
+    index: true
+  },
+  tierReason: String,
+  tierSetBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  tierSetAt: Date,
+  hasExpiredDocuments: { type: Boolean, default: false },
+  expiredDocumentTypes: [{ type: String }],
   blacklistReason: String,
   blacklistedBy: {
     type: mongoose.Schema.Types.ObjectId,

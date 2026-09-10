@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { computeKysCompletion } from '@fossil/shared';
+import { computeKysCompletionForTier } from '@fossil/shared';
 import { SupplierProfile, PurchaseOrder, SupplierEvaluation } from '../../models/index.js';
 
 const PO_SPEND_STATUSES = ['approved', 'issued', 'partially_received', 'completed'] as const;
@@ -74,8 +74,9 @@ const getSupplierReports = async (req: Request, res: Response): Promise<any> => 
         scoreBands.unrated += 1;
       }
 
-      const kysProgress = computeKysCompletion(
-        (supplier.kysChecklist || {}) as Record<string, boolean | undefined>
+      const kysProgress = computeKysCompletionForTier(
+        (supplier.kysChecklist || {}) as Record<string, boolean | undefined>,
+        (supplier as any).tier
       );
 
       const docCount = Array.isArray(supplier.complianceDocuments)

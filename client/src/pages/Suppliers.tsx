@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
@@ -22,10 +22,18 @@ import {
   EyeOff,
   Upload,
   FileText,
+  FileSpreadsheet,
+  AlertTriangle,
   ShieldCheck
 } from 'lucide-react';
 import Pagination from '../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
+import {
+  parseSupplierFile,
+  parsePastedText,
+  rowIssues,
+  type SupplierImportRow
+} from '../lib/supplierImport';
 
 const statusColors: any = {
   pending: 'bg-amber-100 text-amber-700',
@@ -106,13 +114,12 @@ export default function Suppliers() {
   const [bulkImportData, setBulkImportData] = useState<any>('');
   const [bulkImportResults, setBulkImportResults] = useState<any>(null);
   const [importing, setImporting] = useState<any>(false);
-  const [showViewModal, setShowViewModal] = useState<any>(false);
-  const [selectedSupplier, setSelectedSupplier] = useState<any>(null);
-  const [selectedSupplierTab, setSelectedSupplierTab] = useState<any>('overview');
-  const [supplierEvaluations, setSupplierEvaluations] = useState<any[]>([]);
-  const [actionLoading, setActionLoading] = useState<any>(false);
-  const [pendingAction, setPendingAction] = useState<any>(null);
-  const [actionReason, setActionReason] = useState<any>('');
+  // Parsed rows are held for review and correction before anything is written.
+  const [importRows, setImportRows] = useState<SupplierImportRow[]>([]);
+  const [importWarning, setImportWarning] = useState<string>('');
+  const [importFileName, setImportFileName] = useState<string>('');
+  const [dragActive, setDragActive] = useState(false);
+  const importFileInput = useRef<HTMLInputElement | null>(null);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(emptyPagination());
 
@@ -146,116 +153,9 @@ export default function Suppliers() {
     navigate(supplierProfilePath(supplier));
   };
 
-  const closeViewModal = () => {
-    if (actionLoading) return;
-    setShowViewModal(false);
-    setSelectedSupplier(null);
-    setSelectedSupplierTab('overview');
-    setSupplierEvaluations([]);
-    setPendingAction(null);
-    setActionReason('');
-  };
-
-  const refreshSelected = (updated: any) => {
-    setSelectedSupplier(updated);
-    setSuppliers((prev: any[]) =>
-      prev.map((s: any) => (s._id === updated._id ? { ...s, ...updated } : s))
-    );
-  };
-
-  const runApprove = async (overrideKys = false) => {
-    if (!selectedSupplier) return;
-    if (overrideKys && !actionReason.trim()) {
-      showToast('A reason is required to activate without KYS', 'error');
-      return;
-    }
-    try {
-      setActionLoading(true);
-      const res = await procurementAPI.approveSupplier(selectedSupplier._id, {
-        overrideKys,
-        reason: overrideKys ? actionReason.trim() : undefined
-      });
-      showToast(
-        overrideKys ? 'Supplier activated without KYS (override applied)' : 'Supplier approved',
-        'success'
-      );
-      refreshSelected(res.data.data);
-      setPendingAction(null);
-      setActionReason('');
-    } catch (error: any) {
-      if (error.response?.data?.data?.requiresKys) {
-        showToast('KYS documents are incomplete. Complete KYS or use the override option.', 'error');
-        return;
-      }
-      showToast(error.response?.data?.message || 'Failed to approve supplier', 'error');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const startApprove = (supplier: any) => {
-    if (supplier?.kysComplete || supplier?.kysExempt) {
-      setPendingAction('approve');
-      return;
-    }
-    showToast('Complete KYS first, or use Activate without KYS if this supplier is exempt.', 'error');
-    navigate(`/app/suppliers/${supplier._id}?tab=documents`);
-  };
-
-  const startApproveOverride = () => {
-    setActionReason('');
-    setPendingAction('approveOverride');
-  };
-
-  const runSetStatus = async (status: string) => {
-    if (!selectedSupplier) return;
-    try {
-      setActionLoading(true);
-      const res = await procurementAPI.setSupplierStatus(selectedSupplier._id, {
-        status,
-        reason: actionReason || undefined
-      });
-      showToast(res.data.message || 'Supplier status updated', 'success');
-      refreshSelected(res.data.data);
-      setPendingAction(null);
-      setActionReason('');
-    } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to update supplier', 'error');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const runBlacklist = async () => {
-    if (!selectedSupplier) return;
-    if (!actionReason.trim()) {
-      showToast('A reason is required to blacklist a supplier', 'error');
-      return;
-    }
-    try {
-      setActionLoading(true);
-      const res = await procurementAPI.blacklistSupplier(selectedSupplier._id, {
-        reason: actionReason
-      });
-      showToast('Supplier blacklisted', 'success');
-      refreshSelected(res.data.data);
-      setPendingAction(null);
-      setActionReason('');
-    } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to blacklist supplier', 'error');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const confirmPendingAction = () => {
-    if (pendingAction === 'suspend') return runSetStatus('suspended');
-    if (pendingAction === 'reactivate') return runSetStatus('active');
-    if (pendingAction === 'dormant') return runSetStatus('dormant');
-    if (pendingAction === 'blacklist') return runBlacklist();
-    if (pendingAction === 'approve') return runApprove(false);
-    if (pendingAction === 'approveOverride') return runApprove(true);
-  };
+  // Supplier detail, approval, status changes and blacklisting all live on the
+  // SupplierDetails page (/app/suppliers/:id). This list navigates there rather
+  // than duplicating those controls in a modal.
 
   const handleInputChange = (e: any) => {
     const { name, value } = e.target;
@@ -328,68 +228,60 @@ export default function Suppliers() {
     }
   };
 
+  /** Load rows from a file the user picked or dropped. */
+  const handleImportFile = async (file?: File | null) => {
+    if (!file) return;
+    setImportWarning('');
+    setImportFileName(file.name);
+    try {
+      const { rows, warning } = await parseSupplierFile(file);
+      setImportRows(rows);
+      if (warning) setImportWarning(warning);
+      if (rows.length === 0 && !warning) {
+        setImportWarning('No supplier rows found in this file. Check that the first row contains column headers.');
+      }
+    } catch (error: any) {
+      setImportRows([]);
+      setImportWarning('Could not read this file. Try saving it as .csv or .xlsx.');
+    }
+  };
+
+  /** Load rows from the paste box. */
+  const handleImportPaste = () => {
+    setImportWarning('');
+    setImportFileName('');
+    const rows = parsePastedText(bulkImportData);
+    if (rows.length === 0) {
+      showToast('No supplier rows found. Paste JSON, or CSV with a header row.', 'error');
+      return;
+    }
+    setImportRows(rows);
+  };
+
+  const updateImportCell = (index: number, field: keyof SupplierImportRow, value: string) => {
+    setImportRows((prev: SupplierImportRow[]) =>
+      prev.map((r, i) => (i === index ? { ...r, [field]: value } : r))
+    );
+  };
+
+  const resetImport = () => {
+    setImportRows([]);
+    setImportWarning('');
+    setImportFileName('');
+    setBulkImportData('');
+    setBulkImportResults(null);
+  };
+
   const handleBulkImport = async () => {
-    if (!bulkImportData.trim()) {
-      showToast('Please provide supplier data', 'error');
+    if (importRows.length === 0) {
+      showToast('Load a file or paste data first', 'error');
       return;
     }
 
     try {
       setImporting(true);
-      let suppliers: any[] = [];
+      const response = await procurementAPI.bulkImportSuppliers({ suppliers: importRows });
 
-      // Try to parse as JSON first
-      try {
-        const parsed = JSON.parse(bulkImportData);
-        suppliers = Array.isArray(parsed) ? parsed : [parsed];
-      } catch (e: any) {
-        // If not JSON, try to parse as CSV-like format
-        const lines = bulkImportData.trim().split('\n');
-        if (lines.length < 2) {
-          showToast('Invalid data format. Please provide JSON array or CSV with headers', 'error');
-          return;
-        }
-        
-        const headers = lines[0].split(',').map((h: any) => h.trim().toLowerCase().replace(/\s+/g, ''));
-        
-        for (let i = 1; i < lines.length; i++) {
-          if (!lines[i].trim()) continue;
-          const values = lines[i].split(',').map((v: any) => v.trim());
-          const supplier: any = {};
-          headers.forEach((header: any, index: any) => {
-            supplier[header] = values[index] || '';
-          });
-          
-          // Map CSV headers to API fields
-          suppliers.push({
-            companyName: supplier.companyname || supplier.company || '',
-            tradingAs: supplier.tradingas || supplier.trading || '',
-            registrationNumber: supplier.registrationnumber || supplier.regnumber || '',
-            taxNumber: supplier.taxnumber || supplier.tax || '',
-            vatNumber: supplier.vatnumber || supplier.vat || '',
-            contactPerson: supplier.contactperson || supplier.contact || supplier.name || '',
-            email: supplier.email || '',
-            phone: supplier.phone || '',
-            physicalAddress: supplier.address || supplier.physicaladdress || '',
-            city: supplier.city || '',
-            province: supplier.province || '',
-            postalCode: supplier.postalcode || supplier.postcode || '',
-            categories: supplier.categories || supplier.category || '',
-            bankName: supplier.bankname || supplier.bank || '',
-            bankAccountName: supplier.accountname || supplier.bankaccountname || '',
-            bankAccountNumber: supplier.accountnumber || supplier.bankaccountnumber || '',
-            bankBranchCode: supplier.branchcode || supplier.branch || ''
-          });
-        }
-      }
-
-      if (suppliers.length === 0) {
-        showToast('No valid supplier data found', 'error');
-        return;
-      }
-
-      const response = await procurementAPI.bulkImportSuppliers({ suppliers });
-      
       if (response.data.success) {
         setBulkImportResults(response.data.data);
         showToast(`Imported ${response.data.data.success.length} suppliers successfully`, 'success');
@@ -904,58 +796,179 @@ export default function Suppliers() {
         onClose={() => {
           if (!importing) {
             setShowBulkImportModal(false);
-            setBulkImportData('');
-            setBulkImportResults(null);
+            resetImport();
           }
         }}
         title="Bulk Import Suppliers"
-        size="lg"
+        size="xl"
       >
         <div className="space-y-4">
           {!bulkImportResults ? (
             <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Supplier Data (JSON or CSV format)
-                </label>
-                <textarea
-                  value={bulkImportData}
-                  onChange={(e: any) => setBulkImportData(e.target.value)}
-                  placeholder={`JSON Format:
-[
-  {
-    "companyName": "Company ABC",
-    "registrationNumber": "REG123",
-    "contactPerson": "John Doe",
-    "email": "john@company.com",
-    "phone": "1234567890"
-  }
-]
-
-Or CSV Format (first line headers):
-companyName,registrationNumber,contactPerson,email,phone
-Company ABC,REG123,John Doe,john@company.com,1234567890`}
-                  rows={12}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none font-mono"
-                />
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <div className="flex items-start gap-2">
-                  <FileText className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <div className="text-xs text-blue-800">
-                    <p className="font-medium mb-1">Required fields: companyName, registrationNumber, contactPerson, email</p>
-                    <p>Optional fields: tradingAs, taxNumber, vatNumber, phone, physicalAddress, city, province, postalCode, categories, bankName, bankAccountName, bankAccountNumber, bankBranchCode</p>
+              {importRows.length === 0 ? (
+                <>
+                  {/* Upload from the computer */}
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+                    onDragLeave={() => setDragActive(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setDragActive(false);
+                      handleImportFile(e.dataTransfer.files?.[0]);
+                    }}
+                    className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${
+                      dragActive ? 'border-primary bg-primary/5' : 'border-gray-300 bg-gray-50'
+                    }`}
+                  >
+                    <FileSpreadsheet className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm font-medium text-gray-700">
+                      Drop a file here, or
+                      <button
+                        type="button"
+                        onClick={() => importFileInput.current?.click()}
+                        className="text-primary hover:underline ml-1"
+                      >
+                        browse your computer
+                      </button>
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Excel (.xlsx, .xls), CSV, JSON, or a legacy database dump (.sql)
+                    </p>
+                    <input
+                      ref={importFileInput}
+                      type="file"
+                      accept=".csv,.xlsx,.xls,.json,.sql,.dump,.pdf"
+                      className="hidden"
+                      onChange={(e) => handleImportFile(e.target.files?.[0])}
+                    />
                   </div>
-                </div>
-              </div>
+
+                  {importWarning && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                      <p className="text-xs text-amber-800">{importWarning}</p>
+                    </div>
+                  )}
+
+                  {/* Or paste */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Or paste data (JSON, or CSV with a header row)
+                    </label>
+                    <textarea
+                      value={bulkImportData}
+                      onChange={(e: any) => setBulkImportData(e.target.value)}
+                      placeholder={`companyName,registrationNumber,contactPerson,email,phone,categories
+Company ABC,REG123,John Doe,john@company.com,0771234567,"MAINT-LV,IND-TOOLS"
+
+Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
+                      rows={6}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleImportPaste}
+                      disabled={!bulkImportData.trim()}
+                      className="mt-2 px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      Preview pasted data
+                    </button>
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="flex items-start gap-2">
+                      <FileText className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <div className="text-xs text-blue-800">
+                        <p className="font-medium mb-1">Required: companyName, registrationNumber, contactPerson, email, phone</p>
+                        <p>Column names are matched flexibly — "Supplier Name", "reg no" and "mobile" are all understood.</p>
+                        <p className="mt-1">Categories accept canonical codes; older free-text values (e.g. "VEHICLE REPAIRS AND SPARES") are translated automatically where recognised. Imported suppliers start as <span className="font-medium">pending</span> and still need KYS before they can be awarded.</p>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Review grid — nothing is written until this is confirmed */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-sm text-gray-700">
+                      <span className="font-medium">{importRows.length}</span> row(s) ready
+                      {importFileName && <span className="text-gray-500"> from {importFileName}</span>}
+                      {(() => {
+                        const bad = importRows.filter((r) => rowIssues(r).length > 0).length;
+                        return bad > 0 ? (
+                          <span className="text-amber-700"> · {bad} need attention</span>
+                        ) : null;
+                      })()}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={resetImport}
+                      className="text-xs text-gray-600 hover:text-gray-900 underline"
+                    >
+                      Choose a different file
+                    </button>
+                  </div>
+
+                  {importWarning && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                      <p className="text-xs text-amber-800">{importWarning}</p>
+                    </div>
+                  )}
+
+                  <div className="border border-gray-200 rounded-lg overflow-auto max-h-[45vh]">
+                    <table className="w-full text-xs">
+                      <thead className="bg-gray-50 sticky top-0">
+                        <tr>
+                          <th className="text-left py-2 px-2 font-semibold text-gray-600 w-8">#</th>
+                          {(['companyName', 'registrationNumber', 'contactPerson', 'email', 'phone', 'categories'] as (keyof SupplierImportRow)[]).map((f) => (
+                            <th key={f} className="text-left py-2 px-2 font-semibold text-gray-600">
+                              {f === 'companyName' ? 'Company' :
+                               f === 'registrationNumber' ? 'Reg no' :
+                               f === 'contactPerson' ? 'Contact' :
+                               f === 'categories' ? 'Categories' :
+                               f.charAt(0).toUpperCase() + f.slice(1)}
+                              <span className="text-red-500 ml-0.5">{f === 'categories' ? '' : '*'}</span>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {importRows.map((row, i) => {
+                          const issues = rowIssues(row);
+                          return (
+                            <tr key={i} className={issues.length > 0 ? 'bg-amber-50/50' : ''}>
+                              <td className="py-1 px-2 text-gray-400">{i + 1}</td>
+                              {(['companyName', 'registrationNumber', 'contactPerson', 'email', 'phone', 'categories'] as (keyof SupplierImportRow)[]).map((f) => (
+                                <td key={f} className="py-1 px-1">
+                                  <input
+                                    value={row[f]}
+                                    onChange={(e) => updateImportCell(i, f, e.target.value)}
+                                    className={`w-full px-1.5 py-1 rounded border text-xs focus:outline-none focus:ring-1 focus:ring-primary ${
+                                      issues.includes(f as any) ? 'border-amber-400 bg-amber-50' : 'border-transparent hover:border-gray-200'
+                                    }`}
+                                  />
+                                </td>
+                              ))}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <p className="text-xs text-gray-500">
+                    Highlighted cells are missing a required value — those rows will be rejected. Edit them here, or import and fix the rest afterwards.
+                  </p>
+                </>
+              )}
 
               <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => {
                     setShowBulkImportModal(false);
-                    setBulkImportData('');
+                    resetImport();
                   }}
                   disabled={importing}
                   className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
@@ -965,7 +978,7 @@ Company ABC,REG123,John Doe,john@company.com,1234567890`}
                 <button
                   type="button"
                   onClick={handleBulkImport}
-                  disabled={importing || !bulkImportData.trim()}
+                  disabled={importing || importRows.length === 0}
                   className="px-4 py-2 bg-primary hover:bg-primary-dark text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
                 >
                   {importing ? (
@@ -976,7 +989,7 @@ Company ABC,REG123,John Doe,john@company.com,1234567890`}
                   ) : (
                     <>
                       <Upload className="h-4 w-4" />
-                      Import Suppliers
+                      Import {importRows.length > 0 ? `${importRows.length} Supplier(s)` : 'Suppliers'}
                     </>
                   )}
                 </button>
@@ -1066,478 +1079,6 @@ Company ABC,REG123,John Doe,john@company.com,1234567890`}
         </div>
       </Modal>
 
-      {/* Supplier Detail / Actions Modal */}
-      <Modal
-        isOpen={showViewModal}
-        onClose={closeViewModal}
-        title="Supplier Details"
-        size="xl"
-      >
-        {selectedSupplier && (() => {
-          const s = selectedSupplier;
-          const StatusIcon = statusIcons[s.status] || Clock;
-          const checklist = s.kysChecklist || {};
-          const checklistKeys = Object.keys(checklist).filter(
-            (k: string) => typeof checklist[k] === 'boolean'
-          );
-          const ticked = checklistKeys.filter((k: string) => checklist[k]).length;
-          const docCount = Array.isArray(s.complianceDocuments) ? s.complianceDocuments.length : 0;
-          const evaluationCount = Array.isArray(supplierEvaluations) ? supplierEvaluations.length : 0;
-          const addressParts = [
-            s.address?.street || s.physicalAddress,
-            s.address?.city || s.city,
-            s.address?.province || s.province,
-            s.address?.postalCode || s.postalCode,
-            s.address?.country
-          ].filter(Boolean);
-          const bankDetails = s.bankDetails || s.bankingDetails || {};
-          const contactPeople = Array.isArray(s.contactPersons) ? s.contactPersons : [];
-          const references = Array.isArray(s.clientReferrals) ? s.clientReferrals : [];
-          const documents = Array.isArray(s.complianceDocuments) ? s.complianceDocuments : [];
-          const latestEvaluation = supplierEvaluations?.[0];
-          const performanceScore = latestEvaluation?.overallScore > 0
-            ? `${latestEvaluation.overallScore}/5`
-            : '—';
-          const kysLabel = s.kysExempt ? 'Exempt' : s.kysComplete ? 'Verified' : 'Pending';
-
-          const detailTabs = [
-            { value: 'overview', label: 'Overview' },
-            { value: 'verification', label: 'Verification' },
-            { value: 'corporate', label: 'Corporate' },
-            { value: 'banking', label: 'Banking' },
-            { value: 'trade', label: 'Trade' },
-            { value: 'directors', label: 'Directors', count: contactPeople.length },
-            { value: 'references', label: 'References', count: references.length },
-            { value: 'documents', label: 'Documents', count: docCount },
-            { value: 'performance', label: 'Performance', count: evaluationCount }
-          ];
-
-          const renderKeyValue = (label: string, value: any) => (
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
-              <p className="text-gray-900">{value || '-'}</p>
-            </div>
-          );
-
-          return (
-            <div className="space-y-5">
-              {/* Header */}
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 bg-primary/10 rounded-xl flex items-center justify-center">
-                    <Building2 className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-semibold text-gray-900">{s.companyName}</p>
-                    {s.tradingAs && <p className="text-sm text-gray-500">Trading as {s.tradingAs}</p>}
-                  </div>
-                </div>
-                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${statusColors[s.status]}`}>
-                  <StatusIcon className="h-3.5 w-3.5" />
-                  {s.status.charAt(0).toUpperCase() + s.status.slice(1)}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-sm">
-                <div className="rounded-xl border border-gray-100 p-4 bg-gray-50">
-                  <p className="text-xs text-gray-500">Performance score</p>
-                  <p className="text-2xl font-bold text-gray-900">{performanceScore}</p>
-                </div>
-                <div className="rounded-xl border border-gray-100 p-4 bg-gray-50">
-                  <p className="text-xs text-gray-500">KYS status</p>
-                  <p className="text-2xl font-bold text-gray-900">{kysLabel}</p>
-                </div>
-                <div className="rounded-xl border border-gray-100 p-4 bg-gray-50">
-                  <p className="text-xs text-gray-500">Documents</p>
-                  <p className="text-2xl font-bold text-gray-900">{docCount}</p>
-                </div>
-                <div className="rounded-xl border border-gray-100 p-4 bg-gray-50">
-                  <p className="text-xs text-gray-500">Evaluations</p>
-                  <p className="text-2xl font-bold text-gray-900">{evaluationCount}</p>
-                </div>
-              </div>
-
-              <Tabs
-                tabs={detailTabs}
-                activeTab={selectedSupplierTab}
-                onTabChange={setSelectedSupplierTab}
-                variant="pills"
-              />
-
-              {selectedSupplierTab === 'overview' && (
-                <div className="space-y-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                    {renderKeyValue('Registration No.', s.registrationNumber)}
-                    {renderKeyValue('Tax / VAT', `${s.taxNumber || '-'}${s.vatNumber ? ` / ${s.vatNumber}` : ''}`)}
-                    <div>
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Contact</p>
-                      <p className="text-gray-900 flex items-center gap-2"><Mail className="h-4 w-4 text-gray-400" />{s.user?.email || s.email || '-'}</p>
-                      <p className="text-gray-900 flex items-center gap-2 mt-1"><Phone className="h-4 w-4 text-gray-400" />{s.user?.phone || s.phone || '-'}</p>
-                    </div>
-                    {renderKeyValue('Address', addressParts.join(', '))}
-                    {renderKeyValue('Bank', `${bankDetails.bankName || s.bankName || '-'}${bankDetails.accountNumber || s.bankAccountNumber ? ` · ${bankDetails.accountNumber || s.bankAccountNumber}` : ''}`)}
-                    {renderKeyValue('Registered', new Date(s.createdAt).toLocaleDateString('en-ZA'))}
-                    {renderKeyValue('Supplier Status', s.status.charAt(0).toUpperCase() + s.status.slice(1))}
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Categories</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {s.categories?.length ? (
-                        s.categories.map((cat: any, idx: any) => (
-                          <span key={idx} className="px-2 py-1 bg-gray-100 rounded-lg text-xs text-gray-600" title={cat}>
-                            {getCategoryName(cat)}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-sm text-gray-400">No categories</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {selectedSupplierTab === 'verification' && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between gap-4 p-4 bg-gray-50 rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <FileText className="h-5 w-5 text-primary" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {s.kysExempt
-                            ? 'KYS Exempt (override applied)'
-                            : s.kysComplete
-                              ? 'KYS Verified'
-                              : 'KYS Incomplete'}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {s.kysExempt && s.kysExemptReason
-                            ? s.kysExemptReason
-                            : `${ticked}/${checklistKeys.length} checklist items complete · ${docCount} document${docCount === 1 ? '' : 's'}`}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/app/suppliers/${s._id}?tab=documents`)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/5"
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                      Open KYS
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                    {renderKeyValue('Required Checklist Items', checklistKeys.length)}
-                    {renderKeyValue('Completed Items', ticked)}
-                    {renderKeyValue('Documents Uploaded', docCount)}
-                  </div>
-                  {s.kysExempt && s.kysExemptReason && (
-                    <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-sm text-amber-800">
-                      <span className="font-medium">KYS override: </span>{s.kysExemptReason}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {selectedSupplierTab === 'corporate' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                  {renderKeyValue('Legal Name', s.companyName)}
-                  {renderKeyValue('Trading Name', s.tradingAs || s.tradingName)}
-                  {renderKeyValue('Incorporation', s.incorporationDate ? new Date(s.incorporationDate).toLocaleDateString('en-ZA') : 'Not captured in this system')}
-                  {renderKeyValue('Country', s.address?.country || 'Zimbabwe')}
-                  {renderKeyValue('Website', s.website || 'Not captured in this system')}
-                  {renderKeyValue('Department', s.department?.name || s.department || 'Not captured in this system')}
-                  {renderKeyValue('Services / Products', s.businessDescription || s.notes || s.categories?.map((cat: string) => getCategoryName(cat)).join(', ') || 'Not captured in this system')}
-                  {renderKeyValue('Primary Contact', s.contactPerson || `${s.user?.firstName || ''} ${s.user?.lastName || ''}`.trim() || 'Not captured in this system')}
-                </div>
-              )}
-
-              {selectedSupplierTab === 'banking' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                  {renderKeyValue('Bank Name', bankDetails.bankName || s.bankName)}
-                  {renderKeyValue('Account Name', bankDetails.accountName || s.bankAccountName)}
-                  {renderKeyValue('Account Number', bankDetails.accountNumber || s.bankAccountNumber)}
-                  {renderKeyValue('Branch Code', bankDetails.branchCode || s.bankBranchCode)}
-                  {renderKeyValue('Account Type', bankDetails.accountType || 'Not captured in this system')}
-                </div>
-              )}
-
-              {selectedSupplierTab === 'trade' && (
-                <div className="space-y-4 text-sm">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {renderKeyValue('Proposed Business', s.proposedBusiness || 'Not captured in this system')}
-                    {renderKeyValue('Volume / Quantity', s.tradeVolume || 'Not captured in this system')}
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Products / Goods</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {s.tradeProducts?.length ? (
-                        s.tradeProducts.map((item: any, idx: any) => (
-                          <span key={idx} className="px-2 py-1 bg-gray-100 rounded-lg text-xs text-gray-600">{item}</span>
-                        ))
-                      ) : (
-                        <span className="text-sm text-gray-400">Not captured in this system</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-xs text-gray-500">Trade details are mapped from the current supplier profile fields where available.</div>
-                </div>
-              )}
-
-              {selectedSupplierTab === 'directors' && (
-                <div className="space-y-3 text-sm">
-                  {contactPeople.length > 0 ? (
-                    contactPeople.map((person: any, idx: number) => (
-                      <div key={idx} className="rounded-xl border border-gray-100 p-4 bg-gray-50 flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-medium text-gray-900">{person.name}</p>
-                          <p className="text-xs text-gray-500">{person.position || 'Director / contact role not captured'}</p>
-                          <p className="text-xs text-gray-500 mt-1">{person.email || '-'}</p>
-                          <p className="text-xs text-gray-500">{person.phone || '-'}</p>
-                        </div>
-                        <span className="text-xs px-2 py-1 rounded-full bg-white border border-gray-200 text-gray-600">
-                          {person.isPrimary ? 'Primary' : 'Member'}
-                        </span>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="rounded-xl border border-dashed border-gray-200 p-4 text-gray-500">
-                      No directors captured in the current supplier profile.
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {selectedSupplierTab === 'references' && (
-                <div className="space-y-3 text-sm">
-                  {references.length > 0 ? (
-                    references.map((reference: any, idx: number) => (
-                      <div key={idx} className="rounded-xl border border-gray-100 p-4 bg-gray-50">
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <p className="font-medium text-gray-900">{reference.clientName || reference.name || 'Reference'}</p>
-                            <p className="text-xs text-gray-500">{reference.contactPerson || 'Contact not captured'}</p>
-                            <p className="text-xs text-gray-500">{reference.contactEmail || reference.email || '-'}</p>
-                            <p className="text-xs text-gray-500">{reference.contactPhone || reference.phone || '-'}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="rounded-xl border border-dashed border-gray-200 p-4 text-gray-500">
-                      No trade references captured in the current supplier profile.
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {selectedSupplierTab === 'documents' && (
-                <div className="space-y-3 text-sm">
-                  {documents.length > 0 ? (
-                    documents.map((document: any, idx: number) => (
-                      <div key={idx} className="rounded-xl border border-gray-100 p-4 bg-gray-50 flex items-start justify-between gap-4">
-                        <div>
-                          <p className="font-medium text-gray-900">{document.fileName || document.documentType || 'Document'}</p>
-                          <p className="text-xs text-gray-500">{document.documentType || 'unknown type'}</p>
-                          <p className="text-xs text-gray-500 mt-1">Uploaded {document.uploadedAt ? new Date(document.uploadedAt).toLocaleDateString('en-ZA') : 'date unavailable'}</p>
-                        </div>
-                        <span className={`text-xs px-2 py-1 rounded-full ${document.verified ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                          {document.verified ? 'Verified' : 'Uploaded'}
-                        </span>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="rounded-xl border border-dashed border-gray-200 p-4 text-gray-500">
-                      No compliance documents captured yet.
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {selectedSupplierTab === 'performance' && (
-                <div className="space-y-4 text-sm">
-                  {latestEvaluation ? (
-                    <div className="rounded-xl border border-gray-100 p-4 bg-gray-50 space-y-3">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="font-medium text-gray-900">Latest Evaluation</p>
-                          <p className="text-xs text-gray-500">{latestEvaluation.evaluationType} · {new Date(latestEvaluation.createdAt).toLocaleDateString('en-ZA')}</p>
-                        </div>
-                        <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
-                          {latestEvaluation.recommendation}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                        {Object.entries(latestEvaluation.scores || {})
-                          .filter(([key]) => key !== 'otherNotes')
-                          .map(([key, value]) => (
-                            <div key={key} className="rounded-lg border border-gray-200 bg-white p-3">
-                              <p className="text-gray-500 capitalize">{key.replace(/([A-Z])/g, ' $1')}</p>
-                              <p className="text-lg font-semibold text-gray-900">{String(value)}</p>
-                            </div>
-                          ))}
-                      </div>
-                      {latestEvaluation.scores?.otherNotes && (
-                        <div className="text-xs text-gray-600">Notes: {latestEvaluation.scores.otherNotes}</div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="rounded-xl border border-dashed border-gray-200 p-4 text-gray-500">
-                      No supplier evaluations captured yet.
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {renderKeyValue('Total Evaluations', evaluationCount)}
-                    {renderKeyValue('Last Evaluation', latestEvaluation ? new Date(latestEvaluation.createdAt).toLocaleDateString('en-ZA') : 'Not captured')}
-                    {renderKeyValue('Next Review', latestEvaluation?.nextReviewDue ? new Date(latestEvaluation.nextReviewDue).toLocaleDateString('en-ZA') : 'Not captured')}
-                  </div>
-                </div>
-              )}
-
-              {s.kysExempt && s.kysExemptReason && (
-                <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-sm text-amber-800">
-                  <span className="font-medium">KYS override: </span>{s.kysExemptReason}
-                </div>
-              )}
-
-              {s.status === 'blacklisted' && s.blacklistReason && (
-                <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">
-                  <span className="font-medium">Blacklist reason: </span>{s.blacklistReason}
-                </div>
-              )}
-
-              {/* Reason input when an action needs confirmation */}
-              {pendingAction && (
-                <div className="p-4 border border-gray-200 rounded-xl space-y-3">
-                  <p className="text-sm font-medium text-gray-900">
-                    {pendingAction === 'suspend' && 'Suspend this supplier?'}
-                    {pendingAction === 'reactivate' && 'Reactivate this supplier?'}
-                    {pendingAction === 'dormant' && 'Mark this supplier as dormant?'}
-                    {pendingAction === 'blacklist' && 'Blacklist this supplier?'}
-                    {pendingAction === 'approve' && 'Approve and activate this supplier?'}
-                    {pendingAction === 'approveOverride' && 'Activate this supplier without KYS?'}
-                  </p>
-                  {(pendingAction === 'suspend' || pendingAction === 'blacklist' || pendingAction === 'approveOverride') && (
-                    <textarea
-                      value={actionReason}
-                      onChange={(e: any) => setActionReason(e.target.value)}
-                      rows={3}
-                      placeholder={
-                        pendingAction === 'blacklist'
-                          ? 'Reason for blacklisting (required)'
-                          : pendingAction === 'approveOverride'
-                            ? 'Reason for KYS override (required) — e.g. existing trusted supplier, one-off engagement'
-                            : 'Reason for suspension (required)'
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                    />
-                  )}
-                  <div className="flex justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => { setPendingAction(null); setActionReason(''); }}
-                      disabled={actionLoading}
-                      className="px-3 py-1.5 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={confirmPendingAction}
-                      disabled={actionLoading || (pendingAction === 'approveOverride' && !actionReason.trim())}
-                      className={`inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium text-white rounded-lg disabled:opacity-50 ${
-                        pendingAction === 'blacklist'
-                          ? 'bg-red-600 hover:bg-red-700'
-                          : pendingAction === 'approveOverride'
-                            ? 'bg-amber-600 hover:bg-amber-700'
-                            : 'bg-primary hover:bg-primary/90'
-                      }`}
-                    >
-                      {actionLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                      Confirm
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Action buttons */}
-              {!pendingAction && (
-                <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
-                  {s.status === 'pending' && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => startApprove(s)}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90"
-                      >
-                        <CheckCircle className="h-4 w-4" />
-                        Approve & Activate
-                      </button>
-                      <button
-                        type="button"
-                        onClick={startApproveOverride}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-amber-800 border border-amber-300 rounded-lg hover:bg-amber-50"
-                      >
-                        <ShieldCheck className="h-4 w-4" />
-                        Activate without KYS
-                      </button>
-                    </>
-                  )}
-                  {s.status === 'active' && (
-                    <button
-                      type="button"
-                      onClick={() => setPendingAction('suspend')}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50"
-                    >
-                      <XCircle className="h-4 w-4" />
-                      Suspend
-                    </button>
-                  )}
-                  {(s.status === 'suspended' || s.status === 'dormant') && (
-                    <button
-                      type="button"
-                      onClick={() => setPendingAction('reactivate')}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-green-700 border border-green-300 rounded-lg hover:bg-green-50"
-                    >
-                      <CheckCircle className="h-4 w-4" />
-                      Reactivate
-                    </button>
-                  )}
-                  {s.status === 'active' && (
-                    <button
-                      type="button"
-                      onClick={() => setPendingAction('dormant')}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
-                    >
-                      <Clock className="h-4 w-4" />
-                      Mark Dormant
-                    </button>
-                  )}
-                  {s.status !== 'blacklisted' && (
-                    <button
-                      type="button"
-                      onClick={() => setPendingAction('blacklist')}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-red-700 border border-red-300 rounded-lg hover:bg-red-50"
-                    >
-                      <XCircle className="h-4 w-4" />
-                      Blacklist
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/app/suppliers/${s._id}?tab=documents`)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 ml-auto"
-                  >
-                    <FileText className="h-4 w-4" />
-                    Manage KYS
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        })()}
-      </Modal>
     </div>
   );
 }

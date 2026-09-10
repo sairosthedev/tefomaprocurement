@@ -8,6 +8,22 @@ export interface IPayment extends Document {
   paymentDate: Date;
   paymentMethod: 'bank_transfer' | 'cheque' | 'eft' | 'cash' | 'other';
   reference?: string;
+  /**
+   * The banking details as they stood when this payment was raised.
+   *
+   * Without this the system could not say which account a historical payment
+   * was directed to — supplier bank details were mutable in place, so the
+   * only record was a diff of audit blobs by timestamp. Snapshotting here
+   * makes each payment self-describing and is what lets a "change, pay,
+   * change back" pattern be detected after the fact.
+   */
+  paidToBankDetails?: {
+    bankName?: string;
+    accountName?: string;
+    accountNumber?: string;
+    branchCode?: string;
+    accountType?: string;
+  };
   status: 'draft' | 'completed' | 'cancelled';
   notes?: string;
   createdBy: mongoose.Types.ObjectId;
@@ -37,6 +53,13 @@ const PaymentSchema = new Schema<IPayment>({
     default: 'bank_transfer'
   },
   reference: String,
+  paidToBankDetails: {
+    bankName: String,
+    accountName: String,
+    accountNumber: String,
+    branchCode: String,
+    accountType: String
+  },
   status: {
     type: String,
     enum: ['draft', 'completed', 'cancelled'],

@@ -56,8 +56,22 @@ router.put('/suppliers/:id/kys', procurement.updateKysChecklist);
 router.put('/suppliers/:id/kys/verify', procurement.verifyKys);
 router.post('/suppliers/:id/documents', procurement.uploadSupplierDocument);
 router.delete('/suppliers/:id/documents/:docId', procurement.deleteSupplierDocument);
+// A human opening the file is what verification means — uploading one is not.
+router.put('/suppliers/:id/documents/:docId/verify', procurement.verifySupplierDocument);
+// Blacklisting is reversible; reinstatement returns the supplier to pending.
+router.put('/suppliers/:id/reinstate', procurement.reinstateSupplier);
+// Diligence tier: required KYS depth follows this.
+router.get('/suppliers/:id/tier-suggestion', procurement.getSupplierTierSuggestion);
+router.put('/suppliers/:id/tier', procurement.setSupplierTier);
 router.get('/suppliers/:id/evaluations', procurement.getSupplierEvaluations);
 router.post('/suppliers/:id/evaluations', procurement.createSupplierEvaluation);
+
+// Supplier banking changes: held, verified by callback, then approved by a
+// second person. Payments to the supplier pause while a request is open.
+router.get('/bank-changes', procurement.getBankChangeRequests);
+router.put('/bank-changes/:id/verify-callback', procurement.verifyBankChangeCallback);
+router.put('/bank-changes/:id/approve', procurement.approveBankChange);
+router.put('/bank-changes/:id/reject', procurement.rejectBankChange);
 
 // Requisitions (Procurement accepts these - not approves)
 router.get('/requisitions', procurement.getPendingRequisitions);

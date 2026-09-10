@@ -29,6 +29,7 @@ import {
   Archive,
   Settings,
   ShieldCheck,
+  Landmark,
   ChevronLeft,
   ChevronRight,
   LogOut
@@ -51,7 +52,8 @@ const roleNavigation: any = {
         { name: 'Performance', href: '/app/suppliers/analytics/performance', icon: TrendingUp },
         { name: 'Compliance', href: '/app/suppliers/analytics/compliance', icon: BarChart3 }
       ] },
-      { name: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList }
+      { name: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList },
+      { name: 'Banking Changes', href: '/app/bank-changes', icon: Landmark }
     ] },
     { name: "RFQs", href: "/app/rfqs", icon: FileSearch },
     { name: "Quotations", href: "/app/quotations", icon: FileText },
@@ -90,7 +92,8 @@ const roleNavigation: any = {
         { name: 'Performance', href: '/app/suppliers/analytics/performance', icon: TrendingUp },
         { name: 'Compliance', href: '/app/suppliers/analytics/compliance', icon: BarChart3 }
       ] },
-      { name: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList }
+      { name: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList },
+      { name: 'Banking Changes', href: '/app/bank-changes', icon: Landmark }
     ] },
     { name: "Reports", href: "/app/reports", icon: BarChart3 },
     { name: "Notifications", href: "/app/notifications", icon: Bell },
@@ -112,7 +115,8 @@ const roleNavigation: any = {
         { name: 'Performance', href: '/app/suppliers/analytics/performance', icon: TrendingUp },
         { name: 'Compliance', href: '/app/suppliers/analytics/compliance', icon: BarChart3 }
       ] },
-      { name: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList }
+      { name: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList },
+      { name: 'Banking Changes', href: '/app/bank-changes', icon: Landmark }
     ] },
     { name: "Reports", href: "/app/reports", icon: BarChart3 },
     { name: "Notifications", href: "/app/notifications", icon: Bell },
@@ -141,7 +145,8 @@ const roleNavigation: any = {
         { name: 'Performance', href: '/app/suppliers/analytics/performance', icon: TrendingUp },
         { name: 'Compliance', href: '/app/suppliers/analytics/compliance', icon: BarChart3 }
       ] },
-      { name: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList }
+      { name: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList },
+      { name: 'Banking Changes', href: '/app/bank-changes', icon: Landmark }
     ] },
     { name: "Notifications", href: "/app/notifications", icon: Bell },
     { name: "Profile", href: "/app/profile", icon: UserCircle },

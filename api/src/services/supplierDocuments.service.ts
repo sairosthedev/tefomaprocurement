@@ -1,9 +1,10 @@
 import {
-  computeKysCompletion,
+  computeKysCompletionForTier,
   getChecklistKeyForDocType,
   isKnownKysDocumentType
 } from '@fossil/shared';
 import type { ISupplierProfile } from '../models/SupplierProfile.model.js';
+import { isExpiringType } from './documentExpiry.service.js';
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5MB per document
 
@@ -41,6 +42,25 @@ export function addComplianceDocument(
     return { ok: false, status: 400, message: 'fileName and fileData are required' };
   }
 
+  // Documents with a validity period must say when they lapse, otherwise the
+  // expiry job has nothing to act on and the checklist item stays ticked forever.
+  if (isExpiringType(documentType)) {
+    if (!expiryDate) {
+      return {
+        ok: false,
+        status: 400,
+        message: `An expiry date is required for ${documentType.replace(/_/g, ' ')}`
+      };
+    }
+    const parsed = new Date(expiryDate);
+    if (Number.isNaN(parsed.getTime())) {
+      return { ok: false, status: 400, message: 'Expiry date is not a valid date' };
+    }
+    if (parsed.getTime() <= Date.now()) {
+      return { ok: false, status: 400, message: 'The document has already expired' };
+    }
+  }
+
   // Rough size guard — base64 expands ~4/3, so decode estimate = len * 3/4
   const base64Payload = fileData.includes(',') ? fileData.split(',')[1] : fileData;
   const approxBytes = Math.floor((base64Payload?.length || 0) * 0.75);
@@ -72,7 +92,13 @@ export function addComplianceDocument(
     (supplier.kysChecklist as any)[checklistKey] = true;
   }
 
-  const completion = computeKysCompletion(supplier.kysChecklist as Record<string, boolean>);
+  // Completeness is judged against the supplier's tier, not the full 20-item
+  // set: a tactical supplier needs only the statutory core. Using the flat
+  // helper here would silently overwrite a correct tier-aware result.
+  const completion = computeKysCompletionForTier(
+    supplier.kysChecklist as Record<string, boolean>,
+    (supplier as any).tier
+  );
   supplier.kysComplete = completion.isComplete;
 
   return { ok: true };

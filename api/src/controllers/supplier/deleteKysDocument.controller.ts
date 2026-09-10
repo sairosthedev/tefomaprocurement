@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { computeKysCompletion, getChecklistKeyForDocType } from '@fossil/shared';
+import { computeKysCompletionForTier, getChecklistKeyForDocType } from '@fossil/shared';
 import { SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 
@@ -31,7 +31,10 @@ const deleteKysDocument = async (req: Request, res: Response): Promise<any> => {
       (supplier.kysChecklist as any)[checklistKey] = false;
     }
 
-    const completion = computeKysCompletion(supplier.kysChecklist as Record<string, boolean>);
+    const completion = computeKysCompletionForTier(
+      supplier.kysChecklist as Record<string, boolean>,
+      supplier.tier
+    );
     supplier.kysComplete = completion.isComplete;
 
     await supplier.save();

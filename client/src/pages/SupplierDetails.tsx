@@ -4,7 +4,7 @@ import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import Tabs from '../components/Tabs';
 import KysDocuments from '../components/KysDocuments';
-import { KYS_CHECKLIST_ITEMS } from '@fossil/shared';
+import { KYS_CHECKLIST_ITEMS, getRequiredChecklistKeys } from '@fossil/shared';
 import SupplierEditableSection from '../components/supplier/SupplierEditableSection';
 import {
   draftPayloadForSection,
@@ -158,11 +158,19 @@ export default function SupplierDetails() {
     }
   };
 
+  // Count against the canonical required set for this supplier's tier, not the
+  // keys that happen to be stored: a profile with 2 stored booleans both true
+  // previously displayed "2/2" and enabled a button the server then rejected.
   const completion = useMemo(() => {
-    const keys = Object.keys(checklist).filter((key) => typeof checklist[key] === 'boolean');
-    const ticked = keys.filter((key) => checklist[key]).length;
-    return { keys, ticked };
-  }, [checklist]);
+    const requiredKeys = getRequiredChecklistKeys(supplier?.tier);
+    const ticked = requiredKeys.filter((key: string) => checklist[key]).length;
+    return {
+      keys: requiredKeys,
+      ticked,
+      isComplete: ticked === requiredKeys.length,
+      missing: requiredKeys.filter((key: string) => !checklist[key])
+    };
+  }, [checklist, supplier?.tier]);
 
   const checklistSections = useMemo(() => {
     type KysItem = (typeof KYS_CHECKLIST_ITEMS)[number];
@@ -200,6 +208,40 @@ export default function SupplierDetails() {
   const uploadDoc = async (payload: any) => {
     if (!supplier) return;
     await procurementAPI.uploadSupplierDocument(supplier._id, payload);
+    await load();
+  };
+
+  const [tierSaving, setTierSaving] = useState(false);
+  const [tierSuggestion, setTierSuggestion] = useState<any>(null);
+
+  useEffect(() => {
+    if (!supplier?._id) return;
+    procurementAPI
+      .getSupplierTierSuggestion(supplier._id)
+      .then((res: any) => setTierSuggestion(res.data?.data))
+      // Advisory only — a failure here must not block the page.
+      .catch(() => setTierSuggestion(null));
+  }, [supplier?._id]);
+
+  const assignTier = async (tier: string) => {
+    if (!supplier) return;
+    const reason = window.prompt(`Why is ${supplier.companyName} classified as ${tier}?`);
+    if (!reason?.trim()) return;
+    try {
+      setTierSaving(true);
+      await procurementAPI.setSupplierTier(supplier._id, { tier, reason: reason.trim() });
+      showToast(`Classified as ${tier}`, 'success');
+      await load();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Could not set the tier', 'error');
+    } finally {
+      setTierSaving(false);
+    }
+  };
+
+  const verifyDoc = async (doc: any, verified: boolean, notes?: string) => {
+    if (!supplier) return;
+    await procurementAPI.verifySupplierDocument(supplier._id, doc._id, { verified, notes });
     await load();
   };
 
@@ -480,6 +522,7 @@ export default function SupplierDetails() {
                     documents={checklistDocuments}
                     onUpload={uploadDoc}
                     onDelete={deleteDoc}
+                    onVerify={verifyDoc}
                     title="Required and optional documents"
                   />
                 </div>
@@ -548,6 +591,39 @@ export default function SupplierDetails() {
                     <div className="rounded-xl bg-gray-50 p-3 flex items-center justify-between">
                       <span className="text-gray-500">Required complete</span>
                       <span className="font-semibold text-gray-900">{completion.ticked}/{completion.keys.length}</span>
+                    </div>
+                    <div className="rounded-xl bg-gray-50 p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-gray-500">Diligence tier</span>
+                        <span className="font-semibold text-gray-900 capitalize">
+                          {supplier.tier || 'unclassified'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400 mb-2">
+                        Sets how many KYS items are required. Unclassified is treated as full depth.
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {['critical', 'strategic', 'tactical', 'transactional'].map((t) => (
+                          <button
+                            key={t}
+                            type="button"
+                            disabled={tierSaving || supplier.tier === t}
+                            onClick={() => assignTier(t)}
+                            className={`text-[11px] px-2 py-1 rounded-lg border capitalize ${
+                              supplier.tier === t
+                                ? 'bg-primary text-white border-primary'
+                                : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                            } disabled:opacity-50`}
+                          >
+                            {t}
+                          </button>
+                        ))}
+                      </div>
+                      {tierSuggestion && supplier.tier !== tierSuggestion.suggested && (
+                        <p className="text-[11px] text-amber-700 mt-2">
+                          Suggested: <span className="font-medium capitalize">{tierSuggestion.suggested}</span> — {tierSuggestion.rationale}
+                        </p>
+                      )}
                     </div>
                     <div className="rounded-xl bg-gray-50 p-3 flex items-center justify-between">
                       <span className="text-gray-500">Documents uploaded</span>
