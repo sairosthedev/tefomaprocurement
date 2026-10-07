@@ -40,7 +40,8 @@
     "bootstrap:sbus": "npm run bootstrap:sbus -w api --",
     "sbu:capacity": "npm run sbu:capacity -w api --",
     "e2e:local": "npm run e2e:local -w api --",
-    "sbu:domains": "npm run sbu:domains -w api --"
+    "sbu:domains": "npm run sbu:domains -w api --",
+    "migrate:sbu-reset": "npm run migrate:sbu-reset -w api --"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.3",
