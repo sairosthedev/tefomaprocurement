@@ -47,8 +47,35 @@ const SUBDOMAIN: Record<string, string> = {
   THANDO_KINETICS: 'thando'
 };
 
-/** Reserved for the group and supplier portals; never assigned to an SBU. */
-export const RESERVED_SUBDOMAINS = ['group', 'suppliers', 'api', 'www'];
+/**
+ * Ours, but not an SBU's: the group and supplier portals, the API, and the
+ * bare www. These do need DNS records pointing at the deployment.
+ */
+export const PORTAL_SUBDOMAINS = ['group', 'suppliers', 'api', 'www'];
+
+/**
+ * Created by the hosting account for mail and account services.
+ *
+ * These must keep pointing wherever the host put them. Sending `mail` or
+ * `webmail` to the deployment would take the group's email down, so they are
+ * listed to be left alone, not to be configured.
+ */
+export const HOST_SERVICE_SUBDOMAINS = [
+  'mail',
+  'webmail',
+  'cpanel',
+  'webdisk',
+  'autoconfig',
+  'autodiscover',
+  'cpcalendars',
+  'cpcontacts',
+  'ftp',
+  'ns1',
+  'ns2'
+];
+
+/** Never assigned to an SBU, for either reason. */
+export const RESERVED_SUBDOMAINS = [...PORTAL_SUBDOMAINS, ...HOST_SERVICE_SUBDOMAINS];
 
 function arg(name: string): string | null {
   const index = process.argv.indexOf(`--${name}`);
@@ -102,11 +129,17 @@ async function main(): Promise<void> {
 
     console.log('\nIf the registrar will not take a wildcard, add these instead:\n');
     console.log('  TYPE   NAME');
-    for (const host of [...hosts, ...RESERVED_SUBDOMAINS]) {
+    for (const host of [...hosts, ...PORTAL_SUBDOMAINS]) {
       console.log(`  CNAME  ${host}`);
     }
 
-    console.log(`\n${hosts.length} business unit record(s) plus ${RESERVED_SUBDOMAINS.length} reserved.`);
+    console.log('\nLeave these exactly as the hosting account set them — they carry');
+    console.log('email and control-panel access, and pointing them at the deployment');
+    console.log('would take the group off email:\n');
+    console.log(`  ${HOST_SERVICE_SUBDOMAINS.join(', ')}`);
+    console.log('\nMX and any SPF/DKIM/DMARC TXT records stay untouched for the same reason.');
+
+    console.log(`\n${hosts.length} business unit record(s) plus ${PORTAL_SUBDOMAINS.length} portal record(s).`);
     console.log('\nIn Vercel: add the apex and *.' + baseDomain + ' to the client project,');
     console.log('and api.' + baseDomain + ' to the API project. Then set CLIENT_URL on the API');
     console.log('project to https://' + baseDomain + '.');
