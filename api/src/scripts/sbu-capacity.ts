@@ -84,7 +84,29 @@ async function main(): Promise<void> {
     // Only ever touch the per-SBU databases this system creates. Fossil's
     // database, the platform registry and anything else on the cluster are
     // left alone: an empty collection elsewhere may be deliberate.
-    const targets = rows.filter((r) => /^sourceline-[a-z]+-/.test(r.name) && r.empty.length > 0);
+    //
+    // Production is excluded outright. An empty collection there is not waste
+    // — it is a collection whose unique indexes were built deliberately by
+    // bootstrap-sbus --with-indexes, and dropping it drops those indexes,
+    // leaving nothing to stop a duplicate email or document number on the
+    // first write. --include-production overrides this, and should not be
+    // needed.
+    const includeProduction = process.argv.includes('--include-production');
+    const targets = rows.filter(
+      (r) =>
+        /^sourceline-[a-z]+-/.test(r.name) &&
+        r.empty.length > 0 &&
+        (includeProduction || !r.name.startsWith('sourceline-production-'))
+    );
+
+    const protectedCount = rows.filter(
+      (r) => r.name.startsWith('sourceline-production-') && r.empty.length > 0
+    ).length;
+    if (protectedCount > 0 && !includeProduction) {
+      console.log(
+        `\nSkipping ${protectedCount} production database(s) — their empty collections carry indexes.`
+      );
+    }
     const count = targets.reduce((sum, r) => sum + r.empty.length, 0);
 
     console.log(
