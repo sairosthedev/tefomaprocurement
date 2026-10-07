@@ -9,18 +9,19 @@ interface SbuOption {
 }
 
 /**
- * Chooses the business unit to sign in to.
+ * Chooses the business unit to sign in to — and gets out of the way as soon as
+ * it can.
  *
- * A temporary measure: once each SBU answers on its own domain the hostname
- * identifies it and this disappears. Until then one deployment serves all of
- * them, so the user has to say which.
- *
- * Renders nothing when there is only one business unit, so a single-tenant
- * deployment shows no choice at all.
+ * When each SBU answers on its own domain, the address someone typed has
+ * already said which business unit they want: the API returns it as `current`,
+ * this stores it and renders nothing. The chooser appears only while SBUs
+ * share an address, or when the hostname is not in the registry (localhost
+ * during development, a preview deployment).
  */
 export default function SbuSelect({ disabled }: { disabled?: boolean }) {
   const [options, setOptions] = useState<SbuOption[]>([]);
   const [selected, setSelected] = useState<string>(getSbuCode() || '');
+  const [resolvedByDomain, setResolvedByDomain] = useState(false);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -31,7 +32,17 @@ export default function SbuSelect({ disabled }: { disabled?: boolean }) {
       .then((response) => {
         if (cancelled) return;
         const list: SbuOption[] = response.data?.data || [];
+        const current: { code: string } | null = response.data?.current || null;
         setOptions(list);
+
+        if (current?.code) {
+          // The domain decided. Keep it stored so every later request carries
+          // the same code even if the hostname stops resolving.
+          setSbuCode(current.code);
+          setSelected(current.code);
+          setResolvedByDomain(true);
+          return;
+        }
 
         // Preselect, so someone with one business unit never has to choose and
         // a returning user keeps the one they used last.
@@ -54,7 +65,7 @@ export default function SbuSelect({ disabled }: { disabled?: boolean }) {
     };
   }, []);
 
-  if (failed || options.length <= 1) return null;
+  if (failed || resolvedByDomain || options.length <= 1) return null;
 
   return (
     <div className="space-y-2">
