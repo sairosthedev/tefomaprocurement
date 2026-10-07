@@ -37,7 +37,8 @@
     "check:isolation": "npm run check:isolation -w api",
     "seed:counters": "npm run seed:counters -w api --",
     "check:numbering": "npm run check:numbering -w api --",
-    "bootstrap:sbus": "npm run bootstrap:sbus -w api --"
+    "bootstrap:sbus": "npm run bootstrap:sbus -w api --",
+    "sbu:capacity": "npm run sbu:capacity -w api --"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.3",

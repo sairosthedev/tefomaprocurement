@@ -24,7 +24,8 @@
     "check:isolation": "tsx src/scripts/check-sbu-isolation.ts",
     "seed:counters": "tsx src/scripts/seed-counters.ts",
     "check:numbering": "tsx src/scripts/check-numbering.ts",
-    "bootstrap:sbus": "tsx src/scripts/bootstrap-sbus.ts"
+    "bootstrap:sbus": "tsx src/scripts/bootstrap-sbus.ts",
+    "sbu:capacity": "tsx src/scripts/sbu-capacity.ts"
   },
   "dependencies": {
     "@fossil/shared": "file:./shared",

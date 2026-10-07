@@ -13,6 +13,7 @@
  *   npm run bootstrap:sbus                      # every active/onboarding SBU
  *   npm run bootstrap:sbus -- --only DOKUMA,TITAN
  *   npm run bootstrap:sbus -- --admin-email ops@example.com
+ *   npm run bootstrap:sbus -- --only DOKUMA --with-indexes   # going live
  */
 import mongoose from 'mongoose';
 import crypto from 'node:crypto';
@@ -59,21 +60,27 @@ interface Result {
 
 async function bootstrapSbu(
   sbu: SbuRef,
-  options: { dryRun: boolean; adminEmail: string | null }
+  options: { dryRun: boolean; adminEmail: string | null; withIndexes: boolean }
 ): Promise<Result | null> {
   const connection = connectionForSbu(sbu);
   process.stdout.write(`\n${sbu.code.padEnd(16)} ${sbu.dbName}\n`);
 
-  // Build every model's declared indexes. Mongoose only does this lazily on
-  // first use otherwise, which means the first write to a fresh SBU races its
-  // own unique indexes.
-  if (options.dryRun) {
-    console.log(`  ~ would build indexes for ${Object.keys(SBU_MODELS).length} models`);
-  } else {
-    for (const name of Object.keys(SBU_MODELS)) {
-      await connection.model(name).createIndexes();
+  // Building every model's indexes also creates every collection, which costs
+  // 24 collections per SBU whether or not the SBU is used. Atlas caps a shared
+  // cluster at 500 collections in total, so doing this for 15 SBUs up front
+  // consumes the whole cluster on empty data. Off by default: pass
+  // --with-indexes for an SBU that is actually going live.
+  if (options.withIndexes) {
+    if (options.dryRun) {
+      console.log(`  ~ would build indexes for ${Object.keys(SBU_MODELS).length} models`);
+    } else {
+      for (const name of Object.keys(SBU_MODELS)) {
+        await connection.model(name).createIndexes();
+      }
+      console.log(`  + indexes built for ${Object.keys(SBU_MODELS).length} models`);
     }
-    console.log(`  + indexes built for ${Object.keys(SBU_MODELS).length} models`);
+  } else {
+    console.log('  . indexes deferred (pass --with-indexes when this SBU goes live)');
   }
 
   const existing = await runWithSbu(sbu, () => User.countDocuments({ isDeleted: { $ne: true } }));
@@ -109,6 +116,7 @@ async function main(): Promise<void> {
   const dryRun = process.argv.includes('--dry-run');
   const only = arg('only');
   const adminEmail = arg('admin-email');
+  const withIndexes = process.argv.includes('--with-indexes');
 
   const uri = process.env.MONGODB_URI;
   if (!uri) throw new Error('MONGODB_URI is not set');
@@ -127,7 +135,7 @@ async function main(): Promise<void> {
 
   const created: Result[] = [];
   for (const sbu of sbus) {
-    const result = await bootstrapSbu(sbu, { dryRun, adminEmail });
+    const result = await bootstrapSbu(sbu, { dryRun, adminEmail, withIndexes });
     if (result) created.push(result);
   }
 
