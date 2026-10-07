@@ -12,6 +12,10 @@
  *
  * Idempotent: it adds the hostname if missing and leaves any others alone.
  * --replace discards an SBU's existing hostnames instead of adding to them.
+ *
+ * --dns prints the DNS records these hostnames need, and writes nothing:
+ *
+ *   npm run sbu:domains -- --base sourceline.co.zw --dns
  */
 import mongoose from 'mongoose';
 import { loadEnvFiles } from '../config/loadEnv.js';
@@ -78,6 +82,37 @@ async function main(): Promise<void> {
 
   const sbus = await Sbu.find({}).sort({ code: 1 });
   if (sbus.length === 0) throw new Error('The SBU registry is empty. Run seed:sbu-registry first.');
+
+  // --dns: report what the registrar needs, change nothing. A wildcard covers
+  // every SBU in one record; the per-host list is there for registrars whose
+  // DNS panel will not take a wildcard, which several .co.zw resellers will
+  // not. Take the record VALUE from what Vercel shows when the domain is added
+  // to the project rather than from here — it is the authoritative source and
+  // it differs between apex and subdomain records.
+  if (process.argv.includes('--dns')) {
+    const hosts = (sbus as ISbu[])
+      .map((sbu) => subdomainFor(sbu.code))
+      .filter((sub) => !RESERVED_SUBDOMAINS.includes(sub))
+      .sort();
+
+    console.log('Preferred — one wildcard covers every business unit:\n');
+    console.log('  TYPE   NAME   VALUE');
+    console.log('  CNAME  *      <target Vercel shows, usually cname.vercel-dns.com>');
+    console.log(`  A      @      <apex target Vercel shows for ${baseDomain}>`);
+
+    console.log('\nIf the registrar will not take a wildcard, add these instead:\n');
+    console.log('  TYPE   NAME');
+    for (const host of [...hosts, ...RESERVED_SUBDOMAINS]) {
+      console.log(`  CNAME  ${host}`);
+    }
+
+    console.log(`\n${hosts.length} business unit record(s) plus ${RESERVED_SUBDOMAINS.length} reserved.`);
+    console.log('\nIn Vercel: add the apex and *.' + baseDomain + ' to the client project,');
+    console.log('and api.' + baseDomain + ' to the API project. Then set CLIENT_URL on the API');
+    console.log('project to https://' + baseDomain + '.');
+    await mongoose.disconnect();
+    return;
+  }
 
   const seen = new Map<string, string>();
 
