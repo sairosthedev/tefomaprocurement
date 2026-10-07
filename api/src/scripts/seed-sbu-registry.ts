@@ -30,7 +30,7 @@ interface SbuSeed {
 const GROUP: SbuSeed[] = [
   { code: 'FOSSIL', name: 'Fossil Contracting', country: 'ZW', baseCurrency: 'USD' },
   { code: 'DOKUMA', name: 'Dokuma', country: 'ZW', baseCurrency: 'USD' },
-  { code: 'KHAYA_CEMENT', name: 'Khaya Cement', country: 'ZW', baseCurrency: 'USD' },
+  { code: 'KHAYAH_CEMENT', name: 'Khayah Cement', country: 'ZW', baseCurrency: 'USD' },
   { code: 'KURIMA_CENTRE', name: 'Kurima Centre', country: 'ZW', baseCurrency: 'USD' },
   { code: 'MANDFAR', name: 'Mandfar', country: 'ZW', baseCurrency: 'USD' },
   { code: 'MASIMBA', name: 'Masimba', country: 'ZW', baseCurrency: 'USD' },

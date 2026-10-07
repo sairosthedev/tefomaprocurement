@@ -9,7 +9,7 @@ Turn the single-company procurement system (built for Fossil Contracting) into o
 
 - each SBU runs its own procurement in **its own database, on its own domain** — its own users' access, sites, approvals, budgets, stock and documents;
 - the group sees across SBUs on purpose — shared supplier master, common item catalogue, framework contracts, intra-group trade, price variance;
-- every procurement figure the group command centre shows is an aggregate of real transactions in this system, keyed by the same SBU codes the command centre uses (`DOKUMA`, `FOSSIL`, `KHAYA_CEMENT`, …).
+- every procurement figure the group command centre shows is an aggregate of real transactions in this system, keyed by the same SBU codes the command centre uses (`DOKUMA`, `FOSSIL`, `KHAYAH_CEMENT`, …).
 
 ## 2. Decisions
 
@@ -22,7 +22,7 @@ Turn the single-company procurement system (built for Fossil Contracting) into o
 | D5 | **Suppliers per SBU:** each SBU holds its own supplier records, KYS and bank-change control in its own database. There is no group supplier master | Confirmed |
 | D6 | **Items per SBU:** each SBU holds its own catalogue, stock codes, reorder levels and balances. There is no group catalogue | Confirmed |
 | D7 | **Users per SBU:** each SBU holds its own users and OTP challenges. Someone who works in two SBUs has an account, and credentials, in each | Confirmed |
-| D8 | Pilot: **all twelve Zimbabwean SBUs** — DOKUMA, FOSSIL, KHAYA_CEMENT, KURIMA_CENTRE, MANDFAR, MASIMBA, PERSIMMON, PROPLASTICS, RHOPOWER, GRAIN_HUB, TITAN, TRENDS. South African SBUs (ENVIRO_PLASTIC, MANGETHE, THANDO_KINETICS) follow | Confirmed |
+| D8 | Pilot: **all twelve Zimbabwean SBUs** — DOKUMA, FOSSIL, KHAYAH_CEMENT, KURIMA_CENTRE, MANDFAR, MASIMBA, PERSIMMON, PROPLASTICS, RHOPOWER, GRAIN_HUB, TITAN, TRENDS. South African SBUs (ENVIRO_PLASTIC, MANGETHE, THANDO_KINETICS) follow | Confirmed |
 | D9 | Existing **suppliers, stock and users stay with FOSSIL**; all existing **transactions are deleted** during migration | Confirmed |
 | D10 | **Thando Kinetics** is treated like every other SBU for now; acting as the group buying and trucking desk is a later phase | Confirmed |
 
@@ -49,7 +49,7 @@ All databases sit on the existing Atlas cluster, named per environment, exactly 
 sourceline-prod-platform        group-wide data
 sourceline-prod-dokuma          ┐
 fossil-procure-prod  (FOSSIL)   │ one per SBU — Fossil keeps its existing database
-sourceline-prod-khaya_cement    │
+sourceline-prod-khayah_cement    │
 …                               ┘
 ```
 
@@ -81,8 +81,8 @@ An automated test boots two SBU databases and asserts that every endpoint called
 
 | Domain | Who | What |
 |---|---|---|
-| `fossil.<base-domain>`, `khaya.<base-domain>`, … | SBU staff | That SBU's procurement — one per SBU |
-| Optional custom domain per SBU, e.g. `procure.khayacement.co.zw` | SBU staff | Same as above, on the SBU's own brand |
+| `fossil.<base-domain>`, `khayah.<base-domain>`, … | SBU staff | That SBU's procurement — one per SBU |
+| Optional custom domain per SBU, e.g. `procure.khayahcement.co.zw` | SBU staff | Same as above, on the SBU's own brand |
 | `group.<base-domain>` | Group roles | Framework contracts, cross-SBU reports, supplier and catalogue reconciliation, SBU administration |
 | `suppliers.<base-domain>` | Suppliers | One portal showing RFQs and POs from every SBU the supplier is approved for |
 
@@ -94,7 +94,7 @@ An automated test boots two SBU databases and asserts that every endpoint called
 
 - The client reads its hostname and loads that SBU's public branding (name, logo) before login, so each domain's login page shows the business it belongs to.
 - The API resolves the SBU from the request's `Origin`, matched against the registry. CORS allowed origins are built from the registry instead of env vars.
-- The JWT carries the SBU it was issued for. `protect` rejects a token presented on a different SBU's domain, so a Fossil session can't be replayed against Khaya.
+- The JWT carries the SBU it was issued for. `protect` rejects a token presented on a different SBU's domain, so a Fossil session can't be replayed against Khayahh.
 - Logging in on an SBU domain authenticates against that SBU's own user collection. Someone who works in two SBUs has a separate account, and separate credentials, in each.
 - Email links (approvals, RFQs, password reset) point at the SBU's own domain; supplier emails point at the supplier portal.
 - Non-browser callers (the command centre) use API keys scoped to an SBU or to the group.
@@ -132,7 +132,7 @@ Cross-SBU features read many databases, through one helper that fans out over th
 | Intra-group trade | An SBU registered as an internal supplier; POs flagged intra-group with the external benchmark price | Intra-group capture rate, value vs outside cost |
 | Group buying desk (later) | Lets Thando Kinetics raise POs on behalf of other SBUs | Thando's intra-group share of work |
 
-Likely intra-group flows: Khaya → contractors (cement), Masimba Stemrich → contractors (aggregate, precast), Fossil / Mangethe / Chimene → contractors (plant hire), Rhopower → Mandfar Electro and Persimmon (transformers, substations), Enviro Plastic → ProPlastics (recycled pellet), Titan → all sites (guarding), Kurima → hardware and solar, Thando → trucking.
+Likely intra-group flows: Khayah → contractors (cement), Masimba Stemrich → contractors (aggregate, precast), Fossil / Mangethe / Chimene → contractors (plant hire), Rhopower → Mandfar Electro and Persimmon (transformers, substations), Enviro Plastic → ProPlastics (recycled pellet), Titan → all sites (guarding), Kurima → hardware and solar, Thando → trucking.
 
 ### 9.1 The reconciliation key
 
@@ -146,7 +146,7 @@ Suppliers are reconciled across SBU databases on **company registration number**
 | Generated 6-character hex strings, e.g. `5E7FF5`, `D22E75` | ~210 (32%) |
 | Test and smoke-test residue, e.g. `[TEST-E2E] ...`, `SMOKE-...`, `ghjkhlj` | ~40 (6%) |
 
-Internal vendor codes cannot reconcile anything across SBUs: Khaya would issue its own codes for the same company, and the two would never match. The decision is therefore sound as a *target* — a company registration number is a real, externally-issued identity — but the field has to be filled with real ones first.
+Internal vendor codes cannot reconcile anything across SBUs: Khayah would issue its own codes for the same company, and the two would never match. The decision is therefore sound as a *target* — a company registration number is a real, externally-issued identity — but the field has to be filled with real ones first.
 
 **Recommended: split the two things the field currently conflates.**
 
