@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { SplashScreen } from './components/SplashScreen';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
 import { EnvironmentBanner } from './components/EnvironmentBanner';
@@ -87,8 +88,12 @@ function AppLayout({ children, allowedRoles }: any) {
 }
 
 function App() {
+  const [splashDone, setSplashDone] = useState(false);
+
   return (
-    <BrowserRouter>
+    <>
+      {!splashDone && <SplashScreen onComplete={() => setSplashDone(true)} />}
+      <BrowserRouter>
       <AuthProvider>
         <ToastProvider>
           {/* Renders nothing in production. */}
@@ -376,7 +381,8 @@ function App() {
           </Routes>
         </ToastProvider>
       </AuthProvider>
-    </BrowserRouter>
+      </BrowserRouter>
+    </>
   );
 }
 
