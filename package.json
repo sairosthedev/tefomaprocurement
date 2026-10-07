@@ -19,8 +19,8 @@
     "build:shared": "npm run build -w @fossil/shared",
     "start": "npm run start -w api",
     "start:staging": "npm run start:staging -w api",
-    "seed": "npm run seed -w api",
-    "seed:all": "npm run seed:all -w api",
+    "seed": "npm run seed -w api --",
+    "seed:all": "npm run seed:all -w api --",
     "migrate:sites": "npm run migrate:sites -w api",
     "typecheck": "npm run typecheck -w @fossil/shared && npm run typecheck -w api && npm run typecheck -w client",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
@@ -38,7 +38,8 @@
     "seed:counters": "npm run seed:counters -w api --",
     "check:numbering": "npm run check:numbering -w api --",
     "bootstrap:sbus": "npm run bootstrap:sbus -w api --",
-    "sbu:capacity": "npm run sbu:capacity -w api --"
+    "sbu:capacity": "npm run sbu:capacity -w api --",
+    "e2e:local": "npm run e2e:local -w api --"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.3",
