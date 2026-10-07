@@ -5,6 +5,11 @@
  * and creates one administrator, so somebody can sign in and set the business
  * unit up. It does nothing to an SBU that already has users.
  *
+ * Collections and indexes are created on demand, not up front (see
+ * tenancy/connections.ts), so --with-indexes is not cosmetic: until it is run
+ * an SBU has no unique indexes, and nothing stops a duplicate email or
+ * document number. Run it before the business unit takes real work.
+ *
  * Generated passwords are printed once and never stored anywhere else — copy
  * them out of this run, hand them over through a password manager, and have
  * each administrator change theirs on first sign-in.
@@ -80,7 +85,7 @@ async function bootstrapSbu(
       console.log(`  + indexes built for ${Object.keys(SBU_MODELS).length} models`);
     }
   } else {
-    console.log('  . indexes deferred (pass --with-indexes when this SBU goes live)');
+    console.log('  . indexes deferred — run again with --with-indexes before real use');
   }
 
   const existing = await runWithSbu(sbu, () => User.countDocuments({ isDeleted: { $ne: true } }));

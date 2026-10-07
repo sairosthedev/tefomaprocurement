@@ -11,6 +11,28 @@ import type { SbuRef } from './sbuContext.js';
  * `/api` route (see `server.ts` and the Vercel guard in `app.ts`).
  */
 
+/**
+ * Collections and indexes are created explicitly, not automatically.
+ *
+ * Mongoose creates a model's collection (autoCreate) and builds its indexes
+ * (autoIndex) the moment the model is registered on an open connection. Every
+ * SBU
+ * connection registers all two dozen models so that populate() can resolve its
+ * refs, which turned each empty business unit into two dozen empty collections
+ * — enough to exhaust a shared Atlas cluster's 500-collection ceiling on no
+ * data at all.
+ *
+ * It is set here rather than in config/db.ts because the CLI scripts call
+ * mongoose.connect directly and never import that module, and they are what
+ * create SBU databases in the first place.
+ *
+ * Disabling it is also the documented practice for production, where an
+ * unexpected index build is a load event nobody asked for. Indexes are built
+ * deliberately instead, by bootstrap-sbus --with-indexes when an SBU goes live.
+ */
+mongoose.set('autoIndex', false);
+mongoose.set('autoCreate', false);
+
 /** SBUs on the shared cluster, keyed by database name. */
 const sharedConnections = new Map<string, Connection>();
 /** SBUs with their own cluster, keyed by SBU code. Opened at startup. */
