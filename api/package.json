@@ -19,7 +19,9 @@
     "seed:ict-suppliers": "tsx src/scripts/seed-ict-suppliers.ts",
     "migrate:sites": "tsx src/scripts/migrate-sites.ts",
     "e2e:local": "node src/scripts/e2e-localhost.mjs",
-    "smoke": "node src/scripts/smoke-test.mjs http://localhost:3001"
+    "smoke": "node src/scripts/smoke-test.mjs http://localhost:3001",
+    "seed:sbu-registry": "tsx src/scripts/seed-sbu-registry.ts",
+    "check:isolation": "tsx src/scripts/check-sbu-isolation.ts"
   },
   "dependencies": {
     "@fossil/shared": "file:./shared",

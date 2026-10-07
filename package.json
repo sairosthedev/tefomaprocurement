@@ -32,7 +32,9 @@
     "deploy:staging": "npm run deploy:api:staging && npm run deploy:client:staging",
     "deploy:client": "vercel link --yes --project tefomaprocurement --scope macdonald-sairos-projects && vercel --prod",
     "deploy:api": "vercel link --yes --project tefomaprocurement-api --scope macdonald-sairos-projects && vercel --prod",
-    "deploy:production": "npm run deploy:api && npm run deploy:client"
+    "deploy:production": "npm run deploy:api && npm run deploy:client",
+    "seed:sbu-registry": "npm run seed:sbu-registry -w api",
+    "check:isolation": "npm run check:isolation -w api"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.3",

@@ -3,6 +3,7 @@ import cors from 'cors';
 
 import connectToDatabase from './config/db.js';
 import { corsOptions, applyCorsHeaders } from './config/cors.js';
+import { sbuContextMiddleware } from './middleware/sbuContext.middleware.js';
 import { getAppEnv } from './config/env.js';
 import routes from './routes/index.js';
 import { notFoundHandler, errorHandler } from './middleware/index.js';
@@ -54,6 +55,9 @@ export function createApp(): Express {
     });
   }
 
+  // Everything under /api runs inside one SBU's context. /health stays outside
+  // it so deploy health checks work before any SBU exists.
+  app.use('/api', sbuContextMiddleware());
   app.use('/api', routes);
 
   app.use(notFoundHandler);
