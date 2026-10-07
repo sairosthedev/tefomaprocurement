@@ -67,10 +67,15 @@ const SbuSchema = new mongoose.Schema<ISbu>(
   { timestamps: true }
 );
 
-// A hostname must identify exactly one SBU, or domain-based resolution in
-// phase 2 would be ambiguous. A unique multikey index enforces that across
-// documents, not just within one.
-SbuSchema.index({ domains: 1 }, { unique: true, sparse: true });
+// A hostname must identify exactly one SBU, or domain-based resolution would
+// be ambiguous. A partial index applies the uniqueness only to SBUs that
+// actually have a domain: a plain sparse index treats every empty `domains`
+// array as the same undefined key, so the second SBU without a domain would
+// collide with the first.
+SbuSchema.index(
+  { domains: 1 },
+  { unique: true, partialFilterExpression: { 'domains.0': { $exists: true } } }
+);
 SbuSchema.index({ status: 1 });
 
 const BaseSbu = mongoose.model<ISbu>('Sbu', SbuSchema);

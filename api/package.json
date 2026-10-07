@@ -23,7 +23,8 @@
     "seed:sbu-registry": "tsx src/scripts/seed-sbu-registry.ts",
     "check:isolation": "tsx src/scripts/check-sbu-isolation.ts",
     "seed:counters": "tsx src/scripts/seed-counters.ts",
-    "check:numbering": "tsx src/scripts/check-numbering.ts"
+    "check:numbering": "tsx src/scripts/check-numbering.ts",
+    "bootstrap:sbus": "tsx src/scripts/bootstrap-sbus.ts"
   },
   "dependencies": {
     "@fossil/shared": "file:./shared",
