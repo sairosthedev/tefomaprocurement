@@ -21,6 +21,14 @@
  * confirmed before anyone tries to sign in:
  *
  *   npm run sbu:domains -- --base sourceline.co.zw --check
+ *
+ * --only limits every mode to named business units, for going live in waves
+ * or when the registrar caps how many records can be added:
+ *
+ *   npm run sbu:domains -- --base sourceline.co.zw --only FOSSIL,DOKUMA --dns
+ *
+ * An SBU without a hostname is not cut off — it is reached by choosing it on
+ * the login page, exactly as every SBU is today.
  */
 import mongoose from 'mongoose';
 import dns from 'node:dns/promises';
@@ -113,8 +121,20 @@ async function main(): Promise<void> {
   if (dryRun) console.log('DRY RUN - nothing will be written');
   console.log();
 
-  const sbus = await Sbu.find({}).sort({ code: 1 });
+  let sbus = await Sbu.find({}).sort({ code: 1 });
   if (sbus.length === 0) throw new Error('The SBU registry is empty. Run seed:sbu-registry first.');
+
+  const only = arg('only');
+  if (only) {
+    const wanted = new Set(only.split(',').map((code) => code.trim().toUpperCase()).filter(Boolean));
+    const found = new Set(sbus.map((sbu) => sbu.code));
+    const missing = [...wanted].filter((code) => !found.has(code));
+    if (missing.length > 0) {
+      throw new Error(`Not in the registry: ${missing.join(', ')}`);
+    }
+    sbus = sbus.filter((sbu) => wanted.has(sbu.code));
+    console.log(`Limited to ${sbus.length} business unit(s): ${sbus.map((s2) => s2.code).join(', ')}\n`);
+  }
 
   // --check: resolve every hostname and say which are live. Writes nothing.
   // The apex is checked first, because when the domain itself is not delegated
