@@ -172,10 +172,35 @@ async function main(): Promise<void> {
       .filter((sub) => !RESERVED_SUBDOMAINS.includes(sub))
       .sort();
 
+    // Whether the apex can be repointed at all depends on where mail goes.
+    // An MX that names the domain itself means inbound mail is delivered to
+    // whatever the apex A record resolves to, so moving that record to the
+    // deployment silently stops the domain receiving email.
+    const mx = await dns.resolveMx(baseDomain).then(
+      (records) => records.map((r) => r.exchange.replace(/\.$/, '').toLowerCase()),
+      () => [] as string[]
+    );
+    const apexCarriesMail = mx.includes(baseDomain);
+
     console.log('Preferred — one wildcard covers every business unit:\n');
     console.log('  TYPE   NAME   VALUE');
     console.log('  CNAME  *      <target Vercel shows, usually cname.vercel-dns.com>');
-    console.log(`  A      @      <apex target Vercel shows for ${baseDomain}>`);
+
+    if (apexCarriesMail) {
+      console.log(`  A      @      LEAVE ALONE — currently carries this domain's mail`);
+      console.log('');
+      console.log(`  !! MX for ${baseDomain} points at ${baseDomain} itself, so inbound mail`);
+      console.log('     is delivered to whatever the apex A record resolves to. Repointing');
+      console.log('     that record at the deployment would stop the domain receiving email.');
+      console.log('');
+      console.log('     The business units are all on subdomains, so nothing here needs the');
+      console.log('     apex. To serve the apex later, first give mail its own host:');
+      console.log(`       1. A     mail.${baseDomain}  -> the current apex IP`);
+      console.log(`       2. MX    @                   -> mail.${baseDomain}`);
+      console.log('       3. check SPF still names that host, then repoint the apex A');
+    } else {
+      console.log(`  A      @      <apex target Vercel shows for ${baseDomain}>`);
+    }
 
     console.log('\nIf the registrar will not take a wildcard, add these instead:\n');
     console.log('  TYPE   NAME');
