@@ -1,4 +1,5 @@
 import mongoose, { Schema, type Document } from 'mongoose';
+import { nextNumber } from '../services/numbering.service.js';
 
 /** Allowed reasons for waiving the minimum-quotation competitive requirement. */
 export const QUOTATION_WAIVER_TYPES = [
@@ -321,14 +322,13 @@ const RFQSchema = new Schema<IRFQ>({
   timestamps: true
 });
 
-// Generate RFQ number before saving
-RFQSchema.pre('save', async function(next) {
-  if (this.isNew) {
-    const count = await (this.constructor as any).countDocuments();
-    const year = new Date().getFullYear();
-    this.rfqNumber = `RFQ-${year}-${String(count + 1).padStart(5, '0')}`;
+// Numbering runs on `pre('validate')`, not `pre('save')`: Mongoose validates
+// before user save hooks, so a required number field assigned in `pre('save')`
+// fails validation and the hook never runs at all.
+RFQSchema.pre('validate', async function () {
+  if (this.isNew && !this.rfqNumber) {
+    this.rfqNumber = await nextNumber(this, { type: 'rfq', prefix: 'RFQ' });
   }
-  next();
 });
 
 export default mongoose.model<IRFQ>('RFQ', RFQSchema);

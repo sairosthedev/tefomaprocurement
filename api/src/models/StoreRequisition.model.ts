@@ -1,4 +1,5 @@
 import mongoose, { Schema, type Document } from 'mongoose';
+import { nextNumber } from '../services/numbering.service.js';
 
 export interface IStoreRequisitionItem {
   item: mongoose.Types.ObjectId | any;
@@ -127,14 +128,13 @@ const StoreRequisitionSchema = new Schema<IStoreRequisition>({
   timestamps: true
 });
 
-// Generate requisition number before saving
-StoreRequisitionSchema.pre('save', async function(next) {
-  if (this.isNew) {
-    const count = await (this.constructor as any).countDocuments();
-    const year = new Date().getFullYear();
-    this.requisitionNumber = `SR-${year}-${String(count + 1).padStart(5, '0')}`;
+// Numbering runs on `pre('validate')`, not `pre('save')`: Mongoose validates
+// before user save hooks, so a required number field assigned in `pre('save')`
+// fails validation and the hook never runs at all.
+StoreRequisitionSchema.pre('validate', async function () {
+  if (this.isNew && !this.requisitionNumber) {
+    this.requisitionNumber = await nextNumber(this, { type: 'storeRequisition', prefix: 'SR' });
   }
-  next();
 });
 
 export default mongoose.model<IStoreRequisition>('StoreRequisition', StoreRequisitionSchema);

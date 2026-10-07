@@ -1,4 +1,5 @@
 import mongoose, { Schema, type Document } from 'mongoose';
+import { nextNumber } from '../services/numbering.service.js';
 
 export interface IPayment extends Document {
   paymentNumber: string;
@@ -76,13 +77,13 @@ const PaymentSchema = new Schema<IPayment>({
   isDeleted: { type: Boolean, default: false }
 }, { timestamps: true });
 
-PaymentSchema.pre('save', async function (next) {
+// Numbering runs on `pre('validate')`, not `pre('save')`: Mongoose validates
+// before user save hooks, so a required number field assigned in `pre('save')`
+// fails validation and the hook never runs at all.
+PaymentSchema.pre('validate', async function () {
   if (this.isNew && !this.paymentNumber) {
-    const count = await (this.constructor as typeof mongoose.Model).countDocuments();
-    const year = new Date().getFullYear();
-    this.paymentNumber = `PAY-${year}-${String(count + 1).padStart(5, '0')}`;
+    this.paymentNumber = await nextNumber(this, { type: 'payment', prefix: 'PAY' });
   }
-  next();
 });
 
 export default mongoose.model<IPayment>('Payment', PaymentSchema);

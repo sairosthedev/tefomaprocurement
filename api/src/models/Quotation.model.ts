@@ -1,4 +1,5 @@
 import mongoose, { Schema, type Document } from 'mongoose';
+import { nextNumber } from '../services/numbering.service.js';
 
 /** Photo a supplier attaches to a quote line — typically the data plate of an
  *  equivalent part they are offering in place of the exact one requested. */
@@ -223,12 +224,6 @@ const QuotationSchema = new Schema<IQuotation>({
 
 // Generate quotation number and lock on submission
 QuotationSchema.pre('save', async function(next) {
-  if (this.isNew) {
-    const count = await (this.constructor as any).countDocuments();
-    const year = new Date().getFullYear();
-    this.quotationNumber = `QT-${year}-${String(count + 1).padStart(5, '0')}`;
-  }
-
   // Lock quotation when submitted
   if (this.isModified('status') && this.status === 'submitted' && !this.isLocked) {
     this.isLocked = true;
@@ -238,6 +233,15 @@ QuotationSchema.pre('save', async function(next) {
   }
 
   next();
+});
+
+// Numbering runs on `pre('validate')`, not `pre('save')`: Mongoose validates
+// before user save hooks, so a required number field assigned in `pre('save')`
+// fails validation and the hook never runs at all.
+QuotationSchema.pre('validate', async function () {
+  if (this.isNew && !this.quotationNumber) {
+    this.quotationNumber = await nextNumber(this, { type: 'quotation', prefix: 'QT' });
+  }
 });
 
 export default mongoose.model<IQuotation>('Quotation', QuotationSchema);

@@ -1,4 +1,5 @@
 import mongoose, { Schema, type Document } from 'mongoose';
+import { nextNumber } from '../services/numbering.service.js';
 
 export interface ITransferItem {
   item: mongoose.Types.ObjectId | any;
@@ -110,9 +111,7 @@ const StockTransferSchema = new Schema<IStockTransfer>(
 
 StockTransferSchema.pre('validate', async function () {
   if (this.isNew && !this.transferNumber) {
-    const count = await (this.constructor as typeof mongoose.Model).countDocuments();
-    const year = new Date().getFullYear();
-    this.transferNumber = `TRF-${year}-${String(count + 1).padStart(5, '0')}`;
+    this.transferNumber = await nextNumber(this, { type: 'stockTransfer', prefix: 'TRF' });
   }
 });
 

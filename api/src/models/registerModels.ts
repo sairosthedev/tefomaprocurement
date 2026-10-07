@@ -23,6 +23,7 @@ import Payment from './Payment.model.js';
 import AuditLog from './AuditLog.model.js';
 import Notification from './Notification.model.js';
 import OtpChallenge from './OtpChallenge.model.js';
+import Counter from './Counter.model.js';
 
 /**
  * Every model that lives in an SBU's own database.
@@ -58,7 +59,8 @@ export const SBU_MODELS = {
   Payment,
   AuditLog,
   Notification,
-  OtpChallenge
+  OtpChallenge,
+  Counter
 } as const satisfies Record<string, Model<any>>;
 
 export type SbuModelName = keyof typeof SBU_MODELS;

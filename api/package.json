@@ -21,7 +21,9 @@
     "e2e:local": "node src/scripts/e2e-localhost.mjs",
     "smoke": "node src/scripts/smoke-test.mjs http://localhost:3001",
     "seed:sbu-registry": "tsx src/scripts/seed-sbu-registry.ts",
-    "check:isolation": "tsx src/scripts/check-sbu-isolation.ts"
+    "check:isolation": "tsx src/scripts/check-sbu-isolation.ts",
+    "seed:counters": "tsx src/scripts/seed-counters.ts",
+    "check:numbering": "tsx src/scripts/check-numbering.ts"
   },
   "dependencies": {
     "@fossil/shared": "file:./shared",

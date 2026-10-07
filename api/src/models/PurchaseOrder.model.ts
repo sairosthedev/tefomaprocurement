@@ -1,5 +1,6 @@
 import mongoose, { Schema, type Document } from 'mongoose';
 import { requiresCooApproval } from '../services/poApprovalFlow.service.js';
+import { nextNumber } from '../services/numbering.service.js';
 
 export interface IPOItem {
   description: string;
@@ -263,14 +264,7 @@ const PurchaseOrderSchema = new Schema<IPurchaseOrder>({
   timestamps: true
 });
 
-// Generate PO number before saving
 PurchaseOrderSchema.pre('save', async function(next) {
-  if (this.isNew) {
-    const count = await (this.constructor as any).countDocuments();
-    const year = new Date().getFullYear();
-    this.poNumber = `PO-${year}-${String(count + 1).padStart(5, '0')}`;
-  }
-
   // COO required above USD 5,000
   this.requiresCooApproval = requiresCooApproval(this.totalAmount);
 
@@ -280,6 +274,15 @@ PurchaseOrderSchema.pre('save', async function(next) {
   });
 
   next();
+});
+
+// Numbering runs on `pre('validate')`, not `pre('save')`: Mongoose validates
+// before user save hooks, so a required number field assigned in `pre('save')`
+// fails validation and the hook never runs at all.
+PurchaseOrderSchema.pre('validate', async function () {
+  if (this.isNew && !this.poNumber) {
+    this.poNumber = await nextNumber(this, { type: 'purchaseOrder', prefix: 'PO' });
+  }
 });
 
 export default mongoose.model<IPurchaseOrder>('PurchaseOrder', PurchaseOrderSchema);
