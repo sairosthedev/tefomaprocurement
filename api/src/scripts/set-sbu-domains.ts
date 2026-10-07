@@ -216,6 +216,8 @@ async function main(): Promise<void> {
       console.log('     The business units are all on subdomains, so nothing here needs the');
       console.log('     apex. To serve the apex later, first give mail its own host:');
       console.log(`       1. A     mail.${baseDomain}  -> the current apex IP`);
+      console.log('          It must be an A record. A CNAME is not a valid MX target and');
+      console.log('          many senders reject one, so replace the CNAME cPanel creates.');
       console.log(`       2. MX    @                   -> mail.${baseDomain}`);
       console.log('       3. check SPF still names that host, then repoint the apex A');
     } else {
