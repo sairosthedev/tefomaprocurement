@@ -27,7 +27,7 @@ const getInvoiceById = async (req: Request, res: Response): Promise<any> => {
     // Match against the GRVs stores raised, so the preview finance sees is the
     // same evidence the approval gate will apply.
     const freshMatch = po
-      ? performThreeWayMatch(po, invoice.items, await collectGrvEvidence(po))
+      ? performThreeWayMatch(po, invoice.items, await collectGrvEvidence(po), invoice.vatAmount ?? 0)
       : null;
 
     res.status(200).json({

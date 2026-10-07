@@ -54,7 +54,7 @@ const submitInvoice = async (req: Request, res: Response): Promise<any> => {
     }));
 
     const evidence = await collectGrvEvidence(po);
-    const matchResult = performThreeWayMatch(po, invoiceItems, evidence);
+    const matchResult = performThreeWayMatch(po, invoiceItems, evidence, Number(vatAmount) || 0);
     const status = matchResult.matched ? 'submitted' : 'variance';
 
     const invoice = await Invoice.create({

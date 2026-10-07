@@ -70,12 +70,18 @@ export async function collectGrvEvidence(po: IPurchaseOrder): Promise<GrvEvidenc
 export function performThreeWayMatch(
   po: IPurchaseOrder,
   invoiceItems: IInvoiceItem[],
-  evidence?: GrvEvidence
+  evidence?: GrvEvidence,
+  invoiceVatAmount = 0
 ): IThreeWayMatchResult {
   const messages: string[] = [];
   const lines: IMatchLineResult[] = [];
 
-  const poTotal = po.totalAmount;
+  // Line totals on both the PO and the invoice are VAT-exclusive, so the
+  // line-level and net-of-VAT comparisons below must use the PO subtotal, not
+  // totalAmount (which includes VAT). Comparing a VAT-exclusive invoice total
+  // against a VAT-inclusive PO total would flag every VAT-bearing PO as a
+  // variance even when the invoice is correct.
+  const poNetTotal = po.subtotal ?? po.totalAmount;
   let receivedValue = 0;
 
   if (evidence && !evidence.hasGrv) {
@@ -129,12 +135,10 @@ export function performThreeWayMatch(
     });
   });
 
+  // Invoice total compared here is VAT-exclusive (sum of line totals), matching
+  // the VAT-exclusive po subtotal and received value.
   const invoicedTotal = invoiceItems.reduce((s, i) => s + i.totalPrice, 0);
   const varianceAmount = invoicedTotal - receivedValue;
-  // Compare like for like: invoiced and received values are both net of VAT, so
-  // they must be compared against the PO subtotal rather than its VAT-inclusive
-  // total, which would flag every VAT-bearing PO as a variance.
-  const poNetTotal = po.subtotal ?? poTotal;
   const totalMatched =
     withinTolerance(poNetTotal, invoicedTotal) &&
     withinTolerance(receivedValue, invoicedTotal) &&
@@ -154,14 +158,24 @@ export function performThreeWayMatch(
   // no independent evidence the goods arrived, whatever the PO says.
   const hasGrv = evidence ? evidence.hasGrv : receivedValue > 0;
 
+  // VAT is reconciled separately: the invoiced VAT should agree with the PO VAT.
+  const poVat = po.vatAmount ?? 0;
+  if (!withinTolerance(poVat, invoiceVatAmount)) {
+    messages.push(
+      `Invoice VAT (${invoiceVatAmount.toFixed(2)}) does not match PO VAT (${poVat.toFixed(2)})`
+    );
+  }
+  const vatMatched = withinTolerance(poVat, invoiceVatAmount);
+
   return {
+    // Expose the VAT-inclusive PO total for display continuity with prior reports.
+    poTotal: po.totalAmount,
     poNumber: po.poNumber,
-    poTotal,
     receivedValue,
     invoicedTotal,
     varianceAmount,
-    matched: totalMatched && receivedValue > 0 && hasGrv,
-    withinTolerance: withinTolerance(receivedValue, invoicedTotal),
+    matched: totalMatched && vatMatched && receivedValue > 0 && hasGrv,
+    withinTolerance: withinTolerance(receivedValue, invoicedTotal) && vatMatched,
     grvNumbers: evidence?.grvNumbers ?? [],
     hasGrv,
     lines,

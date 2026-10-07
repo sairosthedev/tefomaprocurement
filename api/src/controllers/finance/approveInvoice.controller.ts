@@ -25,7 +25,7 @@ const approveInvoice = async (req: Request, res: Response): Promise<any> => {
     }
 
     const evidence = await collectGrvEvidence(po);
-    const matchResult = performThreeWayMatch(po, invoice.items, evidence);
+    const matchResult = performThreeWayMatch(po, invoice.items, evidence, invoice.vatAmount ?? 0);
 
     // Hard gate: goods must be receipted by stores, and accepted, before
     // finance can approve payment. Not overridable — with nothing accepted onto

@@ -29,6 +29,7 @@ export interface IRFQLineAttachment {
   mimeType?: string;
   caption?: string;
 }
+export type QuotationWaiverType = (typeof QUOTATION_WAIVER_TYPES)[number];
 
 export interface IRFQItem {
   /** Stable per-line identity (Mongoose subdocument _id). Quotation lines and
