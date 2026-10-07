@@ -1,10 +1,11 @@
 import type { Request, Response } from 'express';
 import PDFDocument from 'pdfkit';
+import { getCompanyName } from '../../lib/branding.js';
 
 import { Delivery } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 
-const COMPANY = process.env.COMPANY_NAME || 'Tefoma Construction';
+const COMPANY = getCompanyName();
 const MARGIN = 45;
 const ACCENT = '#b45309';
 const MUTED = '#6b7280';

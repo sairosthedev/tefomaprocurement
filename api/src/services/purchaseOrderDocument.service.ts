@@ -7,13 +7,14 @@
  * print and the emailed attachment, and a supplier can never receive a PDF that
  * differs from what procurement reviewed.
  *
- * Layout follows the GRV (printGrv.controller.ts) so Tefoma's documents look
+ * Layout follows the GRV (printGrv.controller.ts) so the business's documents look
  * like a set rather than a collection of one-offs.
  */
 
 import PDFDocument from 'pdfkit';
+import { getCompanyName } from '../lib/branding.js';
 
-const COMPANY = process.env.COMPANY_NAME || 'Tefoma Construction';
+const COMPANY = getCompanyName();
 const MARGIN = 45;
 const ACCENT = '#b45309';
 const MUTED = '#6b7280';

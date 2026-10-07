@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Full-page decorative background echoing the Tefoma logo:
+ * Full-page decorative background echoing the Sourceline mark:
  * white page with a few light logo tiles.
  */
 export default function BrandSwooshBackground() {
@@ -38,7 +38,7 @@ export default function BrandSwooshBackground() {
       style={{ background: '#ffffff' }}
       aria-hidden
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(20,115,186,0.06),rgba(255,255,255,0)_48%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,92,230,0.06),rgba(255,255,255,0)_48%)]" />
 
       {logoTiles.map(({ style, tileStyle }, index) => (
         <div
@@ -50,7 +50,7 @@ export default function BrandSwooshBackground() {
             className="h-full w-full rounded-lg border border-white/45 bg-white/80 p-3 shadow-xl shadow-black/10 backdrop-blur-sm"
             style={tileStyle}
           >
-            <img src="/tefomaLogo.png" alt="" className="h-full w-full object-contain" />
+            <img src="/sourceline-mark.png" alt="" className="h-full w-full object-contain" />
           </div>
         </div>
       ))}

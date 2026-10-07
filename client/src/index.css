@@ -49,33 +49,33 @@
   }
 }
 
-/* Force primary green color for sidebar */
+/* Force primary navy for sidebar */
 aside[class*="bg-primary"] {
-  background-color: #193019 !important;
+  background-color: #051A38 !important;
 }
 
-/* Force primary green for sidebar navigation hover state */
+/* Force primary navy for sidebar navigation hover state */
 aside nav a:hover {
-  background-color: #234523 !important;
+  background-color: #0B2A55 !important;
 }
 
-/* Force primary green for sidebar navigation active state (has shadow-sm class) */
+/* Force primary navy for sidebar navigation active state (has shadow-sm class) */
 aside nav a.shadow-sm {
-  background-color: #234523 !important;
+  background-color: #0B2A55 !important;
 }
 
-/* Force primary green for login button */
+/* Force primary navy for login button */
 button[type="submit"].bg-primary,
 button.bg-primary[type="submit"] {
-  background-color: #193019 !important;
+  background-color: #051A38 !important;
 }
 
 button[type="submit"].bg-primary:hover,
 button.bg-primary[type="submit"]:hover {
-  background-color: #0f1a0f !important;
+  background-color: #020E20 !important;
 }
 
-/* Tri-colour brand accent bar (blue → green → amber), echoes the logo swoosh */
+/* Navy → royal blue accent bar, echoes the gradient in the Sourceline mark */
 .brand-accent-bar {
-  background: linear-gradient(90deg, #1473BA 0%, #1473BA 33%, #1F9D43 33%, #1F9D43 66%, #F7A40C 66%, #F7A40C 100%);
+  background: linear-gradient(90deg, #051A38 0%, #005CE6 100%);
 }

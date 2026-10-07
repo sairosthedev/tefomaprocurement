@@ -81,7 +81,7 @@ const createRFQ = async (req: Request, res: Response): Promise<any> => {
       // BR-4: stores must confirm the goods cannot be met from existing stock
       // before anything is sourced externally. Nothing previously checked the
       // requisition's status here, so an RFQ raised while it sat in
-      // stores_review skipped that check entirely and Tefoma could buy what it
+      // stores_review skipped that check entirely and the business could buy what it
       // already had on a shelf.
       if (!RFQ_ELIGIBLE_REQUISITION_STATUSES.includes(pr.status)) {
         return res.status(400).json({

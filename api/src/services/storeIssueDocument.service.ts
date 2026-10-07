@@ -7,13 +7,14 @@
  * without procurement authorization or an order", so a collection needs a
  * document the collector signs, naming what left and who took it.
  *
- * Layout deliberately follows printGrv so Tefoma's stores paperwork reads as a
+ * Layout deliberately follows printGrv so the business's stores paperwork reads as a
  * set rather than as unrelated one-offs.
  */
 
 import PDFDocument from 'pdfkit';
+import { getCompanyName } from '../lib/branding.js';
 
-const COMPANY = process.env.COMPANY_NAME || 'Tefoma Construction';
+const COMPANY = getCompanyName();
 const MARGIN = 45;
 const ACCENT = '#b45309';
 const MUTED = '#6b7280';

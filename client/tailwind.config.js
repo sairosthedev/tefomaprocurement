@@ -8,20 +8,17 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Original deep green theme.
+        // Sourceline navy, sampled from the logo wordmark.
         primary: {
-          DEFAULT: '#193019',
-          light: '#234523',
-          dark: '#0f1a0f',
+          DEFAULT: '#051A38',
+          light: '#0B2A55',
+          dark: '#020E20',
         },
-        // Accent palette sampled from the Tefoma Construction logo.
+        // Sourceline royal blue, sampled from the logo "line" and arrows.
         brand: {
-          blue: '#1473BA',
-          'blue-dark': '#0F5C95',
-          green: '#1F9D43',
-          'green-dark': '#15782F',
-          amber: '#F7A40C',
-          'amber-dark': '#D98A00',
+          blue: '#005CE6',
+          'blue-dark': '#0047B3',
+          'blue-light': '#3D85F0',
         },
       },
       animation: {

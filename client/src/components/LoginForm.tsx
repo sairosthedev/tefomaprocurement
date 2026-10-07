@@ -8,12 +8,12 @@ import { APP_ENV } from '../lib/env';
 
 const config = {
   title: 'Sign in',
-  subtitle: 'For Tefoma staff and registered suppliers',
-  accentClass: 'from-primary/10 via-brand-green/5 to-brand-blue/10',
+  subtitle: 'For group staff and registered suppliers',
+  accentClass: 'from-primary/10 via-brand-blue/5 to-brand-blue/10',
   footer: (
     <p className="text-center text-sm text-gray-600">
       New supplier?{' '}
-      <Link to="/register" className="font-medium text-brand-green hover:text-brand-green-dark">
+      <Link to="/register" className="font-medium text-brand-blue hover:text-brand-blue-dark">
         Register your company
       </Link>
     </p>
