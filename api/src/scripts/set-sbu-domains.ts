@@ -16,8 +16,14 @@
  * --dns prints the DNS records these hostnames need, and writes nothing:
  *
  *   npm run sbu:domains -- --base sourceline.co.zw --dns
+ *
+ * --check resolves each hostname and reports which are live, so the DNS can be
+ * confirmed before anyone tries to sign in:
+ *
+ *   npm run sbu:domains -- --base sourceline.co.zw --check
  */
 import mongoose from 'mongoose';
+import dns from 'node:dns/promises';
 import { loadEnvFiles } from '../config/loadEnv.js';
 
 loadEnvFiles();
@@ -109,6 +115,50 @@ async function main(): Promise<void> {
 
   const sbus = await Sbu.find({}).sort({ code: 1 });
   if (sbus.length === 0) throw new Error('The SBU registry is empty. Run seed:sbu-registry first.');
+
+  // --check: resolve every hostname and say which are live. Writes nothing.
+  // The apex is checked first, because when the domain itself is not delegated
+  // every subdomain fails for that one reason and the per-host list is noise.
+  if (process.argv.includes('--check')) {
+    const apex = await dns.resolve4(baseDomain).then(
+      (addresses) => addresses.join(', '),
+      () => null
+    );
+
+    if (!apex) {
+      console.log(`  ✗ ${baseDomain} does not resolve.`);
+      console.log('\n    The domain itself is not in public DNS, so no subdomain can work.');
+      console.log('    Check with the registrar that it is delegated in the .co.zw zone —');
+      console.log('    being marked Active in a billing panel is not the same thing.');
+      await mongoose.disconnect();
+      return;
+    }
+    console.log(`  ✓ ${baseDomain} -> ${apex}\n`);
+
+    const hosts = (sbus as ISbu[])
+      .map((sbu) => subdomainFor(sbu.code))
+      .filter((sub) => !RESERVED_SUBDOMAINS.includes(sub))
+      .sort();
+
+    let live = 0;
+    for (const host of [...hosts, ...PORTAL_SUBDOMAINS]) {
+      const fqdn = `${host}.${baseDomain}`;
+      const target = await dns.resolveCname(fqdn).then(
+        (records) => records.join(', '),
+        () => dns.resolve4(fqdn).then((addresses) => addresses.join(', '), () => null)
+      );
+      if (target) live += 1;
+      console.log(`  ${target ? '✓' : '✗'} ${fqdn.padEnd(36)} ${target || 'does not resolve'}`);
+    }
+
+    const total = hosts.length + PORTAL_SUBDOMAINS.length;
+    console.log(`\n${live} of ${total} hostname(s) resolve.`);
+    if (live < total) {
+      console.log('A wildcard record would cover the missing ones in a single entry.');
+    }
+    await mongoose.disconnect();
+    return;
+  }
 
   // --dns: report what the registrar needs, change nothing. A wildcard covers
   // every SBU in one record; the per-host list is there for registrars whose
