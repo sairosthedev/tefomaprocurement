@@ -1,6 +1,7 @@
 import type { CorsOptions } from 'cors';
 import { DEFAULT_CLIENT_URL } from '../lib/branding.js';
 import { sbuByDomain } from '../tenancy/registry.js';
+import { connectToDatabase } from './db.js';
 
 const LOCAL_ORIGINS = [
   'http://localhost:5173',
@@ -53,13 +54,20 @@ async function isSbuOrigin(origin: string): Promise<boolean> {
   if (registryOrigins.has(normalised)) return true;
 
   try {
+    // Connect first. This runs before any other middleware, and on serverless
+    // the connection is opened lazily by a guard further down the chain that
+    // skips OPTIONS altogether — so without this the registry is always
+    // unreachable here, every preflight is declined, and every SBU domain is
+    // blocked by the browser while curl sees a perfectly healthy API.
+    await connectToDatabase();
+
     const sbu = await sbuByDomain(origin);
     if (!sbu) return false;
     registryOrigins.add(normalised);
     return true;
   } catch {
-    // The registry is unreachable. Refusing is the safe answer, and the request
-    // was going to fail at the database anyway.
+    // The registry is genuinely unreachable. Refusing is the safe answer, and
+    // the request was going to fail at the database anyway.
     return false;
   }
 }
