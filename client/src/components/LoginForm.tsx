@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import SbuSelect from './SbuSelect';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from './Toast';
@@ -168,6 +169,8 @@ export default function LoginForm() {
 
             {step === 'credentials' ? (
               <form onSubmit={handleCredentialsSubmit} className="space-y-5">
+                <SbuSelect disabled={isLoading} />
+
                 <div className="space-y-2">
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                     Email Address

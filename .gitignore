@@ -46,3 +46,7 @@ droplet_backup.sql
 # account passwords; keep them in a password manager, not in version control.
 ACCESS_AND_CREDENTIALS.md
 REPORTS/pdf/04-Access-and-Credentials.pdf
+# Glob form too, so a new handout cannot be committed by having a new name.
+*CREDENTIALS*
+*Credentials*
+*credentials*

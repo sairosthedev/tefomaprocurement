@@ -3,6 +3,7 @@
  * Password for every account: Admin@123
  *
  * Run: npm run seed:all -w api
+ *      npm run seed:all -w api -- --sbu DOKUMA
  */
 import mongoose from 'mongoose';
 import { loadEnvFiles } from '../config/loadEnv.js';
@@ -15,6 +16,7 @@ loadEnvFiles();
 
 import { User, Site, Department, SupplierProfile } from '../models/index.js';
 import type { IUser } from '../models/User.model.js';
+import { useSbuFromArgs } from '../tenancy/scriptContext.js';
 
 const PASSWORD = 'Admin@123';
 
@@ -185,7 +187,15 @@ async function seedAll() {
   }
 
   await mongoose.connect(mongoUri);
-  console.log(`Connected to: ${mongoose.connection.name}\n`);
+
+  // --sbu DOKUMA seeds that business unit instead of the database named in
+  // MONGODB_URI. Without it the script behaves exactly as it always has.
+  const sbu = await useSbuFromArgs();
+  console.log(
+    sbu
+      ? `Seeding business unit ${sbu.code} (${sbu.dbName})\n`
+      : `Connected to: ${mongoose.connection.name}\n`
+  );
 
   const hq = await ensureSite();
   const departments = await ensureDepartments();
@@ -231,8 +241,10 @@ async function seedAll() {
     const existingProfile = await SupplierProfile.findOne({ user: user._id, isDeleted: { $ne: true } });
     if (existingProfile) {
       existingProfile.status = 'active';
+      existingProfile.kysComplete = true;
+      existingProfile.transactability = 'spend_authorized';
       await existingProfile.save();
-      console.log(`~ supplier              ${email}  (${supplier.companyName}) → active`);
+      console.log(`~ supplier              ${email}  (${supplier.companyName}) → active, spend-authorized`);
     } else {
       await SupplierProfile.create({
         user: user._id,
@@ -263,7 +275,13 @@ async function seedAll() {
           branchCode: '61000',
           accountType: 'current'
         },
-        status: 'active'
+        status: 'active',
+        // Awarding a quotation or raising a PO is gated on KYS and spend
+        // authorization (see supplierEligibility.service.ts). A seeded supplier
+        // that stops at `status: active` cannot be awarded, which leaves the
+        // seeded environment unable to complete a procurement cycle at all.
+        kysComplete: true,
+        transactability: 'spend_authorized'
       });
       console.log(`+ supplier              ${email}  (${supplier.companyName})`);
     }

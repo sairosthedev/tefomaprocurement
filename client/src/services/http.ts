@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { clearSession, hasStoredSession } from '../lib/session';
+import { getSbuCode } from '../lib/sbu';
 
 /** Ensure production calls hit /api/auth/... not /auth/... */
 function resolveApiBaseUrl(): string {
@@ -25,6 +26,14 @@ http.interceptors.request.use(
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    // Tells the API which business unit this request belongs to, for as long
+    // as all SBUs share one domain. Once each has its own, the hostname
+    // decides and this header is ignored.
+    const sbuCode = getSbuCode();
+    if (sbuCode) {
+      config.headers['X-Sbu-Code'] = sbuCode;
     }
     return config;
   },

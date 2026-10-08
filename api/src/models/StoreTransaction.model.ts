@@ -1,4 +1,5 @@
 import mongoose, { Schema, type Document } from 'mongoose';
+import { nextSequence } from '../services/numbering.service.js';
 
 export interface IStoreTransaction extends Document {
   transactionNumber: string;
@@ -96,10 +97,10 @@ const StoreTransactionSchema = new Schema<IStoreTransaction>({
 // Generate transaction number before validation (required field must be set pre-validate)
 StoreTransactionSchema.pre('validate', async function() {
   if (this.isNew && !this.transactionNumber) {
-    const count = await (this.constructor as any).countDocuments();
     const year = new Date().getFullYear();
     const typePrefix = this.type.substring(0, 3).toUpperCase();
-    this.transactionNumber = `ST-${typePrefix}-${year}-${String(count + 1).padStart(6, '0')}`;
+    const seq = await nextSequence(this, 'storeTransaction', year);
+    this.transactionNumber = `ST-${typePrefix}-${year}-${String(seq).padStart(6, '0')}`;
   }
 });
 

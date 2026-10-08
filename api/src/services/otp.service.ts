@@ -67,10 +67,23 @@ export async function deliverLoginOtp(email: string, code: string): Promise<void
  * in as any user whose email address they know. That is an accepted trade for a
  * disposable test environment holding no real data — it is not acceptable
  * anywhere holding real data.
+ *
+ * As of 2026-10-07 production can opt in to this too, by setting
+ * OTP_EXPOSE_IN_RESPONSE=true. That is a temporary measure for the SBU pilot
+ * and removes two-factor auth while it is on; see validate.ts, which says so
+ * on every boot.
  */
 export function shouldExposeOtpInResponse(): boolean {
-  // Not configurable. Production never exposes the code.
-  if (isProduction()) return false;
+  // Production requires an explicit opt-in, and the sense of the check is
+  // deliberately inverted there: development and staging expose the code
+  // unless told not to, production exposes it only when told to.
+  //
+  // Enabled for production on 2026-10-07 so the pilot SBUs could be used
+  // before their users had working mailboxes. Requiring 'true' rather than
+  // 'not false' means removing the variable restores two-factor auth instead
+  // of silently leaving it off — the failure mode here is one-directional, and
+  // it should fall towards the safe side.
+  if (isProduction()) return process.env.OTP_EXPOSE_IN_RESPONSE === 'true';
 
   // Development and staging both auto-fill. OTP_EXPOSE_IN_RESPONSE=false is
   // still honoured as an explicit opt-out for anyone who wants the real

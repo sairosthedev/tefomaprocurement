@@ -111,27 +111,31 @@ function checkEmail(problems: string[]): void {
   }
 }
 
-function checkOtpExposure(problems: string[]): void {
-  // Production refuses the setting outright. Development and staging return the
-  // OTP so the sign-in form can fill it in, which is a deliberate removal of the
-  // second factor for those environments; see shouldExposeOtpInResponse().
-  if (process.env.OTP_EXPOSE_IN_RESPONSE === 'true' && isProduction()) {
-    problems.push(
-      'OTP_EXPOSE_IN_RESPONSE=true returns the login OTP to the caller, which ' +
-        'defeats two-factor auth. It is never permitted in production.'
-    );
-  }
+function checkOtpExposure(_problems: string[]): void {
+  // Returning the OTP to the caller removes the second factor: the login
+  // endpoint hands the code to whoever asked, so knowing an email address is
+  // enough to sign in as that person.
+  //
+  // Production used to refuse this outright. It is now permitted, by an
+  // explicit decision taken on 2026-10-07 to let the pilot SBUs be used before
+  // their users have working mailboxes. It is a temporary measure and should be
+  // turned off — OTP_EXPOSE_IN_RESPONSE=false — as soon as those users can
+  // receive email. RESEND_API_KEY and EMAIL_FROM are already configured on the
+  // deployed projects, so turning it off costs nothing but real addresses.
+  if (process.env.OTP_EXPOSE_IN_RESPONSE !== 'true') return;
+  if (!isStaging() && !isProduction()) return;
 
-  if (isStaging() && process.env.OTP_EXPOSE_IN_RESPONSE !== 'false') {
-    // Loud, every boot. Staging is internet-reachable, so this is worth saying
-    // out loud rather than leaving buried in a config file.
-    console.warn(
-      '⚠️  OTP auto-fill is ON for staging: the login endpoint returns the code ' +
-        'to the caller, so anyone who can reach this deployment can sign in as ' +
-        'any user whose email they know. Set OTP_EXPOSE_IN_RESPONSE=false to ' +
-        'require the real emailed code.'
-    );
-  }
+  // Loud, every boot, and loudest in production. These deployments are
+  // internet-reachable, so this belongs in the log rather than buried in a
+  // config file.
+  const where = isProduction() ? 'PRODUCTION' : 'staging';
+  console.warn(
+    `⚠️  OTP auto-fill is ON for ${where}: the login endpoint returns the code ` +
+      'to the caller, so anyone who can reach this deployment can sign in as ' +
+      'any user whose email they know — including finance and supplier ' +
+      'accounts. Two-factor authentication is effectively disabled. Set ' +
+      'OTP_EXPOSE_IN_RESPONSE=false to require the real emailed code.'
+  );
 }
 
 /**

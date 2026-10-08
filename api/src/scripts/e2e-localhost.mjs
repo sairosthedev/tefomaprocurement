@@ -1,9 +1,19 @@
 /**
  * Exhaustive localhost E2E — supplier onboarding → requisition → PO → delivery → payment.
  * Prerequisites: MongoDB running, `npm run seed:all -w api`, API on :3001
+ *
  * Run: npm run e2e:local -w api
+ *      npm run e2e:local -w api -- --sbu DOKUMA
+ *
+ * With --sbu every request carries X-Sbu-Code, so the whole flow runs inside
+ * that business unit's database. Seed it first with:
+ *      npm run seed:all -w api -- --sbu DOKUMA
  */
-const BASE = (process.argv[2] || 'http://localhost:3001').replace(/\/$/, '');
+const args = process.argv.slice(2);
+const sbuIndex = args.indexOf('--sbu');
+const SBU = sbuIndex === -1 ? null : args[sbuIndex + 1];
+const baseArg = args.find((a) => a.startsWith('http'));
+const BASE = (baseArg || 'http://localhost:3001').replace(/\/$/, '');
 const API = `${BASE}/api`;
 const PASSWORD = 'Admin@123';
 
@@ -20,6 +30,10 @@ async function api(method, path, token, body) {
   const headers = { Accept: 'application/json' };
   if (token) headers.Authorization = `Bearer ${token}`;
   if (body !== undefined) headers['Content-Type'] = 'application/json';
+  // Tells the API which business unit this run belongs to. Without it the
+  // API falls back to its default SBU, which is how this script behaved
+  // before multi-entity.
+  if (SBU) headers['X-Sbu-Code'] = SBU;
   const res = await fetch(`${API}${path}`, {
     method,
     headers,
@@ -245,7 +259,7 @@ async function main() {
   const acceptQ = await api('PUT', `/procurement/quotations/${winningQuote.id}/accept`, procToken, {
     comments: 'Accepted winner'
   });
-  step('Procurement accepts quotation', acceptQ.status === 200);
+  step('Procurement accepts quotation', acceptQ.status === 200, `HTTP ${acceptQ.status} ${acceptQ.data?.message || JSON.stringify(acceptQ.data)?.slice(0,200) || ''}`);
 
   const createPo = await api('POST', '/procurement/purchase-orders', procToken, {
     quotationId: winningQuote.id,
@@ -263,20 +277,29 @@ async function main() {
   const hodPo = await api('PUT', `/department/purchase-orders/${ctx.poId}/approve`, hodToken, {
     comments: 'HOD PO approval E2E'
   });
-  step('HOD approves PO', hodPo.status === 200);
+  step('HOD approves PO', hodPo.status === 200, `HTTP ${hodPo.status} ${hodPo.data?.message || ''}`);
+
+  // A PO raised for another department needs the Procurement HOD as well as the
+  // requesting department's HOD. Same endpoint, different approver: the chain
+  // is requesting dept HOD -> Procurement HOD -> Finance -> COO above USD 5k.
+  const procHodToken = await login('jb@fossilzim.com');
+  const procHodPo = await api('PUT', `/department/purchase-orders/${ctx.poId}/proc-approve`, procHodToken, {
+    comments: 'Procurement HOD PO approval E2E'
+  });
+  step('Procurement HOD approves PO', procHodPo.status === 200, `HTTP ${procHodPo.status} ${procHodPo.data?.message || ''}`);
 
   const financeToken = await login('paul@fossilzim.com');
   const finPo = await api('PUT', `/finance/purchase-orders/${ctx.poId}/approve`, financeToken, {
     comments: 'Finance approved E2E'
   });
-  step('Finance approves PO', finPo.status === 200);
+  step('Finance approves PO', finPo.status === 200, `HTTP ${finPo.status} ${finPo.data?.message || ''}`);
 
   if (poTotal >= 5000) {
     const cooToken = await login('tino@fossilzim.com');
     const cooPo = await api('PUT', `/coo/purchase-orders/${ctx.poId}/approve`, cooToken, {
       comments: 'COO approved E2E (≥ USD 5k)'
     });
-    step('COO approves high-value PO', cooPo.status === 200, `total=${poTotal}`);
+    step('COO approves high-value PO', cooPo.status === 200, `HTTP ${cooPo.status} ${cooPo.data?.message || ''} total=${poTotal}`);
   } else {
     step('COO approval skipped (PO below threshold)', true, `total=${poTotal}`);
   }

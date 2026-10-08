@@ -19,7 +19,15 @@
     "seed:ict-suppliers": "tsx src/scripts/seed-ict-suppliers.ts",
     "migrate:sites": "tsx src/scripts/migrate-sites.ts",
     "e2e:local": "node src/scripts/e2e-localhost.mjs",
-    "smoke": "node src/scripts/smoke-test.mjs http://localhost:3001"
+    "smoke": "node src/scripts/smoke-test.mjs http://localhost:3001",
+    "seed:sbu-registry": "tsx src/scripts/seed-sbu-registry.ts",
+    "check:isolation": "tsx src/scripts/check-sbu-isolation.ts",
+    "seed:counters": "tsx src/scripts/seed-counters.ts",
+    "check:numbering": "tsx src/scripts/check-numbering.ts",
+    "bootstrap:sbus": "tsx src/scripts/bootstrap-sbus.ts",
+    "sbu:capacity": "tsx src/scripts/sbu-capacity.ts",
+    "sbu:domains": "tsx src/scripts/set-sbu-domains.ts",
+    "migrate:sbu-reset": "tsx src/scripts/migrate-sbu-reset.ts"
   },
   "dependencies": {
     "@fossil/shared": "file:./shared",

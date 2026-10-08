@@ -1,4 +1,5 @@
 import mongoose, { Schema, type Document } from 'mongoose';
+import { nextNumber } from '../services/numbering.service.js';
 
 export interface IDeliveryItem {
   poItem?: mongoose.Types.ObjectId | any;
@@ -173,19 +174,19 @@ DeliverySchema.pre('save', async function(next) {
     return next();
   }
 
-  // Generate GRV when status is not pending
-  const status = this.status as string;
-  if (this.isNew && status !== 'pending') {
-    const count = await (this.constructor as any).countDocuments({ status: { $ne: 'pending' } });
-    const year = new Date().getFullYear();
-    this.grvNumber = `GRV-${year}-${String(count + 1).padStart(5, '0')}`;
-  } else if (this.isModified('status') && status !== 'pending' && !this.grvNumber) {
-    // When status changes from pending to received, generate GRV
-    const count = await (this.constructor as any).countDocuments({ status: { $ne: 'pending' } });
-    const year = new Date().getFullYear();
-    this.grvNumber = `GRV-${year}-${String(count + 1).padStart(5, '0')}`;
-  }
   next();
+});
+
+// Numbering runs on `pre('validate')`, not `pre('save')`: Mongoose validates
+// before user save hooks, so a required number field assigned in `pre('save')`
+// fails validation and the hook never runs at all.
+DeliverySchema.pre('validate', async function () {
+  // A GRV number is issued once the delivery stops being pending, whether it
+  // arrives that way or is moved there later.
+  const status = this.status as string;
+  if (status !== 'pending' && !this.grvNumber) {
+    this.grvNumber = await nextNumber(this, { type: 'delivery', prefix: 'GRV' });
+  }
 });
 
 export default mongoose.model<IDelivery>('Delivery', DeliverySchema);

@@ -19,8 +19,8 @@
     "build:shared": "npm run build -w @fossil/shared",
     "start": "npm run start -w api",
     "start:staging": "npm run start:staging -w api",
-    "seed": "npm run seed -w api",
-    "seed:all": "npm run seed:all -w api",
+    "seed": "npm run seed -w api --",
+    "seed:all": "npm run seed:all -w api --",
     "migrate:sites": "npm run migrate:sites -w api",
     "typecheck": "npm run typecheck -w @fossil/shared && npm run typecheck -w api && npm run typecheck -w client",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
@@ -32,7 +32,16 @@
     "deploy:staging": "npm run deploy:api:staging && npm run deploy:client:staging",
     "deploy:client": "vercel link --yes --project tefomaprocurement --scope macdonald-sairos-projects && vercel --prod",
     "deploy:api": "vercel link --yes --project tefomaprocurement-api --scope macdonald-sairos-projects && vercel --prod",
-    "deploy:production": "npm run deploy:api && npm run deploy:client"
+    "deploy:production": "npm run deploy:api && npm run deploy:client",
+    "seed:sbu-registry": "npm run seed:sbu-registry -w api --",
+    "check:isolation": "npm run check:isolation -w api",
+    "seed:counters": "npm run seed:counters -w api --",
+    "check:numbering": "npm run check:numbering -w api --",
+    "bootstrap:sbus": "npm run bootstrap:sbus -w api --",
+    "sbu:capacity": "npm run sbu:capacity -w api --",
+    "e2e:local": "npm run e2e:local -w api --",
+    "sbu:domains": "npm run sbu:domains -w api --",
+    "migrate:sbu-reset": "npm run migrate:sbu-reset -w api --"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.3",

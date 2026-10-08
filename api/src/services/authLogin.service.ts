@@ -4,13 +4,16 @@ import { User, SupplierProfile } from '../models/index.js';
 import { createAuditLog } from '../middleware/index.js';
 import { createNotification } from './notification.service.js';
 import { getJwtSecret, getJwtExpiry } from '../config/secrets.js';
+import { requireSbu } from '../tenancy/sbuContext.js';
 
 export async function finalizeUserLogin(user: any, req: Request) {
   user.lastLogin = new Date();
   await user.save({ validateBeforeSave: false });
 
+  // The token is bound to the SBU it was issued for, so a session opened
+  // against one business unit cannot be replayed against another.
   const token = jwt.sign(
-    { id: user._id, role: user.role },
+    { id: user._id, role: user.role, sbu: requireSbu().code },
     getJwtSecret(),
     { expiresIn: getJwtExpiry() } as SignOptions
   );
@@ -50,6 +53,7 @@ export async function finalizeUserLogin(user: any, req: Request) {
 
   return {
     token,
+    sbu: requireSbu().code,
     user: {
       id: user._id,
       email: user.email,

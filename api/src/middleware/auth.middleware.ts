@@ -3,10 +3,13 @@ import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import { isProcurementHead } from '@fossil/shared';
 import { User } from '../models/index.js';
 import { getJwtSecret } from '../config/secrets.js';
+import { getSbu } from '../tenancy/sbuContext.js';
 
 interface DecodedToken {
   id: string;
   role: string;
+  /** SBU the token was issued for. Absent on tokens minted before multi-entity. */
+  sbu?: string;
 }
 
 // Protect routes - verify JWT token
@@ -30,6 +33,17 @@ export const protect = async (
     }
 
     const decoded = jwt.verify(token, getJwtSecret()) as DecodedToken;
+
+    // A session belongs to the business unit it was opened against. Without
+    // this, a token issued on one SBU's domain would read another SBU's data
+    // simply by being presented there.
+    const currentSbu = getSbu();
+    if (decoded.sbu && currentSbu && decoded.sbu !== currentSbu.code) {
+      return res.status(401).json({
+        success: false,
+        message: 'This session belongs to a different business unit. Please sign in again.'
+      });
+    }
 
     const user = await User.findById(decoded.id)
       .select('-password')

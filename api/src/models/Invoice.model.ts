@@ -1,4 +1,5 @@
 import mongoose, { Schema, type Document } from 'mongoose';
+import { nextNumber } from '../services/numbering.service.js';
 
 export interface IInvoiceItem {
   description: string;
@@ -170,16 +171,19 @@ const InvoiceSchema = new Schema<IInvoice>({
 }, { timestamps: true });
 
 InvoiceSchema.pre('save', async function (next) {
-  if (this.isNew && !this.invoiceNumber) {
-    const count = await (this.constructor as typeof mongoose.Model).countDocuments();
-    const year = new Date().getFullYear();
-    this.invoiceNumber = `INV-${year}-${String(count + 1).padStart(5, '0')}`;
-  }
-
   this.subtotal = this.items.reduce((sum, item) => sum + item.totalPrice, 0);
   this.totalAmount = this.subtotal + (this.vatAmount || 0);
   this.balanceDue = Math.max(0, this.totalAmount - (this.amountPaid || 0));
   next();
+});
+
+// Numbering runs on `pre('validate')`, not `pre('save')`: Mongoose validates
+// before user save hooks, so a required number field assigned in `pre('save')`
+// fails validation and the hook never runs at all.
+InvoiceSchema.pre('validate', async function () {
+  if (this.isNew && !this.invoiceNumber) {
+    this.invoiceNumber = await nextNumber(this, { type: 'invoice', prefix: 'INV' });
+  }
 });
 
 export default mongoose.model<IInvoice>('Invoice', InvoiceSchema);
