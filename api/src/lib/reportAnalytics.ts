@@ -249,6 +249,19 @@ async function buildStoresCharts(start: Date): Promise<ReportChartConfig[]> {
   ];
 }
 
+/**
+ * Build an ObjectId, or nothing.
+ *
+ * These ids arrive from request context and have already been wrong once: a
+ * populated `department` stringified to its document text rather than its id,
+ * and `new ObjectId()` threw, turning a dashboard into a 500. A chart is not
+ * worth a failed request — an unusable id drops the filter instead.
+ */
+function toObjectId(value?: string): mongoose.Types.ObjectId | undefined {
+  if (!value || !mongoose.Types.ObjectId.isValid(value)) return undefined;
+  return new mongoose.Types.ObjectId(value);
+}
+
 async function buildDepartmentHeadCharts(
   start: Date,
   departmentId?: string
@@ -257,8 +270,9 @@ async function buildDepartmentHeadCharts(
     isDeleted: false,
     createdAt: { $gte: start }
   };
-  if (departmentId) {
-    deptFilter.department = new mongoose.Types.ObjectId(departmentId);
+  const departmentOid = toObjectId(departmentId);
+  if (departmentOid) {
+    deptFilter.department = departmentOid;
   }
 
   const byStatus = await PurchaseRequisition.aggregate([
@@ -300,7 +314,7 @@ async function buildDepartmentHeadCharts(
 
   if (departmentId) {
     deptSpendPipeline.push({
-      $match: { 'pr.department': new mongoose.Types.ObjectId(departmentId) }
+      $match: { 'pr.department': toObjectId(departmentId) }
     });
   }
 
@@ -351,7 +365,7 @@ async function buildEndUserCharts(start: Date, userId?: string): Promise<ReportC
     createdAt: { $gte: start }
   };
   if (userId) {
-    filter.requestedBy = new mongoose.Types.ObjectId(userId);
+    filter.requestedBy = toObjectId(userId);
   }
 
   const byStatus = await PurchaseRequisition.aggregate([
@@ -398,7 +412,7 @@ async function buildSupplierCharts(start: Date, supplierProfileId?: string): Pro
     return [];
   }
 
-  const supplierOid = new mongoose.Types.ObjectId(supplierProfileId);
+  const supplierOid = toObjectId(supplierProfileId);
 
   const quotationStatus = await Quotation.aggregate([
     {

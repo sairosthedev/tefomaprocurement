@@ -496,8 +496,16 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
         const sp = await SupplierProfile.findOne({ user: req.user!._id, isDeleted: false }).select('_id');
         supplierProfileId = sp?._id?.toString();
       }
+      // `protect` populates department, so req.user.department is the whole
+      // document, not an id. Calling toString() on it yields the document's
+      // text form, which is not a valid ObjectId — and the only role whose
+      // charts filter by department is a non-procurement department head, so
+      // this failed for exactly one role and nobody else.
+      const department = req.user?.department as { _id?: unknown } | undefined;
+      const departmentId = department?._id ? String(department._id) : undefined;
+
       chartData = await buildRoleReportCharts(userRole, range, {
-        departmentId: req.user?.department?.toString(),
+        departmentId,
         userId: req.user?._id?.toString(),
         supplierProfileId
       });
