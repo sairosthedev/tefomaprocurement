@@ -27,7 +27,9 @@
     "bootstrap:sbus": "tsx src/scripts/bootstrap-sbus.ts",
     "sbu:capacity": "tsx src/scripts/sbu-capacity.ts",
     "sbu:domains": "tsx src/scripts/set-sbu-domains.ts",
-    "migrate:sbu-reset": "tsx src/scripts/migrate-sbu-reset.ts"
+    "migrate:sbu-reset": "tsx src/scripts/migrate-sbu-reset.ts",
+    "seed:demo": "tsx src/scripts/seed-demo.ts",
+    "seed:demo-workflow": "node src/scripts/seed-demo-workflow.mjs"
   },
   "dependencies": {
     "@fossil/shared": "file:./shared",
