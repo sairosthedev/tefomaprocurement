@@ -43,7 +43,13 @@
     "sbu:domains": "npm run sbu:domains -w api --",
     "migrate:sbu-reset": "npm run migrate:sbu-reset -w api --",
     "seed:demo": "npm run seed:demo -w api --",
-    "seed:demo-workflow": "npm run seed:demo-workflow -w api --"
+    "seed:demo-workflow": "npm run seed:demo-workflow -w api --",
+    "seed:demo:prod": "npm run seed:demo:prod -w api --",
+    "seed:sbu-registry:prod": "npm run seed:sbu-registry:prod -w api --",
+    "bootstrap:sbus:prod": "npm run bootstrap:sbus:prod -w api --",
+    "sbu:domains:prod": "npm run sbu:domains:prod -w api --",
+    "seed:counters:prod": "npm run seed:counters:prod -w api --",
+    "migrate:sbu-reset:prod": "npm run migrate:sbu-reset:prod -w api --"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.3",

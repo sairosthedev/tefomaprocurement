@@ -29,7 +29,13 @@
     "sbu:domains": "tsx src/scripts/set-sbu-domains.ts",
     "migrate:sbu-reset": "tsx src/scripts/migrate-sbu-reset.ts",
     "seed:demo": "tsx src/scripts/seed-demo.ts",
-    "seed:demo-workflow": "node src/scripts/seed-demo-workflow.mjs"
+    "seed:demo-workflow": "node src/scripts/seed-demo-workflow.mjs",
+    "seed:demo:prod": "cross-env APP_ENV=production tsx src/scripts/seed-demo.ts",
+    "seed:sbu-registry:prod": "cross-env APP_ENV=production tsx src/scripts/seed-sbu-registry.ts",
+    "bootstrap:sbus:prod": "cross-env APP_ENV=production tsx src/scripts/bootstrap-sbus.ts",
+    "sbu:domains:prod": "cross-env APP_ENV=production tsx src/scripts/set-sbu-domains.ts",
+    "seed:counters:prod": "cross-env APP_ENV=production tsx src/scripts/seed-counters.ts",
+    "migrate:sbu-reset:prod": "cross-env APP_ENV=production tsx src/scripts/migrate-sbu-reset.ts"
   },
   "dependencies": {
     "@fossil/shared": "file:./shared",
@@ -53,6 +59,7 @@
     "@types/pdfkit": "^0.13.4",
     "@types/validator": "^13.12.0",
     "tsx": "^4.16.2",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "cross-env": "^7.0.3"
   }
 }
