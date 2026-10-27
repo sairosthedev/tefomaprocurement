@@ -6,6 +6,7 @@ it is here so the PDF can be regenerated from the Markdown, not to be a
 general-purpose converter.
 """
 import html
+import os
 import re
 import sys
 
@@ -14,8 +15,9 @@ from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
+from reportlab.lib.utils import ImageReader
 from reportlab.platypus import (
-    ListFlowable, ListItem, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
+    Image, ListFlowable, ListItem, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
 )
 
 INK = colors.HexColor('#111827')
@@ -41,6 +43,8 @@ S = {
                         fontSize=9.8, leading=14.5, textColor=INK, spaceAfter=7),
     'li': ParagraphStyle('li', parent=base['BodyText'], fontName='Helvetica',
                          fontSize=9.8, leading=14, textColor=INK, spaceAfter=3),
+    'cap': ParagraphStyle('cap', parent=base['BodyText'], fontName='Helvetica-Oblique',
+                          fontSize=8.3, leading=11, textColor=MUTED, spaceBefore=3, spaceAfter=12),
     'th': ParagraphStyle('th', parent=base['BodyText'], fontName='Helvetica-Bold',
                          fontSize=8.8, leading=12, textColor=INK),
     'td': ParagraphStyle('td', parent=base['BodyText'], fontName='Helvetica',
@@ -55,6 +59,25 @@ def inline(text):
     out = re.sub(r'`(.+?)`', r'<font face="Courier" size="8.8">\1</font>', out)
     return out
 
+
+
+def image_block(src, caption, width, md_dir):
+    """A screenshot scaled to the text width, with its caption underneath.
+
+    Images are referenced from the markdown so the document stays readable as
+    text and the PDF can be regenerated from it; a document whose figures only
+    exist inside a build script rots the first time someone edits the prose.
+    """
+    path = src if os.path.isabs(src) else os.path.join(md_dir, src)
+    if not os.path.exists(path):
+        return [Paragraph(f'[missing image: {src}]', S['p'])]
+    iw, ih = ImageReader(path).getSize()
+    img = Image(path, width=width, height=width * ih / iw)
+    img.hAlign = 'LEFT'
+    out = [img]
+    if caption:
+        out.append(Paragraph(inline(caption), S['cap']))
+    return out
 
 def flush_list(items, ordered, start, story):
     if not items:
@@ -97,6 +120,7 @@ def build_table(rows, width):
 
 
 def convert(md_path, pdf_path):
+    md_dir = os.path.dirname(os.path.abspath(md_path))
     lines = open(md_path, encoding='utf-8').read().split('\n')
     doc = SimpleDocTemplate(
         pdf_path, pagesize=A4,
@@ -159,6 +183,12 @@ def convert(md_path, pdf_path):
 
         end_list()
         ordered = False
+
+        m_img = re.match(r'^!\[(.*?)\]\((.+?)\)\s*$', line)
+        if m_img:
+            story.extend(image_block(m_img.group(2), m_img.group(1), width, md_dir))
+            i += 1
+            continue
 
         if line.startswith('### '):
             story.append(Paragraph(inline(line[4:]), S['h3']))
