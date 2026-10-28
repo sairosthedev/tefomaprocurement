@@ -58,45 +58,80 @@ export interface InvitationProposal {
    * shortlist was shorter than the raw match suggested.
    */
   duplicatesCollapsed: { kept: string; dropped: string; key: string }[];
-  /** True when even exact + related cannot reach the competitive minimum. */
+  /**
+   * Records sharing a company name but holding different registration numbers.
+   *
+   * Kept in the list, because dropping a possibly-genuine supplier is the worse
+   * error, but counted as one competitor and reported so the officer can have
+   * the supplier master cleaned up.
+   */
+  suspectedDuplicates: { companyName: string; registrationNumbers: string[] }[];
+  /** True when there are fewer than `minimumRequired` DISTINCT competitors. */
   belowMinimum: boolean;
   minimumRequired: number;
   /** Officer-facing explanation of the shape of this proposal. */
   summary: string;
 }
 
+/** Registration number as an identity: the key the group reconciles suppliers
+ *  by across business units. */
+const regKey = (s: any): string => String(s.registrationNumber || '').trim().toUpperCase();
+
+/** Company name, normalised for comparison. */
+const nameKey = (s: any): string =>
+  String(s.companyName || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
 /**
- * Collapse multiple records of the same company down to one.
+ * How many genuinely distinct competitors a set of matches represents.
  *
- * Two records of one supplier are not two competitors. Without this, a thin
- * category could reach the minimum of three quotations by inviting the same
- * company twice, which satisfies the rule on paper and defeats the point of it.
- *
- * Keyed on registration number, which is the identity the group reconciles
- * suppliers by across business units; falls back to the normalised company name
- * where a legacy record has no number. The better record wins: active over
- * pending, and KYS-complete over not, so the survivor is the one that can
- * actually be awarded.
+ * Counts distinct company names, not records. Two records that present the same
+ * name to an officer are one competitor for the purposes of the three-quote
+ * rule, whatever their registration numbers say — otherwise the minimum can be
+ * reached by inviting what reads as the same company twice, which satisfies the
+ * rule on paper and defeats the point of it.
  */
-export function dedupeByCompany(
-  matches: MatchedSupplier[]
-): { unique: MatchedSupplier[]; collapsed: { kept: string; dropped: string; key: string }[] } {
+export function distinctCompetitors(matches: MatchedSupplier[]): number {
+  return new Set(matches.map((m) => nameKey(m.supplier))).size;
+}
+
+/**
+ * Collapse multiple records of the same company down to one, and flag the ones
+ * that only look like duplicates.
+ *
+ * Two tiers, because the two cases deserve different treatment:
+ *
+ *   - Same registration number is the same legal entity. One record is kept and
+ *     the other dropped.
+ *   - Same company name under *different* registration numbers is only a
+ *     suspected duplicate. Both are kept, because silently dropping a supplier
+ *     that might be a genuine separate entity is a worse error than showing the
+ *     officer two rows and letting them decide. They are reported, and
+ *     `distinctCompetitors` still counts them as one, so the three-quote
+ *     minimum is not satisfied by the ambiguity.
+ *
+ * Where a record is dropped, the survivor is the one that can actually be
+ * awarded — active over pending, KYS-complete over not — rather than whichever
+ * happened to be seen first, and it keeps every category code that pulled
+ * either record in so its stated reason stays complete.
+ */
+export function dedupeByCompany(matches: MatchedSupplier[]): {
+  unique: MatchedSupplier[];
+  collapsed: { kept: string; dropped: string; key: string }[];
+  suspectedDuplicates: { companyName: string; registrationNumbers: string[] }[];
+} {
   const chosen = new Map<string, MatchedSupplier>();
   const order: string[] = [];
   const collapsed: { kept: string; dropped: string; key: string }[] = [];
-
-  const identity = (s: any): string => {
-    const reg = String(s.registrationNumber || '').trim().toUpperCase();
-    if (reg) return `reg:${reg}`;
-    return `name:${String(s.companyName || '').trim().toLowerCase().replace(/\s+/g, ' ')}`;
-  };
 
   // Higher is better: a record that can be awarded beats one that cannot.
   const rank = (s: any): number =>
     (s.status === 'active' ? 2 : 0) + (s.kysComplete || s.kysExempt ? 1 : 0);
 
   for (const m of matches) {
-    const key = identity(m.supplier);
+    // No registration number falls back to the name, where an identical name is
+    // the only identity available and collapsing is the best we can do.
+    const reg = regKey(m.supplier);
+    const key = reg ? `reg:${reg}` : `name:${nameKey(m.supplier)}`;
     const held = chosen.get(key);
 
     if (!held) {
@@ -105,8 +140,6 @@ export function dedupeByCompany(
       continue;
     }
 
-    // Keep the stronger record, and remember both category matches so the
-    // surviving entry still explains every code that pulled it in.
     const incomingWins = rank(m.supplier) > rank(held.supplier);
     const keep = incomingWins ? m : held;
     const drop = incomingWins ? held : m;
@@ -126,7 +159,26 @@ export function dedupeByCompany(
     });
   }
 
-  return { unique: order.map((k) => chosen.get(k)!), collapsed };
+  const unique = order.map((k) => chosen.get(k)!);
+
+  // Same name, different registration numbers: kept, but called out.
+  const byName = new Map<string, Set<string>>();
+  for (const m of unique) {
+    const name = nameKey(m.supplier);
+    if (!name) continue;
+    if (!byName.has(name)) byName.set(name, new Set());
+    byName.get(name)!.add(regKey(m.supplier) || '(none)');
+  }
+
+  const suspectedDuplicates = [...byName.entries()]
+    .filter(([, regs]) => regs.size > 1)
+    .map(([name, regs]) => ({
+      companyName:
+        unique.find((m) => nameKey(m.supplier) === name)?.supplier.companyName || name,
+      registrationNumbers: [...regs].sort()
+    }));
+
+  return { unique, collapsed, suspectedDuplicates };
 }
 
 /** Category codes carried on a requisition's line items. */
@@ -164,6 +216,7 @@ export async function proposeInvitations(
     relatedCategories: match.relatedCategories,
     excluded: [],
     duplicatesCollapsed: [],
+    suspectedDuplicates: [],
     belowMinimum: true,
     minimumRequired: minimum,
     summary: 'No categories on the requisition lines, so no supplier could be matched.'
@@ -189,16 +242,27 @@ export async function proposeInvitations(
 
   const proposed: ProposedInvitation[] = exact.map((m) => toProposal(m, 'exact_category'));
 
-  // Top up from related categories only as far as the competitive minimum.
-  // Inviting the whole related tree trains suppliers to ignore invitations.
-  const shortfall = Math.max(0, minimum - proposed.length);
-  const topUp = related.slice(0, shortfall);
-  const rest = related.slice(shortfall);
+  // Top up from related categories until there are enough DISTINCT competitors,
+  // counted by company name rather than by record. Two records presenting the
+  // same name are one competitor, so a category holding a duplicate still gets
+  // topped up to three real suppliers instead of stopping at an apparent three.
+  //
+  // Only as far as the minimum: inviting the whole related tree trains suppliers
+  // to ignore invitations.
+  const chosen: MatchedSupplier[] = [...exact];
+  const rest: MatchedSupplier[] = [];
 
-  for (const m of topUp) proposed.push(toProposal(m, 'related_category_topup'));
+  for (const m of related) {
+    if (distinctCompetitors(chosen) < minimum) {
+      chosen.push(m);
+      proposed.push(toProposal(m, 'related_category_topup'));
+    } else {
+      rest.push(m);
+    }
+  }
 
-  const total = proposed.length;
-  const belowMinimum = total < minimum;
+  const competitors = distinctCompetitors(chosen);
+  const belowMinimum = competitors < minimum;
 
   return {
     proposed,
@@ -207,15 +271,17 @@ export async function proposeInvitations(
     relatedCategories: match.relatedCategories,
     excluded: ineligible,
     duplicatesCollapsed: deduped.collapsed,
+    suspectedDuplicates: deduped.suspectedDuplicates,
     belowMinimum,
     minimumRequired: minimum,
     summary: buildSummary({
       exactCount: exact.length,
-      topUpCount: topUp.length,
+      topUpCount: proposed.length - exact.length,
       additionalCount: rest.length,
       excludedCount: ineligible.length,
       duplicateCount: deduped.collapsed.length,
-      total,
+      suspected: deduped.suspectedDuplicates,
+      competitors,
       minimum,
       belowMinimum
     })
@@ -256,7 +322,8 @@ function buildSummary(c: {
   additionalCount: number;
   excludedCount: number;
   duplicateCount: number;
-  total: number;
+  suspected: { companyName: string; registrationNumbers: string[] }[];
+  competitors: number;
   minimum: number;
   belowMinimum: boolean;
 }): string {
@@ -279,7 +346,15 @@ function buildSummary(c: {
   if (c.duplicateCount > 0) {
     parts.push(
       `${c.duplicateCount} duplicate supplier record${c.duplicateCount === 1 ? '' : 's'} collapsed — ` +
-        'the same company twice is not two quotations.'
+        'the same registration number twice is not two quotations.'
+    );
+  }
+  if (c.suspected.length > 0) {
+    const names = c.suspected.map((d) => d.companyName).join(', ');
+    parts.push(
+      `${names} appear${c.suspected.length === 1 ? 's' : ''} more than once under different ` +
+        'registration numbers. Both records are listed, but they count as one supplier here — ' +
+        'worth cleaning up in the supplier register.'
     );
   }
   if (c.excludedCount > 0) {
@@ -289,7 +364,9 @@ function buildSummary(c: {
   }
   if (c.belowMinimum) {
     parts.push(
-      `Only ${c.total} can be invited, below the minimum of ${c.minimum} — this RFQ will need an approved quotation waiver to be awarded.`
+      `Only ${c.competitors} distinct supplier${c.competitors === 1 ? '' : 's'} can be invited, ` +
+        `below the minimum of ${c.minimum} — this RFQ will need an approved quotation waiver ` +
+        'to be awarded.'
     );
   }
 

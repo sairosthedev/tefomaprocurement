@@ -33,6 +33,10 @@ export default function CreateRFQ() {
   // reaches the minimum number of quotations.
   const [proposalSummary, setProposalSummary] = useState<string>('');
   const [belowMinimum, setBelowMinimum] = useState(false);
+  // Same company name under two registration numbers. Both stay selectable —
+  // dropping a possibly-real supplier is the worse error — but they count as
+  // one supplier against the three-quote rule.
+  const [suspectedDuplicates, setSuspectedDuplicates] = useState<any[]>([]);
   
   const [formData, setFormData] = useState<any>({
     title: '',
@@ -107,8 +111,13 @@ export default function CreateRFQ() {
     if (!requisitionId) return;
     try {
       const res = await procurementAPI.getInvitationProposal({ requisitionId });
-      const { proposed = [], additional = [], summary = '', belowMinimum: below = false } =
-        res.data.data || {};
+      const {
+        proposed = [],
+        additional = [],
+        summary = '',
+        belowMinimum: below = false,
+        suspectedDuplicates: dupes = []
+      } = res.data.data || {};
 
       const types: Record<string, 'exact' | 'related'> = {};
       const names: Record<string, string[]> = {};
@@ -121,6 +130,7 @@ export default function CreateRFQ() {
       setRelatedCount(additional.length);
       setProposalSummary(summary);
       setBelowMinimum(below);
+      setSuspectedDuplicates(dupes);
 
       // Merge matched suppliers into the list so any that fell outside the
       // fetched page are still selectable here.
@@ -463,6 +473,25 @@ export default function CreateRFQ() {
                     Add {relatedCount} related
                   </button>
                 )}
+              </div>
+            )}
+
+            {suspectedDuplicates.length > 0 && (
+              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+                <p className="font-medium">Possible duplicate supplier records</p>
+                <ul className="mt-1 space-y-0.5 text-amber-700">
+                  {suspectedDuplicates.map((d: any) => (
+                    <li key={d.companyName}>
+                      <strong>{d.companyName}</strong> appears under{' '}
+                      {d.registrationNumbers.join(' and ')}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-1 text-amber-700">
+                  Both records are listed so you can pick the right one, but each company counts
+                  once towards the three-quotation minimum. Worth cleaning up in the supplier
+                  register.
+                </p>
               </div>
             )}
 

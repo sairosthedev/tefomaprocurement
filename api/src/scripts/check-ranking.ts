@@ -11,7 +11,7 @@
  * Exits non-zero on the first failing expectation, so it can gate a deploy.
  */
 import { scoreResponses } from '../services/quotationRanking.service.js';
-import { dedupeByCompany } from '../services/supplierInvitation.service.js';
+import { dedupeByCompany, distinctCompetitors } from '../services/supplierInvitation.service.js';
 
 /** A fixture lookup that must hit. Fails loudly rather than reading as
  *  `undefined` and producing a confusingly-passing comparison. */
@@ -299,13 +299,40 @@ console.log('\nduplicate supplier records collapse to one competitor');
     notYetActivated: false
   });
 
-  // Same registration number, two records: one competitor, not two.
+  // Same registration number is the same legal entity: one record survives.
   const byReg = dedupeByCompany([
     m('a', 'CodeBridge Solutions', { registrationNumber: '1234/2020' }),
     m('b', 'Codebridge Solutions (Pvt) Ltd', { registrationNumber: ' 1234/2020 ' })
   ]);
   check('same registration number collapses', byReg.unique.length, 1);
   check('and the collapse is reported', byReg.collapsed.length, 1);
+
+  // Same name, DIFFERENT registration numbers — the real Dokuma case. Both are
+  // kept, because dropping a possibly-genuine supplier is the worse error, but
+  // they count as one competitor so the three-quote rule is not satisfied by it.
+  const sameName = dedupeByCompany([
+    m('a', 'CodeBridge Solutions', { registrationNumber: 'DEMO-SW-002' }),
+    m('b', 'CodeBridge Solutions', { registrationNumber: 'ICT-2024-002' })
+  ]);
+  check('both records are kept', sameName.unique.length, 2);
+  check('nothing was dropped', sameName.collapsed.length, 0);
+  check('but it is flagged as a suspected duplicate', sameName.suspectedDuplicates.length, 1);
+  check(
+    'and names both registration numbers',
+    must(sameName.suspectedDuplicates[0], 'flagged duplicate').registrationNumbers,
+    ['DEMO-SW-002', 'ICT-2024-002']
+  );
+  check('and counts as ONE competitor, not two', distinctCompetitors(sameName.unique), 1);
+
+  // Differently-named firms are separate competitors even if related.
+  check(
+    'different names count separately',
+    distinctCompetitors([
+      m('a', 'NetLink Telecom', { registrationNumber: '1/1' }),
+      m('b', 'NetLink Telecom Zimbabwe', { registrationNumber: '2/2' })
+    ]),
+    2
+  );
 
   // No registration number: fall back to the normalised name.
   const byName = dedupeByCompany([
