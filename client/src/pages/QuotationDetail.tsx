@@ -417,7 +417,25 @@ export default function QuotationDetail() {
             )}
             {quotation.status === 'accepted' && !quotation.existingPurchaseOrder && (
               <button
-                onClick={() => setShowCreatePOModal(true)}
+                onClick={() => {
+                  const deliveryDate = quotation.deliveryPeriod
+                    ? new Date(Date.now() + quotation.deliveryPeriod * 24 * 60 * 60 * 1000)
+                        .toISOString().split('T')[0]
+                    : '';
+                  const site = quotation.site || quotation.rfq?.site;
+                  setPOFormData({
+                    deliveryAddress: {
+                      street: site?.address?.street || site?.address || '',
+                      city: site?.address?.city || site?.city || '',
+                      province: site?.address?.province || site?.province || '',
+                      postalCode: site?.address?.postalCode || site?.postalCode || '',
+                    },
+                    expectedDeliveryDate: deliveryDate,
+                    termsAndConditions: quotation.paymentTerms || '',
+                    notes: quotation.notes || '',
+                  });
+                  setShowCreatePOModal(true);
+                }}
                 className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
               >
                 <ShoppingCart className="h-4 w-4" />
@@ -928,6 +946,25 @@ export default function QuotationDetail() {
         title="Create Purchase Order"
       >
         <div className="space-y-4">
+          {/* Read-only summary from the quotation — no re-entry needed */}
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p className="text-xs text-gray-500 mb-0.5">Supplier</p>
+              <p className="font-medium text-gray-900">{quotation?.supplier?.companyName || '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-0.5">Total Amount</p>
+              <p className="font-medium text-gray-900">{formatCurrency(quotation?.totalAmount || 0)} {quotation?.currency}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-0.5">Payment Terms</p>
+              <p className="font-medium text-gray-900">{quotation?.paymentTerms || '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-0.5">Delivery Period</p>
+              <p className="font-medium text-gray-900">{quotation?.deliveryPeriod ? `${quotation.deliveryPeriod} days` : '—'}</p>
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Delivery Street</label>
