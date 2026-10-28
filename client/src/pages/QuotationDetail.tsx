@@ -157,7 +157,7 @@ export default function QuotationDetail() {
         quotationId: quotation._id,
         justification: hodJustification.trim()
       });
-      showToast('Quotation selected. Awaiting Procurement Manager authorization.', 'success');
+      showToast('Quotation selected. Waiting for the Head of Procurement to authorize.', 'success');
       setHodJustification('');
       fetchQuotation();
     } catch (error: any) {
@@ -385,7 +385,7 @@ export default function QuotationDetail() {
                   title={
                     quotation.compliance?.fullyAuthorized
                       ? 'Accept this quotation'
-                      : 'Complete the selection and Procurement Manager authorization first'
+                      : 'Complete the selection and Head of Procurement authorization first'
                   }
                   className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-4 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -443,15 +443,16 @@ export default function QuotationDetail() {
           const c = quotation.compliance;
           const role = user?.role;
           const procurementHead = isProcurementHead(user);
-          const canPmAuthorize = role === 'procurement_officer' || role === 'admin' || procurementHead;
-          // Procurement selects the winner; the department head no longer does.
-          const canSelect = canPmAuthorize;
-          const canApproveWaiver = canPmAuthorize || role === 'coo';
+          // Procurement selects the winner; the Head of Procurement authorizes it,
+          // so the officer who chose is never the one who signs it off.
+          const canSelect = role === 'procurement_officer' || role === 'admin' || procurementHead;
+          const canPmAuthorize = role === 'admin' || procurementHead;
+          const canApproveWaiver = canSelect || role === 'coo';
           const reqDeptName = c.requestingDepartment?.name;
           const missingSteps: string[] = [];
           if (!c.minQuotationsMet) missingSteps.push('at least 3 quotations (or a waiver)');
           if (!c.hodSelected) missingSteps.push('procurement selection with justification');
-          if (!c.pmAuthorized) missingSteps.push('Procurement Manager authorization');
+          if (!c.pmAuthorized) missingSteps.push('Head of Procurement authorization');
           return (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
@@ -545,7 +546,7 @@ export default function QuotationDetail() {
                   )}
                 </Step>
 
-                <Step done={c.pmAuthorized} title="Procurement Manager authorization">
+                <Step done={c.pmAuthorized} title="Head of Procurement authorization">
                   {c.pmAuthorized ? (
                     <p className="text-xs text-gray-500 mt-0.5">Authorized.</p>
                   ) : canPmAuthorize ? (
@@ -568,16 +569,16 @@ export default function QuotationDetail() {
                         title={
                           !c.hodSelected && !c.waived
                             ? 'Select this quotation first'
-                            : 'Authorize as Procurement Manager'
+                            : 'Authorize as Head of Procurement'
                         }
                         className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50"
                       >
                         {authorizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                        Authorize as Procurement Manager
+                        Authorize as Head of Procurement
                       </button>
                     </div>
                   ) : (
-                    <p className="text-xs text-amber-600 mt-0.5">Awaiting Procurement Manager authorization.</p>
+                    <p className="text-xs text-amber-600 mt-0.5">Waiting for the Head of Procurement to authorize.</p>
                   )}
                 </Step>
               </div>

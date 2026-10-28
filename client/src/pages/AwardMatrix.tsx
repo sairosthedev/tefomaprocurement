@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
+import { isProcurementHead } from '@fossil/shared';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
 import { Loader2, CheckCircle, Circle, ShieldCheck, DollarSign, Package, RefreshCw, Send, Sparkles, AlertTriangle } from 'lucide-react';
@@ -17,6 +19,9 @@ export default function AwardMatrix() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { user } = useAuth();
+  // Officers select; only the Head of Procurement authorizes what they selected.
+  const canAuthorize = user?.role === 'admin' || isProcurementHead(user);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [data, setData] = useState<any>(null);
@@ -198,7 +203,10 @@ export default function AwardMatrix() {
                     <StatusPill line={line} />
                   </td>
                   <td className="text-right py-3 px-4 whitespace-nowrap">
-                    {line.status === 'awarded' && !line.pmAuthorization?.by && (
+                    {line.status === 'awarded' && !line.pmAuthorization?.by && !canAuthorize && (
+                      <span className="text-xs text-amber-600">Awaiting Head of Procurement</span>
+                    )}
+                    {line.status === 'awarded' && !line.pmAuthorization?.by && canAuthorize && (
                       <button disabled={busy} onClick={() => authorizeLine(line)}
                         className="inline-flex items-center gap-1 text-xs bg-primary text-white px-2.5 py-1.5 rounded-lg hover:bg-primary/90 disabled:opacity-50">
                         <ShieldCheck className="h-3.5 w-3.5" /> Authorize

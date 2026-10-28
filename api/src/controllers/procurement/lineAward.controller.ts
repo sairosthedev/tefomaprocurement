@@ -113,8 +113,9 @@ export const pmAuthorizeLine = async (req: Request, res: Response): Promise<any>
   try {
     const { id } = req.params;
     const { rfqLineId } = req.body;
-    if (!isProcOfficer(req.user)) {
-      return res.status(403).json({ success: false, message: 'Procurement Manager authorization required' });
+    // Head of Procurement only: the officer who selected must not also authorize.
+    if (req.user!.role !== 'admin' && !isProcurementHead(req.user)) {
+      return res.status(403).json({ success: false, message: 'Only the Head of Procurement can authorize a line' });
     }
     const { rfq, award } = await loadLine(id, rfqLineId);
     if (!rfq) return res.status(404).json({ success: false, message: 'RFQ not found' });

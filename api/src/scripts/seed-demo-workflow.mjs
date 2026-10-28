@@ -208,7 +208,8 @@ async function sourcing({ prId, title, qty, price, stopAt }) {
   const winner = quotes.sort((a, b) => a.price - b.price)[0];
   const sel = await call('PUT', `/procurement/rfqs/${rfqId}/select-quotation`, buyer, { quotationId: winner.id, justification: 'Lowest compliant price and acceptable delivery (demo data)' });
   if (!sel.ok) { note(`${title} — select winner`, false, sel.data?.message || `HTTP ${sel.status}`); return; }
-  const auth = await call('PUT', `/procurement/rfqs/${rfqId}/authorize-quotation`, buyer, { quotationId: winner.id, comments: 'Authorized (demo)' });
+  const prochead = await login('prochead');
+  const auth = await call('PUT', `/procurement/rfqs/${rfqId}/authorize-quotation`, prochead, { quotationId: winner.id, comments: 'Authorized (demo)' });
   if (!auth.ok) { note(`${title} — authorize`, false, auth.data?.message || `HTTP ${auth.status}`); return; }
   const acc = await call('PUT', `/procurement/quotations/${winner.id}/accept`, buyer, { comments: 'Accepted (demo)' });
   if (!acc.ok) { note(`${title} — accept quotation`, false, acc.data?.message || `HTTP ${acc.status}`); return; }
@@ -228,7 +229,6 @@ async function sourcing({ prId, title, qty, price, stopAt }) {
 
   const hod = await login(DEFAULT_HEAD);
   await call('PUT', `/department/purchase-orders/${poId}/approve`, hod, { comments: 'Approved (demo)' });
-  const prochead = await login('prochead');
   await call('PUT', `/department/purchase-orders/${poId}/proc-approve`, prochead, { comments: 'Approved (demo)' });
   if (stopAt === 'awaiting-finance') { note(`${title} — ${poNo} awaiting Finance`, true); return; }
 

@@ -1,8 +1,9 @@
 import type { Request, Response } from 'express';
-import { RFQ, Quotation } from '../../models/index.js';
+import { RFQ, Quotation, User } from '../../models/index.js';
+import { isProcurementHead } from '@fossil/shared';
 import { meetsMinimumQuotations } from '../../services/quotationCompliance.service.js';
 import { createAuditLog } from '../../middleware/index.js';
-import { notifyUsersByRole } from '../../services/notification.service.js';
+import { createNotifications } from '../../services/notification.service.js';
 
 /**
  * Procurement selects the winning quotation, with a justification.
@@ -61,10 +62,16 @@ const selectQuotation = async (req: Request, res: Response): Promise<any> => {
       req
     });
 
-    await notifyUsersByRole('procurement_officer', {
+    // Authorization is the Head of Procurement's, so tell them, not the officers.
+    const heads = (
+      await User.find({ role: 'department_head', status: 'active', isDeleted: false })
+        .select('_id email firstName lastName role department')
+        .populate('department', 'name code')
+    ).filter((u: any) => isProcurementHead(u));
+    if (heads.length) await createNotifications(heads, {
       type: 'quotation_submitted',
-      title: 'Quotation selected — PM authorization required',
-      message: `RFQ ${rfq.rfqNumber}: a quotation was selected. Procurement Manager authorization required.`,
+      title: 'Quotation selected — your authorization required',
+      message: `RFQ ${rfq.rfqNumber}: a quotation was selected. Head of Procurement authorization required.`,
       entity: 'RFQ',
       entityId: rfq._id,
       relatedUser: req.user!._id

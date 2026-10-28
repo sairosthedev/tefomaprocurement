@@ -250,7 +250,9 @@ async function main() {
   });
   step('Procurement selects winning quotation', select.status === 200);
 
-  const pmAuth = await api('PUT', `/procurement/rfqs/${ctx.rfqId}/authorize-quotation`, procToken, {
+  // Authorization is the Head of Procurement's, not the officer who selected.
+  const procHeadToken = await login('jb@fossilzim.com');
+  const pmAuth = await api('PUT', `/procurement/rfqs/${ctx.rfqId}/authorize-quotation`, procHeadToken, {
     quotationId: winningQuote.id,
     comments: 'PM authorized for E2E'
   });

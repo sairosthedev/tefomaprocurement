@@ -2,12 +2,22 @@ import type { Request, Response } from 'express';
 import { RFQ, Quotation } from '../../models/index.js';
 import { hasValidQuotationWaiver } from '../../services/quotationCompliance.service.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { isProcurementHead } from '@fossil/shared';
 
 /** Procurement Manager authorizes the quotation */
 const authorizeQuotation = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
     const { quotationId, comments } = req.body;
+
+    // The Procurement Manager is the Head of Procurement. Officers select the
+    // winner; a second person authorizes it, so no one awards on their own.
+    if (req.user!.role !== 'admin' && !isProcurementHead(req.user)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only the Head of Procurement can authorize a quotation'
+      });
+    }
 
     const rfq = await RFQ.findById(id);
     if (!rfq || rfq.isDeleted) {
@@ -31,7 +41,7 @@ const authorizeQuotation = async (req: Request, res: Response): Promise<any> => 
     if (!waived && (!rfq.hodSelection?.quotation || String(rfq.hodSelection.quotation) !== String(qid))) {
       return res.status(400).json({
         success: false,
-        message: 'Can only authorize the quotation selected by HOD'
+        message: 'Can only authorize the selected quotation'
       });
     }
 
