@@ -52,6 +52,17 @@ export interface IInvitedSupplier {
   responded: boolean;
   respondedAt?: Date;
   quotation?: mongoose.Types.ObjectId | any;
+  /** How this supplier came to be on the list. `manual` is an officer's own
+   *  choice; the others were proposed by category matching. Recorded so the
+   *  invitation list can be defended long after the fact. */
+  basis?: 'manual' | 'exact_category' | 'related_category_topup';
+  /** True when the system proposed this supplier rather than the officer
+   *  picking them. */
+  autoInvited?: boolean;
+  /** The supplier's category codes that produced the match. */
+  matchedCategories?: string[];
+  /** One-line justification shown in the audit trail. */
+  invitationReason?: string;
 }
 
 export interface IQuotationWaiver {
@@ -207,7 +218,18 @@ const InvitedSupplierSchema = new Schema<IInvitedSupplier>({
   quotation: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Quotation'
-  }
+  },
+  basis: {
+    type: String,
+    enum: ['manual', 'exact_category', 'related_category_topup'],
+    default: 'manual'
+  },
+  autoInvited: {
+    type: Boolean,
+    default: false
+  },
+  matchedCategories: [String],
+  invitationReason: String
 });
 
 const RFQSchema = new Schema<IRFQ>({

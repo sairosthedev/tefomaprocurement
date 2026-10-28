@@ -4,6 +4,7 @@ import { RFQ, PurchaseRequisition, SupplierProfile } from '../../models/index.js
 import { createAuditLog } from '../../middleware/index.js';
 import { resolveSiteId } from '../../lib/siteScope.js';
 import { hasEnteredLineItems } from '../../lib/lineItems.js';
+import { proposeInvitationsForRequisition } from '../../services/supplierInvitation.service.js';
 
 /**
  * Requisition statuses from which sourcing may legitimately begin (BR-4).
@@ -33,8 +34,46 @@ const createRFQ = async (req: Request, res: Response): Promise<any> => {
     } = req.body;
 
     // Support both supplierIds and invitedSuppliers for backward compatibility
-    const supplierIdArray = supplierIds || invitedSuppliersFromBody || [];
-    
+    let supplierIdArray: any[] = supplierIds || invitedSuppliersFromBody || [];
+
+    /**
+     * Where each invited supplier came from. An officer's explicit selection is
+     * `manual`; anything the category matcher proposed carries its basis and a
+     * reason, so the invitation list can be defended later.
+     */
+    let invitationBasis = new Map<string, { basis: string; reason: string; categories: string[] }>();
+
+    // Auto-invite: with no suppliers named and a requisition to work from, the
+    // category matcher proposes the list rather than refusing the request.
+    // Exact category matches, topped up from related categories to the
+    // competitive minimum. The client normally pre-fills this so the officer can
+    // edit it first; this covers the API caller and the officer who left it blank.
+    let autoInvited = false;
+    if ((!Array.isArray(supplierIdArray) || supplierIdArray.length === 0) && purchaseRequisitionId) {
+      const proposal = await proposeInvitationsForRequisition(purchaseRequisitionId, {
+        siteId: req.body.siteId
+      });
+
+      if (proposal.proposed.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'No supplier could be matched to this requisition’s categories, so nobody could be ' +
+            'invited automatically. Select suppliers manually, or check the requisition lines are categorised.',
+          data: { proposal }
+        });
+      }
+
+      supplierIdArray = proposal.proposed.map((p) => p.supplierId);
+      invitationBasis = new Map(
+        proposal.proposed.map((p) => [
+          p.supplierId,
+          { basis: p.basis, reason: p.reason, categories: p.matchedCategories }
+        ])
+      );
+      autoInvited = true;
+    }
+
     if (!Array.isArray(supplierIdArray) || supplierIdArray.length === 0) {
       return res.status(400).json({
         success: false,
@@ -59,11 +98,18 @@ const createRFQ = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    // Create invited suppliers array
-    const invitedSuppliers = suppliers.map(s => ({
-      supplier: s._id,
-      invitedAt: new Date()
-    }));
+    // Create invited suppliers array, carrying the provenance of each name.
+    const invitedSuppliers = suppliers.map(s => {
+      const provenance = invitationBasis.get(String(s._id));
+      return {
+        supplier: s._id,
+        invitedAt: new Date(),
+        basis: (provenance?.basis as any) || 'manual',
+        autoInvited: Boolean(provenance),
+        matchedCategories: provenance?.categories || undefined,
+        invitationReason: provenance?.reason || 'Selected by the procurement officer.'
+      };
+    });
 
     // Resolve the delivery site for this RFQ: prefer the linked requisition's
     // site, then an explicit body value, else fall back to the user's site/HQ.
@@ -148,8 +194,10 @@ const createRFQ = async (req: Request, res: Response): Promise<any> => {
       entity: 'RFQ',
       entityId: rfq._id,
       user: req.user,
-      description: `Created RFQ: ${rfq.rfqNumber} - ${title}`,
-      newData: { title, supplierCount: suppliers.length, submissionDeadline },
+      description:
+        `Created RFQ: ${rfq.rfqNumber} - ${title}` +
+        (autoInvited ? ` (${suppliers.length} supplier(s) invited automatically by category match)` : ''),
+      newData: { title, supplierCount: suppliers.length, submissionDeadline, autoInvited },
       req
     });
 

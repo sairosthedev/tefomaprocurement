@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 
 import { RFQ, Quotation } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { snapshotRanking } from '../../services/quotationRanking.service.js';
 
 /**
  * Close an open RFQ to stop accepting bids and reveal them for evaluation.
@@ -33,6 +34,19 @@ const closeRFQ = async (req: Request, res: Response): Promise<any> => {
     rfq.closedAt = new Date();
     await rfq.save();
 
+    // Bids are revealed at this point, so record the ranking as it stands now:
+    // the award has to be defensible against the figures the officer actually
+    // saw, not against a recomputation taken weeks later. A failure here must
+    // not block the close, which is the operation the officer asked for.
+    let ranking: any = null;
+    if (quotationCount > 0) {
+      try {
+        ranking = await snapshotRanking(rfq, req.user!._id);
+      } catch (rankError: any) {
+        console.error('Ranking snapshot failed for RFQ', rfq.rfqNumber, rankError);
+      }
+    }
+
     await createAuditLog({
       action: 'status_change',
       entity: 'RFQ',
@@ -40,7 +54,11 @@ const closeRFQ = async (req: Request, res: Response): Promise<any> => {
       user: req.user,
       description: `Closed RFQ ${rfq.rfqNumber} - bids revealed for evaluation`,
       previousData: { status: 'open' },
-      newData: { status: rfq.status },
+      newData: {
+        status: rfq.status,
+        rankedResponses: ranking?.responses?.length ?? 0,
+        recommendedQuotation: ranking?.recommendedQuotationId
+      },
       req
     });
 
@@ -50,7 +68,8 @@ const closeRFQ = async (req: Request, res: Response): Promise<any> => {
         quotationCount > 0
           ? 'RFQ closed. Bids are now visible for evaluation.'
           : 'RFQ closed. No bids were received.',
-      data: rfq
+      data: rfq,
+      ranking
     });
   } catch (error: any) {
     console.error('Close RFQ error:', error);

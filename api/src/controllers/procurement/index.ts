@@ -7,6 +7,8 @@ import setSupplierStatus from './setSupplierStatus.controller.js';
 import createSupplier from './createSupplier.controller.js';
 import bulkImportSuppliers from './bulkImportSuppliers.controller.js';
 import matchSuppliers from './matchSuppliers.controller.js';
+import getInvitationProposal from './getInvitationProposal.controller.js';
+import getRfqRanking from './getRfqRanking.controller.js';
 import verifySupplierDocument from './verifySupplierDocument.controller.js';
 import reinstateSupplier from './reinstateSupplier.controller.js';
 import { setSupplierTier, getSupplierTierSuggestion } from './setSupplierTier.controller.js';
@@ -70,6 +72,8 @@ export default {
   createSupplier,
   bulkImportSuppliers,
   matchSuppliers,
+  getInvitationProposal,
+  getRfqRanking,
   verifySupplierDocument,
   reinstateSupplier,
   setSupplierTier,
