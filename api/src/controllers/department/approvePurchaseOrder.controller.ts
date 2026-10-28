@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
-import { PurchaseOrder, PurchaseRequisition } from '../../models/index.js';
+import { PurchaseOrder, PurchaseRequisition, User } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
-import { notifyUsersByRole } from '../../services/notification.service.js';
+import { notifyUsersByRole, createNotifications } from '../../services/notification.service.js';
 import { isProcurementDepartment, isProcurementHead } from '@fossil/shared';
 
 // Normalize a populated department doc or a raw ObjectId to a hex id string.
@@ -53,13 +53,13 @@ const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> =
     // requisition behind it has no requesting department, and letting any head
     // approve it would let one approve another department's spend; the Head of
     // Procurement takes those instead.
-    if (!requestingDept && req.user!.role !== 'admin' && !isProcurementHead(req.user)) {
+    if (!requestingDept && !isProcurementHead(req.user)) {
       return res.status(403).json({
         success: false,
         message: 'This purchase order has no requesting department; the Head of Procurement must approve it'
       });
     }
-    if (req.user!.role !== 'admin' && requestingDept) {
+    if (requestingDept) {
       const sameDept = toIdString(requestingDept) === toIdString(req.user!.department);
       if (!sameDept) {
         return res.status(403).json({
@@ -132,7 +132,14 @@ const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> =
         relatedUser: req.user!._id
       });
     } else {
-      await notifyUsersByRole('department_head', {
+      // The next step is the Head of Procurement's alone; every other
+      // department head would only be told about work they cannot do.
+      const heads = (
+        await User.find({ role: 'department_head', status: 'active', isDeleted: false })
+          .select('_id email firstName lastName role department')
+          .populate('department', 'name code')
+      ).filter((u: any) => isProcurementHead(u));
+      if (heads.length) await createNotifications(heads, {
         type: 'po_submitted',
         title: 'PO awaiting Procurement HOD approval',
         message: `Purchase Order ${po.poNumber} approved by the requesting department — Procurement HOD approval required.`,

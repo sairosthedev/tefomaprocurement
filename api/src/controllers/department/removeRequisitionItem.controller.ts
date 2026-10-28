@@ -18,8 +18,8 @@ const toIdString = (value: any): string | undefined => {
  * and pencils, remove the keyboard) before approving the requisition onward.
  *
  * Authority:
- *  - pending_hod          → the requisition's department head (or admin)
- *  - pending_acceptance   → procurement officer / procurement head (or admin)
+ *  - pending_hod          → the requisition's department head
+ *  - pending_acceptance   → procurement officer / procurement head
  */
 const removeRequisitionItem = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -43,9 +43,7 @@ const removeRequisitionItem = async (req: Request, res: Response): Promise<any> 
 
     // Verify the user holds approval authority for this stage.
     let authorized = false;
-    if (role === 'admin') {
-      authorized = true;
-    } else if (status === 'pending_hod' && role === 'department_head') {
+    if (status === 'pending_hod' && role === 'department_head') {
       authorized = toIdString(requisition.department) === toIdString(req.user!.department);
     } else if (
       status === 'pending_acceptance' &&

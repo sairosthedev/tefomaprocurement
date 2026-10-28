@@ -1,3 +1,5 @@
+import { isProcurementHead } from './roles.js';
+
 export const PR_CANCELLATION_REASONS = [
   { code: 'no_longer_required', label: 'No longer required' },
   { code: 'duplicate_request', label: 'Duplicate request' },
@@ -46,11 +48,58 @@ export const PR_CANCEL_BY_ROLE: Record<string, readonly string[]> = {
 
 /** PO statuses each role may cancel (subject to invoice/delivery checks). */
 export const PO_CANCEL_BY_ROLE: Record<string, readonly string[]> = {
-  procurement_officer: ['draft', 'pending_hod', 'pending_finance', 'pending_coo', 'pending_approvals', 'rejected', 'approved'],
+  procurement_officer: [
+    'draft',
+    'pending_dept_hod',
+    'pending_proc_hod',
+    'pending_hod',
+    'pending_finance',
+    'pending_coo',
+    'pending_approvals',
+    'rejected',
+    'approved'
+  ],
   finance: ['pending_finance', 'pending_approvals', 'approved'],
   coo: ['pending_coo'],
-  admin: ['draft', 'pending_hod', 'pending_finance', 'pending_coo', 'pending_approvals', 'rejected', 'approved']
+  admin: [
+    'draft',
+    'pending_dept_hod',
+    'pending_proc_hod',
+    'pending_hod',
+    'pending_finance',
+    'pending_coo',
+    'pending_approvals',
+    'rejected',
+    'approved'
+  ]
 };
+
+/**
+ * The rule sets above that apply to a user. The Head of Procurement is stored
+ * as a department_head but carries procurement authority, so they are judged
+ * as both: procurement's stages on any record, and a department head's stages
+ * on their own department's requisitions (callers apply that scope).
+ */
+export function cancellationRolesFor(
+  user: { role?: string | null; department?: any } | null | undefined
+): string[] {
+  if (!user?.role) return [];
+  return isProcurementHead(user) ? ['procurement_officer', 'department_head'] : [user.role];
+}
+
+function unionOf(map: Record<string, readonly string[]>, roles: string[]): string[] {
+  return Array.from(new Set(roles.flatMap((role) => map[role] || [])));
+}
+
+/** Every PR status this user may cancel at, before ownership/department checks. */
+export function prCancelStatusesFor(user: Parameters<typeof cancellationRolesFor>[0]): string[] {
+  return unionOf(PR_CANCEL_BY_ROLE, cancellationRolesFor(user));
+}
+
+/** Every PO status this user may cancel at. */
+export function poCancelStatusesFor(user: Parameters<typeof cancellationRolesFor>[0]): string[] {
+  return unionOf(PO_CANCEL_BY_ROLE, cancellationRolesFor(user));
+}
 
 export function isValidPrCancellationReason(code: string): boolean {
   return PR_CANCELLATION_REASONS.some((r) => r.code === code);

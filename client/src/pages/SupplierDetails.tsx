@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
+import { useAuth } from '../context/AuthContext';
 import Tabs from '../components/Tabs';
 import KysDocuments from '../components/KysDocuments';
-import { KYS_CHECKLIST_ITEMS, getRequiredChecklistKeys } from '@fossil/shared';
+import { KYS_CHECKLIST_ITEMS, getRequiredChecklistKeys, isProcurementHead } from '@fossil/shared';
 import SupplierEditableSection from '../components/supplier/SupplierEditableSection';
 import {
   draftPayloadForSection,
@@ -57,6 +58,10 @@ export default function SupplierDetails() {
   const navigate = useNavigate();
   const location = useLocation();
   const { showToast } = useToast();
+  const { user } = useAuth();
+  // The COO and admins see the full record but maintain nothing on it: editing,
+  // KYS, tiering and status changes are procurement's.
+  const canManage = user?.role === 'procurement_officer' || isProcurementHead(user);
 
   const [supplier, setSupplier] = useState<any>(null);
   const [evaluations, setEvaluations] = useState<any[]>([]);
@@ -478,7 +483,7 @@ export default function SupplierDetails() {
             draft={profileDraft}
             editing={profileEditing}
             saving={profileSaving}
-            onEdit={startProfileEdit}
+            onEdit={canManage ? startProfileEdit : undefined}
             onCancel={cancelProfileEdit}
             onSave={saveProfileSection}
             onDraftChange={setProfileDraft}
@@ -520,6 +525,7 @@ export default function SupplierDetails() {
                   </div>
                   <KysDocuments
                     documents={checklistDocuments}
+                    readOnly={!canManage}
                     onUpload={uploadDoc}
                     onDelete={deleteDoc}
                     onVerify={verifyDoc}
@@ -556,7 +562,7 @@ export default function SupplierDetails() {
                                 type="checkbox"
                                 checked={!!checklist[item.key]}
                                 onChange={() => toggleCheck(item.key)}
-                                disabled={kysSaving}
+                                disabled={kysSaving || !canManage}
                                 className="mt-1"
                               />
                               <div className="flex-1">
@@ -602,23 +608,25 @@ export default function SupplierDetails() {
                       <p className="text-xs text-gray-400 mb-2">
                         Sets how many KYS items are required. Unclassified is treated as full depth.
                       </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {['critical', 'strategic', 'tactical', 'transactional'].map((t) => (
-                          <button
-                            key={t}
-                            type="button"
-                            disabled={tierSaving || supplier.tier === t}
-                            onClick={() => assignTier(t)}
-                            className={`text-[11px] px-2 py-1 rounded-lg border capitalize ${
-                              supplier.tier === t
-                                ? 'bg-primary text-white border-primary'
-                                : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                            } disabled:opacity-50`}
-                          >
-                            {t}
-                          </button>
-                        ))}
-                      </div>
+                      {canManage && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {['critical', 'strategic', 'tactical', 'transactional'].map((t) => (
+                            <button
+                              key={t}
+                              type="button"
+                              disabled={tierSaving || supplier.tier === t}
+                              onClick={() => assignTier(t)}
+                              className={`text-[11px] px-2 py-1 rounded-lg border capitalize ${
+                                supplier.tier === t
+                                  ? 'bg-primary text-white border-primary'
+                                  : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                              } disabled:opacity-50`}
+                            >
+                              {t}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                       {tierSuggestion && supplier.tier !== tierSuggestion.suggested && (
                         <p className="text-[11px] text-amber-700 mt-2">
                           Suggested: <span className="font-medium capitalize">{tierSuggestion.suggested}</span> — {tierSuggestion.rationale}
@@ -635,7 +643,7 @@ export default function SupplierDetails() {
                     <div className="mt-4 rounded-xl border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-700">
                       KYS verification is locked because this supplier is already active.
                     </div>
-                  ) : showOverrideConfirm ? (
+                  ) : !canManage ? null : showOverrideConfirm ? (
                     <div className="mt-4 space-y-3">
                       <textarea
                         value={overrideReason}
@@ -845,7 +853,7 @@ export default function SupplierDetails() {
           </div>
         )}
 
-        {!pendingAction ? (
+        {!canManage ? null : !pendingAction ? (
           <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
             {supplier.status === 'pending' && canRunKysActivation && (
               <>

@@ -9,7 +9,8 @@ type Props = {
   draft: SupplierDraft;
   editing: boolean;
   saving: boolean;
-  onEdit: () => void;
+  /** Omitted for read-only viewers, which hides the Edit control. */
+  onEdit?: () => void;
   onCancel: () => void;
   onSave: () => void;
   onDraftChange: (draft: SupplierDraft) => void;
@@ -30,16 +31,18 @@ export default function SupplierEditableSection({
     return (
       <div className="space-y-4">
         <SupplierProfileView section={section} supplier={supplier} />
-        <div className="flex justify-end pt-4 border-t border-gray-100">
-          <button
-            type="button"
-            onClick={onEdit}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/5"
-          >
-            <Pencil className="h-4 w-4" />
-            Edit
-          </button>
-        </div>
+        {onEdit && (
+          <div className="flex justify-end pt-4 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={onEdit}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/5"
+            >
+              <Pencil className="h-4 w-4" />
+              Edit
+            </button>
+          </div>
+        )}
       </div>
     );
   }

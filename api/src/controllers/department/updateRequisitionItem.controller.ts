@@ -17,8 +17,8 @@ const toIdString = (value: any): string | undefined => {
  * the requested quantity (e.g. an approver trims 5 monitors down to 2).
  *
  * Authority mirrors removeRequisitionItem:
- *  - pending_hod          → the requisition's department head (or admin)
- *  - pending_acceptance   → procurement officer / procurement head (or admin)
+ *  - pending_hod          → the requisition's department head
+ *  - pending_acceptance   → procurement officer / procurement head
  */
 const updateRequisitionItem = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -46,9 +46,7 @@ const updateRequisitionItem = async (req: Request, res: Response): Promise<any> 
     }
 
     let authorized = false;
-    if (role === 'admin') {
-      authorized = true;
-    } else if (status === 'pending_hod' && role === 'department_head') {
+    if (status === 'pending_hod' && role === 'department_head') {
       authorized = toIdString(requisition.department) === toIdString(req.user!.department);
     } else if (
       status === 'pending_acceptance' &&

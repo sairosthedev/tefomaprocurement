@@ -9,6 +9,7 @@ import {
 } from '../../models/index.js';
 import { isProcurementHead } from '@fossil/shared';
 import { listPendingAuthorizations } from '../../services/pendingAuthorization.service.js';
+import { buildDepartmentFilter } from '../../lib/departmentScope.js';
 
 /**
  * Counts of work waiting on the signed-in user, for the sidebar badges.
@@ -44,6 +45,8 @@ async function countPendingApprovals(user: any): Promise<number> {
   if (role === 'finance') {
     return PurchaseOrder.countDocuments({
       status: { $in: ['pending_finance', 'pending_approvals'] },
+      hodApproved: true,
+      financeApproved: false,
       isDeleted: false
     });
   }
@@ -51,15 +54,10 @@ async function countPendingApprovals(user: any): Promise<number> {
   if (role === 'coo') {
     return PurchaseOrder.countDocuments({
       status: { $in: ['pending_coo', 'pending_approvals'] },
-      isDeleted: false
-    });
-  }
-
-  if (role === 'admin') {
-    // The Approvals page sends admins to the finance queue, so the badge must
-    // count that same queue rather than every pending PO.
-    return PurchaseOrder.countDocuments({
-      status: { $in: ['pending_finance', 'pending_approvals'] },
+      requiresCooApproval: true,
+      hodApproved: true,
+      financeApproved: true,
+      cooApproved: false,
       isDeleted: false
     });
   }
@@ -124,7 +122,7 @@ const getActionCounts = async (req: Request, res: Response): Promise<any> => {
     const counts: Record<string, number> = {};
 
     // ── Approvals ──
-    if (['department_head', 'finance', 'coo', 'admin'].includes(role)) {
+    if (['department_head', 'finance', 'coo'].includes(role)) {
       counts['/app/approvals'] = await countPendingApprovals(user);
     }
 
@@ -135,7 +133,7 @@ const getActionCounts = async (req: Request, res: Response): Promise<any> => {
       counts['/app/requisitions'] = await countRequisitionsAwaitingHod(user);
     }
 
-    if (['procurement_officer', 'admin'].includes(role) || procHead) {
+    if (role === 'procurement_officer' || procHead) {
       // Procurement acts on requisitions handed to them by stores. The Head of
       // Procurement's list also carries their own department's HOD approvals,
       // so those stay in the number.
@@ -149,7 +147,7 @@ const getActionCounts = async (req: Request, res: Response): Promise<any> => {
     }
 
     // ── Stores ──
-    if (['stores_officer', 'admin'].includes(role)) {
+    if (role === 'stores_officer') {
       // Mirrors stores/getPendingPurchaseRequisitions.
       counts['/app/stores-pr-review'] = await PurchaseRequisition.countDocuments({
         status: 'stores_review',
@@ -170,14 +168,16 @@ const getActionCounts = async (req: Request, res: Response): Promise<any> => {
     }
 
     if (role === 'department_head') {
+      // Mirrors department/getStoreRequisitions: only their own department's.
       counts['/app/store-requisitions'] = await StoreRequisition.countDocuments({
+        ...(await buildDepartmentFilter(user)),
         status: 'pending',
         isDeleted: false
       });
     }
 
     // ── Sourcing ──
-    if (['procurement_officer', 'admin'].includes(role) || procHead) {
+    if (role === 'procurement_officer' || procHead) {
       // Live RFQs: still collecting bids, or collected and awaiting an award
       // decision. Draft and awarded need no action.
       counts['/app/rfqs'] = await RFQ.countDocuments({
@@ -200,7 +200,7 @@ const getActionCounts = async (req: Request, res: Response): Promise<any> => {
     }
 
     // ── Finance ──
-    if (['finance', 'admin'].includes(role)) {
+    if (role === 'finance') {
       // Invoices finance still has to rule on: newly submitted, and those the
       // three-way match flagged as a variance. Approved, paid and rejected are
       // settled and need no action.

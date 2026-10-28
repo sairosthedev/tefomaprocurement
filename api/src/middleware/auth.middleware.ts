@@ -102,3 +102,19 @@ export const authorizeProcurement: RequestHandler = (req, res, next) => {
     message: `Role '${role}' is not authorized to access this route`
   });
 };
+
+/**
+ * Admins run the system (users, departments, sites, configuration), not the
+ * procurement process. On routers they share with a business role they may
+ * read, but every state-changing request is refused, so no approval, award or
+ * stock movement can be signed by the system account.
+ */
+export const adminReadOnly: RequestHandler = (req, res, next) => {
+  if (req.user?.role === 'admin' && req.method !== 'GET' && req.method !== 'HEAD') {
+    return res.status(403).json({
+      success: false,
+      message: 'Administrators have read-only access to business records'
+    });
+  }
+  next();
+};

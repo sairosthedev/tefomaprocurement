@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express';
-import { PurchaseOrder } from '../../models/index.js';
+import { PurchaseOrder, User } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { createNotifications } from '../../services/notification.service.js';
+import { isProcurementHead } from '@fossil/shared';
 import { requiresCooApproval } from '../../services/poApprovalFlow.service.js';
 
 const submitPurchaseOrder = async (req: Request, res: Response): Promise<any> => {
@@ -57,6 +59,22 @@ const submitPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       description: `Submitted PO: ${po.poNumber} for HOD approval`,
       newData: { status: 'pending_proc_hod', requiresCooApproval: po.requiresCooApproval },
       req
+    });
+
+    // A submitted PO now goes straight to the Head of Procurement, so they are
+    // the one to tell; without this nothing pointed them at it.
+    const heads = (
+      await User.find({ role: 'department_head', status: 'active', isDeleted: false })
+        .select('_id email firstName lastName role department')
+        .populate('department', 'name code')
+    ).filter((u: any) => isProcurementHead(u));
+    if (heads.length) await createNotifications(heads, {
+      type: 'po_submitted',
+      title: 'PO awaiting your approval',
+      message: `Purchase Order ${po.poNumber} was submitted and needs Head of Procurement approval.`,
+      entity: 'PurchaseOrder',
+      entityId: po._id,
+      relatedUser: req.user!._id
     });
 
     res.status(200).json({

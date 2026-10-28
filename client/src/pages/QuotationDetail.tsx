@@ -76,6 +76,11 @@ export default function QuotationDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  // The COO reaches this page only to approve a waiver; every other control on
+  // it is procurement's, and the quotations list is not theirs to go back to.
+  const isProcurement = user?.role === 'procurement_officer' || isProcurementHead(user);
+  const backTo = isProcurement ? '/app/quotations' : '/app';
+  const backLabel = isProcurement ? 'Back to Quotations' : 'Back to Dashboard';
   const { showToast } = useToast();
   const [loading, setLoading] = useState<any>(true);
   const [quotation, setQuotation] = useState<any>(null);
@@ -313,8 +318,8 @@ export default function QuotationDetail() {
     return (
       <div className="p-8 max-w-2xl mx-auto">
         <PageHeader
-          backTo="/app/quotations"
-          backLabel="Back to Quotations"
+          backTo={backTo}
+          backLabel={backLabel}
           title="Bid is sealed"
         />
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-8 text-center">
@@ -330,26 +335,28 @@ export default function QuotationDetail() {
               )}
             </p>
           )}
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              type="button"
-              onClick={handleCloseRfq}
-              disabled={closingRfq}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 disabled:opacity-50"
-            >
-              {closingRfq ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-              Close RFQ &amp; Reveal Bids
-            </button>
-            {sealedInfo.rfqId && (
+          {isProcurement && (
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <button
                 type="button"
-                onClick={() => navigate(`/app/rfqs/${sealedInfo.rfqId}`)}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 border border-amber-300 text-amber-800 rounded-xl font-medium hover:bg-amber-100"
+                onClick={handleCloseRfq}
+                disabled={closingRfq}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 disabled:opacity-50"
               >
-                View RFQ
+                {closingRfq ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                Close RFQ &amp; Reveal Bids
               </button>
-            )}
-          </div>
+              {sealedInfo.rfqId && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/app/rfqs/${sealedInfo.rfqId}`)}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 border border-amber-300 text-amber-800 rounded-xl font-medium hover:bg-amber-100"
+                >
+                  View RFQ
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -368,8 +375,8 @@ export default function QuotationDetail() {
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <PageHeader
-        backTo="/app/quotations"
-        backLabel="Back to Quotations"
+        backTo={backTo}
+        backLabel={backLabel}
         title="Quotation"
         subtitle={`#${quotation.quotationNumber}`}
         actions={
@@ -377,7 +384,7 @@ export default function QuotationDetail() {
             <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[quotation.status]}`}>
               {quotation.status?.replace(/_/g, ' ').replace(/\b\w/g, (l: any) => l.toUpperCase())}
             </span>
-            {(quotation.status === 'submitted' || quotation.status === 'under_review') && (
+            {isProcurement && (quotation.status === 'submitted' || quotation.status === 'under_review') && (
               <>
                 <button
                   onClick={() => setShowAcceptModal(true)}
@@ -415,7 +422,7 @@ export default function QuotationDetail() {
                 Awaiting supplier's revised price
               </span>
             )}
-            {quotation.status === 'accepted' && !quotation.existingPurchaseOrder && (
+            {isProcurement && quotation.status === 'accepted' && !quotation.existingPurchaseOrder && (
               <button
                 onClick={() => {
                   const deliveryDate = quotation.deliveryPeriod
@@ -442,7 +449,7 @@ export default function QuotationDetail() {
                 Create Purchase Order
               </button>
             )}
-            {quotation.existingPurchaseOrder && (
+            {isProcurement && quotation.existingPurchaseOrder && (
               <a
                 href={`/app/purchase-orders/${quotation.existingPurchaseOrder._id}`}
                 className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
@@ -463,8 +470,8 @@ export default function QuotationDetail() {
           const procurementHead = isProcurementHead(user);
           // Procurement selects the winner; the Head of Procurement authorizes it,
           // so the officer who chose is never the one who signs it off.
-          const canSelect = role === 'procurement_officer' || role === 'admin' || procurementHead;
-          const canPmAuthorize = role === 'admin' || procurementHead;
+          const canSelect = role === 'procurement_officer' || procurementHead;
+          const canPmAuthorize = procurementHead;
           const canApproveWaiver = procurementHead || role === 'coo';
           const reqDeptName = c.requestingDepartment?.name;
           const missingSteps: string[] = [];

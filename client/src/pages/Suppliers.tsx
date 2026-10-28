@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
+import { useAuth } from '../context/AuthContext';
+import { isProcurementHead } from '@fossil/shared';
 import Tabs from '../components/Tabs';
 import PageHeader from '../components/PageHeader';
 import Modal from '../components/Modal';
@@ -76,6 +78,9 @@ export default function Suppliers() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { showToast } = useToast();
+  const { user } = useAuth();
+  // The COO and admins read the supplier base; only procurement maintains it.
+  const canManage = user?.role === 'procurement_officer' || isProcurementHead(user);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [loading, setLoading] = useState<any>(true);
   const [search, setSearch] = useState<any>('');
@@ -304,22 +309,24 @@ export default function Suppliers() {
         title="Suppliers"
         subtitle="Manage and view all registered suppliers"
         actions={
-          <>
-            <button
-              onClick={() => setShowBulkImportModal(true)}
-              className="flex items-center gap-2 border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2.5 px-4 rounded-xl transition-colors"
-            >
-              <Upload className="h-5 w-5" />
-              Bulk Import
-            </button>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
-            >
-              <Plus className="h-5 w-5" />
-              Add Supplier
-            </button>
-          </>
+          canManage ? (
+            <>
+              <button
+                onClick={() => setShowBulkImportModal(true)}
+                className="flex items-center gap-2 border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2.5 px-4 rounded-xl transition-colors"
+              >
+                <Upload className="h-5 w-5" />
+                Bulk Import
+              </button>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+              >
+                <Plus className="h-5 w-5" />
+                Add Supplier
+              </button>
+            </>
+          ) : undefined
         }
       />
 

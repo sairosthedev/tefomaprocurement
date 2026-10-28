@@ -42,28 +42,26 @@ const rejectPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
     // Rejecting is the other half of approving, so it belongs to whoever holds
     // the step the PO is at: the Head of Procurement at their step, otherwise
     // the head of the department that raised the requisition.
-    if (req.user!.role !== 'admin') {
-      if (po.status === 'pending_proc_hod') {
-        if (!isProcurementHead(req.user)) {
-          return res.status(403).json({
-            success: false,
-            message: 'Only the Head of Procurement can reject at this step'
-          });
-        }
-      } else {
-        const requisition = po.purchaseRequisition
-          ? await PurchaseRequisition.findById(po.purchaseRequisition).select('department')
-          : null;
-        const deptId = toIdString((requisition as any)?.department);
-        const allowed = deptId
-          ? deptId === toIdString(req.user!.department)
-          : isProcurementHead(req.user);
-        if (!allowed) {
-          return res.status(403).json({
-            success: false,
-            message: 'Only the head of the requesting department may reject this purchase order'
-          });
-        }
+    if (po.status === 'pending_proc_hod') {
+      if (!isProcurementHead(req.user)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only the Head of Procurement can reject at this step'
+        });
+      }
+    } else {
+      const requisition = po.purchaseRequisition
+        ? await PurchaseRequisition.findById(po.purchaseRequisition).select('department')
+        : null;
+      const deptId = toIdString((requisition as any)?.department);
+      const allowed = deptId
+        ? deptId === toIdString(req.user!.department)
+        : isProcurementHead(req.user);
+      if (!allowed) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only the head of the requesting department may reject this purchase order'
+        });
       }
     }
 

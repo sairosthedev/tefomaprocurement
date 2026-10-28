@@ -4,6 +4,7 @@ import { procurementAPI, financeAPI, cooAPI } from '../lib/api';
 import { formatCurrency } from '../lib/constants';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
+import { isProcurementHead } from '@fossil/shared';
 import Tabs from '../components/Tabs';
 import PageHeader from '../components/PageHeader';
 import { 
@@ -69,6 +70,8 @@ export default function PurchaseOrders() {
 
   const isFinance = user?.role === 'finance';
   const isCoo = user?.role === 'coo';
+  // Raising and submitting POs is procurement's; everyone else here only reads.
+  const isProcurement = user?.role === 'procurement_officer' || isProcurementHead(user);
 
   useEffect(() => {
     setPage(1);
@@ -126,7 +129,7 @@ export default function PurchaseOrders() {
         title="Purchase Orders"
         subtitle="Manage and track purchase orders"
         actions={
-          !isFinance ? (
+          isProcurement ? (
             <button
               onClick={() => navigate('/app/quotations?status=accepted')}
               className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
@@ -255,7 +258,7 @@ export default function PurchaseOrders() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {!isFinance && order.status === 'draft' && (
+                          {isProcurement && order.status === 'draft' && (
                             <button
                               onClick={() => handleSubmit(order._id)}
                               disabled={submitting === order._id}

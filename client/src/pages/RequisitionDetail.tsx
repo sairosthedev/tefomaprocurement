@@ -107,12 +107,15 @@ export default function RequisitionDetail() {
   // endpoint like an officer; on their own department's requisitions they
   // also keep the department head's controls.
   const procHead = isProcurementHead(user);
-  const isProcurement = user?.role === 'procurement_officer' || user?.role === 'admin' || procHead;
+  const isProcurement = user?.role === 'procurement_officer' || procHead;
   const ownDeptId = String(user?.department?._id || user?.department || '');
   const isOwnDept =
     !!ownDeptId && String(requisition?.department?._id || requisition?.department || '') === ownDeptId;
-  const isDepartment =
-    (user?.role === 'department_head' && (!procHead || isOwnDept)) || user?.role === 'admin';
+  const isDepartment = user?.role === 'department_head' && (!procHead || isOwnDept);
+  // Submitting is the requester's own step; the API refuses anyone else.
+  const userId = String(user?._id || user?.id || '');
+  const isOwner =
+    !!userId && String(requisition?.requestedBy?._id || requisition?.requestedBy || '') === userId;
   const mayCancelRequisition = canCancelRequisition(user, requisition);
 
   // An approver may drop line items they don't want purchased before approving.
@@ -285,7 +288,7 @@ export default function RequisitionDetail() {
             <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[requisition.status]}`}>
               {statusLabels[requisition.status] || requisition.status?.replace(/_/g, ' ').replace(/\b\w/g, (l: any) => l.toUpperCase())}
             </span>
-            {isDepartment && requisition.status === 'draft' && (
+            {isOwner && requisition.status === 'draft' && (
               <button
                 onClick={handleSubmit}
                 disabled={
@@ -684,12 +687,16 @@ export default function RequisitionDetail() {
                     )}
                   </div>
                 )}
-                <a
-                  href={`/app/purchase-orders/${requisition.purchaseOrder._id}`}
-                  className="block w-full text-center py-2.5 px-4 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors"
-                >
-                  View Purchase Order
-                </a>
+                {/* Requesters and department heads follow the order from this
+                    panel; the PO pages themselves are procurement's. */}
+                {isProcurement && (
+                  <a
+                    href={`/app/purchase-orders/${requisition.purchaseOrder._id}`}
+                    className="block w-full text-center py-2.5 px-4 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors"
+                  >
+                    View Purchase Order
+                  </a>
+                )}
               </div>
             </div>
           )}
@@ -714,8 +721,10 @@ export default function RequisitionDetail() {
                 <div className="space-y-3">
                   <p className="text-sm text-green-800">
                     Your ordered items have been received and are available in stores.
+                    {!isDepartment && !isProcurement && ' Your department head requests them from stores.'}
                   </p>
-                  {(!isProcurement || (procHead && isOwnDept)) && (
+                  {/* Store requisitions are raised by the department head. */}
+                  {isDepartment && (
                     <button
                       onClick={() => navigate('/app/store-requisitions')}
                       className="w-full py-2.5 px-4 bg-primary text-white text-sm font-medium rounded-xl hover:bg-primary-dark transition-colors flex items-center justify-center gap-2"

@@ -41,6 +41,8 @@ import { notificationsAPI, dashboardAPI } from '../lib/api'
 
 // Role-based navigation configuration
 const roleNavigation: any = {
+  // Runs the system. Suppliers and purchase orders are read-only views; the
+  // procurement steps themselves belong to the business roles.
   admin: [
     { name: "Dashboard", href: "/app", icon: LayoutDashboard },
     { name: "Staff Team", href: "/app/users", icon: Users },
@@ -52,11 +54,8 @@ const roleNavigation: any = {
         { name: 'Performance', href: '/app/suppliers/analytics/performance', icon: TrendingUp },
         { name: 'Compliance', href: '/app/suppliers/analytics/compliance', icon: BarChart3 }
       ] },
-      { name: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList },
-      { name: 'Banking Changes', href: '/app/bank-changes', icon: Landmark }
+      { name: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList }
     ] },
-    { name: "RFQs", href: "/app/rfqs", icon: FileSearch },
-    { name: "Quotations", href: "/app/quotations", icon: FileText },
     { name: "Purchase Orders", href: "/app/purchase-orders", icon: ShoppingCart },
     { name: "Reports", href: "/app/reports", icon: BarChart3 },
     { name: "Audit Logs", href: "/app/audit-logs", icon: FileCheck },
@@ -107,6 +106,7 @@ const roleNavigation: any = {
     { name: "Authorizations", href: "/app/authorizations", icon: ShieldCheck },
     { name: "Approvals", href: "/app/approvals", icon: CheckSquare },
     { name: "Requisitions", href: "/app/requisitions", icon: ClipboardList },
+    { name: "Store Requisitions", href: "/app/store-requisitions", icon: Package },
     { name: "RFQs", href: "/app/rfqs", icon: FileSearch },
     { name: "Quotations", href: "/app/quotations", icon: FileText },
     { name: "Purchase Orders", href: "/app/purchase-orders", icon: ShoppingCart },
@@ -146,8 +146,7 @@ const roleNavigation: any = {
         { name: 'Performance', href: '/app/suppliers/analytics/performance', icon: TrendingUp },
         { name: 'Compliance', href: '/app/suppliers/analytics/compliance', icon: BarChart3 }
       ] },
-      { name: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList },
-      { name: 'Banking Changes', href: '/app/bank-changes', icon: Landmark }
+      { name: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList }
     ] },
     { name: "Notifications", href: "/app/notifications", icon: Bell },
     { name: "Profile", href: "/app/profile", icon: UserCircle },
@@ -234,11 +233,12 @@ export function SidebarLayout({ children }: any) {
   }
 
   // Get navigation items for current user's role. The procurement department
-  // head gets a combined procurement + approvals menu.
+  // head gets a combined procurement + approvals menu. An unrecognised role
+  // gets no menu rather than the admin's.
   const procurementHead = isProcurementHead(user)
   const navigation = procurementHead
     ? roleNavigation.procurement_head
-    : roleNavigation[user?.role] || roleNavigation.admin
+    : roleNavigation[user?.role] || []
 
   const getRoleDisplayName = (role: any) => {
     if (procurementHead) return 'Head of Procurement'

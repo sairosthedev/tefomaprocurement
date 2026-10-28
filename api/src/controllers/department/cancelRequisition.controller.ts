@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { PR_CANCEL_BY_ROLE, PR_CANCELLATION_REASONS } from '@fossil/shared';
+import { PR_CANCELLATION_REASONS, prCancelStatusesFor } from '@fossil/shared';
 import { createAuditLog } from '../../middleware/index.js';
 import { createNotification, notifyUsersByRole } from '../../services/notification.service.js';
 import {
@@ -87,8 +87,7 @@ const cancelRequisition = async (req: Request, res: Response): Promise<any> => {
 };
 
 export const getRequisitionCancellationMeta = async (req: Request, res: Response): Promise<any> => {
-  const role = req.user!.role;
-  const allowedStatuses = PR_CANCEL_BY_ROLE[role] || [];
+  const allowedStatuses = prCancelStatusesFor(req.user);
 
   res.status(200).json({
     success: true,

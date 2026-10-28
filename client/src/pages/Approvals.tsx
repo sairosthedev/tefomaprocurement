@@ -65,11 +65,11 @@ export default function Approvals() {
         case 'coo':
           endpoint = '/coo/pending-approvals';
           break;
-        case 'admin':
-          endpoint = '/finance/pending-approvals';
-          break;
         default:
-          endpoint = '/finance/pending-approvals';
+          // Only the three approving roles have a queue here.
+          setPendingItems([]);
+          setPagination(emptyPagination());
+          return;
       }
       
       const response = await api.get(endpoint, { params: { page, limit: DEFAULT_PAGE_SIZE } });
@@ -100,7 +100,6 @@ export default function Approvals() {
               : `/department/purchase-orders/${selectedItem._id}/approve`;
           break;
         case 'finance':
-        case 'admin':
           endpoint = `/finance/purchase-orders/${selectedItem._id}/approve`;
           break;
         case 'coo':
@@ -137,7 +136,6 @@ export default function Approvals() {
           endpoint = `/department/purchase-orders/${selectedItem._id}/reject`;
           break;
         case 'finance':
-        case 'admin':
           endpoint = `/finance/purchase-orders/${selectedItem._id}/reject`;
           break;
         case 'coo':

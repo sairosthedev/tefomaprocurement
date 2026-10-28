@@ -22,8 +22,9 @@ const rejectPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       });
     }
 
-    // Allow rejection if PO is pending approvals and Finance hasn't approved yet
-    if (po.status !== 'pending_approvals' || po.financeApproved) {
+    // POs reach Finance at 'pending_finance'; 'pending_approvals' is the
+    // legacy single-queue status and is still accepted for older orders.
+    if (!['pending_finance', 'pending_approvals'].includes(po.status) || po.financeApproved) {
       return res.status(400).json({
         success: false,
         message: 'Purchase order is not pending Finance approval'

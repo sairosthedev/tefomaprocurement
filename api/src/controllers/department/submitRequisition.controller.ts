@@ -25,11 +25,9 @@ const submitRequisition = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    // Ensure the user owns this requisition (admins may submit on behalf)
-    if (
-      req.user!.role !== 'admin' &&
-      requisition.requestedBy.toString() !== req.user!._id.toString()
-    ) {
+    // Only the requester submits: submitting is their statement that the
+    // request is complete, which nobody else can make for them.
+    if (requisition.requestedBy.toString() !== req.user!._id.toString()) {
       return res.status(403).json({
         success: false,
         message: 'You can only submit your own requisitions'

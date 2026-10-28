@@ -2,7 +2,8 @@ import {
   PR_CANCEL_BY_ROLE,
   PR_TERMINAL_STATUSES,
   PO_CANCEL_BY_ROLE,
-  PO_TERMINAL_STATUSES
+  PO_TERMINAL_STATUSES,
+  cancellationRolesFor
 } from '@fossil/shared';
 
 const toId = (value: unknown): string | undefined => {
@@ -13,34 +14,32 @@ const toId = (value: unknown): string | undefined => {
   return String(value);
 };
 
+// Mirrors assertCanCancelRequisition on the API: the Head of Procurement holds
+// both procurement's and a department head's rules, and either may apply.
 export function canCancelRequisition(
-  user: { role?: string; _id?: string } | null | undefined,
+  user: { role?: string; _id?: string; department?: unknown } | null | undefined,
   requisition: { status?: string; requestedBy?: unknown; department?: unknown } | null | undefined
 ): boolean {
   if (!user?.role || !requisition?.status) return false;
-  if ((PR_TERMINAL_STATUSES as readonly string[]).includes(requisition.status)) return false;
+  const status = requisition.status;
+  if ((PR_TERMINAL_STATUSES as readonly string[]).includes(status)) return false;
 
-  const allowed = PR_CANCEL_BY_ROLE[user.role];
-  if (!allowed?.includes(requisition.status)) return false;
-
-  if (user.role === 'end_user') {
-    return toId(requisition.requestedBy) === toId(user._id);
-  }
-
-  if (user.role === 'department_head') {
-    return toId(requisition.department) === toId((user as { department?: unknown }).department);
-  }
-
-  return true;
+  return cancellationRolesFor(user).some((role) => {
+    if (!PR_CANCEL_BY_ROLE[role]?.includes(status)) return false;
+    if (role === 'end_user') return toId(requisition.requestedBy) === toId(user._id);
+    if (role === 'department_head') return toId(requisition.department) === toId(user.department);
+    return true;
+  });
 }
 
 export function canCancelPurchaseOrder(
-  user: { role?: string } | null | undefined,
+  user: { role?: string; department?: unknown } | null | undefined,
   po: { status?: string } | null | undefined
 ): boolean {
   if (!user?.role || !po?.status) return false;
-  if ((PO_TERMINAL_STATUSES as readonly string[]).includes(po.status)) return false;
-  return Boolean(PO_CANCEL_BY_ROLE[user.role]?.includes(po.status));
+  const status = po.status;
+  if ((PO_TERMINAL_STATUSES as readonly string[]).includes(status)) return false;
+  return cancellationRolesFor(user).some((role) => PO_CANCEL_BY_ROLE[role]?.includes(status));
 }
 
 export function requisitionCancelApiBase(

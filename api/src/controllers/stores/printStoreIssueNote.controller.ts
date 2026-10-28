@@ -4,6 +4,7 @@ import PDFDocument from 'pdfkit';
 import { StoreRequisition } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { buildStoreIssueNotePdf } from '../../services/storeIssueDocument.service.js';
+import { resolveUserDepartmentIds } from '../../lib/departmentScope.js';
 
 /**
  * Render a Stores Issue Note as a PDF — the document a collector signs for
@@ -23,6 +24,16 @@ const printStoreIssueNote = async (req: Request, res: Response): Promise<any> =>
 
     if (!requisition || requisition.isDeleted) {
       return res.status(404).json({ success: false, message: 'Store requisition not found' });
+    }
+
+    // A department head may print only what their own department collected;
+    // answering 404 rather than 403 avoids confirming other departments' notes.
+    if (req.user!.role === 'department_head') {
+      const deptIds = await resolveUserDepartmentIds(req.user);
+      const reqDept = requisition.department?._id?.toString() || requisition.department?.toString();
+      if (!reqDept || !deptIds.includes(reqDept)) {
+        return res.status(404).json({ success: false, message: 'Store requisition not found' });
+      }
     }
 
     // Nothing has left the store until something is issued, so there is no

@@ -12,7 +12,7 @@ const authorizeQuotation = async (req: Request, res: Response): Promise<any> => 
 
     // The Procurement Manager is the Head of Procurement. Officers select the
     // winner; a second person authorizes it, so no one awards on their own.
-    if (req.user!.role !== 'admin' && !isProcurementHead(req.user)) {
+    if (!isProcurementHead(req.user)) {
       return res.status(403).json({
         success: false,
         message: 'Only the Head of Procurement can authorize a quotation'

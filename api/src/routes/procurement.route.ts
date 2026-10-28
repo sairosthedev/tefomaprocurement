@@ -2,7 +2,7 @@ import express from 'express';
 import type { RequestHandler } from 'express';
 import { isProcurementHead } from '@fossil/shared';
 import controllers from '../controllers/index.js';
-import { protect, authorizeProcurement } from '../middleware/index.js';
+import { protect, authorizeProcurement, adminReadOnly } from '../middleware/index.js';
 
 const { procurement, department } = controllers;
 const router = express.Router();
@@ -20,7 +20,7 @@ const canReadEvaluations: RequestHandler = (req, res, next) => {
 
 const canSecApproveEvaluation: RequestHandler = (req, res, next) => {
   const role = req.user?.role;
-  if (role === 'admin' || role === 'coo') {
+  if (role === 'coo') {
     return next();
   }
   return res.status(403).json({
@@ -49,11 +49,35 @@ const canApproveWaiver: RequestHandler = (req, res, next) => {
 router.put('/rfqs/:id/quotation-waiver', canApproveWaiver, procurement.approveQuotationWaiver);
 router.put('/rfqs/:id/line-awards/waive', canApproveWaiver, procurement.waiveLine);
 
+// Reads the COO needs alongside procurement: the supplier base they oversee,
+// and the quotation and line-award views a waiver is decided on. Only these
+// GETs; everything that changes a record stays behind the procurement guard.
+const canReadSourcing: RequestHandler = (req, res, next) => {
+  if (req.user?.role === 'coo') return next();
+  return authorizeProcurement(req, res, next);
+};
+// Constrained to an ObjectId so '/suppliers/match' and
+// '/suppliers/invitation-proposal' still reach their own handlers below.
+const SUPPLIER_ID = ':id([0-9a-fA-F]{24})';
+router.get('/suppliers', canReadSourcing, procurement.getSuppliers);
+router.get(`/suppliers/${SUPPLIER_ID}`, canReadSourcing, procurement.getSupplierById);
+router.get(`/suppliers/${SUPPLIER_ID}/tier-suggestion`, canReadSourcing, procurement.getSupplierTierSuggestion);
+router.get(`/suppliers/${SUPPLIER_ID}/evaluations`, canReadSourcing, procurement.getSupplierEvaluations);
+router.get('/quotations/:id', canReadSourcing, procurement.getQuotationById);
+router.get('/rfqs/:id/line-awards', canReadSourcing, procurement.getLineAwardMatrix);
+
 // Procurement officers, admins, and the head of the Procurement department.
 router.use(authorizeProcurement);
 
+// Cancelling a requisition or PO is deliberately open to admins (see
+// PR_CANCEL_BY_ROLE / PO_CANCEL_BY_ROLE), so these sit above the read-only rule.
+router.put('/requisitions/:id/cancel', procurement.cancelRequisition);
+router.put('/purchase-orders/:id/cancel', procurement.cancelPurchaseOrder);
+
+// Admins may look, but every sourcing decision below belongs to procurement.
+router.use(adminReadOnly);
+
 // Suppliers
-router.get('/suppliers', procurement.getSuppliers);
 router.post('/suppliers', procurement.createSupplier);
 router.post('/suppliers/bulk-import', procurement.bulkImportSuppliers);
 // Category-matched suppliers for RFQ invitation (exact + related). Must precede
@@ -63,7 +87,6 @@ router.get('/suppliers/match', procurement.matchSuppliers);
 // topped up from related categories to the competitive minimum. Pre-fills the
 // Create RFQ screen; the officer edits it before sending.
 router.get('/suppliers/invitation-proposal', procurement.getInvitationProposal);
-router.get('/suppliers/:id', procurement.getSupplierById);
 router.put('/suppliers/:id', procurement.updateSupplier);
 router.put('/suppliers/:id/approve', procurement.approveSupplier);
 router.put('/suppliers/:id/blacklist', procurement.blacklistSupplier);
@@ -77,9 +100,7 @@ router.put('/suppliers/:id/documents/:docId/verify', procurement.verifySupplierD
 // Blacklisting is reversible; reinstatement returns the supplier to pending.
 router.put('/suppliers/:id/reinstate', procurement.reinstateSupplier);
 // Diligence tier: required KYS depth follows this.
-router.get('/suppliers/:id/tier-suggestion', procurement.getSupplierTierSuggestion);
 router.put('/suppliers/:id/tier', procurement.setSupplierTier);
-router.get('/suppliers/:id/evaluations', procurement.getSupplierEvaluations);
 router.post('/suppliers/:id/evaluations', procurement.createSupplierEvaluation);
 
 // Supplier banking changes: held, verified by callback, then approved by a
@@ -94,7 +115,6 @@ router.get('/requisitions', procurement.getPendingRequisitions);
 router.get('/requisitions/:id', procurement.getRequisitionById);
 router.put('/requisitions/:id/accept', procurement.acceptRequisition);
 router.put('/requisitions/:id/reject', procurement.rejectRequisition);
-router.put('/requisitions/:id/cancel', procurement.cancelRequisition);
 // Procurement may drop unwanted line items or adjust quantities before accepting
 router.patch('/requisitions/:id/items/:itemId', department.updateRequisitionItem);
 router.delete('/requisitions/:id/items/:itemId', department.removeRequisitionItem);
@@ -119,7 +139,6 @@ router.get('/authorizations/pending', procurement.getPendingAuthorizations);
 // Weighted ranking of whole responses, supplier against supplier. Honours the
 // sealed-bid rule: empty until the deadline passes or the RFQ is closed.
 router.get('/rfqs/:id/ranking', procurement.getRfqRanking);
-router.get('/rfqs/:id/line-awards', procurement.getLineAwardMatrix);
 router.put('/rfqs/:id/line-awards/select', procurement.selectLine);
 router.put('/rfqs/:id/line-awards/pm-authorize', procurement.pmAuthorizeLine);
 router.post('/rfqs/:id/line-awards/generate-pos', procurement.generateLineAwardPOs);
@@ -127,7 +146,6 @@ router.post('/rfqs/:id/line-awards/resource-unawarded', procurement.resourceUnaw
 
 // Quotations
 router.get('/quotations', procurement.getQuotations);
-router.get('/quotations/:id', procurement.getQuotationById);
 router.put('/quotations/:id/accept', procurement.acceptQuotation);
 router.put('/quotations/:id/reject', procurement.rejectQuotation);
 router.put('/quotations/:id/request-revision', procurement.requestQuotationRevision);
@@ -140,6 +158,5 @@ router.get('/purchase-orders/:id', procurement.getPurchaseOrderById);
 // Rev 9 clause 6.3.14: the formal PO document, as sent to the supplier.
 router.get('/purchase-orders/:id/print', procurement.printPurchaseOrder);
 router.put('/purchase-orders/:id/submit', procurement.submitPurchaseOrder);
-router.put('/purchase-orders/:id/cancel', procurement.cancelPurchaseOrder);
 
 export default router;

@@ -21,7 +21,8 @@ export default function AwardMatrix() {
   const { showToast } = useToast();
   const { user } = useAuth();
   // Officers select; only the Head of Procurement authorizes what they selected.
-  const canAuthorize = user?.role === 'admin' || isProcurementHead(user);
+  const canSelect = user?.role === 'procurement_officer' || isProcurementHead(user);
+  const canAuthorize = isProcurementHead(user);
   // Waiving the three-quote rule is the COO's or the Head of Procurement's.
   const canWaive = user?.role === 'coo' || isProcurementHead(user);
   const [loading, setLoading] = useState(true);
@@ -113,9 +114,10 @@ export default function AwardMatrix() {
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
+      {/* The COO is here only for line waivers and cannot open the RFQ. */}
       <PageHeader
-        backTo={`/app/rfqs/${id}`}
-        backLabel="Back to RFQ"
+        backTo={canSelect ? `/app/rfqs/${id}` : '/app'}
+        backLabel={canSelect ? 'Back to RFQ' : 'Back to Dashboard'}
         title="Split Award — line by line"
         subtitle="Award each line to the best supplier, authorize, then generate a PO per supplier."
       />
@@ -167,7 +169,12 @@ export default function AwardMatrix() {
                     const isAwarded = awardedTo === s.supplierId;
                     return (
                       <td key={s.supplierId} className="text-right py-3 px-4">
-                        {bid ? (
+                        {bid && !canSelect ? (
+                          <span className={isAwarded ? 'px-2 py-1 rounded-lg bg-green-100 text-green-800 font-semibold' : 'px-2 py-1 text-gray-800'}>
+                            {bid.unitPrice}
+                            {isAwarded && <CheckCircle className="inline h-3.5 w-3.5 ml-1" />}
+                          </span>
+                        ) : bid ? (
                           <button
                             disabled={busy || line.poGenerated || Boolean(line.pmAuthorization?.by)}
                             onClick={() => selectLine(line, bid)}
@@ -228,22 +235,24 @@ export default function AwardMatrix() {
         </table>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 mt-6">
-        <button disabled={busy || !anyAwarded} onClick={generatePOs}
-          className="inline-flex items-center gap-2 bg-green-600 text-white px-4 py-2.5 rounded-xl hover:bg-green-700 disabled:opacity-50">
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4" />}
-          Generate POs for authorized lines
-        </button>
-        <button disabled={busy || !anyUnresolved} onClick={resource}
-          className="inline-flex items-center gap-2 border border-amber-300 text-amber-700 px-4 py-2.5 rounded-xl hover:bg-amber-50 disabled:opacity-50">
-          <RefreshCw className="h-4 w-4" />
-          Re-source unquoted / unawarded lines
-        </button>
-        <button onClick={() => navigate('/app/purchase-orders')}
-          className="inline-flex items-center gap-2 text-gray-600 px-4 py-2.5 rounded-xl hover:bg-gray-100">
-          <Send className="h-4 w-4" /> View purchase orders
-        </button>
-      </div>
+      {canSelect && (
+        <div className="flex flex-wrap items-center gap-3 mt-6">
+          <button disabled={busy || !anyAwarded} onClick={generatePOs}
+            className="inline-flex items-center gap-2 bg-green-600 text-white px-4 py-2.5 rounded-xl hover:bg-green-700 disabled:opacity-50">
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4" />}
+            Generate POs for authorized lines
+          </button>
+          <button disabled={busy || !anyUnresolved} onClick={resource}
+            className="inline-flex items-center gap-2 border border-amber-300 text-amber-700 px-4 py-2.5 rounded-xl hover:bg-amber-50 disabled:opacity-50">
+            <RefreshCw className="h-4 w-4" />
+            Re-source unquoted / unawarded lines
+          </button>
+          <button onClick={() => navigate('/app/purchase-orders')}
+            className="inline-flex items-center gap-2 text-gray-600 px-4 py-2.5 rounded-xl hover:bg-gray-100">
+            <Send className="h-4 w-4" /> View purchase orders
+          </button>
+        </div>
+      )}
     </div>
   );
 }

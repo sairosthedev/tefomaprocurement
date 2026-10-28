@@ -6,7 +6,7 @@ import api, { departmentAPI } from '../lib/api';
 import Tabs from '../components/Tabs';
 import PageHeader from '../components/PageHeader';
 import { 
-  Plus, Search, Filter, Edit, Trash2, Send, 
+  Plus, Search, Filter, Trash2, Send, 
   Clock, CheckCircle, XCircle, Package, Loader2, AlertCircle,
   Check, X, FileText, ShoppingCart, Truck
 } from 'lucide-react';
@@ -81,8 +81,11 @@ export default function Requisitions() {
   // those they keep the department head's actions: edit/submit drafts and the
   // pending_hod approval.
   const procHead = isProcurementHead(user);
-  const isProcurement = user?.role === 'procurement_officer' || user?.role === 'admin' || procHead;
-  const isDeptHead = user?.role === 'department_head' || user?.role === 'admin';
+  const isProcurement = user?.role === 'procurement_officer' || procHead;
+  const isDeptHead = user?.role === 'department_head';
+  const userId = String(user?._id || user?.id || '');
+  // Only the requester submits a draft; the API refuses anyone else.
+  const isOwner = (req: any) => !!userId && String(req?.requestedBy?._id || req?.requestedBy || '') === userId;
   const ownDeptId = String(user?.department?._id || user?.department || '');
   const isOwnDept = (req: any) =>
     procHead && !!ownDeptId && String(req?.department?._id || req?.department || '') === ownDeptId;
@@ -529,15 +532,8 @@ export default function Requisitions() {
                         />
                         
                         {/* Department Head Actions */}
-                        {actsAsDepartment(req) && req.status === 'draft' && (
+                        {actsAsDepartment(req) && isOwner(req) && req.status === 'draft' && (
                           <>
-                            <button
-                              onClick={() => navigate(`/app/requisitions/edit/${req._id}`)}
-                              className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                              title="Edit"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </button>
                             <button
                               onClick={() => handleSubmit(req._id, req)}
                               disabled={
@@ -616,7 +612,7 @@ export default function Requisitions() {
                         )}
 
                         {/* Request from Stores Button - Show when items are delivered to stores but not yet collected */}
-                        {actsAsDepartment(req) && req.itemsDeliveredToStores && !req.itemsCollected && (
+                        {isDeptHead && actsAsDepartment(req) && req.itemsDeliveredToStores && !req.itemsCollected && (
                           <button
                             onClick={() => handleRequestFromStores(req)}
                             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
@@ -811,9 +807,11 @@ export default function Requisitions() {
                     <p className="text-sm text-green-800 mb-3">
                       {isProcurement
                         ? `Ordered items have been received and are now available in stores for ${selectedRequisition.department?.name || 'the requesting department'}.`
-                        : 'Your ordered items have been received and are now available in stores. You can request them using the button below.'}
+                        : isDeptHead
+                          ? 'Your ordered items have been received and are now available in stores. You can request them using the button below.'
+                          : 'Your ordered items have been received and are now available in stores. Your department head requests them from stores.'}
                     </p>
-                    {actsAsDepartment(selectedRequisition) && (
+                    {isDeptHead && actsAsDepartment(selectedRequisition) && (
                       <button
                         onClick={() => {
                           handleRequestFromStores(selectedRequisition);

@@ -12,7 +12,7 @@ import {
 import { getSupplierPerformanceScores, rankLineBids } from '../../services/bidRanking.service.js';
 
 const isProcOfficer = (user: any) =>
-  user?.role === 'procurement_officer' || user?.role === 'admin' || isProcurementHead(user);
+  user?.role === 'procurement_officer' || isProcurementHead(user);
 
 /** GET the per-line award matrix: each RFQ line, its bids, and award state. */
 export const getLineAwardMatrix = async (req: Request, res: Response): Promise<any> => {
@@ -125,7 +125,7 @@ export const pmAuthorizeLine = async (req: Request, res: Response): Promise<any>
     const { id } = req.params;
     const { rfqLineId } = req.body;
     // Head of Procurement only: the officer who selected must not also authorize.
-    if (req.user!.role !== 'admin' && !isProcurementHead(req.user)) {
+    if (!isProcurementHead(req.user)) {
       return res.status(403).json({ success: false, message: 'Only the Head of Procurement can authorize a line' });
     }
     const { rfq, award } = await loadLine(id, rfqLineId);

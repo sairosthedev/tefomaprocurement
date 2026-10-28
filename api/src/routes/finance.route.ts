@@ -5,9 +5,9 @@ import { protect, authorize } from '../middleware/index.js';
 const { finance } = controllers;
 const router = express.Router();
 
-// All routes require finance role
+// Finance only. Admins run the system, not approvals or payments.
 router.use(protect);
-router.use(authorize('finance', 'admin'));
+router.use(authorize('finance'));
 
 // Approvals
 router.get('/pending-approvals', finance.getPendingApprovals);

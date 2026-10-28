@@ -80,7 +80,7 @@ export default function Evaluations() {
   const [scores, setScores] = useState<Record<string, number>>(emptyScores)
   const [otherNotes, setOtherNotes] = useState('')
 
-  const canCreate = user?.role === 'admin' || user?.role === 'procurement_officer' || isProcurementHead(user)
+  const canCreate = user?.role === 'procurement_officer' || isProcurementHead(user)
 
   useEffect(() => {
     loadDue()

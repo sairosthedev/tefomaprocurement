@@ -31,13 +31,12 @@ export async function resolveUserDepartmentIds(user: any): Promise<string[]> {
 
 /**
  * Whether the user may act on a record belonging to `departmentId`.
- * Admins are unrestricted.
+ * Admins get no exemption: they run the system, not the approvals in it.
  */
 export async function canActOnDepartment(
   user: any,
   departmentId: any
 ): Promise<boolean> {
-  if (user?.role === 'admin') return true;
   const target = idOf(departmentId);
   if (!target) return false;
   const ids = await resolveUserDepartmentIds(user);

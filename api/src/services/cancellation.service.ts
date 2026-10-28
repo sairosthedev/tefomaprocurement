@@ -4,6 +4,7 @@ import {
   PR_TERMINAL_STATUSES,
   PO_CANCEL_BY_ROLE,
   PO_TERMINAL_STATUSES,
+  cancellationRolesFor,
   getPoCancellationReasonLabel,
   getPrCancellationReasonLabel,
   isValidPoCancellationReason,
@@ -21,6 +22,8 @@ const ACTIVE_INVOICE_STATUSES = ['submitted', 'variance', 'approved', 'partially
 const OPEN_RFQ_STATUSES = ['draft', 'open', 'closed', 'evaluating'];
 const CANCELLABLE_PO_STATUSES = [
   'draft',
+  'pending_dept_hod',
+  'pending_proc_hod',
   'pending_hod',
   'pending_finance',
   'pending_coo',
@@ -70,26 +73,33 @@ export function assertCanCancelRequisition(
     throw new CancellationError(`Cannot cancel a requisition with status "${requisition.status}"`);
   }
 
-  const allowed = PR_CANCEL_BY_ROLE[user.role];
-  if (!allowed?.includes(requisition.status)) {
+  // A user may hold more than one rule set (the Head of Procurement holds
+  // procurement's and a department head's); any one that covers this stage and
+  // this record is enough.
+  const stageRoles = cancellationRolesFor(user).filter((role) =>
+    PR_CANCEL_BY_ROLE[role]?.includes(requisition.status)
+  );
+  if (stageRoles.length === 0) {
     throw new CancellationError('You are not authorized to cancel this requisition at its current stage');
   }
 
-  if (user.role === 'end_user') {
-    if (toIdString(requisition.requestedBy) !== toIdString(user._id)) {
-      throw new CancellationError('You can only cancel your own requisitions', 403);
-    }
-  }
-
-  if (user.role === 'department_head') {
-    if (toIdString(requisition.department) !== toIdString(user.department)) {
-      throw new CancellationError('You can only cancel requisitions from your department', 403);
-    }
+  const permitted = stageRoles.some((role) => {
+    if (role === 'end_user') return toIdString(requisition.requestedBy) === toIdString(user._id);
+    if (role === 'department_head') return toIdString(requisition.department) === toIdString(user.department);
+    return true;
+  });
+  if (!permitted) {
+    throw new CancellationError(
+      stageRoles.includes('end_user')
+        ? 'You can only cancel your own requisitions'
+        : 'You can only cancel requisitions from your department',
+      403
+    );
   }
 }
 
 export function assertCanCancelPurchaseOrder(
-  user: { role: string },
+  user: { role: string; department?: unknown },
   po: { status: string }
 ): void {
   if ((PO_TERMINAL_STATUSES as readonly string[]).includes(po.status)) {
@@ -98,8 +108,8 @@ export function assertCanCancelPurchaseOrder(
     );
   }
 
-  const allowed = PO_CANCEL_BY_ROLE[user.role];
-  if (!allowed?.includes(po.status)) {
+  const allowed = cancellationRolesFor(user).some((role) => PO_CANCEL_BY_ROLE[role]?.includes(po.status));
+  if (!allowed) {
     throw new CancellationError('You are not authorized to cancel this purchase order at its current stage');
   }
 }
@@ -145,7 +155,7 @@ async function findLinkedPurchaseOrders(requisitionId: mongoose.Types.ObjectId |
 
 export async function cancelPurchaseOrderById(
   poId: mongoose.Types.ObjectId | string,
-  user: { _id: unknown; role: string },
+  user: { _id: unknown; role: string; department?: unknown },
   reasonCode: string,
   reasonDetails?: string,
   options?: { skipAuth?: boolean; cascadeFromRequisition?: boolean }

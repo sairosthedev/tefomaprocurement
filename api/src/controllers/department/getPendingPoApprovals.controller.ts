@@ -17,7 +17,6 @@ const toIdString = (value: any): string | undefined => {
  *  - Other department heads: POs awaiting the requesting-department HOD step
  *    (pending_dept_hod / legacy pending_hod) whose requisition belongs to their
  *    department.
- * Admins see every pending PO across both HOD steps.
  */
 const getPendingPoApprovals = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -26,36 +25,27 @@ const getPendingPoApprovals = async (req: Request, res: Response): Promise<any> 
     const limitNum = Math.min(Math.max(parseInt(String(limit), 10) || 20, 1), 100);
     const skip = (pageNum - 1) * limitNum;
 
-    const isAdmin = req.user!.role === 'admin';
     const procHead = isProcurementHead(req.user);
 
-    let filter: Record<string, any>;
-    if (isAdmin) {
-      filter = {
-        isDeleted: false,
-        status: { $in: ['pending_dept_hod', 'pending_proc_hod', 'pending_hod', 'pending_approvals'] }
-      };
-    } else {
-      // Requesting-department HODs: only their own department's POs at the
-      // first HOD step. Resolve which requisitions belong to this department.
-      const deptId = toIdString(req.user!.department);
-      const reqs = deptId
-        ? await PurchaseRequisition.find({ department: deptId, isDeleted: false }).select('_id')
-        : [];
-      const reqIds: any[] = reqs.map((r) => r._id);
-      if (procHead) reqIds.push(null);
-      const deptStep = {
-        status: { $in: ['pending_dept_hod', 'pending_hod', 'pending_approvals'] },
-        deptHodApproved: false,
-        purchaseRequisition: { $in: reqIds }
-      };
-      filter = procHead
-        ? {
-            isDeleted: false,
-            $or: [{ status: 'pending_proc_hod', procHodApproved: false }, deptStep]
-          }
-        : { isDeleted: false, ...deptStep };
-    }
+    // Requesting-department HODs: only their own department's POs at the
+    // first HOD step. Resolve which requisitions belong to this department.
+    const deptId = toIdString(req.user!.department);
+    const reqs = deptId
+      ? await PurchaseRequisition.find({ department: deptId, isDeleted: false }).select('_id')
+      : [];
+    const reqIds: any[] = reqs.map((r) => r._id);
+    if (procHead) reqIds.push(null);
+    const deptStep = {
+      status: { $in: ['pending_dept_hod', 'pending_hod', 'pending_approvals'] },
+      deptHodApproved: false,
+      purchaseRequisition: { $in: reqIds }
+    };
+    const filter: Record<string, any> = procHead
+      ? {
+          isDeleted: false,
+          $or: [{ status: 'pending_proc_hod', procHodApproved: false }, deptStep]
+        }
+      : { isDeleted: false, ...deptStep };
 
     const [total, orders] = await Promise.all([
       PurchaseOrder.countDocuments(filter),

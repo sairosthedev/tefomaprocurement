@@ -219,31 +219,41 @@ export default function Dashboard() {
         { label: 'Purchase Orders', icon: ShoppingCart, color: 'bg-green-50 hover:bg-green-100 text-green-700', href: '/app/purchase-orders' }
       ],
       finance: [
-        { label: 'Pending Approvals', icon: Clock, color: 'bg-amber-50 hover:bg-amber-100 text-amber-700', href: '/app/purchase-orders' },
+        { label: 'Pending Approvals', icon: Clock, color: 'bg-amber-50 hover:bg-amber-100 text-amber-700', href: '/app/approvals' },
+        { label: 'Invoices', icon: FileText, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/invoices' },
         { label: 'All Purchase Orders', icon: ShoppingCart, color: 'bg-green-50 hover:bg-green-100 text-green-700', href: '/app/purchase-orders' },
-        { label: 'View Reports', icon: TrendingUp, color: 'bg-blue-50 hover:bg-blue-100 text-blue-700', href: '/app' }
+        { label: 'View Reports', icon: TrendingUp, color: 'bg-blue-50 hover:bg-blue-100 text-blue-700', href: '/app/reports' }
       ],
       coo: [
-        { label: 'Major PO Approvals', icon: Clock, color: 'bg-amber-50 hover:bg-amber-100 text-amber-700', href: '/app/purchase-orders' },
-        { label: 'All Purchase Orders', icon: ShoppingCart, color: 'bg-green-50 hover:bg-green-100 text-green-700', href: '/app/purchase-orders' },
-        { label: 'View Reports', icon: TrendingUp, color: 'bg-blue-50 hover:bg-blue-100 text-blue-700', href: '/app' }
+        { label: 'Major PO Approvals', icon: Clock, color: 'bg-amber-50 hover:bg-amber-100 text-amber-700', href: '/app/approvals' },
+        { label: 'Suppliers', icon: Users, color: 'bg-purple-50 hover:bg-purple-100 text-purple-700', href: '/app/suppliers' },
+        { label: 'View Reports', icon: TrendingUp, color: 'bg-blue-50 hover:bg-blue-100 text-blue-700', href: '/app/reports' }
       ],
       stores_officer: [
         { label: 'View Inventory', icon: Package, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/inventory' },
-        { label: 'Pending Deliveries', icon: ShoppingCart, color: 'bg-amber-50 hover:bg-amber-100 text-amber-700', href: '/app/purchase-orders' },
+        { label: 'Pending Deliveries', icon: ShoppingCart, color: 'bg-amber-50 hover:bg-amber-100 text-amber-700', href: '/app/deliveries' },
         { label: 'Stock Alerts', icon: AlertCircle, color: 'bg-red-50 hover:bg-red-100 text-red-700', href: '/app/inventory' }
       ],
       department_head: [
+        { label: 'Pending Approvals', icon: Clock, color: 'bg-amber-50 hover:bg-amber-100 text-amber-700', href: '/app/approvals' },
         { label: 'Create Requisition', icon: FileText, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/requisitions/create' },
         { label: 'My Requisitions', icon: FileSearch, color: 'bg-blue-50 hover:bg-blue-100 text-blue-700', href: '/app/requisitions' },
-        { label: 'View Reports', icon: TrendingUp, color: 'bg-green-50 hover:bg-green-100 text-green-700', href: '/app' }
+        { label: 'View Reports', icon: TrendingUp, color: 'bg-green-50 hover:bg-green-100 text-green-700', href: '/app/reports' }
       ],
       end_user: [
         { label: 'Create Requisition', icon: FileText, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/requisitions/create' },
         { label: 'My Requisitions', icon: FileSearch, color: 'bg-blue-50 hover:bg-blue-100 text-blue-700', href: '/app/requisitions' }
+      ],
+      supplier: [
+        { label: 'My RFQs', icon: FileSearch, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/my-rfqs' },
+        { label: 'My Purchase Orders', icon: ShoppingCart, color: 'bg-green-50 hover:bg-green-100 text-green-700', href: '/app/my-purchase-orders' },
+        { label: 'My Invoices', icon: DollarSign, color: 'bg-amber-50 hover:bg-amber-100 text-amber-700', href: '/app/my-invoices' },
+        { label: 'KYS Documents', icon: ShieldCheck, color: 'bg-blue-50 hover:bg-blue-100 text-blue-700', href: '/app/my-kys' }
       ]
     };
-    return actions[effectiveRole] || actions.admin;
+    // No fallback to another role's list: an unknown role gets no shortcuts
+    // rather than buttons into pages it cannot open.
+    return actions[effectiveRole] || [];
   };
 
   const getAdditionalStats = () => {

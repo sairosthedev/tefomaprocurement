@@ -192,9 +192,10 @@ function App() {
               <Navigate to="/app/reports?tab=suppliers" replace />
             } />
             {/* Banking changes are held here until callback-verified and
-                approved by a second person; payments pause meanwhile. */}
+                approved by a second person; payments pause meanwhile. The
+                whole workflow is procurement's, so only they open it. */}
             <Route path="/app/bank-changes" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer', 'finance', 'coo']}>
+              <AppLayout allowedRoles={['procurement_officer']}>
                 <BankChanges />
               </AppLayout>
             } />
@@ -204,22 +205,24 @@ function App() {
               </AppLayout>
             } />
             <Route path="/app/rfqs" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer']}>
+              <AppLayout allowedRoles={['procurement_officer']}>
                 <RFQs />
               </AppLayout>
             } />
             <Route path="/app/rfqs/create" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer']}>
+              <AppLayout allowedRoles={['procurement_officer']}>
                 <CreateRFQ />
               </AppLayout>
             } />
             <Route path="/app/rfqs/:id" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer']}>
+              <AppLayout allowedRoles={['procurement_officer']}>
                 <RFQDetail />
               </AppLayout>
             } />
+            {/* The COO opens the award matrix and a quotation only to approve a
+                waiver; those pages show them nothing else to act on. */}
             <Route path="/app/rfqs/:id/award" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer']}>
+              <AppLayout allowedRoles={['procurement_officer', 'coo']}>
                 <AwardMatrix />
               </AppLayout>
             } />
@@ -231,39 +234,41 @@ function App() {
               </AppLayout>
             } />
             <Route path="/app/quotations" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer']}>
+              <AppLayout allowedRoles={['procurement_officer']}>
                 <Quotations />
               </AppLayout>
             } />
             <Route path="/app/quotations/:id" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer']}>
+              <AppLayout allowedRoles={['procurement_officer', 'coo']}>
                 <QuotationDetail />
               </AppLayout>
             } />
+            {/* Department heads and requesters follow a PO from its requisition
+                rather than opening the procurement PO pages. */}
             <Route path="/app/purchase-orders" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer', 'finance', 'coo', 'department_head']}>
+              <AppLayout allowedRoles={['admin', 'procurement_officer', 'finance', 'coo']}>
                 <PurchaseOrders />
               </AppLayout>
             } />
             <Route path="/app/purchase-orders/:id" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer', 'finance', 'coo', 'department_head']}>
+              <AppLayout allowedRoles={['admin', 'procurement_officer', 'finance', 'coo']}>
                 <PurchaseOrderDetail />
               </AppLayout>
             } />
 
             {/* Department Head Routes */}
             <Route path="/app/requisitions" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer', 'department_head', 'end_user']}>
+              <AppLayout allowedRoles={['procurement_officer', 'department_head', 'end_user']}>
                 <Requisitions />
               </AppLayout>
             } />
             <Route path="/app/requisitions/:id" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer', 'department_head', 'end_user']}>
+              <AppLayout allowedRoles={['procurement_officer', 'department_head', 'end_user']}>
                 <RequisitionDetail />
               </AppLayout>
             } />
             <Route path="/app/requisitions/create" element={
-              <AppLayout allowedRoles={['department_head', 'end_user', 'admin']}>
+              <AppLayout allowedRoles={['department_head', 'end_user']}>
                 <CreateRequisition />
               </AppLayout>
             } />
@@ -273,36 +278,36 @@ function App() {
               </AppLayout>
             } />
             <Route path="/app/approvals" element={
-              <AppLayout allowedRoles={['finance', 'coo', 'department_head', 'admin']}>
+              <AppLayout allowedRoles={['finance', 'coo', 'department_head']}>
                 <Approvals />
               </AppLayout>
             } />
 
             {/* Finance Routes */}
             <Route path="/app/budgets" element={
-              <AppLayout allowedRoles={['admin', 'finance']}>
+              <AppLayout allowedRoles={['finance']}>
                 <Budgets />
               </AppLayout>
             } />
             <Route path="/app/invoices" element={
-              <AppLayout allowedRoles={['admin', 'finance']}>
+              <AppLayout allowedRoles={['finance']}>
                 <Invoices />
               </AppLayout>
             } />
             <Route path="/app/invoices/:id" element={
-              <AppLayout allowedRoles={['admin', 'finance']}>
+              <AppLayout allowedRoles={['finance']}>
                 <InvoiceDetail />
               </AppLayout>
             } />
             <Route path="/app/payments" element={
-              <AppLayout allowedRoles={['admin', 'finance']}>
+              <AppLayout allowedRoles={['finance']}>
                 <Payments />
               </AppLayout>
             } />
 
             {/* Stores Routes */}
             <Route path="/app/stores-pr-review" element={
-              <AppLayout allowedRoles={['stores_officer', 'admin']}>
+              <AppLayout allowedRoles={['stores_officer']}>
                 <StoresPrReview />
               </AppLayout>
             } />
@@ -322,7 +327,7 @@ function App() {
               </AppLayout>
             } />
             <Route path="/app/stock-transfers" element={
-              <AppLayout allowedRoles={['stores_officer', 'admin']}>
+              <AppLayout allowedRoles={['stores_officer']}>
                 <StockTransfers />
               </AppLayout>
             } />

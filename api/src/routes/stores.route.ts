@@ -1,6 +1,6 @@
 import express from 'express';
 import controllers from '../controllers/index.js';
-import { protect, authorize } from '../middleware/index.js';
+import { protect, authorize, adminReadOnly } from '../middleware/index.js';
 
 const { stores } = controllers;
 const router = express.Router();
@@ -22,8 +22,10 @@ router.get(
   stores.printStoreIssueNote
 );
 
-// All remaining routes require stores_officer role
+// All remaining routes require stores_officer role. Admins may read them, but
+// receiving, issuing and moving stock are the stores officer's to sign for.
 router.use(authorize('stores_officer', 'admin'));
+router.use(adminReadOnly);
 
 // Deliveries / GRV
 router.post('/deliveries', stores.receiveGoods);

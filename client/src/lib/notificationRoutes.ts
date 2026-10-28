@@ -42,6 +42,15 @@ export function getNotificationPath(
     return '/app/authorizations';
   }
 
+  // Department heads and requesters do not open the procurement PO pages. A
+  // head's PO notifications are approval requests, so they open the queue the
+  // approval is done in (the Head of Procurement's included); a requester
+  // follows the order from their requisitions.
+  if (entity === 'PurchaseOrder') {
+    if (role === 'department_head') return '/app/approvals';
+    if (role === 'end_user') return '/app/requisitions';
+  }
+
   const routes = role === 'supplier' ? SUPPLIER_ENTITY_ROUTES : INTERNAL_ENTITY_ROUTES;
   const resolver = routes[entity];
   if (!resolver) return null;

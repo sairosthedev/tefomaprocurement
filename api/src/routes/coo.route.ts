@@ -5,9 +5,9 @@ import { protect, authorize } from '../middleware/index.js';
 const { coo } = controllers;
 const router = express.Router();
 
-// All routes require COO role
+// COO only. Admins run the system, not approvals.
 router.use(protect);
-router.use(authorize('coo', 'admin'));
+router.use(authorize('coo'));
 
 // Approvals
 router.get('/pending-approvals', coo.getPendingApprovals);
