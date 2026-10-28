@@ -28,6 +28,7 @@ import SupplierDetails from './pages/SupplierDetails';
 import RFQs from './pages/RFQs';
 import RFQDetail from './pages/RFQDetail';
 import AwardMatrix from './pages/AwardMatrix';
+import AwardSelections from './pages/AwardSelections';
 import CreateRFQ from './pages/CreateRFQ';
 import Quotations from './pages/Quotations';
 import QuotationDetail from './pages/QuotationDetail';
@@ -262,6 +263,11 @@ function App() {
             <Route path="/app/store-requisitions" element={
               <AppLayout allowedRoles={['department_head', 'stores_officer']}>
                 <StoreRequisitions />
+              </AppLayout>
+            } />
+            <Route path="/app/award-selections" element={
+              <AppLayout allowedRoles={['department_head', 'admin']}>
+                <AwardSelections />
               </AppLayout>
             } />
             <Route path="/app/approvals" element={
