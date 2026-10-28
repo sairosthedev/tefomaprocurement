@@ -22,6 +22,8 @@ export default function AwardMatrix() {
   const { user } = useAuth();
   // Officers select; only the Head of Procurement authorizes what they selected.
   const canAuthorize = user?.role === 'admin' || isProcurementHead(user);
+  // Waiving the three-quote rule is the COO's or the Head of Procurement's.
+  const canWaive = user?.role === 'coo' || isProcurementHead(user);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [data, setData] = useState<any>(null);
@@ -167,7 +169,7 @@ export default function AwardMatrix() {
                       <td key={s.supplierId} className="text-right py-3 px-4">
                         {bid ? (
                           <button
-                            disabled={busy || line.poGenerated}
+                            disabled={busy || line.poGenerated || Boolean(line.pmAuthorization?.by)}
                             onClick={() => selectLine(line, bid)}
                             className={`px-2 py-1 rounded-lg ${
                               isAwarded
@@ -212,7 +214,7 @@ export default function AwardMatrix() {
                         <ShieldCheck className="h-3.5 w-3.5" /> Authorize
                       </button>
                     )}
-                    {line.bidCount > 0 && line.bidCount < 3 && !line.waiver?.waived && (
+                    {canWaive && line.bidCount > 0 && line.bidCount < 3 && !line.waiver?.waived && (
                       <button disabled={busy} onClick={() => waiveLine(line)}
                         className="ml-2 inline-flex items-center gap-1 text-xs bg-amber-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-amber-600 disabled:opacity-50">
                         <DollarSign className="h-3.5 w-3.5" /> Waiver

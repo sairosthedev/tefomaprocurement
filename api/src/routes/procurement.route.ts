@@ -37,6 +37,18 @@ router.get('/evaluations', canReadEvaluations, procurement.getEvaluations);
 router.get('/supplier-reports', canReadEvaluations, procurement.getSupplierReports);
 router.put('/evaluations/:id/sec-approve', canSecApproveEvaluation, procurement.secApproveEvaluation);
 
+// Waivers of the three-quotation rule: COO and Head of Procurement only. They
+// sit above the procurement guard so the COO can reach them.
+const canApproveWaiver: RequestHandler = (req, res, next) => {
+  if (req.user?.role === 'coo' || isProcurementHead(req.user)) return next();
+  return res.status(403).json({
+    success: false,
+    message: 'Only the COO or the Head of Procurement can approve a waiver'
+  });
+};
+router.put('/rfqs/:id/quotation-waiver', canApproveWaiver, procurement.approveQuotationWaiver);
+router.put('/rfqs/:id/line-awards/waive', canApproveWaiver, procurement.waiveLine);
+
 // Procurement officers, admins, and the head of the Procurement department.
 router.use(authorizeProcurement);
 
@@ -98,7 +110,6 @@ router.put('/rfqs/:id/close', procurement.closeRFQ);
 // Procurement selects the winner (formerly the department head's step).
 router.put('/rfqs/:id/select-quotation', procurement.selectQuotation);
 router.put('/rfqs/:id/authorize-quotation', procurement.authorizeQuotation);
-router.put('/rfqs/:id/quotation-waiver', procurement.approveQuotationWaiver);
 
 // Per-line (split) award — compare bids by line and award to different suppliers.
 // Selection, PM authorization and per-line waivers are all procurement actions.
@@ -108,7 +119,6 @@ router.get('/rfqs/:id/ranking', procurement.getRfqRanking);
 router.get('/rfqs/:id/line-awards', procurement.getLineAwardMatrix);
 router.put('/rfqs/:id/line-awards/select', procurement.selectLine);
 router.put('/rfqs/:id/line-awards/pm-authorize', procurement.pmAuthorizeLine);
-router.put('/rfqs/:id/line-awards/waive', procurement.waiveLine);
 router.post('/rfqs/:id/line-awards/generate-pos', procurement.generateLineAwardPOs);
 router.post('/rfqs/:id/line-awards/resource-unawarded', procurement.resourceUnawardedLines);
 

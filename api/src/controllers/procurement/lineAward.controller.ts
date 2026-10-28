@@ -86,6 +86,17 @@ export const selectLine = async (req: Request, res: Response): Promise<any> => {
     if (!isProcOfficer(req.user)) {
       return res.status(403).json({ success: false, message: 'Not permitted to select for this line' });
     }
+    // Authorization is for one supplier at one price. Changing the winner
+    // afterwards would carry that sign-off over to a choice nobody authorized.
+    if (award.pmAuthorization?.by) {
+      return res.status(400).json({
+        success: false,
+        message: 'This line is already authorized; its supplier can no longer be changed'
+      });
+    }
+    if (award.poGenerated) {
+      return res.status(400).json({ success: false, message: 'A purchase order already exists for this line' });
+    }
 
     award.status = 'awarded';
     award.awardedQuotation = quotationId;
@@ -123,6 +134,12 @@ export const pmAuthorizeLine = async (req: Request, res: Response): Promise<any>
     if (award.status !== 'awarded' || !award.hodSelection?.by) {
       return res.status(400).json({ success: false, message: 'Select a supplier for this line before authorizing it' });
     }
+    if (String(award.hodSelection.by) === String(req.user!._id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'You selected this supplier, so someone else must authorize it'
+      });
+    }
 
     award.pmAuthorization = { by: req.user!._id, at: new Date() };
     await rfq.save();
@@ -144,8 +161,8 @@ export const waiveLine = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
     const { rfqLineId, reason, waiverType } = req.body;
-    if (!isProcOfficer(req.user) && req.user!.role !== 'coo') {
-      return res.status(403).json({ success: false, message: 'Waiver approval requires COO or Procurement Manager' });
+    if (!isProcurementHead(req.user) && req.user!.role !== 'coo') {
+      return res.status(403).json({ success: false, message: 'Only the COO or the Head of Procurement can approve a waiver' });
     }
     if (!reason?.trim()) {
       return res.status(400).json({ success: false, message: 'Waiver reason is required' });

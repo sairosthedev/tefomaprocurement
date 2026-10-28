@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { PurchaseOrder, PurchaseRequisition } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole } from '../../services/notification.service.js';
-import { isProcurementDepartment } from '@fossil/shared';
+import { isProcurementDepartment, isProcurementHead } from '@fossil/shared';
 
 // Normalize a populated department doc or a raw ObjectId to a hex id string.
 const toIdString = (value: any): string | undefined => {
@@ -49,9 +49,16 @@ const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> =
       requestingDept = (requisition as any)?.department || null;
     }
 
-    // Enforce same-department: only the head of the requesting department may
-    // approve here (admins bypass). If we cannot resolve the department, fall
-    // back to allowing any department head so the PO is not permanently stuck.
+    // Only the head of the requesting department may approve here. A PO with no
+    // requisition behind it has no requesting department, and letting any head
+    // approve it would let one approve another department's spend; the Head of
+    // Procurement takes those instead.
+    if (!requestingDept && req.user!.role !== 'admin' && !isProcurementHead(req.user)) {
+      return res.status(403).json({
+        success: false,
+        message: 'This purchase order has no requesting department; the Head of Procurement must approve it'
+      });
+    }
     if (req.user!.role !== 'admin' && requestingDept) {
       const sameDept = toIdString(requestingDept) === toIdString(req.user!.department);
       if (!sameDept) {

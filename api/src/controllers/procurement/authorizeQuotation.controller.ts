@@ -45,6 +45,13 @@ const authorizeQuotation = async (req: Request, res: Response): Promise<any> => 
       });
     }
 
+    if (rfq.hodSelection?.approvedBy && String(rfq.hodSelection.approvedBy) === String(req.user!._id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'You selected this quotation, so someone else must authorize it'
+      });
+    }
+
     const quotation = await Quotation.findById(qid);
     if (!quotation) {
       return res.status(404).json({ success: false, message: 'Quotation not found' });

@@ -465,7 +465,7 @@ export default function QuotationDetail() {
           // so the officer who chose is never the one who signs it off.
           const canSelect = role === 'procurement_officer' || role === 'admin' || procurementHead;
           const canPmAuthorize = role === 'admin' || procurementHead;
-          const canApproveWaiver = canSelect || role === 'coo';
+          const canApproveWaiver = procurementHead || role === 'coo';
           const reqDeptName = c.requestingDepartment?.name;
           const missingSteps: string[] = [];
           if (!c.minQuotationsMet) missingSteps.push('at least 3 quotations (or a waiver)');

@@ -29,17 +29,14 @@ const approveQuotationWaiver = async (req: Request, res: Response): Promise<any>
     }
 
     // The head of the Procurement department carries procurement-officer authority
-    // across the app, so they may approve a waiver just like a procurement officer.
-    const role = req.user!.role;
-    const isAuthorized =
-      role === 'coo' ||
-      role === 'admin' ||
-      role === 'procurement_officer' ||
-      isProcurementHead(req.user);
+    // across the app. Waiving the three-quotation rule is an exception to
+    // competition, so it is the COO's or the Head of Procurement's, never the
+    // officer running the sourcing.
+    const isAuthorized = req.user!.role === 'coo' || isProcurementHead(req.user);
     if (!isAuthorized) {
       return res.status(403).json({
         success: false,
-        message: 'Waiver approval requires COO or Procurement Manager'
+        message: 'Only the COO or the Head of Procurement can approve a waiver'
       });
     }
 

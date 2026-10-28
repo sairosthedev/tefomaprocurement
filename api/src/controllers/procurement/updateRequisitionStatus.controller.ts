@@ -11,7 +11,17 @@ const updateRequisitionStatus = async (req: Request, res: Response): Promise<any
     // Get new status from URL path if not in body
     const newStatus = status || req.path.split('/').pop();
     
-    const validStatuses = ['accepted', 'sourcing', 'quoted', 'ordered', 'completed'];
+    // Where each status may be reached from. Without this, procurement could
+    // move a draft or an unapproved requisition straight to 'ordered', skipping
+    // the department head and stores.
+    const ALLOWED_FROM: Record<string, string[]> = {
+      accepted: ['pending_acceptance'],
+      sourcing: ['accepted', 'sourcing', 'quoted'],
+      quoted: ['sourcing'],
+      ordered: ['accepted', 'sourcing', 'quoted'],
+      completed: ['ordered']
+    };
+    const validStatuses = Object.keys(ALLOWED_FROM);
     if (!validStatuses.includes(newStatus)) {
       return res.status(400).json({
         success: false,
@@ -28,6 +38,12 @@ const updateRequisitionStatus = async (req: Request, res: Response): Promise<any
     }
 
     const previousStatus = requisition.status;
+    if (!ALLOWED_FROM[newStatus].includes(previousStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: `A requisition that is ${previousStatus.replace(/_/g, ' ')} cannot be moved to ${newStatus}`
+      });
+    }
     (requisition as any).status = newStatus;
     (requisition as any).statusHistory = requisition.statusHistory || [];
     (requisition as any).statusHistory.push({

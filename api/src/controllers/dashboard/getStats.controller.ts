@@ -287,8 +287,9 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
         };
     }
 
-    // Get recent activity from audit logs
-    const auditLogs = await AuditLog.find()
+    // The audit log is system-wide, so only admins get it. Every other role,
+    // suppliers included, would otherwise receive other people's actions.
+    const auditLogs = req.user!.role !== 'admin' ? [] : await AuditLog.find()
       .sort({ createdAt: -1 })
       .limit(10)
       .populate('user', 'firstName lastName')

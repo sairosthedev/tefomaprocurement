@@ -30,6 +30,14 @@ const approveRequisition = async (req: Request, res: Response): Promise<any> => 
       });
     }
 
+    // Whoever raised a requisition cannot also be the one who approves it.
+    if (String(requisition.requestedBy) === String(req.user!._id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'You cannot approve a requisition you raised yourself'
+      });
+    }
+
     // Verify department head is approving their own department's requisition
     if (!(await canActOnDepartment(req.user, requisition.department))) {
       return res.status(403).json({
