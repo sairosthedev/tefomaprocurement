@@ -26,6 +26,71 @@ const domain = `${SBU.toLowerCase().replace(/_/g, '-')}.test`;
 const who = (slug) => `${slug}@${domain}`;
 const tag = new Date().toISOString().slice(5, 16).replace(/[-T:]/g, '');
 
+/**
+ * What a unit's work-in-progress looks like, per business profile.
+ *
+ * Dokuma buys ICT; Fossil is the group's contracting arm and buys materials,
+ * plant and PPE. Driving both from one hardcoded ICT script left Fossil with
+ * requisitions for laptops, invited from suppliers that do not exist in it.
+ *
+ * The `bidders` all share one supplier category on purpose, so the RFQ is a
+ * genuine three-way contest that category auto-invitation would have found by
+ * itself. Their price factors and delivery periods differ so the response
+ * ranking has something real to resolve: in the construction profile the
+ * cheapest bid is also much the slowest, so the winner on weighted score is
+ * neither the cheapest nor the dearest, and the recommendation has to state
+ * the trade-off.
+ */
+const PROFILES = {
+  ict: {
+    reqCategory: 'ICT-HW',
+    reqCategoryName: 'ICT Hardware',
+    bidders: [
+      { slug: 'techzone', match: 'TechZone', factor: 1.0, deliveryPeriod: 14 },
+      { slug: 'codebridge', match: 'CodeBridge', factor: 1.032, deliveryPeriod: 14 },
+      { slug: 'profix', match: 'ProFix', factor: 1.073, deliveryPeriod: 14 },
+    ],
+    basePrice: 620,
+    scenarios: [
+      { title: 'Laptops for ICT', qty: 4, price: 980, stopAt: 'draft' },
+      { title: 'Monitors for Operations', qty: 6, price: 185, stopAt: 'awaiting-hod', requester: 'requester2', head: 'opshead' },
+      { title: 'Safety boots', qty: 20, price: 46, stopAt: 'awaiting-stores' },
+      { title: 'Printer toner', qty: 12, price: 95, stopAt: 'awaiting-procurement' },
+      { title: 'Network switches', qty: 3, price: 310, source: 'rfq-open' },
+      { title: 'Workstations', qty: 8, price: 650, source: 'awaiting-award' },
+      { title: 'Servers', qty: 10, price: 700, source: 'awaiting-finance' },
+      { title: 'Tool kits', qty: 9, price: 700, source: 'awaiting-coo' },
+    ],
+  },
+
+  construction: {
+    reqCategory: 'BUILD-MAT',
+    reqCategoryName: 'Construction Materials & Aggregates',
+    bidders: [
+      { slug: 'mutarequarry', match: 'Mutare Quarry', factor: 1.0, deliveryPeriod: 28 },
+      { slug: 'hunyanisand', match: 'Hunyani Sand', factor: 1.03, deliveryPeriod: 7 },
+      { slug: 'zimcement', match: 'Zimbabwe Cement', factor: 1.12, deliveryPeriod: 14 },
+    ],
+    basePrice: 11,
+    scenarios: [
+      { title: 'Cement for Borrowdale slab', qty: 200, price: 11, stopAt: 'draft' },
+      { title: 'Hydraulic oil for the 140G grader', qty: 8, price: 58, stopAt: 'awaiting-hod', requester: 'requester2', head: 'planthead' },
+      { title: 'Safety boots and harnesses for site', qty: 20, price: 46, stopAt: 'awaiting-stores' },
+      { title: 'Shutter ply for first-floor formwork', qty: 40, price: 42, stopAt: 'awaiting-procurement' },
+      { title: 'River sand and concrete stone', qty: 60, price: 28, source: 'rfq-open' },
+      { title: 'Reinforcing bar Y12 for ground beams', qty: 300, price: 9.4, source: 'awaiting-award' },
+      { title: 'Ready-mix concrete, 25MPa', qty: 90, price: 86, source: 'awaiting-finance' },
+      { title: 'Grader blades and cutting edges', qty: 12, price: 310, source: 'awaiting-coo' },
+    ],
+  },
+};
+
+// Fossil is the contracting arm; everything else buys like an office.
+const PROFILE_KEY = SBU === 'FOSSIL' ? 'construction' : 'ict';
+const P = PROFILES[PROFILE_KEY];
+/** Head who approves a requisition raised by the default requester. */
+const DEFAULT_HEAD = PROFILE_KEY === 'construction' ? 'projhead' : 'icthead';
+
 let made = 0;
 const note = (what, ok, detail = '') => {
   if (ok) made += 1;
@@ -60,12 +125,12 @@ async function login(slug) {
 }
 
 /** Raise a requisition and walk it as far as `stopAt`. */
-async function requisition({ title, qty, price, stopAt, requester = 'requester', head = 'icthead' }) {
+async function requisition({ title, qty, price, stopAt, requester = 'requester', head = DEFAULT_HEAD }) {
   const end = await login(requester);
   const created = await call('POST', '/department/requisitions', end, {
     title, workOrder: `WO-${tag}`,
     justification: 'Demo data for testing',
-    items: [{ description: title, category: 'ICT-HW', quantity: qty, unit: 'Each', estimatedUnitPrice: price }],
+    items: [{ description: title, category: P.reqCategory, quantity: qty, unit: 'Each', estimatedUnitPrice: price }],
   });
   const id = created.data?.data?._id;
   if (!id) { note(title, false, created.data?.message || `HTTP ${created.status}`); return null; }
@@ -98,13 +163,12 @@ async function sourcing({ prId, title, qty, stopAt }) {
   // happens to return invites suppliers nobody then signs in as, and a
   // supplier cannot quote on an RFQ it was not invited to — which produced an
   // RFQ with zero quotes and an award step with nothing to award.
-  const wanted = ['TechZone', 'CodeBridge', 'ProFix'];
-  const chosen = wanted
-    .map((name) => all.find((x) => (x.companyName || '').includes(name)))
+  const chosen = P.bidders
+    .map((b) => all.find((x) => (x.companyName || '').includes(b.match)))
     .filter(Boolean);
-  if (chosen.length < 3) {
+  if (chosen.length < P.bidders.length) {
     note(`${title} — RFQ`, false,
-      `only ${chosen.length} of the three demo suppliers found; run seed:demo first`);
+      `only ${chosen.length} of the ${P.bidders.length} ${PROFILE_KEY} demo suppliers found; run seed:demo first`);
     return;
   }
   const ids = chosen.map((x) => x._id);
@@ -113,23 +177,23 @@ async function sourcing({ prId, title, qty, stopAt }) {
   const rfq = await call('POST', '/procurement/rfqs', buyer, {
     title: `RFQ — ${title}`, purchaseRequisitionId: prId, supplierIds: ids,
     submissionDeadline: deadline, status: 'open',
-    items: [{ description: title, quantity: qty, unit: 'Each', categoryName: 'ICT Hardware' }],
+    items: [{ description: title, quantity: qty, unit: 'Each', categoryName: P.reqCategoryName }],
   });
   const rfqId = rfq.data?.data?._id;
   if (!rfqId) { note(`${title} — RFQ`, false, rfq.data?.message || `HTTP ${rfq.status}`); return; }
   if (stopAt === 'rfq-open') { note(`${title} — RFQ open, suppliers can quote`, true); return; }
 
   const quotes = [];
-  const slugs = ['techzone', 'codebridge', 'profix'];
-  for (let i = 0; i < slugs.length; i++) {
-    const st = await login(slugs[i]);
-    const unitPrice = [620, 640, 665][i];
+  for (const b of P.bidders) {
+    const st = await login(b.slug);
+    const unitPrice = Math.round(P.basePrice * b.factor * 100) / 100;
     const q = await call('POST', '/supplier/quotations', st, {
-      rfqId, validityPeriod: 30, deliveryPeriod: 14, paymentTerms: 'Net 30', currency: 'USD',
+      rfqId, validityPeriod: 30, deliveryPeriod: b.deliveryPeriod,
+      paymentTerms: 'Net 30', currency: 'USD',
       items: [{ description: title, quantity: qty, unit: 'Each', unitPrice, totalPrice: unitPrice * qty, vatIncluded: false }],
     });
     if (q.data?.data?._id) quotes.push({ id: q.data.data._id, price: unitPrice });
-    else note(`${title} — quote from ${slugs[i]}`, false, q.data?.message || `HTTP ${q.status}`);
+    else note(`${title} — quote from ${b.slug}`, false, q.data?.message || `HTTP ${q.status}`);
   }
   if (stopAt === 'quotes-in') { note(`${title} — ${quotes.length} quotes received, RFQ still open`, true); return; }
 
@@ -176,25 +240,26 @@ async function sourcing({ prId, title, qty, stopAt }) {
   note(`${title} — ${poNo} fully approved, with the supplier`, true);
 }
 
-console.log(`\nFilling ${SBU} with work in progress, via ${API}\n`);
+console.log(`\nFilling ${SBU} with work in progress, via ${API}`);
+console.log(`Profile: ${PROFILE_KEY}\n`);
 
-// A spread across the cycle, so no role logs in to an empty screen.
-const a = await requisition({ title: `Laptops for ICT ${tag}`, qty: 4, price: 980, stopAt: 'draft' });
-const b = await requisition({ title: `Monitors for Operations ${tag}`, qty: 6, price: 185, stopAt: 'awaiting-hod', requester: 'requester2', head: 'opshead' });
-const c = await requisition({ title: `Safety boots ${tag}`, qty: 20, price: 46, stopAt: 'awaiting-stores' });
-const d = await requisition({ title: `Printer toner ${tag}`, qty: 12, price: 95, stopAt: 'awaiting-procurement' });
-
-const e = await requisition({ title: `Network switches ${tag}`, qty: 3, price: 310, stopAt: 'accepted' });
-if (e) await sourcing({ prId: e, title: `Network switches ${tag}`, qty: 3, stopAt: 'rfq-open' });
-
-const f = await requisition({ title: `Workstations ${tag}`, qty: 8, price: 650, stopAt: 'accepted' });
-if (f) await sourcing({ prId: f, title: `Workstations ${tag}`, qty: 8, stopAt: 'awaiting-award' });
-
-const g = await requisition({ title: `Servers ${tag}`, qty: 10, price: 700, stopAt: 'accepted' });
-if (g) await sourcing({ prId: g, title: `Servers ${tag}`, qty: 10, stopAt: 'awaiting-finance' });
-
-const h = await requisition({ title: `Tool kits ${tag}`, qty: 9, price: 700, stopAt: 'accepted' });
-if (h) await sourcing({ prId: h, title: `Tool kits ${tag}`, qty: 9, stopAt: 'awaiting-coo' });
+// A spread across the cycle, so no role logs in to an empty screen. A scenario
+// with `source` is taken to 'accepted' and then sourced; one with `stopAt`
+// parks at that stage instead.
+for (const sc of P.scenarios) {
+  const title = `${sc.title} ${tag}`;
+  const prId = await requisition({
+    title,
+    qty: sc.qty,
+    price: sc.price,
+    stopAt: sc.source ? 'accepted' : sc.stopAt,
+    ...(sc.requester ? { requester: sc.requester } : {}),
+    ...(sc.head ? { head: sc.head } : {}),
+  });
+  if (sc.source && prId) {
+    await sourcing({ prId, title, qty: sc.qty, stopAt: sc.source });
+  }
+}
 
 console.log(`\n${made} item(s) of work in progress created in ${SBU}.`);
 console.log('Each role now has something waiting: drafts and approvals for heads, a stock check for');
