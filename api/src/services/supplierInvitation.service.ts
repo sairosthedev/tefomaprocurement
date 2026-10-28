@@ -50,11 +50,83 @@ export interface InvitationProposal {
   relatedCategories: string[];
   /** Suppliers excluded by the eligibility gate, with the reason. */
   excluded: { supplierId: any; reason: string }[];
+  /**
+   * Duplicate supplier records collapsed out of the list, with the record kept.
+   *
+   * Surfaced rather than hidden: a supplier master holding the same company
+   * twice is a data problem worth fixing, and the officer should know the
+   * shortlist was shorter than the raw match suggested.
+   */
+  duplicatesCollapsed: { kept: string; dropped: string; key: string }[];
   /** True when even exact + related cannot reach the competitive minimum. */
   belowMinimum: boolean;
   minimumRequired: number;
   /** Officer-facing explanation of the shape of this proposal. */
   summary: string;
+}
+
+/**
+ * Collapse multiple records of the same company down to one.
+ *
+ * Two records of one supplier are not two competitors. Without this, a thin
+ * category could reach the minimum of three quotations by inviting the same
+ * company twice, which satisfies the rule on paper and defeats the point of it.
+ *
+ * Keyed on registration number, which is the identity the group reconciles
+ * suppliers by across business units; falls back to the normalised company name
+ * where a legacy record has no number. The better record wins: active over
+ * pending, and KYS-complete over not, so the survivor is the one that can
+ * actually be awarded.
+ */
+export function dedupeByCompany(
+  matches: MatchedSupplier[]
+): { unique: MatchedSupplier[]; collapsed: { kept: string; dropped: string; key: string }[] } {
+  const chosen = new Map<string, MatchedSupplier>();
+  const order: string[] = [];
+  const collapsed: { kept: string; dropped: string; key: string }[] = [];
+
+  const identity = (s: any): string => {
+    const reg = String(s.registrationNumber || '').trim().toUpperCase();
+    if (reg) return `reg:${reg}`;
+    return `name:${String(s.companyName || '').trim().toLowerCase().replace(/\s+/g, ' ')}`;
+  };
+
+  // Higher is better: a record that can be awarded beats one that cannot.
+  const rank = (s: any): number =>
+    (s.status === 'active' ? 2 : 0) + (s.kysComplete || s.kysExempt ? 1 : 0);
+
+  for (const m of matches) {
+    const key = identity(m.supplier);
+    const held = chosen.get(key);
+
+    if (!held) {
+      chosen.set(key, m);
+      order.push(key);
+      continue;
+    }
+
+    // Keep the stronger record, and remember both category matches so the
+    // surviving entry still explains every code that pulled it in.
+    const incomingWins = rank(m.supplier) > rank(held.supplier);
+    const keep = incomingWins ? m : held;
+    const drop = incomingWins ? held : m;
+
+    keep.matchedCategories = Array.from(
+      new Set([...keep.matchedCategories, ...drop.matchedCategories])
+    );
+    keep.matchedCategoryNames = Array.from(
+      new Set([...keep.matchedCategoryNames, ...drop.matchedCategoryNames])
+    );
+
+    chosen.set(key, keep);
+    collapsed.push({
+      kept: String(keep.supplier.companyName || keep.supplier._id),
+      dropped: String(drop.supplier._id),
+      key
+    });
+  }
+
+  return { unique: order.map((k) => chosen.get(k)!), collapsed };
 }
 
 /** Category codes carried on a requisition's line items. */
@@ -91,6 +163,7 @@ export async function proposeInvitations(
     requestedCategories: match.requestedCategories,
     relatedCategories: match.relatedCategories,
     excluded: [],
+    duplicatesCollapsed: [],
     belowMinimum: true,
     minimumRequired: minimum,
     summary: 'No categories on the requisition lines, so no supplier could be matched.'
@@ -106,8 +179,13 @@ export async function proposeInvitations(
   const eligibleIds = new Set(eligible.map((id: any) => String(id)));
 
   const keep = (m: MatchedSupplier) => eligibleIds.has(String(m.supplier._id));
-  const exact = match.exact.filter(keep);
-  const related = match.related.filter(keep);
+
+  // Dedupe across exact and related together, so a company registered under
+  // both a requested code and a related one is counted once, under the exact
+  // match that is the better reason to invite them.
+  const deduped = dedupeByCompany([...match.exact.filter(keep), ...match.related.filter(keep)]);
+  const exact = deduped.unique.filter((m) => m.matchType === 'exact');
+  const related = deduped.unique.filter((m) => m.matchType === 'related');
 
   const proposed: ProposedInvitation[] = exact.map((m) => toProposal(m, 'exact_category'));
 
@@ -128,6 +206,7 @@ export async function proposeInvitations(
     requestedCategories: match.requestedCategories,
     relatedCategories: match.relatedCategories,
     excluded: ineligible,
+    duplicatesCollapsed: deduped.collapsed,
     belowMinimum,
     minimumRequired: minimum,
     summary: buildSummary({
@@ -135,6 +214,7 @@ export async function proposeInvitations(
       topUpCount: topUp.length,
       additionalCount: rest.length,
       excludedCount: ineligible.length,
+      duplicateCount: deduped.collapsed.length,
       total,
       minimum,
       belowMinimum
@@ -175,6 +255,7 @@ function buildSummary(c: {
   topUpCount: number;
   additionalCount: number;
   excludedCount: number;
+  duplicateCount: number;
   total: number;
   minimum: number;
   belowMinimum: boolean;
@@ -194,6 +275,12 @@ function buildSummary(c: {
   }
   if (c.additionalCount > 0) {
     parts.push(`${c.additionalCount} more in related categories available if you want to widen it.`);
+  }
+  if (c.duplicateCount > 0) {
+    parts.push(
+      `${c.duplicateCount} duplicate supplier record${c.duplicateCount === 1 ? '' : 's'} collapsed — ` +
+        'the same company twice is not two quotations.'
+    );
   }
   if (c.excludedCount > 0) {
     parts.push(

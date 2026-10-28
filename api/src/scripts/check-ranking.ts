@@ -11,6 +11,7 @@
  * Exits non-zero on the first failing expectation, so it can gate a deploy.
  */
 import { scoreResponses } from '../services/quotationRanking.service.js';
+import { dedupeByCompany } from '../services/supplierInvitation.service.js';
 
 /** A fixture lookup that must hit. Fails loudly rather than reading as
  *  `undefined` and producing a confusingly-passing comparison. */
@@ -286,6 +287,70 @@ console.log('\nunstated delivery period scores zero, not full marks');
   const vague = bySupplier(r, 'NoLeadTime');
   check('unstated delivery earns no delivery points', criterion(vague, 'delivery').weighted, 0);
   check('so the supplier who stated one ranks first', must(r.responses[0], 'rank 1').supplierName, 'Stated');
+}
+
+console.log('\nduplicate supplier records collapse to one competitor');
+{
+  const m = (id: string, companyName: string, extra: Record<string, any> = {}) => ({
+    supplier: { _id: id, companyName, status: 'active', kysComplete: true, ...extra },
+    matchType: 'exact' as const,
+    matchedCategories: ['ICT-SW'],
+    matchedCategoryNames: ['ICT software'],
+    notYetActivated: false
+  });
+
+  // Same registration number, two records: one competitor, not two.
+  const byReg = dedupeByCompany([
+    m('a', 'CodeBridge Solutions', { registrationNumber: '1234/2020' }),
+    m('b', 'Codebridge Solutions (Pvt) Ltd', { registrationNumber: ' 1234/2020 ' })
+  ]);
+  check('same registration number collapses', byReg.unique.length, 1);
+  check('and the collapse is reported', byReg.collapsed.length, 1);
+
+  // No registration number: fall back to the normalised name.
+  const byName = dedupeByCompany([
+    m('a', 'CodeBridge  Solutions'),
+    m('b', 'codebridge solutions')
+  ]);
+  check('normalised name collapses', byName.unique.length, 1);
+
+  // Different companies are left alone.
+  const distinct = dedupeByCompany([
+    m('a', 'TechZone', { registrationNumber: '1/2020' }),
+    m('b', 'CodeBridge', { registrationNumber: '2/2020' })
+  ]);
+  check('distinct companies both kept', distinct.unique.length, 2);
+  check('and nothing reported collapsed', distinct.collapsed.length, 0);
+
+  // The awardable record survives, not merely the first one seen.
+  const pickBest = dedupeByCompany([
+    m('weak', 'ProFix', { registrationNumber: '9/2020', status: 'pending', kysComplete: false }),
+    m('strong', 'ProFix', { registrationNumber: '9/2020', status: 'active', kysComplete: true })
+  ]);
+  check(
+    'the awardable record is the one kept',
+    must(pickBest.unique[0], 'survivor').supplier._id,
+    'strong'
+  );
+
+  // A company matched under two codes keeps both reasons.
+  const merged = dedupeByCompany([
+    {
+      ...m('a', 'NetLink', { registrationNumber: '5/2020' }),
+      matchedCategories: ['ICT-TELECOM'],
+      matchedCategoryNames: ['Telecoms']
+    },
+    {
+      ...m('b', 'NetLink', { registrationNumber: '5/2020' }),
+      matchedCategories: ['ICT-RADIO'],
+      matchedCategoryNames: ['Radio']
+    }
+  ]);
+  check(
+    'both matched codes are kept on the survivor',
+    must(merged.unique[0], 'survivor').matchedCategories.sort(),
+    ['ICT-RADIO', 'ICT-TELECOM']
+  );
 }
 
 console.log(`\n${pass} passed, ${fail} failed\n`);

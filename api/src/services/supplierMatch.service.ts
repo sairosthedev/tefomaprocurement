@@ -60,7 +60,7 @@ export async function matchSuppliersByCategories(
 
   const suppliers = await SupplierProfile.find(query)
     .populate('user', 'email firstName lastName phone')
-    .select('companyName tradingName categories status user contactEmail kysComplete kysExempt')
+    .select('companyName tradingName registrationNumber categories status user contactEmail kysComplete kysExempt')
     .sort({ companyName: 1 });
 
   const exactMatches: MatchedSupplier[] = [];
