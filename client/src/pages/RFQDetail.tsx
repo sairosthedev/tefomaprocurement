@@ -4,6 +4,7 @@ import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
 import EquipmentDetailsView from '../components/EquipmentDetailsView';
+import RfqRankingPanel from '../components/RfqRankingPanel';
 import {
   Calendar,
   Users,
@@ -237,6 +238,16 @@ export default function RFQDetail() {
           </div>
         )}
 
+        {/* Ranked responses. Above the invitation list on purpose: once bids are
+            in, how they compare matters more than who was asked. */}
+        {!bidsAreSealed && ['closed', 'evaluating', 'awarded'].includes(rfq.status) && (
+          <RfqRankingPanel
+            rfqId={rfq._id}
+            refreshKey={rfq.status}
+            onViewQuotation={(quotationId) => navigate(`/app/quotations/${quotationId}`)}
+          />
+        )}
+
         {/* Invited Suppliers */}
         {rfq.invitedSuppliers && rfq.invitedSuppliers.length > 0 && (
           <div>
@@ -256,6 +267,18 @@ export default function RFQDetail() {
                         <CheckCircle className="h-3 w-3" />
                         Submitted
                       </span>
+                    )}
+                    {/* Why this supplier is on the list. Auto-invited names carry
+                        the match that put them here, so the list can be defended. */}
+                    {invitation.invitationReason && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {invitation.autoInvited && (
+                          <span className="inline-block px-1.5 py-0.5 mr-1.5 rounded bg-blue-50 text-blue-700 font-medium">
+                            {invitation.basis === 'related_category_topup' ? 'Auto · related' : 'Auto · category'}
+                          </span>
+                        )}
+                        {invitation.invitationReason}
+                      </p>
                     )}
                   </div>
                   {invitation.quotation && !bidsAreSealed && (

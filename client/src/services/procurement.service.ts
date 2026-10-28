@@ -9,6 +9,8 @@ export const procurementAPI: any = {
   // Category-matched suppliers for RFQ invitation: exact matches plus related
   // (same-section) suggestions, matched across all suppliers server-side.
   matchSuppliers: (params: any) => http.get('/procurement/suppliers/match', { params }),
+  getInvitationProposal: (params: any) =>
+    http.get('/procurement/suppliers/invitation-proposal', { params }),
   // Document verification — a human confirming they opened the file.
   verifySupplierDocument: (id: any, docId: any, data: any) =>
     http.put(`/procurement/suppliers/${id}/documents/${docId}/verify`, data),
@@ -55,6 +57,7 @@ export const procurementAPI: any = {
   cancelRequisition: (id: any, data: any) => http.put(`/procurement/requisitions/${id}/cancel`, data),
   cancelPurchaseOrder: (id: any, data: any) => http.put(`/procurement/purchase-orders/${id}/cancel`, data),
   // Per-line (split) award
+  getRfqRanking: (rfqId: any) => http.get(`/procurement/rfqs/${rfqId}/ranking`),
   getLineAwards: (rfqId: any) => http.get(`/procurement/rfqs/${rfqId}/line-awards`),
   hodSelectLine: (rfqId: any, data: any) => http.put(`/department/rfqs/${rfqId}/line-awards/hod-select`, data),
   pmAuthorizeLine: (rfqId: any, data: any) => http.put(`/procurement/rfqs/${rfqId}/line-awards/pm-authorize`, data),

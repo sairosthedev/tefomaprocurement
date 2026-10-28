@@ -23,11 +23,16 @@ export default function CreateRFQ() {
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [selectedSuppliers, setSelectedSuppliers] = useState<any[]>([]);
   const [supplierSearch, setSupplierSearch] = useState<any>('');
-  // Server-side category match: exact-code matches are auto-selected, related
-  // (same-section) suppliers are suggested but left unchecked.
+  // Server-side category match: the invitation proposal pre-ticks exact-code
+  // matches, topped up from related categories to the competitive minimum.
+  // Anything beyond the top-up is suggested but left unchecked.
   const [matchByType, setMatchByType] = useState<Record<string, 'exact' | 'related'>>({});
   const [matchedNames, setMatchedNames] = useState<Record<string, string[]>>({});
   const [relatedCount, setRelatedCount] = useState(0);
+  // Officer-facing explanation of how this list was arrived at, and whether it
+  // reaches the minimum number of quotations.
+  const [proposalSummary, setProposalSummary] = useState<string>('');
+  const [belowMinimum, setBelowMinimum] = useState(false);
   
   const [formData, setFormData] = useState<any>({
     title: '',
@@ -86,46 +91,53 @@ export default function CreateRFQ() {
   };
 
   /**
-   * Category matching runs on the server so it sees every active supplier, not
-   * just the ones already loaded into this page. Exact matches are pre-selected;
-   * related ones are surfaced as suggestions for the officer to opt into.
+   * Ask the server who should be invited.
+   *
+   * The same endpoint the API uses when an RFQ arrives with no suppliers named,
+   * so the list shown here is the list that would be invited either way — the
+   * screen and the server cannot disagree about who was proposed.
+   *
+   * `proposed` is pre-ticked (exact category matches, topped up from related
+   * categories to the minimum of three quotations). `additional` is the rest of
+   * the related tree, offered unticked so widening competition is deliberate.
+   * Everything stays editable: the officer is accountable for who was invited,
+   * and may know things the category tree does not.
    */
   const fetchMatches = async () => {
     if (!requisitionId) return;
     try {
-      const res = await procurementAPI.matchSuppliers({ requisitionId });
-      const { exact = [], related = [] } = res.data.data || {};
+      const res = await procurementAPI.getInvitationProposal({ requisitionId });
+      const { proposed = [], additional = [], summary = '', belowMinimum: below = false } =
+        res.data.data || {};
 
       const types: Record<string, 'exact' | 'related'> = {};
       const names: Record<string, string[]> = {};
-      for (const m of exact) {
-        types[m.supplier._id] = 'exact';
-        names[m.supplier._id] = m.matchedCategoryNames;
-      }
-      for (const m of related) {
-        types[m.supplier._id] = 'related';
-        names[m.supplier._id] = m.matchedCategoryNames;
+      for (const p of [...proposed, ...additional]) {
+        types[p.supplier._id] = p.basis === 'exact_category' ? 'exact' : 'related';
+        names[p.supplier._id] = p.matchedCategoryNames;
       }
       setMatchByType(types);
       setMatchedNames(names);
-      setRelatedCount(related.length);
+      setRelatedCount(additional.length);
+      setProposalSummary(summary);
+      setBelowMinimum(below);
 
       // Merge matched suppliers into the list so any that fell outside the
       // fetched page are still selectable here.
-      const matchedSuppliers = [...exact, ...related].map((m: any) => m.supplier);
+      const matchedSuppliers = [...proposed, ...additional].map((p: any) => p.supplier);
       setSuppliers((prev: any[]) => {
         const seen = new Set(prev.map((s) => s._id));
         return [...prev, ...matchedSuppliers.filter((s: any) => !seen.has(s._id))];
       });
 
-      if (exact.length > 0) {
+      if (proposed.length > 0) {
         setSelectedSuppliers((prev: any[]) => {
           const seen = new Set(prev.map((s: any) => s._id));
-          return [...prev, ...exact.map((m: any) => m.supplier).filter((s: any) => !seen.has(s._id))];
+          return [...prev, ...proposed.map((p: any) => p.supplier).filter((s: any) => !seen.has(s._id))];
         });
       }
     } catch (error: any) {
-      console.error('Error matching suppliers:', error);
+      console.error('Error building the invitation proposal:', error);
       // Matching is an assist, not a gate — leave manual selection working.
     }
   };
@@ -432,10 +444,14 @@ export default function CreateRFQ() {
                 <div className="flex items-start gap-2 text-sm text-amber-800">
                   <Sparkles className="h-4 w-4 mt-0.5 shrink-0" />
                   <span>
-                    Suppliers registered under this requisition's categories
-                    ({reqCategoryCodes.map((c) => getCategoryName(c)).join(', ')}) are pre-selected.
-                    {relatedCount > 0 &&
-                      ` ${relatedCount} more in related categories are suggested below.`}
+                    Invitations pre-selected from this requisition's categories
+                    ({reqCategoryCodes.map((c) => getCategoryName(c)).join(', ')}).
+                    {' '}You can add or remove anyone before sending.
+                    {/* The server's own account of how it arrived at this list,
+                        including whether it reaches the competitive minimum. */}
+                    {proposalSummary && (
+                      <span className="block mt-1 text-amber-700">{proposalSummary}</span>
+                    )}
                   </span>
                 </div>
                 {relatedCount > 0 && (
@@ -447,6 +463,17 @@ export default function CreateRFQ() {
                     Add {relatedCount} related
                   </button>
                 )}
+              </div>
+            )}
+
+            {belowMinimum && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-800">
+                <p className="font-medium">Fewer than 3 suppliers can be invited</p>
+                <p className="mt-1 text-red-700">
+                  This RFQ will not meet the minimum of three competitive quotations, so awarding it
+                  will need an approved quotation waiver. Consider widening the categories on the
+                  requisition, or registering more suppliers in this trade first.
+                </p>
               </div>
             )}
 

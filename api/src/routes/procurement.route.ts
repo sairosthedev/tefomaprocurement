@@ -47,6 +47,10 @@ router.post('/suppliers/bulk-import', procurement.bulkImportSuppliers);
 // Category-matched suppliers for RFQ invitation (exact + related). Must precede
 // '/suppliers/:id' so 'match' is not read as a supplier id.
 router.get('/suppliers/match', procurement.matchSuppliers);
+// The invitation list an RFQ would be raised with: exact category matches,
+// topped up from related categories to the competitive minimum. Pre-fills the
+// Create RFQ screen; the officer edits it before sending.
+router.get('/suppliers/invitation-proposal', procurement.getInvitationProposal);
 router.get('/suppliers/:id', procurement.getSupplierById);
 router.put('/suppliers/:id', procurement.updateSupplier);
 router.put('/suppliers/:id/approve', procurement.approveSupplier);
@@ -97,6 +101,9 @@ router.put('/rfqs/:id/quotation-waiver', procurement.approveQuotationWaiver);
 // Per-line (split) award — compare bids by line and award to different suppliers.
 // HOD line selection lives on the department route (dept heads reach it there);
 // PM authorization and per-line waivers are procurement actions.
+// Weighted ranking of whole responses, supplier against supplier. Honours the
+// sealed-bid rule: empty until the deadline passes or the RFQ is closed.
+router.get('/rfqs/:id/ranking', procurement.getRfqRanking);
 router.get('/rfqs/:id/line-awards', procurement.getLineAwardMatrix);
 router.put('/rfqs/:id/line-awards/pm-authorize', procurement.pmAuthorizeLine);
 router.put('/rfqs/:id/line-awards/waive', procurement.waiveLine);
