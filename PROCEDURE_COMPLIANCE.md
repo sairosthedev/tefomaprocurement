@@ -24,7 +24,7 @@ This report maps major procurement policy areas to the current system implementa
 | Ref | Requirement | Status | System location |
 |-----|-------------|--------|-----------------|
 | 5.1.2 | Procurement Manager authorizes quotation | ✅ Implemented | `PUT /procurement/rfqs/:id/authorize-quotation` |
-| 5.2.1 | HOD selects/approves quotation | ✅ Implemented | `PUT /department/rfqs/:id/select-quotation` + justification |
+| 5.2.1 | HOD selects/approves quotation | ⚠️ Deviation | Procurement selects instead, by Tefoma's decision (28 Oct 2026): `PUT /procurement/rfqs/:id/select-quotation` (or `/line-awards/select` per line) + justification. The department head still approves the resulting PO. |
 | 5.2.2 | HOD approves internal/PR requisition | 🟡 Partial | `approveRequisition` records dept-head sign-off; PR flow differs from BuildSmart sequence |
 | 5.5 | Supplier visits / vetting | ❌ Missing | No visit records or field evaluation |
 | 5.6 | PM + HOD approve consolidated evaluation form | ✅ Implemented | `SupplierEvaluation` + SEC approval (`secApproveEvaluation`) |

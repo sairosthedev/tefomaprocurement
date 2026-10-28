@@ -7,7 +7,7 @@ import { collectLineBids, lineFullyAuthorized, lineIdStr } from '../../services/
 
 /**
  * Generate one Purchase Order per winning supplier from an RFQ's per-line award
- * map. Only lines that are fully authorized (HOD selected + PM authorized, with
+ * map. Only lines that are fully authorized (selected + PM authorized, with
  * the min-3/waiver rule met on that line) and not yet turned into a PO are
  * included. Each PO enters the normal approval chain independently.
  */
@@ -35,7 +35,7 @@ const generateLineAwardPOs = async (req: Request, res: Response): Promise<any> =
     if (!eligible.length) {
       return res.status(400).json({
         success: false,
-        message: 'No fully-authorized, un-generated awarded lines were found. Complete HOD selection and PM authorization first.'
+        message: 'No fully-authorized, un-generated awarded lines were found. Select a supplier and authorize each line first.'
       });
     }
 

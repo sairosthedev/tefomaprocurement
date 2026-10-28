@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { procurementAPI, departmentAPI } from '../lib/api';
-import { useAuth } from '../context/AuthContext';
+import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
 import { Loader2, CheckCircle, Circle, ShieldCheck, DollarSign, Package, RefreshCw, Send, Sparkles, AlertTriangle } from 'lucide-react';
@@ -18,10 +17,6 @@ export default function AwardMatrix() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { user } = useAuth();
-  // A department head only selects the winner; authorizing, waivers and POs
-  // are procurement's, and the procurement routes refuse the role outright.
-  const isHod = user?.role === 'department_head';
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [data, setData] = useState<any>(null);
@@ -29,9 +24,7 @@ export default function AwardMatrix() {
   const load = async () => {
     try {
       setLoading(true);
-      const res = isHod
-        ? await departmentAPI.getLineAwards(id)
-        : await procurementAPI.getLineAwards(id);
+      const res = await procurementAPI.getLineAwards(id);
       setData(res.data.data);
     } catch (e: any) {
       showToast(e.response?.data?.message || 'Failed to load award matrix', 'error');
@@ -68,11 +61,11 @@ export default function AwardMatrix() {
     );
     if (!justification?.trim()) return;
     act(
-      () => procurementAPI.hodSelectLine(id, {
+      () => procurementAPI.selectLine(id, {
         rfqLineId: line.rfqLineId, quotationId: bid.quotationId, supplierId: bid.supplierId,
         unitPrice: bid.unitPrice, justification
       }),
-      'Line awarded (HOD selection recorded)'
+      'Line awarded (selection recorded)'
     );
   };
 
@@ -114,8 +107,8 @@ export default function AwardMatrix() {
   return (
     <div className="p-8 max-w-6xl mx-auto">
       <PageHeader
-        backTo={isHod ? '/app/award-selections' : `/app/rfqs/${id}`}
-        backLabel={isHod ? 'Back to award selections' : 'Back to RFQ'}
+        backTo={`/app/rfqs/${id}`}
+        backLabel="Back to RFQ"
         title="Split Award — line by line"
         subtitle="Award each line to the best supplier, authorize, then generate a PO per supplier."
       />
@@ -205,13 +198,13 @@ export default function AwardMatrix() {
                     <StatusPill line={line} />
                   </td>
                   <td className="text-right py-3 px-4 whitespace-nowrap">
-                    {!isHod && line.status === 'awarded' && !line.pmAuthorization?.by && (
+                    {line.status === 'awarded' && !line.pmAuthorization?.by && (
                       <button disabled={busy} onClick={() => authorizeLine(line)}
                         className="inline-flex items-center gap-1 text-xs bg-primary text-white px-2.5 py-1.5 rounded-lg hover:bg-primary/90 disabled:opacity-50">
                         <ShieldCheck className="h-3.5 w-3.5" /> Authorize
                       </button>
                     )}
-                    {!isHod && line.bidCount > 0 && line.bidCount < 3 && !line.waiver?.waived && (
+                    {line.bidCount > 0 && line.bidCount < 3 && !line.waiver?.waived && (
                       <button disabled={busy} onClick={() => waiveLine(line)}
                         className="ml-2 inline-flex items-center gap-1 text-xs bg-amber-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-amber-600 disabled:opacity-50">
                         <DollarSign className="h-3.5 w-3.5" /> Waiver
@@ -225,7 +218,7 @@ export default function AwardMatrix() {
         </table>
       </div>
 
-      {!isHod && <div className="flex flex-wrap items-center gap-3 mt-6">
+      <div className="flex flex-wrap items-center gap-3 mt-6">
         <button disabled={busy || !anyAwarded} onClick={generatePOs}
           className="inline-flex items-center gap-2 bg-green-600 text-white px-4 py-2.5 rounded-xl hover:bg-green-700 disabled:opacity-50">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4" />}
@@ -240,7 +233,7 @@ export default function AwardMatrix() {
           className="inline-flex items-center gap-2 text-gray-600 px-4 py-2.5 rounded-xl hover:bg-gray-100">
           <Send className="h-4 w-4" /> View purchase orders
         </button>
-      </div>}
+      </div>
     </div>
   );
 }

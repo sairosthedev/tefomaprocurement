@@ -32,8 +32,8 @@ export async function meetsMinimumQuotations(rfqId: string, rfq?: IRFQ): Promise
 export function quotationFullyAuthorized(rfq: IRFQ, quotationId: string): boolean {
   const qid = String(quotationId);
   // With an approved waiver, competitive sourcing is already excepted, so the
-  // HOD selection step is not required — Procurement Manager authorization alone
-  // is sufficient. Without a waiver, both HOD selection and PM authorization must
+  // selection step is not required — Procurement Manager authorization alone
+  // is sufficient. Without a waiver, both the selection and PM authorization must
   // reference this quotation.
   const waived = hasValidQuotationWaiver(rfq);
   const hodOk =

@@ -15,7 +15,8 @@ import {
  * Ranked responses to an RFQ, supplier against supplier.
  *
  * The score is advisory and labelled as such wherever it appears: the award is
- * still an HOD selection followed by PM authorization. The point of showing the
+ * still a justified procurement selection followed by PM
+ * authorization. The point of showing the
  * breakdown rather than just the winner is that the officer has to justify
  * whichever response they pick, and they should not have to reconstruct the
  * arithmetic to do it.

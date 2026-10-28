@@ -12,9 +12,6 @@ import approvePurchaseOrder from './approvePurchaseOrder.controller.js';
 import procApprovePurchaseOrder from './procApprovePurchaseOrder.controller.js';
 import getPendingPoApprovals from './getPendingPoApprovals.controller.js';
 import hodReviewEvaluation from './hodReviewEvaluation.controller.js';
-import hodSelectQuotation from './hodSelectQuotation.controller.js';
-import getPendingAwardSelections from './getPendingAwardSelections.controller.js';
-import { hodSelectLine, getLineAwardMatrix } from '../procurement/lineAward.controller.js';
 import searchCatalogItems from './searchCatalogItems.controller.js';
 import rejectPurchaseOrder from './rejectPurchaseOrder.controller.js';
 import getPendingEvaluations from './getPendingEvaluations.controller.js';
@@ -37,10 +34,6 @@ export default {
   getPendingPoApprovals,
   getPendingEvaluations,
   hodReviewEvaluation,
-  hodSelectQuotation,
-  getPendingAwardSelections,
-  hodSelectLine,
-  getLineAwardMatrix,
   searchCatalogItems,
   cancelRequisition,
   getRequisitionCancellationMeta

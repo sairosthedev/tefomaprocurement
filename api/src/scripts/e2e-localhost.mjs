@@ -244,11 +244,11 @@ async function main() {
     process.exit(1);
   }
 
-  const hodSelect = await api('PUT', `/department/rfqs/${ctx.rfqId}/select-quotation`, hodToken, {
+  const select = await api('PUT', `/procurement/rfqs/${ctx.rfqId}/select-quotation`, procToken, {
     quotationId: winningQuote.id,
     justification: 'Best price and delivery terms for ICT department E2E test'
   });
-  step('ICT HOD selects winning quotation', hodSelect.status === 200);
+  step('Procurement selects winning quotation', select.status === 200);
 
   const pmAuth = await api('PUT', `/procurement/rfqs/${ctx.rfqId}/authorize-quotation`, procToken, {
     quotationId: winningQuote.id,

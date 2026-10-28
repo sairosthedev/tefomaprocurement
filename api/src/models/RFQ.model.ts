@@ -98,7 +98,9 @@ export interface IPmQuotationAuthorization {
 /**
  * Per-line award record. Enables splitting a single RFQ across suppliers: each
  * RFQ line can be awarded to a different supplier's quotation, tracked and
- * authorized independently (HOD selection + PM authorization + waiver per line).
+ * authorized independently (selection + PM authorization + waiver per line).
+ * The selection is recorded as `hodSelection` for historical reasons; procurement
+ * now makes it, not the department head.
  */
 export interface ILineAward {
   rfqLineId: mongoose.Types.ObjectId | any;

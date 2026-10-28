@@ -63,7 +63,7 @@ const getQuotationById = async (req: Request, res: Response): Promise<any> => {
     }
 
     // Surface the acceptance compliance chain so
-    // the UI can guide the user through HOD selection and PM authorization.
+    // the UI can guide the user through selection and PM authorization.
     const rfq = quotation.rfq as any;
     const qid = String(quotation._id);
     const { met, count, waived } = await meetsMinimumQuotations(String(rfq._id), rfq);

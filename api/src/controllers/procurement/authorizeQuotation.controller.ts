@@ -15,7 +15,7 @@ const authorizeQuotation = async (req: Request, res: Response): Promise<any> => 
     }
 
     // With an approved waiver, the PM may authorize directly and must name the
-    // quotation (there is no HOD selection to fall back on). Otherwise the HOD
+    // quotation (there is no selection to fall back on). Otherwise the
     // selection is required and drives which quotation can be authorized.
     const waived = hasValidQuotationWaiver(rfq);
     const qid = quotationId || rfq.hodSelection?.quotation;
@@ -24,7 +24,7 @@ const authorizeQuotation = async (req: Request, res: Response): Promise<any> => 
         success: false,
         message: waived
           ? 'Select a quotation to authorize'
-          : 'HOD must select a quotation before PM authorization'
+          : 'Select a quotation before PM authorization'
       });
     }
 

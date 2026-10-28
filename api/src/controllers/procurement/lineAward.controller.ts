@@ -41,7 +41,7 @@ export const getLineAwardMatrix = async (req: Request, res: Response): Promise<a
       return {
         ...(la.toObject?.() ?? la),
         // Ranked cheapest-first, with one bid flagged `recommended`. Advisory
-        // only — the award still requires HOD selection and PM authorization.
+        // only — the award still requires a selection and PM authorization.
         bids: ranking.bids,
         bidCount: ranking.bids.length,
         lowestUnitPrice: ranking.lowestUnitPrice,
@@ -70,8 +70,8 @@ async function loadLine(id: string, rfqLineId: string) {
   return { rfq, award };
 }
 
-/** HOD selects the winning supplier/quotation for a single RFQ line. */
-export const hodSelectLine = async (req: Request, res: Response): Promise<any> => {
+/** Procurement selects the winning supplier/quotation for a single RFQ line. */
+export const selectLine = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
     const { rfqLineId, quotationId, supplierId, unitPrice, justification } = req.body;
@@ -83,9 +83,7 @@ export const hodSelectLine = async (req: Request, res: Response): Promise<any> =
     if (!rfq) return res.status(404).json({ success: false, message: 'RFQ not found' });
     if (!award) return res.status(404).json({ success: false, message: 'RFQ line not found' });
 
-    // Department-head selection is restricted like whole-quote selection; a proc
-    // officer/head may also record it (they run the sourcing).
-    if (req.user!.role !== 'department_head' && !isProcOfficer(req.user)) {
+    if (!isProcOfficer(req.user)) {
       return res.status(403).json({ success: false, message: 'Not permitted to select for this line' });
     }
 
@@ -99,13 +97,13 @@ export const hodSelectLine = async (req: Request, res: Response): Promise<any> =
 
     await createAuditLog({
       action: 'approve', entity: 'RFQ', entityId: rfq._id, user: req.user,
-      description: `HOD selected supplier for RFQ ${rfq.rfqNumber} line ${rfqLineId}`,
+      description: `Procurement selected supplier for RFQ ${rfq.rfqNumber} line ${rfqLineId}`,
       newData: { rfqLineId, quotationId, unitPrice }, req
     });
 
-    res.status(200).json({ success: true, message: 'Line awarded (HOD selection recorded).', data: award });
+    res.status(200).json({ success: true, message: 'Line awarded (selection recorded).', data: award });
   } catch (error: any) {
-    console.error('HOD select line error:', error);
+    console.error('Select line error:', error);
     res.status(500).json({ success: false, message: error.message || 'Server error' });
   }
 };
@@ -122,7 +120,7 @@ export const pmAuthorizeLine = async (req: Request, res: Response): Promise<any>
     if (!rfq) return res.status(404).json({ success: false, message: 'RFQ not found' });
     if (!award) return res.status(404).json({ success: false, message: 'RFQ line not found' });
     if (award.status !== 'awarded' || !award.hodSelection?.by) {
-      return res.status(400).json({ success: false, message: 'Line must have an HOD selection before authorization' });
+      return res.status(400).json({ success: false, message: 'Select a supplier for this line before authorizing it' });
     }
 
     award.pmAuthorization = { by: req.user!._id, at: new Date() };

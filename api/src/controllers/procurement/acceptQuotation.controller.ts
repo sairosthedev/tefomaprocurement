@@ -42,7 +42,7 @@ const acceptQuotation = async (req: Request, res: Response): Promise<any> => {
     if (!quotationFullyAuthorized(rfq, String(quotation._id))) {
       return res.status(400).json({
         success: false,
-        message: 'HOD selection with justification and Procurement Manager authorization required before acceptance'
+        message: 'A justified selection and Procurement Manager authorization are required before acceptance'
       });
     }
 

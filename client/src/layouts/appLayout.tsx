@@ -32,8 +32,7 @@ import {
   Landmark,
   ChevronLeft,
   ChevronRight,
-  LogOut,
-  Trophy
+  LogOut
 } from 'lucide-react'
 import { ChevronDown } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -67,7 +66,6 @@ const roleNavigation: any = {
   department_head: [
     { name: "Dashboard", href: "/app", icon: LayoutDashboard },
     { name: "Approvals", href: "/app/approvals", icon: CheckSquare },
-    { name: "Award Selections", href: "/app/award-selections", icon: Trophy },
     { name: "My Requisitions", href: "/app/requisitions", icon: ClipboardList },
     { name: "Store Requisitions", href: "/app/store-requisitions", icon: Package },
     { name: "Reports", href: "/app/reports", icon: BarChart3 },

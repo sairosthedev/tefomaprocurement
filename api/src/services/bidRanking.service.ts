@@ -6,8 +6,8 @@ import type { LineBid } from './lineAward.service.js';
  *
  * This does NOT award anything. It ranks the bids on a line and marks one as
  * `recommended` so the person deciding has a visible benchmark to justify
- * against — the award itself stays a human decision (HOD selects, PM
- * authorizes), which is what the procurement procedure requires.
+ * against — the award itself stays a human decision (procurement selects,
+ * the PM authorizes), which is what the procurement procedure requires.
  *
  * Price is the primary key. Supplier performance (the average of the approved
  * SupplierEvaluation scores, 1-5) only breaks near-ties, so a materially

@@ -4,7 +4,14 @@ import { meetsMinimumQuotations } from '../../services/quotationCompliance.servi
 import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole } from '../../services/notification.service.js';
 
-const hodSelectQuotation = async (req: Request, res: Response): Promise<any> => {
+/**
+ * Procurement selects the winning quotation, with a justification.
+ *
+ * This was the requesting department head's step (Rev 9 clause 5.2.1); it now
+ * sits with procurement, who run the sourcing. The record keeps its
+ * `hodSelection` name so existing RFQs read the same.
+ */
+const selectQuotation = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
     const { quotationId, justification } = req.body;
@@ -49,15 +56,15 @@ const hodSelectQuotation = async (req: Request, res: Response): Promise<any> => 
       entity: 'RFQ',
       entityId: rfq._id,
       user: req.user,
-      description: `HOD selected quotation for RFQ ${rfq.rfqNumber}`,
+      description: `Procurement selected quotation for RFQ ${rfq.rfqNumber}`,
       newData: { quotationId, justification },
       req
     });
 
     await notifyUsersByRole('procurement_officer', {
       type: 'quotation_submitted',
-      title: 'HOD selected quotation — PM authorization required',
-      message: `RFQ ${rfq.rfqNumber}: HOD selected a quote. Procurement Manager authorization required.`,
+      title: 'Quotation selected — PM authorization required',
+      message: `RFQ ${rfq.rfqNumber}: a quotation was selected. Procurement Manager authorization required.`,
       entity: 'RFQ',
       entityId: rfq._id,
       relatedUser: req.user!._id
@@ -65,13 +72,13 @@ const hodSelectQuotation = async (req: Request, res: Response): Promise<any> => 
 
     res.status(200).json({
       success: true,
-      message: 'Quotation selected by HOD. Awaiting Procurement Manager authorization.',
+      message: 'Quotation selected. Awaiting Procurement Manager authorization.',
       data: rfq
     });
   } catch (error) {
-    console.error('HOD select quotation error:', error);
+    console.error('Select quotation error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
-export default hodSelectQuotation;
+export default selectQuotation;

@@ -18,8 +18,8 @@ import {
  * take the whole thing.
  *
  * Nothing here awards anything. It produces a rank, a score breakdown and a
- * stated reason so the officer has a defensible benchmark; HOD selection and PM
- * authorization still follow.
+ * stated reason so the officer has a defensible benchmark; a justified selection
+ * and PM authorization still follow.
  *
  * Two refusals are deliberate, because a confidently wrong ranking is worse
  * than none:

@@ -92,7 +92,7 @@ export async function buildLineAwards(rfq: IRFQ): Promise<ILineAward[]> {
   });
 }
 
-/** A line is fully authorized when HOD selected and PM authorized it, with the
+/** A line is fully authorized when it has a justified selection and PM authorization, with the
  *  min-3-quotes rule met on that line OR a per-line waiver approved. */
 export function lineFullyAuthorized(award: ILineAward, bidCount: number): boolean {
   if (award.status !== 'awarded') return false;

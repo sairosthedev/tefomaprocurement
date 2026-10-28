@@ -95,16 +95,18 @@ router.get('/rfqs', procurement.getRFQs);
 router.get('/rfqs/:id', procurement.getRFQById);
 router.put('/rfqs/:id/publish', procurement.publishRFQ);
 router.put('/rfqs/:id/close', procurement.closeRFQ);
+// Procurement selects the winner (formerly the department head's step).
+router.put('/rfqs/:id/select-quotation', procurement.selectQuotation);
 router.put('/rfqs/:id/authorize-quotation', procurement.authorizeQuotation);
 router.put('/rfqs/:id/quotation-waiver', procurement.approveQuotationWaiver);
 
 // Per-line (split) award — compare bids by line and award to different suppliers.
-// HOD line selection lives on the department route (dept heads reach it there);
-// PM authorization and per-line waivers are procurement actions.
+// Selection, PM authorization and per-line waivers are all procurement actions.
 // Weighted ranking of whole responses, supplier against supplier. Honours the
 // sealed-bid rule: empty until the deadline passes or the RFQ is closed.
 router.get('/rfqs/:id/ranking', procurement.getRfqRanking);
 router.get('/rfqs/:id/line-awards', procurement.getLineAwardMatrix);
+router.put('/rfqs/:id/line-awards/select', procurement.selectLine);
 router.put('/rfqs/:id/line-awards/pm-authorize', procurement.pmAuthorizeLine);
 router.put('/rfqs/:id/line-awards/waive', procurement.waiveLine);
 router.post('/rfqs/:id/line-awards/generate-pos', procurement.generateLineAwardPOs);

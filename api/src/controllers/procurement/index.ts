@@ -30,7 +30,7 @@ import rejectQuotation from './rejectQuotation.controller.js';
 import requestQuotationRevision from './requestQuotationRevision.controller.js';
 import {
   getLineAwardMatrix,
-  hodSelectLine,
+  selectLine,
   pmAuthorizeLine,
   waiveLine
 } from './lineAward.controller.js';
@@ -57,6 +57,7 @@ import getEvaluationsDue from './getEvaluationsDue.controller.js';
 import getEvaluations from './getEvaluations.controller.js';
 import getSupplierReports from './getSupplierReports.controller.js';
 import authorizeQuotation from './authorizeQuotation.controller.js';
+import selectQuotation from './selectQuotation.controller.js';
 import approveQuotationWaiver from './approveQuotationWaiver.controller.js';
 import cancelPurchaseOrder from './cancelPurchaseOrder.controller.js';
 import { getPurchaseOrderCancellationMeta } from './getCancellationMeta.controller.js';
@@ -105,7 +106,8 @@ export default {
   rejectQuotation,
   requestQuotationRevision,
   getLineAwardMatrix,
-  hodSelectLine,
+  selectLine,
+  selectQuotation,
   pmAuthorizeLine,
   waiveLine,
   generateLineAwardPOs,

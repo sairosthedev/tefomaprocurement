@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { procurementAPI, departmentAPI } from '../lib/api';
+import { procurementAPI } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { formatCurrency } from '../lib/constants';
@@ -70,20 +70,6 @@ function Step({ done, title, children }: any) {
       </div>
     </div>
   );
-}
-
-/** HOD selection is done by the head of the department that raised the requisition. */
-function canUserHodSelect(user: any, compliance: any): boolean {
-  if (user?.role === 'admin') return true;
-  if (user?.role !== 'department_head') return false;
-
-  const reqDeptId = compliance?.requestingDepartment?.id;
-  const userDeptId = user?.department?._id || user?.department;
-
-  // RFQ not linked to a department requisition — any department head may select.
-  if (!reqDeptId) return true;
-
-  return Boolean(userDeptId && String(userDeptId) === String(reqDeptId));
 }
 
 export default function QuotationDetail() {
@@ -167,7 +153,7 @@ export default function QuotationDetail() {
     }
     try {
       setAuthorizing(true);
-      await departmentAPI.hodSelectQuotation(quotation.rfq._id, {
+      await procurementAPI.selectQuotation(quotation.rfq._id, {
         quotationId: quotation._id,
         justification: hodJustification.trim()
       });
@@ -399,7 +385,7 @@ export default function QuotationDetail() {
                   title={
                     quotation.compliance?.fullyAuthorized
                       ? 'Accept this quotation'
-                      : 'Complete HOD selection and Procurement Manager authorization first'
+                      : 'Complete the selection and Procurement Manager authorization first'
                   }
                   className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-4 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -457,19 +443,14 @@ export default function QuotationDetail() {
           const c = quotation.compliance;
           const role = user?.role;
           const procurementHead = isProcurementHead(user);
-          const canHodSelect = canUserHodSelect(user, c);
           const canPmAuthorize = role === 'procurement_officer' || role === 'admin' || procurementHead;
+          // Procurement selects the winner; the department head no longer does.
+          const canSelect = canPmAuthorize;
           const canApproveWaiver = canPmAuthorize || role === 'coo';
           const reqDeptName = c.requestingDepartment?.name;
           const missingSteps: string[] = [];
           if (!c.minQuotationsMet) missingSteps.push('at least 3 quotations (or a waiver)');
-          if (!c.hodSelected) {
-            missingSteps.push(
-              reqDeptName
-                ? `HOD selection by the ${reqDeptName} department head`
-                : 'HOD selection with justification'
-            );
-          }
+          if (!c.hodSelected) missingSteps.push('procurement selection with justification');
           if (!c.pmAuthorized) missingSteps.push('Procurement Manager authorization');
           return (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
@@ -532,13 +513,13 @@ export default function QuotationDetail() {
                   done={c.hodSelected}
                   title={
                     reqDeptName
-                      ? `HOD selection — ${reqDeptName} department`
-                      : 'HOD selection with justification'
+                      ? `Procurement selection — for ${reqDeptName}`
+                      : 'Procurement selection with justification'
                   }
                 >
                   {c.hodSelected ? (
                     <p className="text-xs text-gray-500 mt-0.5">Justification: {c.hodJustification}</p>
-                  ) : canHodSelect ? (
+                  ) : canSelect ? (
                     <div className="mt-2 space-y-2">
                       <textarea
                         value={hodJustification}
@@ -554,19 +535,12 @@ export default function QuotationDetail() {
                         className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50"
                       >
                         {authorizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCheck className="h-4 w-4" />}
-                        Select as HOD
+                        Select this quotation
                       </button>
                     </div>
                   ) : (
                     <p className="text-xs text-amber-600 mt-0.5">
-                      {reqDeptName
-                        ? `Waiting for the ${reqDeptName} department head to select this quotation with a justification.`
-                        : 'Waiting for the requesting department head to select this quotation.'}
-                      {procurementHead && reqDeptName && (
-                        <span className="block mt-1 text-gray-500">
-                          As Head of Procurement you authorize in step 3 after that department&apos;s HOD completes step 2.
-                        </span>
-                      )}
+                      Waiting for procurement to select this quotation with a justification.
                     </p>
                   )}
                 </Step>
@@ -576,15 +550,15 @@ export default function QuotationDetail() {
                     <p className="text-xs text-gray-500 mt-0.5">Authorized.</p>
                   ) : canPmAuthorize ? (
                     <div className="mt-2 space-y-2">
-                      {/* With an approved waiver, HOD selection is not required and
+                      {/* With an approved waiver, a selection is not required and
                           the PM may authorize directly. */}
                       {c.waived ? (
                         <p className="text-xs text-gray-500">
-                          Waiver approved — you can authorize directly without HOD selection.
+                          Waiver approved — you can authorize directly without a selection.
                         </p>
                       ) : !c.hodSelected ? (
                         <p className="text-xs text-amber-600">
-                          Complete HOD selection (step 2) before you can authorize here.
+                          Select this quotation (step 2) before you can authorize it.
                         </p>
                       ) : null}
                       <button
@@ -593,7 +567,7 @@ export default function QuotationDetail() {
                         disabled={authorizing || (!c.hodSelected && !c.waived)}
                         title={
                           !c.hodSelected && !c.waived
-                            ? 'HOD must select this quotation first'
+                            ? 'Select this quotation first'
                             : 'Authorize as Procurement Manager'
                         }
                         className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50"
