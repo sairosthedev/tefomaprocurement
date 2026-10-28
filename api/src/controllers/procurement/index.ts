@@ -58,6 +58,7 @@ import getEvaluations from './getEvaluations.controller.js';
 import getSupplierReports from './getSupplierReports.controller.js';
 import authorizeQuotation from './authorizeQuotation.controller.js';
 import selectQuotation from './selectQuotation.controller.js';
+import getPendingAuthorizations from './getPendingAuthorizations.controller.js';
 import approveQuotationWaiver from './approveQuotationWaiver.controller.js';
 import cancelPurchaseOrder from './cancelPurchaseOrder.controller.js';
 import { getPurchaseOrderCancellationMeta } from './getCancellationMeta.controller.js';
@@ -108,6 +109,7 @@ export default {
   getLineAwardMatrix,
   selectLine,
   selectQuotation,
+  getPendingAuthorizations,
   pmAuthorizeLine,
   waiveLine,
   generateLineAwardPOs,

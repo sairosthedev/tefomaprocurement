@@ -110,6 +110,9 @@ router.put('/rfqs/:id/close', procurement.closeRFQ);
 // Procurement selects the winner (formerly the department head's step).
 router.put('/rfqs/:id/select-quotation', procurement.selectQuotation);
 router.put('/rfqs/:id/authorize-quotation', procurement.authorizeQuotation);
+// The Head of Procurement's queue: selections (whole-quote and per-line)
+// still waiting on their authorization.
+router.get('/authorizations/pending', procurement.getPendingAuthorizations);
 
 // Per-line (split) award — compare bids by line and award to different suppliers.
 // Selection, PM authorization and per-line waivers are all procurement actions.

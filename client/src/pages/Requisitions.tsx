@@ -14,6 +14,7 @@ import ViewButton from '../components/ViewButton';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
+import { isProcurementHead } from '@fossil/shared';
 
 const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
@@ -75,8 +76,19 @@ export default function Requisitions() {
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(emptyPagination());
 
-  const isProcurement = user?.role === 'procurement_officer' || user?.role === 'admin';
+  // The Head of Procurement works the procurement list. It also carries their
+  // own department's requisitions at every stage (the API adds them), and on
+  // those they keep the department head's actions: edit/submit drafts and the
+  // pending_hod approval.
+  const procHead = isProcurementHead(user);
+  const isProcurement = user?.role === 'procurement_officer' || user?.role === 'admin' || procHead;
   const isDeptHead = user?.role === 'department_head' || user?.role === 'admin';
+  const ownDeptId = String(user?.department?._id || user?.department || '');
+  const isOwnDept = (req: any) =>
+    procHead && !!ownDeptId && String(req?.department?._id || req?.department || '') === ownDeptId;
+  // Department-side actions: everyone outside procurement, plus the Head of
+  // Procurement on their own department's requisitions.
+  const actsAsDepartment = (req: any) => !isProcurement || isOwnDept(req);
 
   useEffect(() => {
     setPage(1);
@@ -228,7 +240,7 @@ export default function Requisitions() {
   // An approver can drop line items they don't want purchased before approving.
   const canEditItems =
     selectedRequisition &&
-    ((selectedRequisition.status === 'pending_hod' && isDeptHead) ||
+    ((selectedRequisition.status === 'pending_hod' && isDeptHead && actsAsDepartment(selectedRequisition)) ||
       (selectedRequisition.status === 'pending_acceptance' && isProcurement));
 
   const handleRemoveItem = async (item: any) => {
@@ -269,7 +281,7 @@ export default function Requisitions() {
             : 'Track your purchase requests'
         }
         actions={
-          !isProcurement ? (
+          !isProcurement || procHead ? (
             <button
               onClick={() => navigate('/app/requisitions/create')}
               className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors"
@@ -297,7 +309,8 @@ export default function Requisitions() {
           <Tabs
             tabs={[
               { value: '', label: 'All', icon: FileText },
-              ...(!isProcurement ? [{ value: 'draft', label: 'Draft', icon: Clock }] : []),
+              ...(!isProcurement || procHead ? [{ value: 'draft', label: 'Draft', icon: Clock }] : []),
+              ...(procHead ? [{ value: 'pending_hod', label: 'Pending HOD Approval', icon: Clock }] : []),
               { value: 'pending_acceptance', label: 'Pending Acceptance', icon: Clock },
               { value: 'accepted', label: 'Accepted', icon: CheckCircle },
               { value: 'rejected', label: 'Rejected', icon: XCircle },
@@ -516,7 +529,7 @@ export default function Requisitions() {
                         />
                         
                         {/* Department Head Actions */}
-                        {!isProcurement && req.status === 'draft' && (
+                        {actsAsDepartment(req) && req.status === 'draft' && (
                           <>
                             <button
                               onClick={() => navigate(`/app/requisitions/edit/${req._id}`)}
@@ -554,7 +567,7 @@ export default function Requisitions() {
                         )}
 
                         {/* HOD Approval Gate */}
-                        {isDeptHead && !isProcurement && req.status === 'pending_hod' && (
+                        {isDeptHead && actsAsDepartment(req) && req.status === 'pending_hod' && (
                           <>
                             <button
                               onClick={() => openActionModal(req, 'approve')}
@@ -603,7 +616,7 @@ export default function Requisitions() {
                         )}
 
                         {/* Request from Stores Button - Show when items are delivered to stores but not yet collected */}
-                        {!isProcurement && req.itemsDeliveredToStores && !req.itemsCollected && (
+                        {actsAsDepartment(req) && req.itemsDeliveredToStores && !req.itemsCollected && (
                           <button
                             onClick={() => handleRequestFromStores(req)}
                             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
@@ -614,7 +627,7 @@ export default function Requisitions() {
                           </button>
                         )}
                         {/* Collected Badge - Show when items have been collected */}
-                        {!isProcurement && req.itemsCollected && (
+                        {actsAsDepartment(req) && req.itemsCollected && (
                           <span className="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-lg">
                             ✓ Collected
                           </span>
@@ -800,7 +813,7 @@ export default function Requisitions() {
                         ? `Ordered items have been received and are now available in stores for ${selectedRequisition.department?.name || 'the requesting department'}.`
                         : 'Your ordered items have been received and are now available in stores. You can request them using the button below.'}
                     </p>
-                    {!isProcurement && (
+                    {actsAsDepartment(selectedRequisition) && (
                       <button
                         onClick={() => {
                           handleRequestFromStores(selectedRequisition);

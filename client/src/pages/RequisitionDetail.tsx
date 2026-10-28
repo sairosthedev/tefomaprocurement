@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import api, { departmentAPI, procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency } from '../lib/constants';
-import { PR_CANCELLATION_REASONS } from '@fossil/shared';
+import { PR_CANCELLATION_REASONS, COO_APPROVAL_THRESHOLD_USD, isProcurementHead } from '@fossil/shared';
 import PageHeader from '../components/PageHeader';
 import CancelWorkflowModal from '../components/CancelWorkflowModal';
 import EquipmentDetailsView from '../components/EquipmentDetailsView';
@@ -56,6 +56,31 @@ const statusLabels: any = {
   cancelled: 'Cancelled'
 };
 
+const poStatusStyles: Record<string, { label: string; className: string }> = {
+  pending_dept_hod: { label: 'Awaiting department head', className: 'bg-purple-100 text-purple-700' },
+  pending_hod: { label: 'Awaiting department head', className: 'bg-purple-100 text-purple-700' },
+  pending_proc_hod: { label: 'Awaiting Head of Procurement', className: 'bg-fuchsia-100 text-fuchsia-700' },
+  pending_finance: { label: 'Awaiting Finance', className: 'bg-amber-100 text-amber-700' },
+  pending_coo: { label: 'Awaiting COO', className: 'bg-indigo-100 text-indigo-700' },
+  pending_approvals: { label: '⏳ Pending Approvals', className: 'bg-blue-100 text-blue-700' },
+  approved: { label: '✅ Approved', className: 'bg-green-100 text-green-700' },
+  issued: { label: '📦 Issued', className: 'bg-blue-100 text-blue-700' },
+  rejected: { label: '❌ Rejected', className: 'bg-red-100 text-red-700' }
+};
+
+const rfqStatusLabels: Record<string, string> = {
+  draft: 'RFQ in draft',
+  open: 'Open for quotes',
+  closed: 'Closed for quotes',
+  evaluating: 'Under evaluation',
+  awarded: 'Awarded',
+  cancelled: 'RFQ cancelled'
+};
+
+// The current chain, one approver after another. Legacy pending_approvals POs
+// (finance and COO in parallel) keep their own progress panel below.
+const SEQUENTIAL_PO_STATUSES = ['pending_dept_hod', 'pending_hod', 'pending_proc_hod', 'pending_finance', 'pending_coo'];
+
 const priorityColors: any = {
   low: 'bg-gray-100 text-gray-600',
   medium: 'bg-blue-100 text-blue-600',
@@ -78,8 +103,16 @@ export default function RequisitionDetail() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelling, setCancelling] = useState(false);
 
-  const isProcurement = user?.role === 'procurement_officer' || user?.role === 'admin';
-  const isDepartment = user?.role === 'department_head' || user?.role === 'admin';
+  // The Head of Procurement reads requisitions through the procurement
+  // endpoint like an officer; on their own department's requisitions they
+  // also keep the department head's controls.
+  const procHead = isProcurementHead(user);
+  const isProcurement = user?.role === 'procurement_officer' || user?.role === 'admin' || procHead;
+  const ownDeptId = String(user?.department?._id || user?.department || '');
+  const isOwnDept =
+    !!ownDeptId && String(requisition?.department?._id || requisition?.department || '') === ownDeptId;
+  const isDepartment =
+    (user?.role === 'department_head' && (!procHead || isOwnDept)) || user?.role === 'admin';
   const mayCancelRequisition = canCancelRequisition(user, requisition);
 
   // An approver may drop line items they don't want purchased before approving.
@@ -570,20 +603,45 @@ export default function RequisitionDetail() {
                   <label className="text-xs text-gray-600">Status</label>
                   <p className="mt-1">
                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                      requisition.purchaseOrder.status === 'pending_approvals' ? 'bg-blue-100 text-blue-700' :
-                      requisition.purchaseOrder.status === 'approved' ? 'bg-green-100 text-green-700' :
-                      requisition.purchaseOrder.status === 'issued' ? 'bg-blue-100 text-blue-700' :
-                      requisition.purchaseOrder.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                      'bg-amber-100 text-amber-700'
+                      poStatusStyles[requisition.purchaseOrder.status]?.className || 'bg-amber-100 text-amber-700'
                     }`}>
-                      {requisition.purchaseOrder.status === 'pending_approvals' ? '⏳ Pending Approvals' :
-                       requisition.purchaseOrder.status === 'approved' ? '✅ Approved' :
-                       requisition.purchaseOrder.status === 'issued' ? '📦 Issued' :
-                       requisition.purchaseOrder.status === 'rejected' ? '❌ Rejected' :
-                       requisition.purchaseOrder.status}
+                      {poStatusStyles[requisition.purchaseOrder.status]?.label || requisition.purchaseOrder.status}
                     </span>
                   </p>
                 </div>
+                {SEQUENTIAL_PO_STATUSES.includes(requisition.purchaseOrder.status) && (() => {
+                  const po = requisition.purchaseOrder;
+                  const steps = [
+                    { label: 'Department head', done: !!po.deptHodApproved },
+                    { label: 'Head of Procurement', done: !!po.procHodApproved },
+                    { label: 'Finance', done: !!po.financeApproved },
+                    // The COO step only applies above the threshold.
+                    ...((po.totalAmount || 0) >= COO_APPROVAL_THRESHOLD_USD
+                      ? [{ label: 'COO', done: !!po.cooApproved }]
+                      : [])
+                  ];
+                  const current = steps.find((s) => !s.done);
+                  return (
+                    <div className="bg-white rounded-lg p-3 border border-blue-100 space-y-2">
+                      <p className="text-xs font-medium text-gray-700">Approval Progress:</p>
+                      {steps.map((step) => (
+                        <div key={step.label} className="flex items-center justify-between">
+                          <span className={`text-xs ${step === current ? 'font-medium text-amber-700' : 'text-gray-700'}`}>
+                            {step.label}
+                          </span>
+                          {step.done ? (
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <Clock className={`h-4 w-4 ${step === current ? 'text-amber-600' : 'text-gray-300'}`} />
+                          )}
+                        </div>
+                      ))}
+                      {current && (
+                        <p className="text-xs text-amber-700 italic pt-1">Awaiting {current.label}</p>
+                      )}
+                    </div>
+                  );
+                })()}
                 {requisition.purchaseOrder.status === 'pending_approvals' && (
                   <div className="bg-white rounded-lg p-3 border border-blue-100 space-y-3">
                     <p className="text-xs font-medium text-gray-700">Approval Progress:</p>
@@ -657,7 +715,7 @@ export default function RequisitionDetail() {
                   <p className="text-sm text-green-800">
                     Your ordered items have been received and are available in stores.
                   </p>
-                  {!isProcurement && (
+                  {(!isProcurement || (procHead && isOwnDept)) && (
                     <button
                       onClick={() => navigate('/app/store-requisitions')}
                       className="w-full py-2.5 px-4 bg-primary text-white text-sm font-medium rounded-xl hover:bg-primary-dark transition-colors flex items-center justify-center gap-2"
@@ -697,9 +755,20 @@ export default function RequisitionDetail() {
                 <h3 className="font-semibold text-gray-900">Related RFQ</h3>
               </div>
               <div className="space-y-2">
-                <p className="font-mono font-medium text-primary text-sm">
-                  {requisition.rfq.rfqNumber}
-                </p>
+                {/* Only procurement can open the RFQ pages; everyone else
+                    follows progress from the summary below. */}
+                {isProcurement ? (
+                  <Link
+                    to={`/app/rfqs/${requisition.rfq._id}`}
+                    className="font-mono font-medium text-primary text-sm hover:underline"
+                  >
+                    {requisition.rfq.rfqNumber}
+                  </Link>
+                ) : (
+                  <p className="font-mono font-medium text-primary text-sm">
+                    {requisition.rfq.rfqNumber}
+                  </p>
+                )}
                 {requisition.rfq.title && (
                   <p className="text-xs text-gray-600">{requisition.rfq.title}</p>
                 )}
@@ -708,6 +777,51 @@ export default function RequisitionDetail() {
                     Deadline: {new Date(requisition.rfq.submissionDeadline).toLocaleDateString()}
                   </p>
                 )}
+                {(() => {
+                  const sourcing = requisition.rfq.sourcing;
+                  if (!sourcing) return null;
+                  const lines = sourcing.lines;
+                  const winner = sourcing.winner;
+                  const progress: string[] = [
+                    rfqStatusLabels[sourcing.status] || sourcing.status,
+                    `${sourcing.quotationCount} ${sourcing.quotationCount === 1 ? 'quote' : 'quotes'} received`
+                  ];
+                  if (sourcing.sealed) {
+                    progress.push('Bids stay sealed until the RFQ closes');
+                  } else if (lines) {
+                    progress.push(`${lines.awarded} of ${lines.total} lines awarded`);
+                    if (lines.awaitingAuthorization > 0) {
+                      progress.push(`${lines.awaitingAuthorization} awaiting Head of Procurement authorization`);
+                    }
+                    if (lines.authorized > 0) progress.push(`${lines.authorized} authorized`);
+                    if (lines.poGenerated > 0) progress.push(`${lines.poGenerated} on purchase orders`);
+                  } else if (winner) {
+                    progress.push(`Winner selected: ${winner.supplierName || winner.quotationNumber || 'supplier'}`);
+                    progress.push(
+                      sourcing.authorized
+                        ? 'Authorized by Head of Procurement'
+                        : 'Awaiting Head of Procurement authorization'
+                    );
+                  } else if (sourcing.quotationCount > 0 && sourcing.status !== 'cancelled') {
+                    progress.push('No winner selected yet');
+                  }
+                  return (
+                    <div className="pt-2 mt-2 border-t border-gray-100 space-y-1.5">
+                      <p className="text-xs text-gray-700">{progress.join(' · ')}</p>
+                      {winner?.justification && !lines && (
+                        <p className="text-xs text-gray-500 italic">“{winner.justification}”</p>
+                      )}
+                      {isProcurement && !sourcing.sealed && (lines || winner) && (
+                        <Link
+                          to={lines ? `/app/rfqs/${requisition.rfq._id}/award` : `/app/quotations/${winner.quotationId}`}
+                          className="inline-block text-xs font-medium text-primary hover:underline"
+                        >
+                          {lines ? 'Open award matrix' : 'View selected quotation'}
+                        </Link>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}

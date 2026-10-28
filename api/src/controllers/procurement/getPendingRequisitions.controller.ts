@@ -1,19 +1,35 @@
 import type { Request, Response } from 'express';
 
 import { PurchaseRequisition, PurchaseOrder, Quotation, Delivery, StoreRequisition } from '../../models/index.js';
+import { isProcurementHead } from '@fossil/shared';
+import { resolveUserDepartmentIds } from '../../lib/departmentScope.js';
+
+// Statuses procurement works with, across every department.
+const PROCUREMENT_STATUSES = ['pending_acceptance', 'accepted', 'sourcing', 'quoted', 'ordered', 'completed'];
 
 const getPendingRequisitions = async (req: Request, res: Response): Promise<any> => {
   try {
     const { status, search, page = 1, limit = 20 } = req.query as Record<string, any>;
 
     const query: any = { isDeleted: false };
-    
-    // Default to pending_acceptance for the requisitions page
+
+    // The Head of Procurement works from this list but is still the head of
+    // their own department, so its requisitions show here at every stage —
+    // including drafts and pending_hod, which they raise and approve. Other
+    // departments' requisitions stay limited to the procurement stages.
+    const ownDeptIds = isProcurementHead(req.user) ? await resolveUserDepartmentIds(req.user) : [];
+    const ownDept = ownDeptIds.length ? { department: { $in: ownDeptIds } } : null;
+
     if (status) {
       query.status = status;
+      if (ownDept && !PROCUREMENT_STATUSES.includes(String(status)) && status !== 'rejected') {
+        Object.assign(query, ownDept);
+      }
+    } else if (ownDept) {
+      query.$and = [{ $or: [{ status: { $in: PROCUREMENT_STATUSES } }, ownDept] }];
     } else {
       // Show pending_acceptance by default, or all non-draft (including completed to show delivered items)
-      query.status = { $in: ['pending_acceptance', 'accepted', 'sourcing', 'quoted', 'ordered', 'completed'] };
+      query.status = { $in: PROCUREMENT_STATUSES };
     }
 
     if (search) {

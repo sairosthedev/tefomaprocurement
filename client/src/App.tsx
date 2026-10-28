@@ -45,6 +45,7 @@ import CreateRequisition from './pages/CreateRequisition';
 import StoreRequisitions from './pages/StoreRequisitions';
 import StoresPrReview from './pages/StoresPrReview';
 import Approvals from './pages/Approvals';
+import Authorizations from './pages/Authorizations';
 
 // Finance Pages
 import Budgets from './pages/Budgets';
@@ -220,6 +221,13 @@ function App() {
             <Route path="/app/rfqs/:id/award" element={
               <AppLayout allowedRoles={['admin', 'procurement_officer']}>
                 <AwardMatrix />
+              </AppLayout>
+            } />
+            {/* Head of Procurement's queue; they hold procurement_officer
+                through ProtectedRoute, and only their menu links here. */}
+            <Route path="/app/authorizations" element={
+              <AppLayout allowedRoles={['procurement_officer']}>
+                <Authorizations />
               </AppLayout>
             } />
             <Route path="/app/quotations" element={

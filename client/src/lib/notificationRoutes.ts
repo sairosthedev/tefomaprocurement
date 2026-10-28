@@ -35,6 +35,13 @@ export function getNotificationPath(
 
   if (!entity) return null;
 
+  // "Quotation selected — your authorization required" was once filed against
+  // the RFQ, whose page has no authorize control. New ones point at the
+  // quotation; older ones go to the queue where the authorization is done.
+  if (role !== 'supplier' && entity === 'RFQ' && notification.type === 'quotation_submitted') {
+    return '/app/authorizations';
+  }
+
   const routes = role === 'supplier' ? SUPPLIER_ENTITY_ROUTES : INTERNAL_ENTITY_ROUTES;
   const resolver = routes[entity];
   if (!resolver) return null;

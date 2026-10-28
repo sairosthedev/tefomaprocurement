@@ -4,7 +4,7 @@ import { procurementAPI, financeAPI, cooAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency } from '../lib/constants';
-import { PO_CANCELLATION_REASONS } from '@fossil/shared';
+import { PO_CANCELLATION_REASONS, isProcurementHead } from '@fossil/shared';
 import PageHeader from '../components/PageHeader';
 import CancelWorkflowModal from '../components/CancelWorkflowModal';
 import { canCancelPurchaseOrder, purchaseOrderCancelApiBase } from '../lib/cancellationAccess';
@@ -45,7 +45,9 @@ export default function PurchaseOrderDetail() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelling, setCancelling] = useState(false);
 
-  const isProcurement = user?.role === 'procurement_officer' || user?.role === 'admin';
+  // The Head of Procurement is stored as a department_head but raises POs too.
+  const isProcurement =
+    user?.role === 'procurement_officer' || user?.role === 'admin' || isProcurementHead(user);
   const isFinance = user?.role === 'finance';
   const isCOO = user?.role === 'coo';
   const mayCancelPo = canCancelPurchaseOrder(user, po);

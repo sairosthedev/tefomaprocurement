@@ -10,7 +10,10 @@ const toIdString = (value: any): string | undefined => {
 
 /**
  * Pending PO approvals for department heads.
- *  - Procurement HOD: POs awaiting the Procurement-HOD step (pending_proc_hod).
+ *  - Procurement HOD: POs awaiting the Procurement-HOD step (pending_proc_hod),
+ *    plus the first HOD step for the Procurement department's own requisitions
+ *    and for POs with no requisition (approvePurchaseOrder leaves those to
+ *    them) — otherwise those sit in no one's queue.
  *  - Other department heads: POs awaiting the requesting-department HOD step
  *    (pending_dept_hod / legacy pending_hod) whose requisition belongs to their
  *    department.
@@ -32,12 +35,6 @@ const getPendingPoApprovals = async (req: Request, res: Response): Promise<any> 
         isDeleted: false,
         status: { $in: ['pending_dept_hod', 'pending_proc_hod', 'pending_hod', 'pending_approvals'] }
       };
-    } else if (procHead) {
-      filter = {
-        isDeleted: false,
-        status: 'pending_proc_hod',
-        procHodApproved: false
-      };
     } else {
       // Requesting-department HODs: only their own department's POs at the
       // first HOD step. Resolve which requisitions belong to this department.
@@ -45,13 +42,19 @@ const getPendingPoApprovals = async (req: Request, res: Response): Promise<any> 
       const reqs = deptId
         ? await PurchaseRequisition.find({ department: deptId, isDeleted: false }).select('_id')
         : [];
-      const reqIds = reqs.map((r) => r._id);
-      filter = {
-        isDeleted: false,
+      const reqIds: any[] = reqs.map((r) => r._id);
+      if (procHead) reqIds.push(null);
+      const deptStep = {
         status: { $in: ['pending_dept_hod', 'pending_hod', 'pending_approvals'] },
         deptHodApproved: false,
         purchaseRequisition: { $in: reqIds }
       };
+      filter = procHead
+        ? {
+            isDeleted: false,
+            $or: [{ status: 'pending_proc_hod', procHodApproved: false }, deptStep]
+          }
+        : { isDeleted: false, ...deptStep };
     }
 
     const [total, orders] = await Promise.all([

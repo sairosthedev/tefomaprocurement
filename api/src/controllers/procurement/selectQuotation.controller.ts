@@ -63,6 +63,8 @@ const selectQuotation = async (req: Request, res: Response): Promise<any> => {
     });
 
     // Authorization is the Head of Procurement's, so tell them, not the officers.
+    // The notification points at the quotation: that page carries the
+    // authorize control, the RFQ page does not.
     const heads = (
       await User.find({ role: 'department_head', status: 'active', isDeleted: false })
         .select('_id email firstName lastName role department')
@@ -72,8 +74,8 @@ const selectQuotation = async (req: Request, res: Response): Promise<any> => {
       type: 'quotation_submitted',
       title: 'Quotation selected — your authorization required',
       message: `RFQ ${rfq.rfqNumber}: a quotation was selected. Head of Procurement authorization required.`,
-      entity: 'RFQ',
-      entityId: rfq._id,
+      entity: 'Quotation',
+      entityId: quotation._id,
       relatedUser: req.user!._id
     });
 

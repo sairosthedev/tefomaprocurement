@@ -104,6 +104,7 @@ const roleNavigation: any = {
   // department-head approval queue.
   procurement_head: [
     { name: "Dashboard", href: "/app", icon: LayoutDashboard },
+    { name: "Authorizations", href: "/app/authorizations", icon: ShieldCheck },
     { name: "Approvals", href: "/app/approvals", icon: CheckSquare },
     { name: "Requisitions", href: "/app/requisitions", icon: ClipboardList },
     { name: "RFQs", href: "/app/rfqs", icon: FileSearch },

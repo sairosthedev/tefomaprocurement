@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { PurchaseRequisition, PurchaseOrder, Quotation, Delivery, StoreRequisition } from '../../models/index.js';
+import { getRfqSourcingProgress } from '../../services/rfqProgress.service.js';
 import { buildDepartmentFilter } from '../../lib/departmentScope.js';
 
 const getRequisitionById = async (req: Request, res: Response): Promise<any> => {
@@ -32,12 +33,18 @@ const getRequisitionById = async (req: Request, res: Response): Promise<any> => 
       });
     }
 
+    // Where sourcing stands, so the requester can follow it without access to
+    // the RFQ itself.
+    if (requisition.rfq) {
+      (requisition.rfq as any).sourcing = await getRfqSourcingProgress(requisition.rfq._id, req.user);
+    }
+
     // Find PO linked directly or via RFQ
     let po = await PurchaseOrder.findOne({
       purchaseRequisition: id,
       isDeleted: false
     })
-      .select('poNumber status financeApproved cooApproved financeApprovedBy cooApprovedBy financeApprovedAt cooApprovedAt purchaseRequisition rfq quotation supplier items totalAmount')
+      .select('poNumber status deptHodApproved procHodApproved financeApproved cooApproved financeApprovedBy cooApprovedBy financeApprovedAt cooApprovedAt purchaseRequisition rfq quotation supplier items totalAmount')
       .populate('supplier', 'companyName')
       .populate('financeApprovedBy', 'firstName lastName')
       .populate('cooApprovedBy', 'firstName lastName')
@@ -60,7 +67,7 @@ const getRequisitionById = async (req: Request, res: Response): Promise<any> => 
           quotation: { $in: quotationIds },
           isDeleted: false
         })
-          .select('poNumber status financeApproved cooApproved financeApprovedBy cooApprovedBy financeApprovedAt cooApprovedAt purchaseRequisition rfq quotation supplier items totalAmount')
+          .select('poNumber status deptHodApproved procHodApproved financeApproved cooApproved financeApprovedBy cooApprovedBy financeApprovedAt cooApprovedAt purchaseRequisition rfq quotation supplier items totalAmount')
           .populate('supplier', 'companyName')
           .populate('financeApprovedBy', 'firstName lastName')
           .populate('cooApprovedBy', 'firstName lastName')
