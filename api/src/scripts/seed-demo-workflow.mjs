@@ -50,7 +50,6 @@ const PROFILES = {
       { slug: 'codebridge', match: 'CodeBridge', factor: 1.032, deliveryPeriod: 14 },
       { slug: 'profix', match: 'ProFix', factor: 1.073, deliveryPeriod: 14 },
     ],
-    basePrice: 620,
     scenarios: [
       { title: 'Laptops for ICT', qty: 4, price: 980, stopAt: 'draft' },
       { title: 'Monitors for Operations', qty: 6, price: 185, stopAt: 'awaiting-hod', requester: 'requester2', head: 'opshead' },
@@ -71,7 +70,6 @@ const PROFILES = {
       { slug: 'hunyanisand', match: 'Hunyani Sand', factor: 1.03, deliveryPeriod: 7 },
       { slug: 'zimcement', match: 'Zimbabwe Cement', factor: 1.12, deliveryPeriod: 14 },
     ],
-    basePrice: 11,
     scenarios: [
       { title: 'Cement for Borrowdale slab', qty: 200, price: 11, stopAt: 'draft' },
       { title: 'Hydraulic oil for the 140G grader', qty: 8, price: 58, stopAt: 'awaiting-hod', requester: 'requester2', head: 'planthead' },
@@ -154,7 +152,7 @@ async function requisition({ title, qty, price, stopAt, requester = 'requester',
 }
 
 /** Put an RFQ out and collect quotes, optionally awarding and raising a PO. */
-async function sourcing({ prId, title, qty, stopAt }) {
+async function sourcing({ prId, title, qty, price, stopAt }) {
   const buyer = await login('buyer');
   const suppliers = await call('GET', '/procurement/suppliers?status=active&limit=50', buyer);
   const all = suppliers.data?.data || [];
@@ -186,7 +184,10 @@ async function sourcing({ prId, title, qty, stopAt }) {
   const quotes = [];
   for (const b of P.bidders) {
     const st = await login(b.slug);
-    const unitPrice = Math.round(P.basePrice * b.factor * 100) / 100;
+    // Quote against what is actually being bought. A single flat base price
+    // across every scenario put USD 11 grader blades on an RFQ, which reads as
+    // a broken system to whoever is testing it.
+    const unitPrice = Math.round(price * b.factor * 100) / 100;
     const q = await call('POST', '/supplier/quotations', st, {
       rfqId, validityPeriod: 30, deliveryPeriod: b.deliveryPeriod,
       paymentTerms: 'Net 30', currency: 'USD',
@@ -257,7 +258,7 @@ for (const sc of P.scenarios) {
     ...(sc.head ? { head: sc.head } : {}),
   });
   if (sc.source && prId) {
-    await sourcing({ prId, title, qty: sc.qty, stopAt: sc.source });
+    await sourcing({ prId, title, qty: sc.qty, price: sc.price, stopAt: sc.source });
   }
 }
 

@@ -30,6 +30,8 @@
     "sbu:domains": "tsx src/scripts/set-sbu-domains.ts",
     "migrate:sbu-reset": "tsx src/scripts/migrate-sbu-reset.ts",
     "seed:demo": "tsx src/scripts/seed-demo.ts",
+    "retire:demo": "tsx src/scripts/retire-demo-profile.ts",
+    "retire:demo:prod": "cross-env APP_ENV=production tsx src/scripts/retire-demo-profile.ts",
     "seed:demo-workflow": "node src/scripts/seed-demo-workflow.mjs",
     "seed:demo:prod": "cross-env APP_ENV=production tsx src/scripts/seed-demo.ts",
     "seed:sbu-registry:prod": "cross-env APP_ENV=production tsx src/scripts/seed-sbu-registry.ts",
