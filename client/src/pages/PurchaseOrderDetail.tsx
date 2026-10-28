@@ -46,8 +46,8 @@ export default function PurchaseOrderDetail() {
   const [cancelling, setCancelling] = useState(false);
 
   // The Head of Procurement is stored as a department_head but raises POs too.
-  const isProcurement =
-    user?.role === 'procurement_officer' || user?.role === 'admin' || isProcurementHead(user);
+  // Admins read POs but take no step on them.
+  const isProcurement = user?.role === 'procurement_officer' || isProcurementHead(user);
   const isFinance = user?.role === 'finance';
   const isCOO = user?.role === 'coo';
   const mayCancelPo = canCancelPurchaseOrder(user, po);
@@ -264,34 +264,7 @@ export default function PurchaseOrderDetail() {
               </span>
             )}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Dept HOD */}
-            <div className={`p-4 rounded-lg ${po.deptHodApproved ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
-              <div className="flex items-center gap-2 mb-2">
-                {po.deptHodApproved ? (
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                ) : (
-                  <Clock className="h-5 w-5 text-amber-600" />
-                )}
-                <span className="font-medium text-gray-900">1. Dept HOD</span>
-              </div>
-              {po.deptHodApproved ? (
-                <div>
-                  <p className="text-sm text-green-700">Approved</p>
-                  {po.deptHodApprovedBy && (
-                    <p className="text-xs text-gray-600 mt-1">
-                      By: {po.deptHodApprovedBy.firstName} {po.deptHodApprovedBy.lastName}
-                    </p>
-                  )}
-                  {po.deptHodApprovedAt && (
-                    <p className="text-xs text-gray-600">On: {new Date(po.deptHodApprovedAt).toLocaleDateString()}</p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-amber-700">Pending</p>
-              )}
-            </div>
-
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Procurement HOD */}
             <div className={`p-4 rounded-lg ${po.procHodApproved ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
               <div className="flex items-center gap-2 mb-2">
@@ -300,7 +273,7 @@ export default function PurchaseOrderDetail() {
                 ) : (
                   <Clock className="h-5 w-5 text-amber-600" />
                 )}
-                <span className="font-medium text-gray-900">2. Procurement HOD</span>
+                <span className="font-medium text-gray-900">1. Procurement HOD</span>
               </div>
               {po.procHodApproved ? (
                 <div>
@@ -327,7 +300,7 @@ export default function PurchaseOrderDetail() {
                 ) : (
                   <Clock className="h-5 w-5 text-amber-600" />
                 )}
-                <span className="font-medium text-gray-900">3. Finance Approval</span>
+                <span className="font-medium text-gray-900">2. Finance Approval</span>
               </div>
               {po.financeApproved ? (
                 <div>
@@ -362,7 +335,7 @@ export default function PurchaseOrderDetail() {
                 ) : (
                   <CheckCircle className="h-5 w-5 text-gray-400" />
                 )}
-                <span className="font-medium text-gray-900">4. COO Authorization</span>
+                <span className="font-medium text-gray-900">3. COO Authorization</span>
               </div>
               {po.cooApproved ? (
                 <div>

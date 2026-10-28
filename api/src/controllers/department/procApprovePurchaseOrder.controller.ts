@@ -14,7 +14,7 @@ const procApprovePurchaseOrder = async (req: Request, res: Response): Promise<an
     const { id } = req.params;
     const { comments } = req.body;
 
-    if (req.user!.role !== 'admin' && !isProcurementHead(req.user)) {
+    if (!isProcurementHead(req.user)) {
       return res.status(403).json({
         success: false,
         message: 'Only the Head of Procurement may authorize this step'
@@ -30,13 +30,6 @@ const procApprovePurchaseOrder = async (req: Request, res: Response): Promise<an
       return res.status(400).json({
         success: false,
         message: 'Purchase order is not awaiting Procurement HOD approval'
-      });
-    }
-
-    if (!po.deptHodApproved) {
-      return res.status(400).json({
-        success: false,
-        message: 'Requesting-department HOD approval is required first'
       });
     }
 
