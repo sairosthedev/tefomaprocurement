@@ -4,7 +4,8 @@ export const GLOBAL_SITE_ROLES: readonly string[] = Object.freeze([
   'admin',
   'procurement_officer',
   'finance',
-  'coo'
+  'coo',
+  'stores_officer'
 ]);
 
 export function canAccessAllSites(user: any): boolean {
