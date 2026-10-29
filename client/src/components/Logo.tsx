@@ -1,6 +1,6 @@
-const LOGO_IMAGE = '/sourceline-logo.png';
+const LOGO_IMAGE = '/procureline-logo.png';
 const MARK_IMAGE = '/sourceline-mark.png';
-const PRODUCT_NAME = 'Sourceline';
+const PRODUCT_NAME = 'Procureline';
 
 const Logo = ({
   variant = 'default', // 'default', 'compact', 'icon'
@@ -10,11 +10,11 @@ const Logo = ({
   const Fallback = ({ size = 'text-xl' }: { size?: string }) => (
     <div className="flex items-center gap-2">
       <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
-        <span className={`${size} font-bold text-primary`}>S</span>
+        <span className={`${size} font-bold text-primary`}>P</span>
       </div>
       {showText && (
         <div className="text-xl font-bold text-primary">
-          Source<span className="text-brand-blue">line</span>
+          Procure<span className="text-brand-blue">line</span>
         </div>
       )}
     </div>
@@ -35,7 +35,7 @@ const Logo = ({
             }}
           />
           <div style={{ display: 'none' }} className="h-10 w-10 bg-primary/10 rounded-lg items-center justify-center">
-            <span className="text-lg font-bold text-primary">S</span>
+            <span className="text-lg font-bold text-primary">P</span>
           </div>
         </div>
       </div>
@@ -43,7 +43,7 @@ const Logo = ({
   }
 
   if (variant === 'compact') {
-    // Sidebar version — the sidebar is navy and so is the "Source" wordmark,
+    // Sidebar version — the sidebar is navy and so is the "Procure" wordmark,
     // so seat the logo on a white card for contrast.
     return (
       <div className={`w-full ${className}`}>
@@ -61,7 +61,7 @@ const Logo = ({
             />
             <div style={{ display: 'none' }} className="items-center">
               <span className="text-lg font-bold text-primary">
-                Source<span className="text-brand-blue">line</span>
+                Procure<span className="text-brand-blue">line</span>
               </span>
             </div>
           </div>

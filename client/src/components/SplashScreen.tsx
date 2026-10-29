@@ -117,8 +117,8 @@ export function SplashScreen({ onComplete }: { onComplete: () => void }) {
           {/* Logo with spring entrance */}
           <div className="sl-logo drop-shadow-2xl">
             <img
-              src="/sourceline-logo.png"
-              alt="Sourceline"
+              src="/procureline-logo.png"
+              alt="Procureline"
               className="w-52 sm:w-64 md:w-72"
               style={{ filter: 'brightness(0) invert(1)' }}
             />

@@ -75,7 +75,7 @@ button.bg-primary[type="submit"]:hover {
   background-color: #020E20 !important;
 }
 
-/* Navy → royal blue accent bar, echoes the gradient in the Sourceline mark */
+/* Navy → royal blue accent bar, echoes the gradient in the Procureline mark */
 .brand-accent-bar {
   background: linear-gradient(90deg, #051A38 0%, #005CE6 100%);
 }

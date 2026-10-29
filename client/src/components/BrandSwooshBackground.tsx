@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Full-page decorative background echoing the Sourceline mark:
+ * Full-page decorative background echoing the Procureline mark:
  * white page with a few light logo tiles.
  */
 export default function BrandSwooshBackground() {
