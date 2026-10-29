@@ -5,7 +5,12 @@ import { useAuth } from '../context/AuthContext';
 import { isProcurementHead } from '@fossil/shared';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
+import { formatCurrency } from '../lib/constants';
+import { getCurrentSbuCurrency } from '../lib/sbu';
 import { Loader2, CheckCircle, Circle, ShieldCheck, DollarSign, Package, RefreshCw, Send, Sparkles, AlertTriangle } from 'lucide-react';
+
+const bidPrice = (amount: number, currency?: string) =>
+  formatCurrency(amount, currency || getCurrentSbuCurrency());
 
 const WAIVER_TYPES = [
   { value: 'single_source', label: 'Single/sole source' },
@@ -62,10 +67,10 @@ export default function AwardMatrix() {
     const context = bid.isLowest
       ? ' (lowest bid)'
       : bid.percentAboveLowest
-      ? ` (+${bid.percentAboveLowest}% above the lowest bid of ${line.lowestUnitPrice})`
+      ? ` (+${bid.percentAboveLowest}% above the lowest bid of ${bidPrice(line.lowestUnitPrice, bid.currency)})`
       : '';
     const justification = window.prompt(
-      `Justification for awarding "${line.description}" to ${bid.supplierName} at ${bid.unitPrice}${context}:`
+      `Justification for awarding "${line.description}" to ${bid.supplierName} at ${bidPrice(bid.unitPrice, bid.currency)}${context}:`
     );
     if (!justification?.trim()) return;
     act(
@@ -171,7 +176,7 @@ export default function AwardMatrix() {
                       <td key={s.supplierId} className="text-right py-3 px-4">
                         {bid && !canSelect ? (
                           <span className={isAwarded ? 'px-2 py-1 rounded-lg bg-green-100 text-green-800 font-semibold' : 'px-2 py-1 text-gray-800'}>
-                            {bid.unitPrice}
+                            {bidPrice(bid.unitPrice, bid.currency)}
                             {isAwarded && <CheckCircle className="inline h-3.5 w-3.5 ml-1" />}
                           </span>
                         ) : bid ? (
@@ -194,7 +199,7 @@ export default function AwardMatrix() {
                             {bid.recommended && !isAwarded && (
                               <Sparkles className="inline h-3 w-3 mr-1 text-amber-600" />
                             )}
-                            {bid.unitPrice}
+                            {bidPrice(bid.unitPrice, bid.currency)}
                             {!bid.notComparable && !bid.isLowest && bid.percentAboveLowest > 0 && (
                               <span className="ml-1 text-[10px] text-gray-500">
                                 +{bid.percentAboveLowest}%

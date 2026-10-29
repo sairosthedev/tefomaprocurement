@@ -4,6 +4,8 @@ import { procurementAPI } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { formatCurrency } from '../lib/constants';
+import { getCurrentSbuCurrency } from '../lib/sbu';
+import { COO_POLICY_NOTE } from '../lib/cooApproval';
 import { isProcurementHead } from '@fossil/shared';
 import PageHeader from '../components/PageHeader';
 import EquipmentDetailsView from '../components/EquipmentDetailsView';
@@ -627,7 +629,7 @@ export default function QuotationDetail() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <label className="text-sm text-gray-500">Quotation Number</label>
-              <p className="text-sm font-medium text-gray-900 mt-1 font-mono">{quotation.quotationNumber}</p>
+              <p className="text-sm font-medium text-gray-900 mt-1 font-mono break-all">{quotation.quotationNumber}</p>
             </div>
             <div>
               <label className="text-sm text-gray-500">Status</label>
@@ -638,12 +640,12 @@ export default function QuotationDetail() {
             <div>
               <label className="text-sm text-gray-500">Total Amount</label>
               <p className="text-sm font-medium text-gray-900 mt-1">
-                {formatCurrency(quotation.totalAmount || 0)}
+                {formatCurrency(quotation.totalAmount || 0, quotation.currency || getCurrentSbuCurrency())}
               </p>
             </div>
             <div>
               <label className="text-sm text-gray-500">Currency</label>
-              <p className="text-sm font-medium text-gray-900 mt-1">{quotation.currency || 'ZAR'}</p>
+              <p className="text-sm font-medium text-gray-900 mt-1">{quotation.currency || getCurrentSbuCurrency()}</p>
             </div>
           </div>
         </div>
@@ -745,10 +747,10 @@ export default function QuotationDetail() {
                       <td className="py-3 px-4 text-right text-sm text-gray-900">{item.quantity}</td>
                       <td className="py-3 px-4 text-right text-sm text-gray-900">{item.unit}</td>
                       <td className="py-3 px-4 text-right text-sm text-gray-900">
-                        {formatCurrency(item.unitPrice || 0)}
+                        {formatCurrency(item.unitPrice || 0, quotation.currency || getCurrentSbuCurrency())}
                       </td>
                       <td className="py-3 px-4 text-right text-sm font-medium text-gray-900">
-                        {formatCurrency((item.quantity || 0) * (item.unitPrice || 0))}
+                        {formatCurrency((item.quantity || 0) * (item.unitPrice || 0), quotation.currency || getCurrentSbuCurrency())}
                       </td>
                     </tr>
                   ))}
@@ -759,7 +761,7 @@ export default function QuotationDetail() {
                       Total Amount:
                     </td>
                     <td className="py-3 px-4 text-right font-bold text-lg text-gray-900">
-                      {formatCurrency(quotation.totalAmount || 0)}
+                      {formatCurrency(quotation.totalAmount || 0, quotation.currency || getCurrentSbuCurrency())}
                     </td>
                   </tr>
                 </tfoot>
@@ -920,7 +922,7 @@ export default function QuotationDetail() {
               onChange={(e: any) => setReviseTarget(e.target.value)}
               rows={2}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              placeholder="e.g. Target unit price USD 550, or a total below USD 5,000"
+              placeholder={`e.g. Target unit price ${quotation?.currency || getCurrentSbuCurrency()} 550, or a lower total`}
             />
           </div>
         </div>
@@ -961,7 +963,7 @@ export default function QuotationDetail() {
             </div>
             <div>
               <p className="text-xs text-gray-500 mb-0.5">Total Amount</p>
-              <p className="font-medium text-gray-900">{formatCurrency(quotation?.totalAmount || 0)} {quotation?.currency}</p>
+              <p className="font-medium text-gray-900">{formatCurrency(quotation?.totalAmount || 0, quotation?.currency || getCurrentSbuCurrency())}</p>
             </div>
             <div>
               <p className="text-xs text-gray-500 mb-0.5">Payment Terms</p>
@@ -971,6 +973,7 @@ export default function QuotationDetail() {
               <p className="text-xs text-gray-500 mb-0.5">Delivery Period</p>
               <p className="font-medium text-gray-900">{quotation?.deliveryPeriod ? `${quotation.deliveryPeriod} days` : '—'}</p>
             </div>
+            <p className="col-span-2 text-xs text-gray-500">{COO_POLICY_NOTE}</p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>

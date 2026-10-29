@@ -9,6 +9,7 @@ import PageHeader from '../../components/PageHeader';
 import Pagination from '../../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
 import { formatCurrency } from '../../lib/constants';
+import { getCurrentSbuCurrency } from '../../lib/sbu';
 
 const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
@@ -188,7 +189,7 @@ export default function MyPurchaseOrders() {
                     </td>
                     <td className="py-4 px-6">
                       <span className="font-semibold text-gray-900">
-                        {formatCurrency(po.totalAmount, po.currency || 'USD')}
+                        {formatCurrency(po.totalAmount, po.currency || getCurrentSbuCurrency())}
                       </span>
                     </td>
                     <td className="py-4 px-6 text-sm text-gray-500">
@@ -263,7 +264,7 @@ export default function MyPurchaseOrders() {
                 <strong>PO Number:</strong> {selectedPO.poNumber}
               </p>
               <p className="text-sm text-blue-800 mt-1">
-                <strong>Total Value:</strong> {formatCurrency(selectedPO.totalAmount, selectedPO.currency || 'USD')}
+                <strong>Total Value:</strong> {formatCurrency(selectedPO.totalAmount, selectedPO.currency || getCurrentSbuCurrency())}
               </p>
             </div>
 
@@ -369,7 +370,7 @@ export default function MyPurchaseOrders() {
               <div>
                 <label className="text-sm text-gray-500">Total Value</label>
                 <p className="text-xl font-bold text-gray-900">
-                  {formatCurrency(selectedPO.totalAmount, selectedPO.currency || 'USD')}
+                  {formatCurrency(selectedPO.totalAmount, selectedPO.currency || getCurrentSbuCurrency())}
                 </p>
               </div>
               <div>
@@ -412,10 +413,10 @@ export default function MyPurchaseOrders() {
                         <td className="py-3 px-4 text-sm font-medium">{item.description}</td>
                         <td className="py-3 px-4 text-sm">{item.quantity} {item.unit}</td>
                         <td className="py-3 px-4 text-sm">
-                          {formatCurrency(item.unitPrice, selectedPO.currency || 'USD')}
+                          {formatCurrency(item.unitPrice, selectedPO.currency || getCurrentSbuCurrency())}
                         </td>
                         <td className="py-3 px-4 text-sm font-medium">
-                          {formatCurrency(item.totalPrice || item.quantity * item.unitPrice, selectedPO.currency || 'USD')}
+                          {formatCurrency(item.totalPrice || item.quantity * item.unitPrice, selectedPO.currency || getCurrentSbuCurrency())}
                         </td>
                       </tr>
                     ))}

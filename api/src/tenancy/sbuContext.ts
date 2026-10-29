@@ -15,6 +15,8 @@ export interface SbuRef {
   dbName: string;
   /** Env var holding a dedicated cluster URI, for SBUs not on the shared cluster. */
   connectionUriEnv?: string;
+  /** Currency the SBU trades and reports in. Money documents default to it. */
+  baseCurrency?: string;
 }
 
 interface SbuStore {
@@ -75,7 +77,8 @@ function resolveLegacySbu(): SbuRef | null {
 
   legacySbu = {
     code: process.env.DEFAULT_SBU_CODE?.trim().toUpperCase() || 'FOSSIL',
-    dbName
+    dbName,
+    baseCurrency: process.env.DEFAULT_SBU_CURRENCY?.trim().toUpperCase() || 'USD'
   };
   return legacySbu;
 }
@@ -119,4 +122,9 @@ export function resetSbuContextForTests(): void {
   ambientSbu = null;
   legacySbu = undefined;
   warnedLegacy = false;
+}
+
+/** The currency money documents default to in the current SBU. */
+export function currentBaseCurrency(): string {
+  return getSbu()?.baseCurrency || 'USD';
 }

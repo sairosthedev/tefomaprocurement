@@ -14,6 +14,7 @@ import PageHeader from '../../components/PageHeader';
 import Pagination from '../../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
 import { formatCurrency } from '../../lib/constants';
+import { getCurrentSbuCurrency } from '../../lib/sbu';
 
 const statusColors: any = {
   submitted: 'bg-blue-100 text-blue-700',
@@ -143,7 +144,7 @@ export default function MySubmittedQuotations() {
               <p className="text-xl font-bold text-purple-700">
                 {formatCurrency(
                   quotations.reduce((sum: any, q: any) => sum + (q.totalAmount || 0), 0),
-                  quotations[0]?.currency || 'USD'
+                  quotations[0]?.currency || getCurrentSbuCurrency()
                 )}
               </p>
             </div>
@@ -224,9 +225,9 @@ export default function MySubmittedQuotations() {
                     <td className="py-4 px-6">
                       <div>
                         <span className="font-semibold text-gray-900 text-lg">
-                          {formatCurrency(quote.totalAmount, quote.currency || 'USD')}
+                          {formatCurrency(quote.totalAmount, quote.currency || getCurrentSbuCurrency())}
                         </span>
-                        <p className="text-xs text-gray-500 mt-1">{quote.currency || 'USD'}</p>
+                        <p className="text-xs text-gray-500 mt-1">{quote.currency || getCurrentSbuCurrency()}</p>
                       </div>
                     </td>
                     <td className="py-4 px-6">
@@ -351,12 +352,12 @@ export default function MySubmittedQuotations() {
               <div>
                 <label className="text-sm text-gray-500 font-medium">Total Amount</label>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {formatCurrency(selectedQuotation.totalAmount, selectedQuotation.currency || 'USD')}
+                  {formatCurrency(selectedQuotation.totalAmount, selectedQuotation.currency || getCurrentSbuCurrency())}
                 </p>
               </div>
               <div>
                 <label className="text-sm text-gray-500 font-medium">Currency</label>
-                <p className="text-gray-900 mt-1">{selectedQuotation.currency || 'USD'}</p>
+                <p className="text-gray-900 mt-1">{selectedQuotation.currency || getCurrentSbuCurrency()}</p>
               </div>
             </div>
 
@@ -367,19 +368,19 @@ export default function MySubmittedQuotations() {
                 <div>
                   <label className="text-xs text-gray-500">Subtotal</label>
                   <p className="text-lg font-semibold text-gray-900">
-                    {formatCurrency(selectedQuotation.subtotal || selectedQuotation.totalAmount, selectedQuotation.currency || 'USD')}
+                    {formatCurrency(selectedQuotation.subtotal || selectedQuotation.totalAmount, selectedQuotation.currency || getCurrentSbuCurrency())}
                   </p>
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">VAT Amount</label>
                   <p className="text-lg font-semibold text-gray-900">
-                    {formatCurrency(selectedQuotation.vatAmount || 0, selectedQuotation.currency || 'USD')}
+                    {formatCurrency(selectedQuotation.vatAmount || 0, selectedQuotation.currency || getCurrentSbuCurrency())}
                   </p>
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">Grand Total</label>
                   <p className="text-xl font-bold text-primary">
-                    {formatCurrency(selectedQuotation.totalAmount, selectedQuotation.currency || 'USD')}
+                    {formatCurrency(selectedQuotation.totalAmount, selectedQuotation.currency || getCurrentSbuCurrency())}
                   </p>
                 </div>
               </div>
@@ -436,11 +437,11 @@ export default function MySubmittedQuotations() {
                         <td className="py-3 px-4 text-sm text-gray-600">{item.quantity}</td>
                         <td className="py-3 px-4 text-sm text-gray-600">{item.unit}</td>
                         <td className="py-3 px-4 text-sm font-medium text-gray-900">
-                          {formatCurrency(item.unitPrice, selectedQuotation.currency || 'USD')}
+                          {formatCurrency(item.unitPrice, selectedQuotation.currency || getCurrentSbuCurrency())}
                         </td>
                         <td className="py-3 px-4 text-sm text-gray-600">{item.brand || '-'}</td>
                         <td className="py-3 px-4 text-sm font-semibold text-gray-900 text-right">
-                          {formatCurrency(item.totalPrice || (item.quantity * item.unitPrice), selectedQuotation.currency || 'USD')}
+                          {formatCurrency(item.totalPrice || (item.quantity * item.unitPrice), selectedQuotation.currency || getCurrentSbuCurrency())}
                         </td>
                       </tr>
                     ))}
@@ -451,7 +452,7 @@ export default function MySubmittedQuotations() {
                         Grand Total:
                       </td>
                       <td className="py-3 px-4 text-lg font-bold text-primary text-right">
-                        {formatCurrency(selectedQuotation.totalAmount, selectedQuotation.currency || 'USD')}
+                        {formatCurrency(selectedQuotation.totalAmount, selectedQuotation.currency || getCurrentSbuCurrency())}
                       </td>
                     </tr>
                   </tfoot>

@@ -1,4 +1,6 @@
 import mongoose, { Schema, type Document } from 'mongoose';
+import { SUPPORTED_CURRENCY_CODES } from '@fossil/shared';
+import { currentBaseCurrency } from '../tenancy/sbuContext.js';
 import { nextNumber } from '../services/numbering.service.js';
 
 export interface IInvoiceItem {
@@ -59,6 +61,8 @@ export interface IInvoice extends Document {
   vatAmount: number;
   totalAmount: number;
   amountPaid: number;
+  /** Always the PO's currency: a supplier invoices in the currency it was ordered in. */
+  currency: string;
   balanceDue: number;
   invoiceDate: Date;
   dueDate?: Date;
@@ -150,6 +154,12 @@ const InvoiceSchema = new Schema<IInvoice>({
   subtotal: { type: Number, required: true, default: 0 },
   vatAmount: { type: Number, default: 0 },
   totalAmount: { type: Number, required: true, default: 0 },
+  currency: {
+    type: String,
+    enum: [...SUPPORTED_CURRENCY_CODES],
+    required: true,
+    default: currentBaseCurrency
+  },
   amountPaid: { type: Number, default: 0 },
   balanceDue: { type: Number, default: 0 },
   invoiceDate: { type: Date, required: true },

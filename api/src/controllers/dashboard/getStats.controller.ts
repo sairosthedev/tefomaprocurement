@@ -1,8 +1,9 @@
 import type { Request, Response } from 'express';
-import { isProcurementHead } from '@fossil/shared';
+import { isProcurementHead, formatCurrency } from '@fossil/shared';
 import { User, SupplierProfile, RFQ, Quotation, PurchaseOrder, Inventory, PurchaseRequisition, AuditLog, Department, Site } from '../../models/index.js';
 import { buildRoleReportCharts } from '../../lib/reportAnalytics.js';
 import { resolveUserDepartmentIds } from '../../lib/departmentScope.js';
+import { currentBaseCurrency } from '../../tenancy/sbuContext.js';
 
 // Every status a PO can wait at on its way through approval. The legacy
 // single-queue statuses stay in so older orders are still counted.
@@ -121,7 +122,7 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
           totalPOs: { value: totalPOs, label: 'All Purchase Orders', href: '/app/purchase-orders' },
           pendingRequisitions: { value: pendingRequisitions, label: 'Requisitions In Progress' },
           monthlyPOValue: {
-            value: `$${(monthlyPOValue[0]?.total || 0).toLocaleString()}`,
+            value: formatCurrency(monthlyPOValue[0]?.total || 0, currentBaseCurrency()),
             label: 'PO Value (30 days)'
           },
           kysIncomplete: { value: kysIncomplete, label: 'KYS Incomplete', href: '/app/suppliers/analytics/compliance' },
@@ -174,7 +175,7 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
         stats = {
           pendingApproval: { value: pendingFinanceApproval, label: 'Pending Approval' },
           approved: { value: financeApproved, label: 'Approved POs' },
-          totalValue: { value: `$${(totalPOValue[0]?.total || 0).toLocaleString()}`, label: 'Total PO Value' },
+          totalValue: { value: formatCurrency(totalPOValue[0]?.total || 0, currentBaseCurrency()), label: 'Total PO Value' },
           totalPOs: { value: totalPOs, label: 'All Purchase Orders' }
         };
         break;
@@ -193,7 +194,7 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
         stats = {
           pendingApproval: { value: pendingCOOApproval, label: 'Pending Approval' },
           approved: { value: cooApprovedCount, label: 'Approved by COO' },
-          pendingValue: { value: `$${(majorPOValue[0]?.total || 0).toLocaleString()}`, label: 'Pending Value' },
+          pendingValue: { value: formatCurrency(majorPOValue[0]?.total || 0, currentBaseCurrency()), label: 'Pending Value' },
           totalPOs: { value: totalPOs, label: 'All Purchase Orders' }
         };
         break;
@@ -379,8 +380,8 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
             isDeleted: false
           });
           additionalStats = {
-            pendingValue: { value: `$${(pendingFinanceValue[0]?.total || 0).toLocaleString()}`, label: 'Pending Value' },
-            monthlyValue: { value: `$${(monthlyPOValue[0]?.total || 0).toLocaleString()}`, label: 'Monthly PO Value' },
+            pendingValue: { value: formatCurrency(pendingFinanceValue[0]?.total || 0, currentBaseCurrency()), label: 'Pending Value' },
+            monthlyValue: { value: formatCurrency(monthlyPOValue[0]?.total || 0, currentBaseCurrency()), label: 'Monthly PO Value' },
             approvedPOs: { value: financeApprovedCount, label: 'Finance Approved' },
             totalPOs: { value: totalPOs, label: 'All Purchase Orders' }
           };
@@ -394,12 +395,17 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
           ]);
           const majorPOs = await PurchaseOrder.countDocuments({
             status: 'pending_coo',
-            totalAmount: { $gte: 50000 },
+            // "Major" is measured in USD so a rand-denominated SBU is held to
+            // the same bar; POs assessed before FX conversion fall back to totalAmount.
+            $or: [
+              { totalAmountUsd: { $gte: 50000 } },
+              { totalAmountUsd: { $exists: false }, totalAmount: { $gte: 50000 } }
+            ],
             isDeleted: false
           });
           const cooApprovedCount = await PurchaseOrder.countDocuments({ cooApproved: true, isDeleted: false });
           additionalStats = {
-            pendingValue: { value: `$${(pendingCOOValue[0]?.total || 0).toLocaleString()}`, label: 'Pending Value' },
+            pendingValue: { value: formatCurrency(pendingCOOValue[0]?.total || 0, currentBaseCurrency()), label: 'Pending Value' },
             majorPOs: { value: majorPOs, label: 'Major POs Pending' },
             cooApproved: { value: cooApprovedCount, label: 'COO Approved' },
             totalPOs: { value: totalPOs, label: 'All Purchase Orders' }
@@ -426,7 +432,7 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
             isDeleted: false
           });
           additionalStats = {
-            inventoryValue: { value: `$${(totalInventoryValue[0]?.total || 0).toLocaleString()}`, label: 'Inventory Value' },
+            inventoryValue: { value: formatCurrency(totalInventoryValue[0]?.total || 0, currentBaseCurrency()), label: 'Inventory Value' },
             itemsNeedingReorder: { value: itemsNeedingReorder, label: 'Items Needing Reorder' },
             receivedThisMonth: { value: receivedThisMonth, label: 'Received This Month' },
             pendingDeliveries: { value: pendingDeliveriesForStores, label: 'Pending Deliveries' }

@@ -88,12 +88,7 @@ const generateLineAwardPOs = async (req: Request, res: Response): Promise<any> =
       const vatAmount = Math.round(subtotal * 0.15 * 100) / 100;
       const totalAmount = subtotal + vatAmount;
 
-      const count = await PurchaseOrder.countDocuments();
-      const year = new Date().getFullYear();
-      const poNumber = `PO-${year}-${String(count + 1).padStart(5, '0')}`;
-
       const po = await PurchaseOrder.create({
-        poNumber,
         quotation: quotation._id,
         rfq: rfq._id,
         purchaseRequisition: purchaseRequisitionId,
@@ -103,6 +98,7 @@ const generateLineAwardPOs = async (req: Request, res: Response): Promise<any> =
         subtotal,
         vatAmount,
         totalAmount,
+        currency: quotation.currency,
         deliverToSite,
         deliveryAddress: resolvedAddress,
         expectedDeliveryDate: expectedDeliveryDate ? new Date(expectedDeliveryDate) : undefined,

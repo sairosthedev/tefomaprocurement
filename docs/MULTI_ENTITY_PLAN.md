@@ -111,9 +111,11 @@ An automated test boots two SBU databases and asserts that every endpoint called
 
 ## 8. Money, currency and numbering
 
-**Currency.** Today PurchaseOrder, Invoice and Payment have **no currency field** — only Quotation has one (`USD | ZWG | ZAR`) — and the COO rule (`COO_APPROVAL_THRESHOLD_USD = 5000`) applies the USD figure to non-USD amounts as-is. Every money document will store `currency`, `fxRateToUsd`, `fxRateSource`, `fxRateDate`; thresholds move into each SBU's `ApprovalPolicy` in its base currency; `SZL` is added for Mangethe.
+**Currency (done 2026-10-29).** PurchaseOrder, Invoice, Payment, PurchaseRequisition and DepartmentBudget now store `currency`, defaulting to the SBU's `baseCurrency`; a PO takes the currency of the quotation it came from, an invoice the PO's, and a payment refuses invoices in mixed currencies. `SZL` is added. Existing documents are stamped by `npm run backfill:currency`.
 
-**Numbering.** Numbers are generated as `count + 1` from `countDocuments()` in `pre('save')`, which can issue duplicates under concurrent saves. This is replaced with an atomic `Counter` per SBU database (`findOneAndUpdate` + `$inc`, keyed by document type and year). Numbers carry the SBU prefix — e.g. `KHC-PO-2026-00001` — because suppliers receive documents from many SBUs.
+**COO limit — decided 2026-10-29: stays in USD, converted at a stored FX rate.** Each SBU has `approvalPolicy.cooThresholdUsd` (default 5,000). A PO's total is converted at the latest `FxRate` (platform database, append-only) and the PO records `totalAmountUsd`, `fxRateToUsd` and `cooThresholdUsd`. With no rate on file for the currency, the PO goes to the COO. Assessment happens on create, on amount/currency change and on submit — never because a rate moved. Rates and limits are set by group operators (`npm run fx:set`, `npm run sbu:settings`), not SBU admins; admins see them read-only at `GET /api/admin/sbu-settings`.
+
+**Numbering (done).** An atomic `Counter` per SBU database (`findOneAndUpdate` + `$inc`, keyed by document type and year). **Decided 2026-10-29:** numbers lead with the full SBU code — `KHAYAH_CEMENT-PO-2026-00001` — because suppliers receive documents from many SBUs. Counter keys are unchanged, so sequences continue from the unprefixed numbers issued before.
 
 ## 9. Group views across databases
 
@@ -178,7 +180,7 @@ Enviro Plastic buys waste for cash from informal pickers, and The Grain Hub like
 
 Done in phase 0: product name, logo, favicon, colours, login/register copy and email template now say Sourceline.
 
-Still to do when SBUs exist: POs, GRVs, store-issue notes and RFQs print the **issuing SBU's** legal name, logo, address and VAT number from the registry. Until then they print `COMPANY_NAME` (default "Fossil Contracting").
+Done 2026-10-29: POs, GRVs and store-issue notes (and the PO email) carry the **issuing SBU's** legal name, address, VAT number and logo from `Sbu.branding`, falling back to the SBU's name. `COMPANY_NAME` is used only when no SBU is in context. The logo must be a PNG/JPEG URL. RFQs have no printed document yet.
 
 ## 13. Command-centre feed
 
@@ -207,7 +209,7 @@ This is the main saving from the full-separation decision — the risky part of 
 | 1. Multi-database foundation | Platform + SBU connections, request context, model resolvers, `Sbu` registry (done) - still to do: atomic counters, migration script, endpoint-level isolation sweep | Fossil works as before on clean transactions; two-database isolation tests pass |
 | 2. Multi-domain | SBU resolution from domain, JWT bound to SBU, registry-driven CORS, per-domain branding on login, group and supplier portals, email links per domain, DNS + Vercel domains | Fossil and one more SBU live on their own domains |
 | 3. Per-SBU onboarding | Supplier and item onboarding per SBU, Zimbabwe compliance rules, reconciliation keys for group reporting | All twelve Zimbabwean SBUs onboarded |
-| 4. Per-SBU configuration | `ApprovalPolicy`, currency on all money documents, `FxRate`, SBU branding on printed documents | Each pilot SBU approves on its own chain and thresholds |
+| 4. Per-SBU configuration | `ApprovalPolicy`, currency on all money documents, `FxRate`, SBU branding on printed documents (COO limit, currency, FX, numbering prefix and branding done 2026-10-29; per-SBU approval *chains* still to do) | Each pilot SBU approves on its own chain and thresholds |
 | 4b. South Africa | ZAR/SZL, South African compliance, onboarding ENVIRO_PLASTIC, MANGETHE, THANDO_KINETICS | SA SBUs transacting |
 | 5. Synergy | Fan-out helper, nightly roll-ups, savings baseline, framework contracts, intra-group POs, price-variance report | First framework contract live; price variance visible across SBUs |
 | 6. Command-centre feed | KPI feed from roll-ups | Command centre shows procurement spine from live data |
@@ -221,4 +223,4 @@ This is the main saving from the full-separation decision — the risky part of 
 4. Who is the **initial admin** for each of the eleven new SBUs?
 5. Command-centre integration: pull API or scheduled push — and who owns the contract on that side?
 6. Who holds group_procurement and chairman_office roles at launch?
-7. Each pilot SBU's approval chain and thresholds (needed for phase 4).
+7. Each pilot SBU's approval chain and thresholds (needed for phase 4). Thresholds: group USD 5,000 by default, overridable per SBU; chains still the same for every SBU.

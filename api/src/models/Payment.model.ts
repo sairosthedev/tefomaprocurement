@@ -1,4 +1,6 @@
 import mongoose, { Schema, type Document } from 'mongoose';
+import { SUPPORTED_CURRENCY_CODES } from '@fossil/shared';
+import { currentBaseCurrency } from '../tenancy/sbuContext.js';
 import { nextNumber } from '../services/numbering.service.js';
 
 export interface IPayment extends Document {
@@ -6,6 +8,8 @@ export interface IPayment extends Document {
   supplier: mongoose.Types.ObjectId;
   invoices: mongoose.Types.ObjectId[];
   amount: number;
+  /** The currency of the invoices settled; a payment never mixes currencies. */
+  currency: string;
   paymentDate: Date;
   paymentMethod: 'bank_transfer' | 'cheque' | 'eft' | 'cash' | 'other';
   reference?: string;
@@ -47,6 +51,12 @@ const PaymentSchema = new Schema<IPayment>({
     ref: 'Invoice'
   }],
   amount: { type: Number, required: true, min: 0 },
+  currency: {
+    type: String,
+    enum: [...SUPPORTED_CURRENCY_CODES],
+    required: true,
+    default: currentBaseCurrency
+  },
   paymentDate: { type: Date, required: true },
   paymentMethod: {
     type: String,

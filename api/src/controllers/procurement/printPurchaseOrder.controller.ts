@@ -4,6 +4,7 @@ import PDFDocument from 'pdfkit';
 import { PurchaseOrder } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { buildPurchaseOrderPdf } from '../../services/purchaseOrderDocument.service.js';
+import { getDocumentBranding } from '../../services/sbuSettings.service.js';
 
 /**
  * Render a purchase order as a PDF (Rev 9 clause 6.3.14).
@@ -43,13 +44,14 @@ const printPurchaseOrder = async (req: Request, res: Response): Promise<any> => 
       req
     });
 
+    const branding = await getDocumentBranding();
     const doc = new PDFDocument({ size: 'A4', margin: 45, bufferPages: true });
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${po.poNumber}.pdf"`);
     doc.pipe(res);
 
-    buildPurchaseOrderPdf(doc, po);
+    buildPurchaseOrderPdf(doc, po, branding);
 
     doc.end();
   } catch (error: any) {

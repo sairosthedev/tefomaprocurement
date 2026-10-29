@@ -1,4 +1,6 @@
 import mongoose, { Schema, type Document } from 'mongoose';
+import { SUPPORTED_CURRENCY_CODES } from '@fossil/shared';
+import { currentBaseCurrency } from '../tenancy/sbuContext.js';
 import { nextNumber } from '../services/numbering.service.js';
 
 export interface IStoreAvailability {
@@ -81,6 +83,8 @@ export interface IPurchaseRequisition extends Document {
   priority: 'low' | 'medium' | 'high' | 'urgent';
   requiredDate?: Date;
   estimatedTotal: number;
+  /** Currency of the estimates. The SBU's base currency. */
+  currency: string;
   status: 'draft' | 'pending_hod' | 'stores_review' | 'fulfilled' | 'pending_acceptance' | 'accepted' | 'rejected' | 'sourcing' | 'quoted' | 'ordered' | 'completed' | 'cancelled';
   hodApprovedBy?: mongoose.Types.ObjectId | any;
   hodApprovedAt?: Date;
@@ -253,6 +257,12 @@ const PurchaseRequisitionSchema = new Schema<IPurchaseRequisition>({
   estimatedTotal: {
     type: Number,
     default: 0
+  },
+  currency: {
+    type: String,
+    enum: [...SUPPORTED_CURRENCY_CODES],
+    required: true,
+    default: currentBaseCurrency
   },
   status: {
     type: String,

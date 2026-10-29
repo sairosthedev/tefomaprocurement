@@ -5,6 +5,7 @@ import { procurementAPI } from '../lib/api';
 import PageHeader from '../components/PageHeader';
 import { CheckCircle, Clock, Loader2, Layers, FileText } from 'lucide-react';
 import { formatCurrency } from '../lib/constants';
+import { getCurrentSbuCurrency } from '../lib/sbu';
 
 /**
  * The Head of Procurement's queue: winning quotations (or split-award lines)
@@ -42,7 +43,7 @@ export default function Authorizations() {
   const valueOf = (item: any) => {
     const amount = item.kind === 'quotation' ? item.totalAmount : item.linesTotal;
     if (typeof amount !== 'number') return '—';
-    return formatCurrency(amount, item.currency || undefined);
+    return formatCurrency(amount, item.currency || getCurrentSbuCurrency());
   };
 
   // Rows the user selected themselves cannot be authorized by them, so they
@@ -126,7 +127,7 @@ export default function Authorizations() {
                 {items.map((item: any) => (
                   <tr key={`${item.rfqId}-${item.kind}`} className="hover:bg-gray-50">
                     <td className="py-4 px-6">
-                      <span className="font-mono text-sm font-medium text-primary">{item.rfqNumber}</span>
+                      <span className="font-mono text-sm font-medium text-primary break-all">{item.rfqNumber}</span>
                       <p className="text-sm text-gray-500 truncate max-w-xs">{item.title}</p>
                     </td>
                     <td className="py-4 px-6">

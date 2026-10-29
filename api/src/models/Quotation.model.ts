@@ -1,4 +1,6 @@
 import mongoose, { Schema, type Document } from 'mongoose';
+import { SUPPORTED_CURRENCY_CODES } from '@fossil/shared';
+import { currentBaseCurrency } from '../tenancy/sbuContext.js';
 import { nextNumber } from '../services/numbering.service.js';
 
 /** Photo a supplier attaches to a quote line — typically the data plate of an
@@ -52,7 +54,7 @@ export interface IQuotation extends Document {
   validUntil?: Date;
   deliveryPeriod: number;
   paymentTerms: string;
-  currency: 'USD' | 'ZWG' | 'ZAR';
+  currency: 'USD' | 'ZWG' | 'ZAR' | 'SZL';
   notes?: string;
   status:
     | 'draft'
@@ -176,8 +178,8 @@ const QuotationSchema = new Schema<IQuotation>({
   },
   currency: {
     type: String,
-    default: 'USD',
-    enum: ['USD', 'ZWG', 'ZAR']
+    default: currentBaseCurrency as () => IQuotation['currency'],
+    enum: [...SUPPORTED_CURRENCY_CODES]
   },
   notes: String,
   status: {

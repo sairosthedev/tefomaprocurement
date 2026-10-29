@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { procurementAPI } from '../lib/api';
+import { formatCurrency } from '../lib/constants';
 import {
   Trophy,
   Loader2,
@@ -145,7 +146,7 @@ export default function RfqRankingPanel({ rfqId, refreshKey, onViewQuotation }: 
           {ranking.lowestTotal !== undefined && (
             <span className="flex items-center gap-1">
               <TrendingDown className="h-4 w-4 text-emerald-600" />
-              Lowest: {ranking.currencies[0]} {ranking.lowestTotal.toLocaleString()}
+              Lowest: {formatCurrency(ranking.lowestTotal, ranking.currencies[0])}
             </span>
           )}
           {ranking.spreadPercent ? <span>Spread: {ranking.spreadPercent}%</span> : null}
@@ -207,7 +208,7 @@ export default function RfqRankingPanel({ rfqId, refreshKey, onViewQuotation }: 
 
                   <div className="text-right flex-shrink-0">
                     <p className="font-semibold text-gray-900">
-                      {r.currency} {r.totalAmount.toLocaleString()}
+                      {formatCurrency(r.totalAmount, r.currency)}
                     </p>
                     {!ranking.mixedCurrency && (
                       <>

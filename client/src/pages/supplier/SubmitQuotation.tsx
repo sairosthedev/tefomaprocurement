@@ -7,6 +7,7 @@ import PageHeader from '../../components/PageHeader';
 import EquipmentDetailsView from '../../components/EquipmentDetailsView';
 import QuoteLinePhotos from '../../components/QuoteLinePhotos';
 import { CURRENCIES, formatCurrency } from '../../lib/constants';
+import { getCurrentSbuCurrency } from '../../lib/sbu';
 
 export default function SubmitQuotation() {
   const navigate = useNavigate();
@@ -18,7 +19,8 @@ export default function SubmitQuotation() {
   const [submitting, setSubmitting] = useState<any>(false);
   const [rfq, setRFQ] = useState<any>(null);
   const [formData, setFormData] = useState<any>({
-    currency: 'USD',
+    // Quote in the buying business unit's own currency unless the supplier changes it.
+    currency: getCurrentSbuCurrency(),
     deliveryDays: 7,
     paymentTerms: 'Net 30',
     validityDays: 30,

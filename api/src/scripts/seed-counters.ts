@@ -35,22 +35,23 @@ interface Numbered {
   /**
    * Captures the year and the sequence from a formatted number. Store
    * transactions carry a type segment (`ST-ISS-2026-000123`), so each pattern
-   * is written out rather than derived from a prefix.
+   * is written out rather than derived from a prefix. Numbers may lead with
+   * the SBU code (`KHAYAH_CEMENT-PO-2026-00001`); older ones do not.
    */
   pattern: RegExp;
 }
 
 const NUMBERED: Numbered[] = [
-  { type: 'purchaseOrder', model: 'PurchaseOrder', field: 'poNumber', pattern: /^PO-(\d{4})-(\d+)$/ },
-  { type: 'purchaseRequisition', model: 'PurchaseRequisition', field: 'requisitionNumber', pattern: /^PR-(\d{4})-(\d+)$/ },
-  { type: 'rfq', model: 'RFQ', field: 'rfqNumber', pattern: /^RFQ-(\d{4})-(\d+)$/ },
-  { type: 'quotation', model: 'Quotation', field: 'quotationNumber', pattern: /^QT-(\d{4})-(\d+)$/ },
-  { type: 'invoice', model: 'Invoice', field: 'invoiceNumber', pattern: /^INV-(\d{4})-(\d+)$/ },
-  { type: 'payment', model: 'Payment', field: 'paymentNumber', pattern: /^PAY-(\d{4})-(\d+)$/ },
-  { type: 'delivery', model: 'Delivery', field: 'grvNumber', pattern: /^GRV-(\d{4})-(\d+)$/ },
-  { type: 'storeRequisition', model: 'StoreRequisition', field: 'requisitionNumber', pattern: /^SR-(\d{4})-(\d+)$/ },
-  { type: 'stockTransfer', model: 'StockTransfer', field: 'transferNumber', pattern: /^TRF-(\d{4})-(\d+)$/ },
-  { type: 'storeTransaction', model: 'StoreTransaction', field: 'transactionNumber', pattern: /^ST-[A-Z]+-(\d{4})-(\d+)$/ }
+  { type: 'purchaseOrder', model: 'PurchaseOrder', field: 'poNumber', pattern: /^(?:[A-Z][A-Z0-9_]*-)?PO-(\d{4})-(\d+)$/ },
+  { type: 'purchaseRequisition', model: 'PurchaseRequisition', field: 'requisitionNumber', pattern: /^(?:[A-Z][A-Z0-9_]*-)?PR-(\d{4})-(\d+)$/ },
+  { type: 'rfq', model: 'RFQ', field: 'rfqNumber', pattern: /^(?:[A-Z][A-Z0-9_]*-)?RFQ-(\d{4})-(\d+)$/ },
+  { type: 'quotation', model: 'Quotation', field: 'quotationNumber', pattern: /^(?:[A-Z][A-Z0-9_]*-)?QT-(\d{4})-(\d+)$/ },
+  { type: 'invoice', model: 'Invoice', field: 'invoiceNumber', pattern: /^(?:[A-Z][A-Z0-9_]*-)?INV-(\d{4})-(\d+)$/ },
+  { type: 'payment', model: 'Payment', field: 'paymentNumber', pattern: /^(?:[A-Z][A-Z0-9_]*-)?PAY-(\d{4})-(\d+)$/ },
+  { type: 'delivery', model: 'Delivery', field: 'grvNumber', pattern: /^(?:[A-Z][A-Z0-9_]*-)?GRV-(\d{4})-(\d+)$/ },
+  { type: 'storeRequisition', model: 'StoreRequisition', field: 'requisitionNumber', pattern: /^(?:[A-Z][A-Z0-9_]*-)?SR-(\d{4})-(\d+)$/ },
+  { type: 'stockTransfer', model: 'StockTransfer', field: 'transferNumber', pattern: /^(?:[A-Z][A-Z0-9_]*-)?TRF-(\d{4})-(\d+)$/ },
+  { type: 'storeTransaction', model: 'StoreTransaction', field: 'transactionNumber', pattern: /^(?:[A-Z][A-Z0-9_]*-)?ST-[A-Z]+-(\d{4})-(\d+)$/ }
 ];
 
 async function seedSbu(sbu: SbuRef, dryRun: boolean): Promise<void> {

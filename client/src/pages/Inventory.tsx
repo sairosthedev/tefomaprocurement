@@ -14,6 +14,7 @@ import { CategorySelect } from '../components/CategorySelect';
 import { formatCurrency, UNITS_OF_MEASUREMENT, getCategoryName } from '../lib/constants';
 import Pagination from '../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
+import { getCurrentSbuCurrency } from '../lib/sbu';
 
 // Map a spreadsheet row (any header casing/variant) to our canonical fields.
 const TEMPLATE_HEADERS = ['code', 'name', 'description', 'category', 'unit', 'reorderLevel', 'quantity', 'unitPrice'];
@@ -353,7 +354,7 @@ export default function Inventory() {
             <div>
               <p className="text-sm text-gray-500">Stock Value</p>
               <p className="text-2xl font-bold text-gray-900">
-                {formatCurrency(stats.totalStockValue)}
+                {formatCurrency(stats.totalStockValue, getCurrentSbuCurrency())}
               </p>
             </div>
           </div>
@@ -493,7 +494,7 @@ export default function Inventory() {
                         {item.reorderLevel || 0} {item.unit || 'each'}
                       </td>
                       <td className="py-4 px-6 text-sm text-gray-900">
-                        {formatCurrency(inv.unitCost || 0)}
+                        {formatCurrency(inv.unitCost || 0, getCurrentSbuCurrency())}
                       </td>
                       <td className="py-4 px-6">
                         {isLowStock ? (
@@ -615,7 +616,7 @@ export default function Inventory() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Unit Price (USD)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Unit Price ({getCurrentSbuCurrency()})</label>
               <input
                 type="number"
                 step="0.01"
@@ -694,7 +695,7 @@ export default function Inventory() {
               </div>
               <div>
                 <label className="text-sm text-gray-500">Unit Price</label>
-                <p className="text-gray-900">{formatCurrency(selectedItem.unitCost || 0)}</p>
+                <p className="text-gray-900">{formatCurrency(selectedItem.unitCost || 0, getCurrentSbuCurrency())}</p>
               </div>
             </div>
             <div>
@@ -708,7 +709,7 @@ export default function Inventory() {
             <div>
               <label className="text-sm text-gray-500">Total Value</label>
               <p className="text-xl font-bold text-green-600">
-                {formatCurrency(selectedItem.totalValue || 0)}
+                {formatCurrency(selectedItem.totalValue || 0, getCurrentSbuCurrency())}
               </p>
             </div>
           </div>

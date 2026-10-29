@@ -21,14 +21,19 @@ router.get('/', async (req: Request, res: Response) => {
   const current = (await sbuByDomain(req.headers.origin)) || (await sbuByDomain(req.headers.host));
 
   const sbus = await Sbu.find({ status: { $ne: 'suspended' } })
-    .select('code name country')
+    .select('code name country baseCurrency')
     .sort({ name: 1 })
-    .lean<Array<Pick<ISbu, 'code' | 'name' | 'country'>>>();
+    .lean<Array<Pick<ISbu, 'code' | 'name' | 'country' | 'baseCurrency'>>>();
 
   res.json({
     success: true,
     current: current ? { code: current.code, name: current.name } : null,
-    data: sbus.map((sbu) => ({ code: sbu.code, name: sbu.name, country: sbu.country }))
+    data: sbus.map((sbu) => ({
+      code: sbu.code,
+      name: sbu.name,
+      country: sbu.country,
+      baseCurrency: sbu.baseCurrency
+    }))
   });
 });
 

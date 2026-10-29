@@ -7,6 +7,8 @@ import {
   hasStoredSession
 } from '../lib/session';
 import { logOtpToBrowserConsole } from '../lib/otpDebug';
+import { rememberSbuCurrency } from '../lib/sbu';
+import http from '../services/http';
 
 const AuthContext = createContext<any>(null);
 
@@ -22,6 +24,15 @@ export function AuthProvider({ children }: any) {
   }, []);
 
   useEffect(() => {
+    // Refresh the cached base currency of the signed-in business unit, so
+    // sessions started before it was cached still show the right currency.
+    http
+      .get('/sbus')
+      .then((response) => rememberSbuCurrency(response.data?.data || [], response.data?.current))
+      .catch(() => {
+        /* the cached or fallback currency stays in use */
+      });
+
     const initAuth = async () => {
       const { token, user: storedUser } = readStoredSession();
 

@@ -1,6 +1,7 @@
 import mongoose, { type Document, type Model } from 'mongoose';
 import { platformConnection } from '../tenancy/connections.js';
 import { resolvingModel } from './modelProxy.js';
+import { COO_APPROVAL_THRESHOLD_USD } from '@fossil/shared';
 
 /** Countries the group trades in today. Drives which compliance rules apply. */
 export const SBU_COUNTRIES = ['ZW', 'ZA', 'SZ'] as const;
@@ -19,6 +20,15 @@ export interface ISbuBranding {
   vatNumber?: string;
 }
 
+/**
+ * Approval limits for one SBU. Thresholds are held in USD so every unit is
+ * measured against the same group policy, and converted to the document's
+ * currency at the stored FX rate (FxRate.model.ts) when a PO is assessed.
+ */
+export interface ISbuApprovalPolicy {
+  cooThresholdUsd: number;
+}
+
 export interface ISbu extends Document {
   code: string;
   name: string;
@@ -32,6 +42,7 @@ export interface ISbu extends Document {
   /** Env var holding a dedicated cluster URI, when the SBU is not on the shared cluster. */
   connectionUriEnv?: string;
   branding: ISbuBranding;
+  approvalPolicy: ISbuApprovalPolicy;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -62,6 +73,9 @@ const SbuSchema = new mongoose.Schema<ISbu>(
       logoUrl: { type: String, trim: true },
       address: { type: String, trim: true },
       vatNumber: { type: String, trim: true }
+    },
+    approvalPolicy: {
+      cooThresholdUsd: { type: Number, min: 0, default: COO_APPROVAL_THRESHOLD_USD }
     }
   },
   { timestamps: true }

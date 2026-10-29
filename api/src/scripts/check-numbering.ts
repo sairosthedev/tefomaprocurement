@@ -76,7 +76,7 @@ async function main(): Promise<void> {
 
   const year = new Date().getFullYear();
   const sequences = numbers
-    .map((n) => /^SR-(\d{4})-(\d+)$/.exec(n))
+    .map((n) => new RegExp(`^${SBU.code}-SR-(\\d{4})-(\\d+)$`).exec(n))
     .filter((m): m is RegExpExecArray => m !== null)
     .map((m) => Number(m[2]))
     .sort((a, b) => a - b);
@@ -102,7 +102,7 @@ async function main(): Promise<void> {
   );
   const afterSeed = await runWithSbu(SBU, () => StoreRequisition.create(newRequisition(999)));
   check('numbering resumes above a seeded counter',
-    afterSeed.requisitionNumber === `SR-${year}-${String(501).padStart(5, '0')}`,
+    afterSeed.requisitionNumber === `${SBU.code}-SR-${year}-${String(501).padStart(5, '0')}`,
     afterSeed.requisitionNumber);
 
   await connection.dropDatabase();

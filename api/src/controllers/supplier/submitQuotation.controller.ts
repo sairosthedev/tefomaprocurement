@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 
 import { Quotation, RFQ, SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { currentBaseCurrency } from '../../tenancy/sbuContext.js';
 import { notifyUsersByRole } from '../../services/notification.service.js';
 import { sanitiseAttachments } from '../../services/lineAttachments.service.js';
 
@@ -140,7 +141,7 @@ const submitQuotation = async (req: Request, res: Response): Promise<any> => {
       validityPeriod: validityDays,
       deliveryPeriod,
       paymentTerms,
-      currency: currency || 'USD',
+      currency: currency || currentBaseCurrency(),
       notes,
       status: 'submitted',
       isLocked: true,

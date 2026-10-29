@@ -4,6 +4,7 @@ import { procurementAPI, financeAPI, cooAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency } from '../lib/constants';
+import { cooThresholdLabel, usdEquivalentLabel } from '../lib/cooApproval';
 import { PO_CANCELLATION_REASONS, isProcurementHead } from '@fossil/shared';
 import PageHeader from '../components/PageHeader';
 import CancelWorkflowModal from '../components/CancelWorkflowModal';
@@ -200,7 +201,7 @@ export default function PurchaseOrderDetail() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <label className="text-sm text-gray-500">PO Number</label>
-              <p className="text-sm font-medium text-gray-900 mt-1 font-mono">{po.poNumber}</p>
+              <p className="text-sm font-medium text-gray-900 mt-1 font-mono break-all">{po.poNumber}</p>
             </div>
             <div>
               <label className="text-sm text-gray-500">Status</label>
@@ -211,8 +212,11 @@ export default function PurchaseOrderDetail() {
             <div>
               <label className="text-sm text-gray-500">Total Amount</label>
               <p className="text-sm font-medium text-gray-900 mt-1">
-                {formatCurrency(po.totalAmount || 0)}
+                {formatCurrency(po.totalAmount || 0, po.currency)}
               </p>
+              {usdEquivalentLabel(po) && (
+                <p className="text-xs text-gray-500 mt-0.5">{usdEquivalentLabel(po)}</p>
+              )}
             </div>
             <div>
               <label className="text-sm text-gray-500">Date</label>
@@ -319,7 +323,7 @@ export default function PurchaseOrderDetail() {
               )}
             </div>
 
-            {/* COO — only when required (≥ USD 5,000) */}
+            {/* COO — only when the server flagged the PO (USD limit converted at the stored FX rate) */}
             <div className={`p-4 rounded-lg ${
               po.cooApproved
                 ? 'bg-green-50 border border-green-200'
@@ -350,9 +354,16 @@ export default function PurchaseOrderDetail() {
                   )}
                 </div>
               ) : po.requiresCooApproval ? (
-                <p className="text-sm text-purple-700">Pending</p>
+                <div>
+                  <p className="text-sm text-purple-700">Pending</p>
+                  <p className="text-xs text-gray-600 mt-1">
+                    COO approval required (≥ {cooThresholdLabel(po)} equivalent)
+                  </p>
+                </div>
               ) : (
-                <p className="text-sm text-gray-500">Not required (below USD 5,000)</p>
+                <p className="text-sm text-gray-500">
+                  Not required (below {cooThresholdLabel(po)} equivalent)
+                </p>
               )}
             </div>
           </div>
@@ -383,10 +394,10 @@ export default function PurchaseOrderDetail() {
                       </td>
                       <td className="py-3 px-4 text-right text-sm text-gray-900">{item.quantity}</td>
                       <td className="py-3 px-4 text-right text-sm text-gray-900">
-                        {formatCurrency(item.unitPrice || 0)}
+                        {formatCurrency(item.unitPrice || 0, po.currency)}
                       </td>
                       <td className="py-3 px-4 text-right text-sm font-medium text-gray-900">
-                        {formatCurrency((item.quantity || 0) * (item.unitPrice || 0))}
+                        {formatCurrency((item.quantity || 0) * (item.unitPrice || 0), po.currency)}
                       </td>
                     </tr>
                   ))}
@@ -397,7 +408,7 @@ export default function PurchaseOrderDetail() {
                       Total Amount:
                     </td>
                     <td className="py-3 px-4 text-right font-bold text-lg text-gray-900">
-                      {formatCurrency(po.totalAmount || 0)}
+                      {formatCurrency(po.totalAmount || 0, po.currency)}
                     </td>
                   </tr>
                 </tfoot>

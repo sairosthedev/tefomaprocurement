@@ -80,11 +80,6 @@ const createPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       quantityReceived: 0
     }));
 
-    // Generate PO number
-    const count = await PurchaseOrder.countDocuments();
-    const year = new Date().getFullYear();
-    const poNumber = `PO-${year}-${String(count + 1).padStart(5, '0')}`;
-
     // Get purchaseRequisition from RFQ - fetch RFQ separately if needed
     let purchaseRequisitionId = null;
     let requisitionSiteId = null;
@@ -111,8 +106,9 @@ const createPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       }
     }
 
+    // The number comes from the model's counter hook (SBU-prefixed, atomic);
+    // the currency is the one the supplier quoted in.
     const po = await PurchaseOrder.create({
-      poNumber,
       quotation: quotation._id,
       rfq: quotation.rfq?._id || quotation.rfq,
       purchaseRequisition: purchaseRequisitionId,
@@ -122,6 +118,7 @@ const createPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       subtotal: quotation.subtotal,
       vatAmount: quotation.vatAmount,
       totalAmount: quotation.totalAmount,
+      currency: quotation.currency,
       deliverToSite,
       deliveryAddress: resolvedDeliveryAddress,
       expectedDeliveryDate: new Date(expectedDeliveryDate),

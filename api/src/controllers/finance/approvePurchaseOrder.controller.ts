@@ -3,6 +3,7 @@ import { PurchaseOrder } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole, notifySupplier } from '../../services/notification.service.js';
 import { emailApprovedPurchaseOrderToSupplier } from '../../services/purchaseOrderDocument.service.js';
+import { describeCooAssessment } from '../../services/poApprovalFlow.service.js';
 
 const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -67,7 +68,7 @@ const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> =
       await notifyUsersByRole('coo', {
         type: 'po_finance_approved',
         title: 'PO awaiting COO authorization',
-        message: `PO ${po.poNumber} (≥ USD 5,000) requires COO authorization.`,
+        message: `PO ${po.poNumber} (${describeCooAssessment(po)}) requires COO authorization.`,
         entity: 'PurchaseOrder',
         entityId: po._id,
         relatedUser: req.user!._id
@@ -101,7 +102,7 @@ const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> =
       success: true,
       message: po.status === 'approved'
         ? 'Purchase order approved by Finance. All approvals complete.'
-        : 'Finance approved. Awaiting COO authorization (amount ≥ USD 5,000).',
+        : `Finance approved. Awaiting COO authorization (${describeCooAssessment(po)}).`,
       data: po
     });
   } catch (error) {

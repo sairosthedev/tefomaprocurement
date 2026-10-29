@@ -138,17 +138,17 @@ Most of this is writing rather than building. It is also what makes the differen
 | # | Requirement | Status |
 | --- | --- | --- |
 | 8.1 | Audit trail of significant actions | Exists, and survives a transaction reset |
-| 8.2 | Retention policy — how long records are kept | Undefined |
-| 8.3 | Personal data inventory — the system holds supplier contacts and bank details | Undefined |
-| 8.4 | Compliance with Zimbabwe's data protection law, and South Africa's for Phase 4 units | Not assessed |
+| 8.2 | Retention policy — how long records are kept | Defined in [DATA_RETENTION_POLICY.md](DATA_RETENTION_POLICY.md); short-lived data purged daily, financial records reviewed yearly. Awaiting Finance/Legal approval |
+| 8.3 | Personal data inventory — the system holds supplier contacts and bank details | Done — [DATA_PROTECTION_ASSESSMENT.md](DATA_PROTECTION_ASSESSMENT.md) §3. Staff bank-edit bypass closed; account numbers masked outside payment and verification |
+| 8.4 | Compliance with Zimbabwe's data protection law, and South Africa's for Phase 4 units | Assessed (draft for legal review). Open: POTRAZ licence and DPO, Information Officer registration, hosting regions, processor contracts, privacy notice, breach procedure |
 | 8.5 | Encryption in transit | Yes, HTTPS throughout |
 | 8.6 | Encryption at rest | Depends on the Atlas tier; to confirm with 2.1 |
 | 8.7 | Segregation of duties | Enforced in the approval chain; not reviewed against the written procedure |
-| 8.8 | Evidence pack for an auditor | Does not exist |
+| 8.8 | Evidence pack for an auditor | Exists — Audit Logs → Evidence pack; guide in [AUDIT_EVIDENCE_PACK.md](AUDIT_EVIDENCE_PACK.md) |
 
 8.7 deserves attention. The system enforces a four-stage chain and a USD 5,000 threshold because that is how it was built. Whether those match each unit's actual delegated authority has not been checked, and the system will enforce the wrong rule just as faithfully as the right one.
 
-8.3 is not hypothetical: supplier bank details are held, and bank-change control exists precisely because they are a fraud target.
+8.3 is not hypothetical: supplier bank details are held, and bank-change control exists precisely because they are a fraud target. Staff edits to a supplier record could still overwrite the account directly, bypassing that control; they now raise the same held request. Application-level encryption of account numbers is recommended once backups and key management exist.
 
 ## 9. Functional gaps that matter at group scale
 
@@ -186,12 +186,12 @@ The first three have the most weight. The third also blocks Phase 4 of the rollo
 
 **Before it can be called enterprise**
 
-11. Retention and personal-data policy; a data protection assessment for both countries.
+11. ~~Retention and personal-data policy; a data protection assessment for both countries.~~ Drafted — legal sign-off and the registration actions in the assessment remain.
 12. A penetration test, and remediation.
 13. Secret rotation, rate limiting on sign-in, session revocation.
 14. Load testing at fifteen units of realistic traffic.
 15. Verify each unit's approval chain against its written delegation of authority.
-16. An auditor's evidence pack.
+16. ~~An auditor's evidence pack.~~ Done.
 
 **To realise the group case**
 

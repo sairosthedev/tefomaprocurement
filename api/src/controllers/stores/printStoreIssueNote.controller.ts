@@ -4,6 +4,7 @@ import PDFDocument from 'pdfkit';
 import { StoreRequisition } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { buildStoreIssueNotePdf } from '../../services/storeIssueDocument.service.js';
+import { getDocumentBranding } from '../../services/sbuSettings.service.js';
 import { resolveUserDepartmentIds } from '../../lib/departmentScope.js';
 
 /**
@@ -57,13 +58,14 @@ const printStoreIssueNote = async (req: Request, res: Response): Promise<any> =>
       req
     });
 
+    const branding = await getDocumentBranding();
     const doc = new PDFDocument({ size: 'A4', margin: 45, bufferPages: true });
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${noteNumber}.pdf"`);
     doc.pipe(res);
 
-    buildStoreIssueNotePdf(doc, requisition);
+    buildStoreIssueNotePdf(doc, requisition, branding);
 
     doc.end();
   } catch (error: any) {

@@ -14,6 +14,7 @@ import {
 import { getCategoryName } from '@fossil/shared';
 import { PageStatCard } from '../PageHeader';
 import { formatCurrency } from '../../lib/constants';
+import { getCurrentSbuCurrency } from '../../lib/sbu';
 import { procurementAPI } from '../../services/procurement.service';
 import { useToast } from '../Toast';
 import Pagination from '../Pagination';
@@ -154,7 +155,7 @@ export default function SupplierReportsSection() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <PageStatCard label="Total suppliers" value={summary.totalSuppliers} />
           <PageStatCard label="KYS verified" value={summary.kysVerified} valueClassName="text-emerald-600" />
-          <PageStatCard label="PO spend (approved+)" value={formatCurrency(summary.totalPoSpend)} />
+          <PageStatCard label="PO spend (approved+)" value={formatCurrency(summary.totalPoSpend, getCurrentSbuCurrency())} />
           <PageStatCard label="Due for review" value={summary.dueForReview} valueClassName="text-amber-600" />
         </div>
       )}
@@ -185,7 +186,7 @@ export default function SupplierReportsSection() {
                 className="w-full flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3 text-left hover:bg-gray-100 transition-colors"
               >
                 <span className="text-sm font-medium text-gray-900 truncate pr-3">{row.companyName}</span>
-                <span className="text-sm font-semibold text-gray-700 shrink-0">{formatCurrency(row.totalSpend)}</span>
+                <span className="text-sm font-semibold text-gray-700 shrink-0">{formatCurrency(row.totalSpend, getCurrentSbuCurrency())}</span>
               </button>
             ))}
             {(report?.topBySpend || []).length === 0 && (
@@ -315,7 +316,7 @@ export default function SupplierReportsSection() {
                   </td>
                   <td className="px-5 py-4 font-medium text-gray-900">{row.overallScore ? `${row.overallScore}/5` : '—'}</td>
                   <td className="px-5 py-4 text-gray-700">{row.poCount}</td>
-                  <td className="px-5 py-4 text-gray-700">{formatCurrency(row.poSpend || 0)}</td>
+                  <td className="px-5 py-4 text-gray-700">{formatCurrency(row.poSpend || 0, getCurrentSbuCurrency())}</td>
                   <td className="px-5 py-4 text-gray-700">{row.evaluationCount}</td>
                   <td className="px-5 py-4">
                     {row.reviewOverdue ? (

@@ -44,6 +44,16 @@ const createPayment = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
+    // One payment settles in one currency; adding rand and dollar balances
+    // together would produce a figure that is neither.
+    const currency = invoices[0].currency;
+    if (!invoices.every((inv) => inv.currency === currency)) {
+      return res.status(400).json({
+        success: false,
+        message: 'All invoices on a payment must be in the same currency'
+      });
+    }
+
     const amount = invoices.reduce((sum, inv) => sum + inv.balanceDue, 0);
     if (amount <= 0) {
       return res.status(400).json({ success: false, message: 'No balance due on selected invoices' });
@@ -71,6 +81,7 @@ const createPayment = async (req: Request, res: Response): Promise<any> => {
       supplier: supplierId,
       invoices: invoiceIds,
       amount,
+      currency,
       paymentDate: new Date(paymentDate),
       paymentMethod,
       reference,

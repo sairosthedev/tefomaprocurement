@@ -12,9 +12,9 @@
  */
 
 import PDFDocument from 'pdfkit';
-import { getCompanyName } from '../lib/branding.js';
+import { drawLetterhead } from '../lib/pdfLetterhead.js';
+import { getDocumentBranding, type DocumentBranding } from './sbuSettings.service.js';
 
-const COMPANY = getCompanyName();
 const MARGIN = 45;
 const ACCENT = '#b45309';
 const MUTED = '#6b7280';
@@ -82,13 +82,13 @@ function signatureBlock(
  * Takes the doc rather than creating one so the HTTP handler can stream
  * straight to the response.
  */
-export function buildStoreIssueNotePdf(doc: any, requisition: any): void {
+export function buildStoreIssueNotePdf(doc: any, requisition: any, branding: DocumentBranding): void {
   const pageWidth = doc.page.width - MARGIN * 2;
   const colWidth = (pageWidth - 20) / 2;
   const noteNumber = requisition.issueNoteNumber || 'SIN-DRAFT';
 
   // ── Header ──
-  doc.fontSize(16).fillColor('#111827').text(COMPANY, MARGIN, MARGIN);
+  drawLetterhead(doc, branding, MARGIN, MARGIN, doc.page.width - MARGIN * 2);
   doc.fontSize(18).fillColor(ACCENT).text('STORES ISSUE NOTE', MARGIN, doc.y + 2);
   doc.fontSize(9).fillColor(MUTED).text(`Issue Note No. ${noteNumber}`, MARGIN, doc.y + 2);
 
@@ -245,7 +245,7 @@ export function buildStoreIssueNotePdf(doc: any, requisition: any): void {
     const bottomMargin = doc.page.margins.bottom;
     doc.page.margins.bottom = 0;
     doc.fontSize(7.5).fillColor(MUTED).text(
-      `${COMPANY} — Issue Note ${noteNumber}   |   Page ${i + 1} of ${totalPages}   |   Generated ${generatedAt}`,
+      `${branding.legalName} — Issue Note ${noteNumber}   |   Page ${i + 1} of ${totalPages}   |   Generated ${generatedAt}`,
       MARGIN,
       doc.page.height - 32,
       { width: pageWidth, align: 'center', lineBreak: false }
@@ -255,7 +255,8 @@ export function buildStoreIssueNotePdf(doc: any, requisition: any): void {
 }
 
 /** Render the issue note to a buffer, for attaching or storing. */
-export function renderStoreIssueNotePdfBuffer(requisition: any): Promise<Buffer> {
+export async function renderStoreIssueNotePdfBuffer(requisition: any): Promise<Buffer> {
+  const branding = await getDocumentBranding();
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({ size: 'A4', margin: MARGIN, bufferPages: true });
@@ -265,7 +266,7 @@ export function renderStoreIssueNotePdfBuffer(requisition: any): Promise<Buffer>
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', reject);
 
-      buildStoreIssueNotePdf(doc, requisition);
+      buildStoreIssueNotePdf(doc, requisition, branding);
       doc.end();
     } catch (error) {
       reject(error);

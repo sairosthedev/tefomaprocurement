@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supplierAPI } from '../../lib/api';
 import { formatCurrency } from '../../lib/constants';
+import { getCurrentSbuCurrency } from '../../lib/sbu';
 import { useToast } from '../../components/Toast';
 import PageHeader from '../../components/PageHeader';
 import Pagination from '../../components/Pagination';
@@ -67,7 +68,7 @@ export default function MyInvoices() {
                 <tr key={inv._id} className="border-b">
                   <td className="p-4 font-medium">{inv.invoiceNumber}</td>
                   <td className="p-4">{inv.purchaseOrder?.poNumber}</td>
-                  <td className="p-4">{formatCurrency(inv.totalAmount)}</td>
+                  <td className="p-4">{formatCurrency(inv.totalAmount, inv.currency || getCurrentSbuCurrency())}</td>
                   <td className="p-4 capitalize">{inv.status.replace(/_/g, ' ')}</td>
                 </tr>
               ))}

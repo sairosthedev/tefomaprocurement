@@ -9,8 +9,13 @@ import {
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import { formatCurrency } from '../lib/constants';
+import { getCurrentSbuCurrency } from '../lib/sbu';
 import Pagination from '../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
+
+/** High-value flag compares the USD equivalent, so it means the same in every SBU. */
+const HIGH_VALUE_USD = 10000;
+const isHighValue = (po: any) => (po?.totalAmountUsd ?? po?.totalAmount ?? 0) >= HIGH_VALUE_USD;
 
 function approvalAge(updatedAt: string): { label: string; state: 'ok' | 'warning' | 'overdue' } {
   const ms = Date.now() - new Date(updatedAt).getTime();
@@ -187,7 +192,7 @@ export default function Approvals() {
       case 'finance':
         return 'Review and approve purchase orders for payment authorization';
       case 'coo':
-        return 'Authorize purchase orders above USD 5,000';
+        return 'Authorize purchase orders at or above the COO limit (USD equivalent)';
       default:
         return 'Review pending purchase orders';
     }
@@ -218,7 +223,7 @@ export default function Approvals() {
             <div>
               <p className="text-sm text-blue-600 font-medium">Total Value</p>
               <p className="text-2xl font-bold text-blue-700">
-                {formatCurrency(pendingItems.reduce((sum: any, item: any) => sum + (item.totalAmount || 0), 0))}
+                {formatCurrency(pendingItems.reduce((sum: any, item: any) => sum + (item.totalAmount || 0), 0), getCurrentSbuCurrency())}
               </p>
             </div>
           </div>
@@ -231,7 +236,7 @@ export default function Approvals() {
             <div>
               <p className="text-sm text-red-600 font-medium">High Value (≥$10,000)</p>
               <p className="text-2xl font-bold text-red-700">
-                {pendingItems.filter((item: any) => (item.totalAmount || 0) >= 10000).length}
+                {pendingItems.filter((item: any) => isHighValue(item)).length}
               </p>
             </div>
           </div>
@@ -267,9 +272,9 @@ export default function Approvals() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {pendingItems.map((item: any) => (
-                  <tr key={item._id} className={`hover:bg-gray-50 ${(item.totalAmount || 0) >= 10000 ? 'bg-red-50/30' : ''}`}>
+                  <tr key={item._id} className={`hover:bg-gray-50 ${isHighValue(item) ? 'bg-red-50/30' : ''}`}>
                     <td className="py-4 px-6">
-                      <span className="font-mono text-sm font-medium text-primary">
+                      <span className="font-mono text-sm font-medium text-primary break-all">
                         {item.poNumber || `PO-${item._id.slice(-6).toUpperCase()}`}
                       </span>
                     </td>
@@ -283,10 +288,10 @@ export default function Approvals() {
                       <span className="text-sm text-gray-600">{item.items?.length || 0} items</span>
                     </td>
                     <td className="py-4 px-6">
-                      <span className={`font-semibold ${(item.totalAmount || 0) >= 10000 ? 'text-red-600' : 'text-gray-900'}`}>
-                        {formatCurrency(item.totalAmount || 0)}
+                      <span className={`font-semibold ${isHighValue(item) ? 'text-red-600' : 'text-gray-900'}`}>
+                        {formatCurrency(item.totalAmount || 0, item.currency)}
                       </span>
-                      {(item.totalAmount || 0) >= 10000 && (
+                      {isHighValue(item) && (
                         <span className="ml-2 text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">High Value</span>
                       )}
                     </td>
@@ -370,8 +375,8 @@ export default function Approvals() {
               </div>
               <div>
                 <label className="text-sm text-gray-500">Total Value</label>
-                <p className={`text-xl font-bold ${(selectedItem.totalAmount || 0) >= 10000 ? 'text-red-600' : 'text-gray-900'}`}>
-                  {formatCurrency(selectedItem.totalAmount || 0)}
+                <p className={`text-xl font-bold ${isHighValue(selectedItem) ? 'text-red-600' : 'text-gray-900'}`}>
+                  {formatCurrency(selectedItem.totalAmount || 0, selectedItem.currency)}
                 </p>
               </div>
               <div>
@@ -434,14 +439,14 @@ export default function Approvals() {
             )}
 
             {/* High Value Warning */}
-            {(selectedItem.totalAmount || 0) >= 10000 && (
+            {isHighValue(selectedItem) && (
               <div className="bg-red-50 rounded-xl p-4 border border-red-100">
                 <div className="flex items-center gap-2 text-red-700">
                   <AlertTriangle className="h-5 w-5" />
                   <span className="font-medium">High Value Purchase Order</span>
                 </div>
                 <p className="text-sm text-red-600 mt-1">
-                  This PO exceeds $10,000. Please review carefully before approval.
+                  This PO exceeds USD 10,000 equivalent. Please review carefully before approval.
                 </p>
               </div>
             )}
@@ -464,25 +469,25 @@ export default function Approvals() {
                       <tr key={index}>
                         <td className="py-3 px-4 text-sm">{item.description}</td>
                         <td className="py-3 px-4 text-sm">{item.quantity} {item.unit}</td>
-                        <td className="py-3 px-4 text-sm">{formatCurrency(item.unitPrice || 0)}</td>
-                        <td className="py-3 px-4 text-sm font-medium">{formatCurrency(item.totalPrice || 0)}</td>
+                        <td className="py-3 px-4 text-sm">{formatCurrency(item.unitPrice || 0, selectedItem.currency)}</td>
+                        <td className="py-3 px-4 text-sm font-medium">{formatCurrency(item.totalPrice || 0, selectedItem.currency)}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot className="bg-gray-50">
                     <tr>
                       <td colSpan={3} className="py-3 px-4 text-sm font-medium text-right">Subtotal:</td>
-                      <td className="py-3 px-4 text-sm font-medium">{formatCurrency(selectedItem.subtotal || 0)}</td>
+                      <td className="py-3 px-4 text-sm font-medium">{formatCurrency(selectedItem.subtotal || 0, selectedItem.currency)}</td>
                     </tr>
                     {selectedItem.vatAmount > 0 && (
                       <tr>
                         <td colSpan={3} className="py-3 px-4 text-sm font-medium text-right">VAT:</td>
-                        <td className="py-3 px-4 text-sm font-medium">{formatCurrency(selectedItem.vatAmount || 0)}</td>
+                        <td className="py-3 px-4 text-sm font-medium">{formatCurrency(selectedItem.vatAmount || 0, selectedItem.currency)}</td>
                       </tr>
                     )}
                     <tr className="border-t border-gray-200">
                       <td colSpan={3} className="py-3 px-4 text-sm font-bold text-right">Total:</td>
-                      <td className="py-3 px-4 text-sm font-bold">{formatCurrency(selectedItem.totalAmount || 0)}</td>
+                      <td className="py-3 px-4 text-sm font-bold">{formatCurrency(selectedItem.totalAmount || 0, selectedItem.currency)}</td>
                     </tr>
                   </tfoot>
                 </table>

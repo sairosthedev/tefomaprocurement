@@ -1,6 +1,7 @@
 import mongoose, { Schema, type Document } from 'mongoose';
-import { requiresCooApproval } from '../services/poApprovalFlow.service.js';
+import { SUPPORTED_CURRENCY_CODES } from '@fossil/shared';
 import { nextNumber } from '../services/numbering.service.js';
+import { currentBaseCurrency } from '../tenancy/sbuContext.js';
 
 export interface IPOItem {
   description: string;
@@ -32,6 +33,14 @@ export interface IPurchaseOrder extends Document {
   subtotal: number;
   vatAmount: number;
   totalAmount: number;
+  /** Currency of every amount on the PO. Defaults to the SBU's base currency. */
+  currency: string;
+  /** totalAmount in USD at the rate below, as assessed for the COO limit. */
+  totalAmountUsd?: number;
+  /** Units of `currency` per USD used for the assessment. */
+  fxRateToUsd?: number;
+  /** The SBU's COO limit (USD) when the PO was assessed. */
+  cooThresholdUsd?: number;
   deliverToSite?: mongoose.Types.ObjectId | any;
   deliveryAddress?: {
     street?: string;
@@ -167,6 +176,15 @@ const PurchaseOrderSchema = new Schema<IPurchaseOrder>({
     type: Number,
     required: true
   },
+  currency: {
+    type: String,
+    enum: [...SUPPORTED_CURRENCY_CODES],
+    required: true,
+    default: currentBaseCurrency
+  },
+  totalAmountUsd: Number,
+  fxRateToUsd: Number,
+  cooThresholdUsd: Number,
   deliverToSite: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Site'
@@ -265,8 +283,15 @@ const PurchaseOrderSchema = new Schema<IPurchaseOrder>({
 });
 
 PurchaseOrderSchema.pre('save', async function(next) {
-  // COO required above USD 5,000
-  this.requiresCooApproval = requiresCooApproval(this.totalAmount);
+  // COO required at or above the SBU's USD limit, converted at the stored FX
+  // rate. Assessed only when the amount or currency changes, so a rate update
+  // never moves a PO that is already in its approval chain. The import is
+  // dynamic because the FX service reaches the platform connection, which
+  // registers this model — a static import would be a cycle.
+  if (this.isNew || this.isModified('totalAmount') || this.isModified('currency')) {
+    const { applyCooAssessment } = await import('../services/poApprovalFlow.service.js');
+    await applyCooAssessment(this);
+  }
 
   // Calculate pending quantities
   this.items.forEach((item: any) => {

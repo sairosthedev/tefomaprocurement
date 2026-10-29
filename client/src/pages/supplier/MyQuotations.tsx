@@ -8,6 +8,7 @@ import PageHeader from '../../components/PageHeader';
 import Pagination from '../../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
 import { formatCurrency } from '../../lib/constants';
+import { getCurrentSbuCurrency } from '../../lib/sbu';
 import confetti from 'canvas-confetti';
 
 const statusColors: any = {
@@ -151,7 +152,7 @@ export default function MyQuotations() {
                     </td>
                     <td className="py-4 px-6">
                       <span className="font-semibold text-gray-900">
-                        {formatCurrency(quote.totalAmount, quote.currency)}
+                        {formatCurrency(quote.totalAmount, quote.currency || getCurrentSbuCurrency())}
                       </span>
                     </td>
                     <td className="py-4 px-6 text-sm text-gray-500">
@@ -252,7 +253,7 @@ export default function MyQuotations() {
               <div>
                 <label className="text-sm text-gray-500">Total Amount</label>
                 <p className="text-xl font-bold text-gray-900">
-                  {formatCurrency(selectedQuotation.totalAmount, selectedQuotation.currency)}
+                  {formatCurrency(selectedQuotation.totalAmount, selectedQuotation.currency || getCurrentSbuCurrency())}
                 </p>
               </div>
               <div>
@@ -292,10 +293,10 @@ export default function MyQuotations() {
                         </td>
                         <td className="py-3 px-4 text-sm">{item.quantity} {item.unit}</td>
                         <td className="py-3 px-4 text-sm">
-                          {formatCurrency(item.unitPrice, selectedQuotation.currency)}
+                          {formatCurrency(item.unitPrice, selectedQuotation.currency || getCurrentSbuCurrency())}
                         </td>
                         <td className="py-3 px-4 text-sm font-medium">
-                          {formatCurrency(item.totalPrice || item.quantity * item.unitPrice, selectedQuotation.currency)}
+                          {formatCurrency(item.totalPrice || item.quantity * item.unitPrice, selectedQuotation.currency || getCurrentSbuCurrency())}
                         </td>
                       </tr>
                     ))}

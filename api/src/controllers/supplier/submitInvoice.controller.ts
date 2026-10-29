@@ -63,6 +63,7 @@ const submitInvoice = async (req: Request, res: Response): Promise<any> => {
       supplier: profile._id,
       submittedBy: req.user!._id,
       items: invoiceItems,
+      currency: po.currency,
       vatAmount: Number(vatAmount) || 0,
       invoiceDate: new Date(invoiceDate),
       dueDate: dueDate ? new Date(dueDate) : undefined,

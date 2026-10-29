@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supplierAPI } from '../../lib/api';
 import { formatCurrency } from '../../lib/constants';
+import { getCurrentSbuCurrency } from '../../lib/sbu';
 import { useToast } from '../../components/Toast';
 import PageHeader from '../../components/PageHeader';
 import { Loader2, Send } from 'lucide-react';
@@ -16,6 +17,9 @@ export default function SubmitInvoice() {
   const [vendorInvoiceNumber, setVendorInvoiceNumber] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
   const [items, setItems] = useState<any[]>([]);
+  // An invoice is raised in the currency of the PO it bills.
+  const selectedCurrency =
+    orders.find((o) => o._id === purchaseOrderId)?.currency || getCurrentSbuCurrency();
 
   useEffect(() => {
     loadOrders();
@@ -97,7 +101,7 @@ export default function SubmitInvoice() {
               <option value="">Select PO...</option>
               {orders.map((o) => (
                 <option key={o._id} value={o._id}>
-                  {o.poNumber} — {formatCurrency(o.totalAmount)} ({o.status})
+                  {o.poNumber} — {formatCurrency(o.totalAmount, o.currency || getCurrentSbuCurrency())} ({o.status})
                 </option>
               ))}
             </select>
@@ -141,13 +145,13 @@ export default function SubmitInvoice() {
                     <tr key={i} className="border-t">
                       <td className="p-2">{item.description}</td>
                       <td className="text-right p-2">{item.quantity}</td>
-                      <td className="text-right p-2">{formatCurrency(item.totalPrice)}</td>
+                      <td className="text-right p-2">{formatCurrency(item.totalPrice, selectedCurrency)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               <p className="text-sm text-gray-500 mt-2">
-                Total: {formatCurrency(items.reduce((s, i) => s + i.totalPrice, 0))}
+                Total: {formatCurrency(items.reduce((s, i) => s + i.totalPrice, 0), selectedCurrency)}
               </p>
             </div>
           )}

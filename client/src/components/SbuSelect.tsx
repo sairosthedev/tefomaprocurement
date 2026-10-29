@@ -1,12 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import http from '../services/http';
-import { getSbuCode, setSbuCode } from '../lib/sbu';
+import { getSbuCode, setSbuCode, type SbuDirectoryEntry } from '../lib/sbu';
 
-interface SbuOption {
-  code: string;
-  name: string;
-  country: string;
-}
+type SbuOption = SbuDirectoryEntry;
 
 /**
  * Chooses the business unit to sign in to — and gets out of the way as soon as
@@ -32,13 +28,16 @@ export default function SbuSelect({ disabled }: { disabled?: boolean }) {
       .then((response) => {
         if (cancelled) return;
         const list: SbuOption[] = response.data?.data || [];
-        const current: { code: string } | null = response.data?.current || null;
+        const current: { code: string; baseCurrency?: string } | null = response.data?.current || null;
         setOptions(list);
 
         if (current?.code) {
           // The domain decided. Keep it stored so every later request carries
           // the same code even if the hostname stops resolving.
-          setSbuCode(current.code);
+          setSbuCode(
+            current.code,
+            current.baseCurrency || list.find((o) => o.code === current.code)?.baseCurrency
+          );
           setSelected(current.code);
           setResolvedByDomain(true);
           return;
@@ -51,7 +50,7 @@ export default function SbuSelect({ disabled }: { disabled?: boolean }) {
         const next = valid || (list.length === 1 ? list[0].code : '');
         if (next) {
           setSelected(next);
-          setSbuCode(next);
+          setSbuCode(next, list.find((o) => o.code === next)?.baseCurrency);
         }
       })
       .catch(() => {
@@ -79,7 +78,7 @@ export default function SbuSelect({ disabled }: { disabled?: boolean }) {
         disabled={disabled}
         onChange={(e) => {
           setSelected(e.target.value);
-          setSbuCode(e.target.value);
+          setSbuCode(e.target.value, options.find((o) => o.code === e.target.value)?.baseCurrency);
         }}
         required
         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all duration-200 hover:border-gray-400 disabled:bg-gray-100 disabled:cursor-not-allowed"

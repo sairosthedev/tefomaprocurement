@@ -1,5 +1,5 @@
 import mongoose, { Schema, type Document } from 'mongoose';
-import { nextSequence } from '../services/numbering.service.js';
+import { nextSequence, sbuNumberPrefix } from '../services/numbering.service.js';
 
 export interface IStoreTransaction extends Document {
   transactionNumber: string;
@@ -100,7 +100,7 @@ StoreTransactionSchema.pre('validate', async function() {
     const year = new Date().getFullYear();
     const typePrefix = this.type.substring(0, 3).toUpperCase();
     const seq = await nextSequence(this, 'storeTransaction', year);
-    this.transactionNumber = `ST-${typePrefix}-${year}-${String(seq).padStart(6, '0')}`;
+    this.transactionNumber = `${sbuNumberPrefix()}ST-${typePrefix}-${year}-${String(seq).padStart(6, '0')}`;
   }
 });
 

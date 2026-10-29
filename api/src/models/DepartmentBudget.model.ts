@@ -1,9 +1,13 @@
 import mongoose, { Schema, type Document } from 'mongoose';
+import { SUPPORTED_CURRENCY_CODES } from '@fossil/shared';
+import { currentBaseCurrency } from '../tenancy/sbuContext.js';
 
 export interface IDepartmentBudget extends Document {
   department: mongoose.Types.ObjectId;
   fiscalYear: number;
   allocatedAmount: number;
+  /** Currency of the allocation. The SBU's base currency. */
+  currency: string;
   notes?: string;
   isDeleted: boolean;
   createdAt: Date;
@@ -25,6 +29,12 @@ const DepartmentBudgetSchema = new Schema<IDepartmentBudget>({
     required: true,
     min: 0,
     default: 0
+  },
+  currency: {
+    type: String,
+    enum: [...SUPPORTED_CURRENCY_CODES],
+    required: true,
+    default: currentBaseCurrency
   },
   notes: {
     type: String,

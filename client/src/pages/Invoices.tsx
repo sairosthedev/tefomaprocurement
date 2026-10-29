@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { financeAPI } from '../lib/api';
 import { formatCurrency } from '../lib/constants';
+import { getCurrentSbuCurrency } from '../lib/sbu';
 import { useToast } from '../components/Toast';
 import { Loader2, Search, AlertTriangle, CheckCircle } from 'lucide-react';
 import ViewButton from '../components/ViewButton';
@@ -117,7 +118,7 @@ export default function Invoices() {
                   <td className="p-4 font-medium">{inv.invoiceNumber}</td>
                   <td className="p-4">{inv.purchaseOrder?.poNumber || '—'}</td>
                   <td className="p-4">{inv.supplier?.companyName || '—'}</td>
-                  <td className="p-4">{formatCurrency(inv.totalAmount)}</td>
+                  <td className="p-4">{formatCurrency(inv.totalAmount, inv.currency || getCurrentSbuCurrency())}</td>
                   <td className="p-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[inv.status] || 'bg-gray-100'}`}>
                       {formatStatus(inv.status)}

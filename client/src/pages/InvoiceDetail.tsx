@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { financeAPI } from '../lib/api';
 import { formatCurrency } from '../lib/constants';
+import { getCurrentSbuCurrency } from '../lib/sbu';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
 import { Loader2, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
@@ -99,6 +100,7 @@ export default function InvoiceDetail() {
 
   if (!invoice) return null;
 
+  const currency = invoice.currency || invoice.purchaseOrder?.currency || getCurrentSbuCurrency();
   const canApprove = ['submitted', 'variance'].includes(invoice.status);
   const canPay = invoice.status === 'approved';
   // Nothing receipted and accepted means the approval gate will refuse
@@ -114,7 +116,7 @@ export default function InvoiceDetail() {
         title={invoice.invoiceNumber}
         subtitle={`PO: ${invoice.purchaseOrder?.poNumber} · ${invoice.supplier?.companyName}`}
         actions={
-          <span className="text-2xl font-bold text-primary">{formatCurrency(invoice.totalAmount)}</span>
+          <span className="text-2xl font-bold text-primary">{formatCurrency(invoice.totalAmount, currency)}</span>
         }
       />
 
@@ -125,9 +127,9 @@ export default function InvoiceDetail() {
             Three-way match
           </h2>
           <div className="grid grid-cols-3 gap-4 text-sm mb-4">
-            <div><span className="text-gray-500">PO total</span><p className="font-medium">{formatCurrency(match.poTotal)}</p></div>
-            <div><span className="text-gray-500">Received value</span><p className="font-medium">{formatCurrency(match.receivedValue)}</p></div>
-            <div><span className="text-gray-500">Invoiced</span><p className="font-medium">{formatCurrency(match.invoicedTotal)}</p></div>
+            <div><span className="text-gray-500">PO total</span><p className="font-medium">{formatCurrency(match.poTotal, currency)}</p></div>
+            <div><span className="text-gray-500">Received value</span><p className="font-medium">{formatCurrency(match.receivedValue, currency)}</p></div>
+            <div><span className="text-gray-500">Invoiced</span><p className="font-medium">{formatCurrency(match.invoicedTotal, currency)}</p></div>
           </div>
           <div className="text-sm mb-4">
             <span className="text-gray-500">Goods received notes</span>
@@ -156,8 +158,8 @@ export default function InvoiceDetail() {
               <tr key={i} className="border-b">
                 <td className="py-2">{item.description}</td>
                 <td className="text-right py-2">{item.quantity}</td>
-                <td className="text-right py-2">{formatCurrency(item.unitPrice)}</td>
-                <td className="text-right py-2">{formatCurrency(item.totalPrice)}</td>
+                <td className="text-right py-2">{formatCurrency(item.unitPrice, currency)}</td>
+                <td className="text-right py-2">{formatCurrency(item.totalPrice, currency)}</td>
               </tr>
             ))}
           </tbody>

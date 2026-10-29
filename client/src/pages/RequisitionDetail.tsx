@@ -4,7 +4,7 @@ import api, { departmentAPI, procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency } from '../lib/constants';
-import { PR_CANCELLATION_REASONS, COO_APPROVAL_THRESHOLD_USD, isProcurementHead } from '@fossil/shared';
+import { PR_CANCELLATION_REASONS, isProcurementHead } from '@fossil/shared';
 import PageHeader from '../components/PageHeader';
 import CancelWorkflowModal from '../components/CancelWorkflowModal';
 import EquipmentDetailsView from '../components/EquipmentDetailsView';
@@ -598,7 +598,7 @@ export default function RequisitionDetail() {
               <div className="space-y-3">
                 <div>
                   <label className="text-xs text-gray-600">PO Number</label>
-                  <p className="font-mono font-bold text-primary text-lg mt-1">
+                  <p className="font-mono font-bold text-primary text-lg mt-1 break-all">
                     {requisition.purchaseOrder.poNumber}
                   </p>
                 </div>
@@ -618,8 +618,9 @@ export default function RequisitionDetail() {
                     { label: 'Department head', done: !!po.deptHodApproved },
                     { label: 'Head of Procurement', done: !!po.procHodApproved },
                     { label: 'Finance', done: !!po.financeApproved },
-                    // The COO step only applies above the threshold.
-                    ...((po.totalAmount || 0) >= COO_APPROVAL_THRESHOLD_USD
+                    // The COO step applies only when the server flagged the PO
+                    // (its USD limit converted at the stored FX rate).
+                    ...(po.requiresCooApproval
                       ? [{ label: 'COO', done: !!po.cooApproved }]
                       : [])
                   ];

@@ -13,6 +13,7 @@ import deleteSite from './deleteSite.controller.js';
 import getAuditLogs, { getAuditLogStats } from './getAuditLogs.controller.js';
 import resetTransactions from './resetTransactions.controller.js';
 import getEvidencePack from './getEvidencePack.controller.js';
+import getSbuSettings from './getSbuSettings.controller.js';
 
 export default {
   createUser,
@@ -30,5 +31,6 @@ export default {
   getAuditLogs,
   getAuditLogStats,
   resetTransactions,
-  getEvidencePack
+  getEvidencePack,
+  getSbuSettings
 };

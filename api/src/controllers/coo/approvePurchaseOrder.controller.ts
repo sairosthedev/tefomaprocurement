@@ -3,6 +3,7 @@ import { PurchaseOrder } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole, notifySupplier } from '../../services/notification.service.js';
 import { emailApprovedPurchaseOrderToSupplier } from '../../services/purchaseOrderDocument.service.js';
+import { describeCooAssessment } from '../../services/poApprovalFlow.service.js';
 
 const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -17,7 +18,7 @@ const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> =
     if (!po.requiresCooApproval) {
       return res.status(400).json({
         success: false,
-        message: 'COO authorization not required for this purchase order (below USD 5,000 threshold)'
+        message: `COO authorization not required for this purchase order (${describeCooAssessment(po)})`
       });
     }
 

@@ -3,7 +3,7 @@ import { PurchaseOrder, User } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { createNotifications } from '../../services/notification.service.js';
 import { isProcurementHead } from '@fossil/shared';
-import { requiresCooApproval } from '../../services/poApprovalFlow.service.js';
+import { applyCooAssessment, describeCooAssessment } from '../../services/poApprovalFlow.service.js';
 
 const submitPurchaseOrder = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -24,14 +24,13 @@ const submitPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       });
     }
 
-    // Sequential: Procurement HOD → Finance → COO (if > USD 5k)
+    // Sequential: Procurement HOD → Finance → COO (at or above the SBU's USD limit)
     po.status = 'pending_proc_hod';
     po.deptHodApproved = true; // step removed — auto-cleared
     po.procHodApproved = false;
     po.hodApproved = false;
     po.financeApproved = false;
     po.cooApproved = false;
-    po.requiresCooApproval = requiresCooApproval(po.totalAmount);
     po.deptHodApprovedBy = undefined;
     po.deptHodApprovedAt = undefined;
     po.procHodApprovedBy = undefined;
@@ -49,6 +48,10 @@ const submitPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       comments: 'Submitted for Procurement HOD approval'
     });
 
+    // Re-assessed at submission against today's rate and limit, whatever the
+    // draft recorded when it was created.
+    await applyCooAssessment(po);
+
     await po.save();
 
     await createAuditLog({
@@ -57,7 +60,14 @@ const submitPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       entityId: po._id,
       user: req.user,
       description: `Submitted PO: ${po.poNumber} for HOD approval`,
-      newData: { status: 'pending_proc_hod', requiresCooApproval: po.requiresCooApproval },
+      newData: {
+        status: 'pending_proc_hod',
+        requiresCooApproval: po.requiresCooApproval,
+        currency: po.currency,
+        totalAmountUsd: po.totalAmountUsd,
+        fxRateToUsd: po.fxRateToUsd,
+        cooThresholdUsd: po.cooThresholdUsd
+      },
       req
     });
 
@@ -80,7 +90,7 @@ const submitPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
     res.status(200).json({
       success: true,
       message: po.requiresCooApproval
-        ? 'Purchase order submitted. Awaiting Procurement HOD → Finance → COO approval (amount ≥ USD 5,000).'
+        ? `Purchase order submitted. Awaiting Procurement HOD → Finance → COO approval (${describeCooAssessment(po)}).`
         : 'Purchase order submitted. Awaiting Procurement HOD → Finance approval.',
       data: po
     });

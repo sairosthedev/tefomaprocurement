@@ -4,6 +4,7 @@ import { useToast } from '../components/Toast';
 import { financeAPI } from '../lib/api';
 import { DollarSign, TrendingUp, AlertCircle, Loader2, PieChart, Edit2 } from 'lucide-react';
 import { formatCurrency } from '../lib/constants';
+import { getCurrentSbuCurrency } from '../lib/sbu';
 import PageHeader from '../components/PageHeader';
 import Modal from '../components/Modal';
 
@@ -78,6 +79,8 @@ export default function Budgets() {
     }
   };
 
+  // Budgets are held in the business unit's base currency.
+  const currency = budgetData.currency || getCurrentSbuCurrency();
   const totalBudget = budgetData.totalBudget || 0;
   const utilisedTotal = budgetData.utilised ?? budgetData.utilized ?? 0;
   const utilizationPercentage = totalBudget > 0
@@ -121,7 +124,7 @@ export default function Budgets() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Total Budget</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalBudget)}</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalBudget, currency)}</p>
             </div>
           </div>
         </div>
@@ -133,7 +136,7 @@ export default function Budgets() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Utilized (paid)</p>
-              <p className="text-2xl font-bold text-green-600">{formatCurrency(utilisedTotal)}</p>
+              <p className="text-2xl font-bold text-green-600">{formatCurrency(utilisedTotal, currency)}</p>
               <p className="text-xs text-gray-400">{utilizationPercentage}% of total</p>
             </div>
           </div>
@@ -146,7 +149,7 @@ export default function Budgets() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Committed</p>
-              <p className="text-2xl font-bold text-amber-600">{formatCurrency(budgetData.committed)}</p>
+              <p className="text-2xl font-bold text-amber-600">{formatCurrency(budgetData.committed, currency)}</p>
               <p className="text-xs text-gray-400">{committedPercentage}% of total</p>
             </div>
           </div>
@@ -160,7 +163,7 @@ export default function Budgets() {
             <div>
               <p className="text-sm text-gray-500">Available</p>
               <p className={`text-2xl font-bold ${budgetData.available < 0 ? 'text-red-600' : 'text-purple-600'}`}>
-                {formatCurrency(budgetData.available)}
+                {formatCurrency(budgetData.available, currency)}
               </p>
               <p className="text-xs text-gray-400">
                 {budgetData.available < 0
@@ -243,13 +246,13 @@ export default function Budgets() {
                         </span>
                       )}
                     </td>
-                    <td className="py-4 px-6 text-gray-600">{formatCurrency(dept.budget)}</td>
-                    <td className="py-4 px-6 text-gray-600">{formatCurrency(dept.utilised ?? dept.utilized)}</td>
-                    <td className="py-4 px-6 text-gray-600">{formatCurrency(dept.committed)}</td>
+                    <td className="py-4 px-6 text-gray-600">{formatCurrency(dept.budget, dept.currency || currency)}</td>
+                    <td className="py-4 px-6 text-gray-600">{formatCurrency(dept.utilised ?? dept.utilized, dept.currency || currency)}</td>
+                    <td className="py-4 px-6 text-gray-600">{formatCurrency(dept.committed, dept.currency || currency)}</td>
                     {/* Overspend shows as a negative figure rather than being
                         floored at zero, which hid it entirely. */}
                     <td className={`py-4 px-6 ${dept.available < 0 ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
-                      {formatCurrency(dept.available)}
+                      {formatCurrency(dept.available, dept.currency || currency)}
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
@@ -292,7 +295,7 @@ export default function Budgets() {
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Allocated amount (FY {budgetData.fiscalYear})
+              Allocated amount (FY {budgetData.fiscalYear}, {editDept?.currency || currency})
             </label>
             <input
               type="number"

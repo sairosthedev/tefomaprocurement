@@ -4,6 +4,7 @@ import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import Modal, { ConfirmModal } from '../components/Modal';
 import { formatCurrency } from '../lib/constants';
+import { getCurrentSbuCurrency } from '../lib/sbu';
 import Tabs from '../components/Tabs';
 import PageHeader from '../components/PageHeader';
 import { 
@@ -337,7 +338,7 @@ export default function Quotations() {
                         ) : (
                           <div className="flex items-center gap-1 font-semibold text-gray-900">
                             <DollarSign className="h-4 w-4 text-gray-400" />
-                            {formatCurrency(quotation.totalAmount, quotation.currency || 'USD')}
+                            {formatCurrency(quotation.totalAmount, quotation.currency || getCurrentSbuCurrency())}
                           </div>
                         )}
                       </td>
@@ -406,7 +407,7 @@ export default function Quotations() {
               </div>
               <div>
                 <label className="text-sm text-gray-500">Total Amount</label>
-                <p className="text-lg font-bold text-gray-900">{formatCurrency(selectedQuotation.totalAmount, selectedQuotation.currency || 'USD')}</p>
+                <p className="text-lg font-bold text-gray-900">{formatCurrency(selectedQuotation.totalAmount, selectedQuotation.currency || getCurrentSbuCurrency())}</p>
               </div>
             </div>
 
@@ -480,10 +481,10 @@ export default function Quotations() {
                           {item.quantity} {item.unit}
                         </td>
                         <td className="py-3 px-4 text-sm font-medium text-gray-900">
-                          {formatCurrency(item.unitPrice, selectedQuotation.currency || 'USD')}
+                          {formatCurrency(item.unitPrice, selectedQuotation.currency || getCurrentSbuCurrency())}
                         </td>
                         <td className="py-3 px-4 text-sm font-semibold text-gray-900">
-                          {formatCurrency(item.totalPrice, selectedQuotation.currency || 'USD')}
+                          {formatCurrency(item.totalPrice, selectedQuotation.currency || getCurrentSbuCurrency())}
                         </td>
                       </tr>
                     ))}
@@ -494,7 +495,7 @@ export default function Quotations() {
                         Subtotal:
                       </td>
                       <td className="py-3 px-4 font-semibold text-gray-900">
-                        {formatCurrency(selectedQuotation.subtotal, selectedQuotation.currency || 'USD')}
+                        {formatCurrency(selectedQuotation.subtotal, selectedQuotation.currency || getCurrentSbuCurrency())}
                       </td>
                     </tr>
                     {selectedQuotation.vatAmount > 0 && (
@@ -503,7 +504,7 @@ export default function Quotations() {
                           VAT (15%):
                         </td>
                         <td className="py-3 px-4 font-semibold text-gray-900">
-                          {formatCurrency(selectedQuotation.vatAmount, selectedQuotation.currency || 'USD')}
+                          {formatCurrency(selectedQuotation.vatAmount, selectedQuotation.currency || getCurrentSbuCurrency())}
                         </td>
                       </tr>
                     )}
@@ -512,7 +513,7 @@ export default function Quotations() {
                         Total:
                       </td>
                       <td className="py-3 px-4 text-lg font-bold text-primary">
-                        {formatCurrency(selectedQuotation.totalAmount, selectedQuotation.currency || 'USD')}
+                        {formatCurrency(selectedQuotation.totalAmount, selectedQuotation.currency || getCurrentSbuCurrency())}
                       </td>
                     </tr>
                   </tfoot>
@@ -684,7 +685,7 @@ export default function Quotations() {
               <p className="text-sm text-blue-800">
                 <strong>From Quotation:</strong> {selectedQuotation.quotationNumber} | 
                 <strong> Supplier:</strong> {selectedQuotation.supplier?.companyName} | 
-                <strong> Total:</strong> {formatCurrency(selectedQuotation.totalAmount, selectedQuotation.currency || 'USD')}
+                <strong> Total:</strong> {formatCurrency(selectedQuotation.totalAmount, selectedQuotation.currency || getCurrentSbuCurrency())}
               </p>
             </div>
 

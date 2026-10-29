@@ -31,7 +31,8 @@ async function loadSbus(): Promise<SbuRef[]> {
     code: doc.code,
     name: doc.name,
     dbName: doc.dbName,
-    connectionUriEnv: doc.connectionUriEnv || undefined
+    connectionUriEnv: doc.connectionUriEnv || undefined,
+    baseCurrency: doc.baseCurrency
   }));
   allSbus = { value, expiresAt: now + CACHE_TTL_MS };
   return value;

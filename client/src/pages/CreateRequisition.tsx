@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 import api from '../lib/api';
 import { Plus, Trash2, Save, Send, Package, Loader2 } from 'lucide-react';
-import { UNITS_OF_MEASUREMENT } from '../lib/constants';
+import { UNITS_OF_MEASUREMENT, formatCurrency } from '../lib/constants';
+import { getCurrentSbuCurrency } from '../lib/sbu';
 import { CategorySelect } from '../components/CategorySelect';
 import { ItemSelect, type CatalogItem } from '../components/ItemSelect';
 import PageHeader from '../components/PageHeader';
@@ -332,9 +333,9 @@ export default function CreateRequisition() {
                     <label className="block text-xs text-gray-500 mb-1">Line total</label>
                     <div className="px-3 py-2 text-sm text-gray-700 font-medium tabular-nums">
                       {(Number(item.estimatedUnitPrice) || 0) * (Number(item.quantity) || 0)
-                        ? ((Number(item.estimatedUnitPrice) || 0) * (Number(item.quantity) || 0)).toLocaleString(
-                            undefined,
-                            { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+                        ? formatCurrency(
+                            (Number(item.estimatedUnitPrice) || 0) * (Number(item.quantity) || 0),
+                            getCurrentSbuCurrency()
                           )
                         : '—'}
                     </div>
@@ -370,10 +371,7 @@ export default function CreateRequisition() {
             <div className="mt-4 flex items-center justify-end gap-3 text-sm">
               <span className="text-gray-500">Estimated total</span>
               <span className="text-lg font-semibold text-gray-900 tabular-nums">
-                {estimatedTotal.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2
-                })}
+                {formatCurrency(estimatedTotal, getCurrentSbuCurrency())}
               </span>
             </div>
           )}

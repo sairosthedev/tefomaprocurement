@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { procurementAPI, financeAPI, cooAPI } from '../lib/api';
 import { formatCurrency } from '../lib/constants';
+import { getCurrentSbuCurrency } from '../lib/sbu';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { isProcurementHead } from '@fossil/shared';
@@ -227,7 +228,7 @@ export default function PurchaseOrders() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-1 font-semibold text-gray-900">
                           <DollarSign className="h-4 w-4 text-gray-400" />
-                          {formatCurrency(order.totalAmount, order.quotation?.currency || 'USD')}
+                          {formatCurrency(order.totalAmount, order.currency || order.quotation?.currency || getCurrentSbuCurrency())}
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">

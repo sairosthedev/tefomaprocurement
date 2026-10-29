@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { financeAPI } from '../lib/api';
 import { formatCurrency } from '../lib/constants';
+import { getCurrentSbuCurrency } from '../lib/sbu';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
@@ -80,7 +81,7 @@ export default function Payments() {
                 <tr key={p._id} className="border-b">
                   <td className="p-4 font-medium">{p.paymentNumber}</td>
                   <td className="p-4">{p.supplier?.companyName}</td>
-                  <td className="p-4">{formatCurrency(p.amount)}</td>
+                  <td className="p-4">{formatCurrency(p.amount, p.currency || p.invoice?.currency || getCurrentSbuCurrency())}</td>
                   <td className="p-4">{new Date(p.paymentDate).toLocaleDateString()}</td>
                   <td className="p-4 capitalize">{p.status}</td>
                 </tr>

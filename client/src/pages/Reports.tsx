@@ -8,6 +8,7 @@ import {
   FileText, Download, Calendar, Loader2, PieChart
 } from 'lucide-react';
 import { formatCurrency } from '../lib/constants';
+import { getCurrentSbuCurrency } from '../lib/sbu';
 import { canViewSupplierReports } from '../lib/reportAccess';
 import PageHeader from '../components/PageHeader';
 import SupplierReportsSection from '../components/reports/SupplierReportsSection';
@@ -179,7 +180,7 @@ function OverviewReportsSection({
   }, [userRole, reportData?.stats]);
 
   const formatValue = (format: 'currency' | 'number', v: number) =>
-    format === 'currency' ? formatCurrency(v) : String(v);
+    format === 'currency' ? formatCurrency(v, reportData?.currency || getCurrentSbuCurrency()) : String(v);
 
   const exportCsv = () => {
     const rows: string[][] = [['Metric', 'Value']];

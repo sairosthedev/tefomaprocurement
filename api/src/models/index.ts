@@ -45,3 +45,4 @@ export const OtpChallenge = resolvingModel(SBU_MODELS.OtpChallenge, sbuConnectio
 
 /** Group-wide registry, in the platform database rather than any SBU's. */
 export { default as Sbu } from './Sbu.model.js';
+export { default as FxRate } from './FxRate.model.js';

@@ -13,6 +13,8 @@ import {
 import ViewButton from '../components/ViewButton';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
+import { formatCurrency } from '../lib/constants';
+import { getCurrentSbuCurrency } from '../lib/sbu';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 import { isProcurementHead } from '@fossil/shared';
 
@@ -1055,19 +1057,19 @@ export default function Requisitions() {
                 <div className="flex justify-between gap-4">
                   <dt className="text-red-700">Available before this request</dt>
                   <dd className="tabular-nums font-medium">
-                    {Number(budgetWarning.availableBefore || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {formatCurrency(Number(budgetWarning.availableBefore || 0), budgetWarning.currency || getCurrentSbuCurrency())}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4">
                   <dt className="text-red-700">This request</dt>
                   <dd className="tabular-nums font-medium">
-                    {Number(budgetWarning.requestAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {formatCurrency(Number(budgetWarning.requestAmount || 0), budgetWarning.currency || getCurrentSbuCurrency())}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4 border-t border-red-200 pt-1">
                   <dt className="text-red-700">Would be over by</dt>
                   <dd className="tabular-nums font-bold">
-                    {Math.abs(Number(budgetWarning.availableAfter || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {formatCurrency(Math.abs(Number(budgetWarning.availableAfter || 0)), budgetWarning.currency || getCurrentSbuCurrency())}
                   </dd>
                 </div>
               </dl>

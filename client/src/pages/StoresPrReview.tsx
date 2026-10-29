@@ -4,6 +4,7 @@ import { storesAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { Loader2, ArrowRight, Search, Zap, PackageCheck } from 'lucide-react';
 import { formatCurrency } from '../lib/constants';
+import { getCurrentSbuCurrency } from '../lib/sbu';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
@@ -212,7 +213,7 @@ export default function StoresPrReview() {
               <div className="px-5 py-4 border-t border-gray-100 space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">Estimated value</span>
-                  <span className="font-medium text-primary">{formatCurrency(pr.estimatedTotal)}</span>
+                  <span className="font-medium text-primary">{formatCurrency(pr.estimatedTotal, pr.currency || getCurrentSbuCurrency())}</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <button

@@ -7,7 +7,6 @@ import { User } from '../models/index.js';
 import {
   getBrandLabel,
   getProductName,
-  getCompanyName,
   getAppUrl,
   brandSubject,
   getEmailFromAddress
@@ -567,12 +566,17 @@ const sendPurchaseOrderEmail = async (
         })}`
       : '';
 
+  // The issuing SBU, not the deployment default: the supplier must see which
+  // business unit is ordering.
+  const { getDocumentBranding } = await import('./sbuSettings.service.js');
+  const issuer = (await getDocumentBranding()).legalName;
+
   const result = await sendEmailNotification({
     emailTo,
     subject: brandSubject(`Purchase Order ${po?.poNumber || ''}`),
     headingText: `Purchase Order ${po?.poNumber || ''}`,
     subText:
-      `Please find attached purchase order ${po?.poNumber || ''} from ${getCompanyName()}` +
+      `Please find attached purchase order ${po?.poNumber || ''} from ${issuer}` +
       `${total ? ` to the value of ${total}` : ''}.`,
     subSubText: 'Kindly acknowledge receipt and confirm the delivery date.',
     actionButtonText: 'View in portal',

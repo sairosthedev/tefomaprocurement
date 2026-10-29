@@ -1,11 +1,11 @@
 import type { Request, Response } from 'express';
 import PDFDocument from 'pdfkit';
-import { getCompanyName } from '../../lib/branding.js';
+import { drawLetterhead } from '../../lib/pdfLetterhead.js';
+import { getDocumentBranding } from '../../services/sbuSettings.service.js';
 
 import { Delivery } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 
-const COMPANY = getCompanyName();
 const MARGIN = 45;
 const ACCENT = '#b45309';
 const MUTED = '#6b7280';
@@ -106,6 +106,7 @@ const printGrv = async (req: Request, res: Response): Promise<any> => {
       req
     });
 
+    const branding = await getDocumentBranding();
     const doc = new PDFDocument({ size: 'A4', margin: MARGIN, bufferPages: true });
 
     res.setHeader('Content-Type', 'application/pdf');
@@ -116,7 +117,7 @@ const printGrv = async (req: Request, res: Response): Promise<any> => {
     const colWidth = (pageWidth - 20) / 2;
 
     // ── Header ──
-    doc.fontSize(16).fillColor('#111827').text(COMPANY, MARGIN, MARGIN);
+    drawLetterhead(doc, branding, MARGIN, MARGIN, pageWidth);
     doc.fontSize(18).fillColor(ACCENT).text('GOODS RECEIVED VOUCHER', MARGIN, doc.y + 2);
     doc.fontSize(9).fillColor(MUTED).text(`GRV No. ${grvNumber}`, MARGIN, doc.y + 2);
 
@@ -282,7 +283,7 @@ const printGrv = async (req: Request, res: Response): Promise<any> => {
       const bottomMargin = doc.page.margins.bottom;
       doc.page.margins.bottom = 0;
       doc.fontSize(7.5).fillColor(MUTED).text(
-        `${COMPANY} — GRV ${grvNumber}   |   Page ${i + 1} of ${totalPages}   |   Generated ${generatedAt}`,
+        `${branding.legalName} — GRV ${grvNumber}   |   Page ${i + 1} of ${totalPages}   |   Generated ${generatedAt}`,
         MARGIN,
         doc.page.height - 32,
         { width: pageWidth, align: 'center', lineBreak: false }
