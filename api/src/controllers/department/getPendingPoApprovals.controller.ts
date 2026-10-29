@@ -1,12 +1,7 @@
 import type { Request, Response } from 'express';
 import { PurchaseOrder, PurchaseRequisition } from '../../models/index.js';
 import { isProcurementHead } from '@fossil/shared';
-
-const toIdString = (value: any): string | undefined => {
-  if (!value) return undefined;
-  if (typeof value === 'object' && value._id) return value._id.toString();
-  return value.toString();
-};
+import { resolveUserDepartmentIds } from '../../lib/departmentScope.js';
 
 /**
  * Pending PO approvals for department heads.
@@ -27,11 +22,12 @@ const getPendingPoApprovals = async (req: Request, res: Response): Promise<any> 
 
     const procHead = isProcurementHead(req.user);
 
-    // Requesting-department HODs: only their own department's POs at the
-    // first HOD step. Resolve which requisitions belong to this department.
-    const deptId = toIdString(req.user!.department);
-    const reqs = deptId
-      ? await PurchaseRequisition.find({ department: deptId, isDeleted: false }).select('_id')
+    // For proc HOD: POs at pending_proc_hod. The Dept HOD step was removed so
+    // other department heads have no PO approval step; their query is kept for
+    // any legacy pending_dept_hod records still in the system.
+    const deptIds = await resolveUserDepartmentIds(req.user);
+    const reqs = deptIds.length
+      ? await PurchaseRequisition.find({ department: { $in: deptIds }, isDeleted: false }).select('_id')
       : [];
     const reqIds: any[] = reqs.map((r) => r._id);
     if (procHead) reqIds.push(null);

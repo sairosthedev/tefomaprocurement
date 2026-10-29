@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { isProcurementHead } from '@fossil/shared';
 import { User, SupplierProfile, RFQ, Quotation, PurchaseOrder, Inventory, PurchaseRequisition, AuditLog, Department, Site } from '../../models/index.js';
 import { buildRoleReportCharts } from '../../lib/reportAnalytics.js';
+import { resolveUserDepartmentIds } from '../../lib/departmentScope.js';
 
 // Every status a PO can wait at on its way through approval. The legacy
 // single-queue statuses stay in so older orders are still counted.
@@ -227,11 +228,12 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
           ...deptFilter,
           status: { $in: ['stores_review', 'fulfilled', 'pending_acceptance', 'accepted', 'sourcing', 'quoted', 'ordered', 'completed'] }
         });
-        // Only this department's orders at the requesting-department step,
-        // the same set department/getPendingPoApprovals lists for them.
-        const deptId = (req.user!.department as any)?._id || req.user!.department;
-        const deptReqIds = deptId
-          ? await PurchaseRequisition.find({ department: deptId, isDeleted: false }).distinct('_id')
+        // Dept HOD PO approval step was removed; only Procurement HOD has a PO
+        // queue now. Keep legacy count for any pending_dept_hod records still in
+        // the system; use resolveUserDepartmentIds to honour Department.head too.
+        const deptIds = await resolveUserDepartmentIds(req.user);
+        const deptReqIds = deptIds.length
+          ? await PurchaseRequisition.find({ department: { $in: deptIds }, isDeleted: false }).distinct('_id')
           : [];
         const pendingPoApprovals = deptReqIds.length
           ? await PurchaseOrder.countDocuments({

@@ -28,6 +28,13 @@ export interface IDeliveredBy {
   signedAt?: Date;
 }
 
+/** Names of functional witnesses present when goods were received (6.8.5). */
+export interface IGrvWitnesses {
+  mt?: string;       // Maintenance/Transport representative
+  security?: string; // Security officer
+  sheq?: string;     // SHEQ (Safety, Health, Environment & Quality) officer
+}
+
 export interface IDelivery extends Document {
   grvNumber?: string;
   purchaseOrder: mongoose.Types.ObjectId | any;
@@ -56,6 +63,18 @@ export interface IDelivery extends Document {
    */
   inspectedByName?: string;
   inspectedByDepartment?: string;
+  /** Functional witnesses present at goods receipt per clause 6.8.5. */
+  witnesses?: IGrvWitnesses;
+  /** True when any received item is classified as hazardous (MSDS required, 6.6.3). */
+  hasHazardousMaterials?: boolean;
+  /** MSDS document reference number or file path when hasHazardousMaterials is true. */
+  msdsReference?: string;
+  /**
+   * Deadline by which rejected/faulty goods must be returned to the supplier
+   * (deliveryDate + 5 working days, clauses 6.6.7–6.6.9). Set automatically
+   * when any item arrives in damaged or defective condition.
+   */
+  returnDeadline?: Date;
   notes?: string;
   attachments: IDeliveryAttachment[];
   isDeleted: boolean;
@@ -152,6 +171,14 @@ const DeliverySchema = new Schema<IDelivery>({
   inspectedAt: Date,
   inspectedByName: { type: String, trim: true },
   inspectedByDepartment: { type: String, trim: true },
+  witnesses: {
+    mt: { type: String, trim: true },
+    security: { type: String, trim: true },
+    sheq: { type: String, trim: true }
+  },
+  hasHazardousMaterials: { type: Boolean, default: false },
+  msdsReference: { type: String, trim: true },
+  returnDeadline: { type: Date },
   notes: String,
   attachments: [{
     fileName: String,

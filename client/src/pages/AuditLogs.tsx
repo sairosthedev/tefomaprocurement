@@ -4,7 +4,7 @@ import {
   Search, FileCheck, Loader2, Download, AlertCircle,
   LogIn, LogOut, Edit, Trash2, Plus, Eye, Send, Upload,
   RefreshCw, X, Activity, Users, ShieldAlert, Clock,
-  ArrowRight, Monitor, Globe, SlidersHorizontal
+  ArrowRight, Monitor, Globe, SlidersHorizontal, ShieldCheck
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import Modal from '../components/Modal';
@@ -238,6 +238,7 @@ export default function AuditLogs() {
   const [selectedLog, setSelectedLog] = useState<any>(null);
   const [showModal, setShowModal] = useState<any>(false);
   const [exporting, setExporting] = useState<any>(false);
+  const [packing, setPacking] = useState<any>(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm), 350);
@@ -390,6 +391,32 @@ export default function AuditLogs() {
     }
   };
 
+  // The auditor's evidence pack for the filtered date range (default: last 12 months).
+  const downloadEvidencePack = async () => {
+    try {
+      setPacking(true);
+      setError('');
+      const res = await adminAPI.getEvidencePack({
+        from: startDate || undefined,
+        to: endDate || undefined
+      });
+      const pack = res.data?.data;
+      const from = String(pack?.meta?.periodFrom || '').slice(0, 10);
+      const to = String(pack?.meta?.periodTo || '').slice(0, 10);
+      const blob = new Blob([JSON.stringify(pack, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `evidence-pack_${from}_${to}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Could not generate the evidence pack');
+    } finally {
+      setPacking(false);
+    }
+  };
+
   const openLog = (log: any) => {
     setSelectedLog(log);
     setShowModal(true);
@@ -419,6 +446,16 @@ export default function AuditLogs() {
             >
               {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
               Export CSV
+            </button>
+            <button
+              type="button"
+              onClick={downloadEvidencePack}
+              disabled={packing}
+              title="Controls evidence for auditors, for the date range in the filters (default: last 12 months)"
+              className="inline-flex items-center gap-2 px-4 py-2.5 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 disabled:opacity-50"
+            >
+              {packing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+              Evidence pack
             </button>
           </>
         }

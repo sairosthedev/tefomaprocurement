@@ -21,6 +21,21 @@ import ViewButton from '../components/ViewButton';
 import Pagination from '../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
+function sourcingDeadlineBadge(createdAt: string): { label: string; cls: string } | null {
+  const ms = Date.now() - new Date(createdAt).getTime();
+  const twoDays = 2 * 24 * 3600000;
+  const remaining = twoDays - ms;
+  if (remaining < 0) {
+    const daysOver = Math.ceil(-remaining / 86400000);
+    return { label: `${daysOver}d overdue (§ 2-day sourcing)`, cls: 'bg-red-100 text-red-700' };
+  }
+  const hrsLeft = Math.ceil(remaining / 3600000);
+  if (hrsLeft <= 24) {
+    return { label: `${hrsLeft}h left to source`, cls: 'bg-amber-100 text-amber-700' };
+  }
+  return null;
+}
+
 const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
   open: 'bg-blue-100 text-blue-700',
@@ -132,9 +147,19 @@ export default function RFQs() {
             >
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${statusColors[rfq.status]}`}>
-                    {rfq.status.charAt(0).toUpperCase() + rfq.status.slice(1)}
-                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[rfq.status]}`}>
+                      {rfq.status.charAt(0).toUpperCase() + rfq.status.slice(1)}
+                    </span>
+                    {rfq.status === 'open' && (() => {
+                      const badge = sourcingDeadlineBadge(rfq.createdAt);
+                      return badge ? (
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${badge.cls}`}>
+                          <Clock className="h-3 w-3" />{badge.label}
+                        </span>
+                      ) : null;
+                    })()}
+                  </div>
                   <h3 className="font-semibold text-gray-900 mt-3">{rfq.rfqNumber}</h3>
                 </div>
                 <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">

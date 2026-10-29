@@ -1,5 +1,6 @@
 import type { Request } from 'express';
 import { AuditLog } from '../models/index.js';
+import { maskAccountNumber, maskBankNumbers } from '../lib/bankMasking.js';
 
 export interface AuditLogOptions {
   action: string;
@@ -110,6 +111,12 @@ const buildChanges = (
     if (isSensitive(key)) {
       // Record that it changed, never what it changed to.
       changes.push({ field: key, from: '[redacted]', to: '[changed]' });
+    } else if (key.toLowerCase() === 'accountnumber') {
+      changes.push({
+        field: key,
+        from: maskAccountNumber(before[key]) ?? null,
+        to: maskAccountNumber(after[key]) ?? null
+      });
     } else {
       changes.push({
         field: key,
@@ -153,8 +160,10 @@ export const createAuditLog = async (options: AuditLogOptions): Promise<void> =>
       previousData, newData, metadata, req
     } = options;
 
-    const previous = redact(previousData);
-    const next = redact(newData);
+    // Account numbers are masked, not redacted: the trail must still show that
+    // an account changed and which one, without holding a usable number.
+    const previous = maskBankNumbers(redact(previousData));
+    const next = maskBankNumbers(redact(newData));
 
     await AuditLog.create({
       action,
@@ -167,9 +176,9 @@ export const createAuditLog = async (options: AuditLogOptions): Promise<void> =>
       description,
       previousData: previous,
       newData: next,
-      changes: buildChanges(previousData, newData),
+      changes: maskBankNumbers(buildChanges(previousData, newData)),
       status: options.status || (next && typeof next === 'object' ? next.status : undefined),
-      metadata: redact(metadata),
+      metadata: maskBankNumbers(redact(metadata)),
       ipAddress: clientIp(req),
       userAgent: req?.headers?.['user-agent'],
       method: req?.method,

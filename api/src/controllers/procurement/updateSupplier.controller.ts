@@ -1,7 +1,13 @@
 import type { Request, Response } from 'express';
 import { isValidCategoryCode } from '@fossil/shared';
-import { User, SupplierProfile } from '../../models/index.js';
+import { User, SupplierProfile, SupplierBankChangeRequest } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { notifyUsersByRole } from '../../services/notification.service.js';
+import {
+  diffBankDetails,
+  hasOpenBankChange,
+  requiresApproval
+} from '../../services/bankChange.service.js';
 
 const updateSupplier = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -24,7 +30,13 @@ const updateSupplier = async (req: Request, res: Response): Promise<any> => {
       proposedBusiness,
       tradeVolume,
       tradeProducts,
-      user: userUpdates
+      user: userUpdates,
+      vettingStatus,
+      siteVisitDate,
+      siteVisitBy,
+      siteVisitNotes,
+      onboardingMethod,
+      onboardingMethodNotes
     } = req.body;
 
     const supplier = await SupplierProfile.findById(id);
@@ -65,15 +77,18 @@ const updateSupplier = async (req: Request, res: Response): Promise<any> => {
       };
     }
 
-    if (bankDetails && typeof bankDetails === 'object') {
-      supplier.bankDetails = {
-        ...supplier.bankDetails,
-        bankName: bankDetails.bankName ?? supplier.bankDetails?.bankName,
-        accountName: bankDetails.accountName ?? supplier.bankDetails?.accountName,
-        accountNumber: bankDetails.accountNumber ?? supplier.bankDetails?.accountNumber,
-        branchCode: bankDetails.branchCode ?? supplier.bankDetails?.branchCode,
-        accountType: bankDetails.accountType ?? supplier.bankDetails?.accountType
-      };
+    // Banking is never written here. A staff edit was the one path that still
+    // overwrote an account in place, skipping the callback and the second
+    // approver — so an insider could redirect payments alone. It now raises the
+    // same held request as a supplier-portal change.
+    const wantsBankChange =
+      bankDetails && typeof bankDetails === 'object' && requiresApproval(supplier.bankDetails, bankDetails);
+    if (wantsBankChange && (await hasOpenBankChange(supplier._id))) {
+      return res.status(409).json({
+        success: false,
+        message:
+          'A banking change for this supplier is already awaiting verification and approval. Resolve it under Bank changes first.'
+      });
     }
 
     if (categories !== undefined) {
@@ -137,7 +152,51 @@ const updateSupplier = async (req: Request, res: Response): Promise<any> => {
       }
     }
 
+    if (vettingStatus !== undefined) supplier.vettingStatus = vettingStatus;
+    if (siteVisitDate !== undefined) supplier.siteVisitDate = siteVisitDate ? new Date(siteVisitDate) : undefined;
+    if (siteVisitBy !== undefined) supplier.siteVisitBy = siteVisitBy ? String(siteVisitBy).trim() : undefined;
+    if (siteVisitNotes !== undefined) supplier.siteVisitNotes = siteVisitNotes ? String(siteVisitNotes).trim() : undefined;
+    if (onboardingMethod !== undefined) supplier.onboardingMethod = onboardingMethod || undefined;
+    if (onboardingMethodNotes !== undefined) supplier.onboardingMethodNotes = onboardingMethodNotes ? String(onboardingMethodNotes).trim() : undefined;
+
     await supplier.save();
+
+    let bankChangeRequest = null;
+    if (wantsBankChange) {
+      const bankFieldChanges = diffBankDetails(supplier.bankDetails, bankDetails);
+      bankChangeRequest = await SupplierBankChangeRequest.create({
+        supplier: supplier._id,
+        requestedBy: req.user!._id,
+        requestedVia: 'procurement',
+        previousDetails: supplier.bankDetails || {},
+        requestedDetails: bankDetails,
+        changes: bankFieldChanges,
+        status: 'pending_verification'
+      });
+
+      await createAuditLog({
+        action: 'create',
+        entity: 'SupplierBankChangeRequest',
+        entityId: bankChangeRequest._id,
+        user: req.user,
+        description: `Banking change raised by staff for ${supplier.companyName}: ${bankFieldChanges
+          .map((c) => c.field)
+          .join(', ')}`,
+        previousData: supplier.bankDetails,
+        newData: bankDetails,
+        req
+      });
+
+      await notifyUsersByRole(['procurement_officer', 'finance', 'admin'], {
+        type: 'supplier_bank_change_requested',
+        title: 'Supplier banking change requested',
+        message: `A banking change was raised for ${supplier.companyName}. Payments are on hold until it is verified by callback and approved by someone else.`,
+        entity: 'SupplierBankChangeRequest',
+        entityId: bankChangeRequest._id,
+        relatedUser: req.user!._id,
+        metadata: { companyName: supplier.companyName, changedFields: bankFieldChanges.map((c) => c.field) }
+      });
+    }
 
     if (userUpdates && typeof userUpdates === 'object' && supplier.user) {
       const user = await User.findById(supplier.user);
@@ -169,6 +228,7 @@ const updateSupplier = async (req: Request, res: Response): Promise<any> => {
       .populate('approvedBy', 'firstName lastName')
       .populate('blacklistedBy', 'firstName lastName');
 
+    const { bankDetails: _bank, ...profileChanges } = req.body;
     await createAuditLog({
       action: 'update',
       entity: 'SupplierProfile',
@@ -176,14 +236,18 @@ const updateSupplier = async (req: Request, res: Response): Promise<any> => {
       user: req.user,
       description: `Updated supplier profile: ${supplier.companyName}`,
       previousData,
-      newData: req.body,
+      // The banking part of the body is recorded on the change request instead.
+      newData: profileChanges,
       req
     });
 
     res.status(200).json({
       success: true,
-      message: 'Supplier profile updated',
-      data: updated
+      message: bankChangeRequest
+        ? 'Banking change submitted. It applies once verified by callback and approved by a second person; payments are on hold until then.'
+        : 'Supplier profile updated',
+      data: updated,
+      bankChangeRequest
     });
   } catch (error: any) {
     console.error('Update supplier error:', error);

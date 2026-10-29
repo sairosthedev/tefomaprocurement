@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { procurementAPI } from '../lib/api';
+import api, { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import Tabs from '../components/Tabs';
@@ -42,6 +42,88 @@ const statusIcons: any = {
 
 function valueOrDash(value: any) {
   return value === null || value === undefined || value === '' ? '-' : value;
+}
+
+function VettingForm({ supplier, onSaved, showToast }: { supplier: any; onSaved: (s: any) => void; showToast: (m: string, t: string) => void }) {
+  const [form, setForm] = React.useState({
+    vettingStatus: supplier.vettingStatus || 'not_started',
+    siteVisitDate: supplier.siteVisitDate ? new Date(supplier.siteVisitDate).toISOString().split('T')[0] : '',
+    siteVisitBy: supplier.siteVisitBy || '',
+    siteVisitNotes: supplier.siteVisitNotes || '',
+    onboardingMethod: supplier.onboardingMethod || '',
+    onboardingMethodNotes: supplier.onboardingMethodNotes || ''
+  });
+  const [saving, setSaving] = React.useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const { data } = await api.put(`/suppliers/${supplier._id}`, {
+        vettingStatus: form.vettingStatus || undefined,
+        siteVisitDate: form.siteVisitDate || undefined,
+        siteVisitBy: form.siteVisitBy.trim() || undefined,
+        siteVisitNotes: form.siteVisitNotes.trim() || undefined,
+        onboardingMethod: form.onboardingMethod || undefined,
+        onboardingMethodNotes: form.onboardingMethodNotes.trim() || undefined
+      });
+      onSaved(data.data);
+      showToast('Vetting record saved', 'success');
+    } catch {
+      showToast('Failed to save vetting record', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="border-t border-gray-100 pt-4 space-y-3">
+      <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Update vetting record</p>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Status</label>
+          <select value={form.vettingStatus} onChange={e => setForm(f => ({ ...f, vettingStatus: e.target.value }))}
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+            <option value="not_started">Not started</option>
+            <option value="in_progress">In progress</option>
+            <option value="passed">Passed</option>
+            <option value="failed">Failed</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Visit date</label>
+          <input type="date" value={form.siteVisitDate} onChange={e => setForm(f => ({ ...f, siteVisitDate: e.target.value }))}
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Conducted by</label>
+          <input type="text" value={form.siteVisitBy} onChange={e => setForm(f => ({ ...f, siteVisitBy: e.target.value }))}
+            placeholder="Officer name" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Onboarding method</label>
+          <select value={form.onboardingMethod} onChange={e => setForm(f => ({ ...f, onboardingMethod: e.target.value }))}
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+            <option value="">— select —</option>
+            <option value="newspaper">Newspaper invitation</option>
+            <option value="direct_application">Direct application</option>
+            <option value="referral">Referral</option>
+            <option value="existing">Existing supplier</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">Site visit notes</label>
+        <textarea value={form.siteVisitNotes} onChange={e => setForm(f => ({ ...f, siteVisitNotes: e.target.value }))}
+          rows={2} placeholder="Observations from the site visit…"
+          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-none" />
+      </div>
+      <button onClick={save} disabled={saving}
+        className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50">
+        {saving ? 'Saving…' : 'Save vetting record'}
+      </button>
+    </div>
+  );
 }
 
 const EDITABLE_SUPPLIER_TABS = [
@@ -155,7 +237,8 @@ export default function SupplierDetails() {
         refreshSupplier(updated);
       }
       setProfileEditing(false);
-      showToast('Supplier profile saved', 'success');
+      // A banking edit becomes a held change request; say so rather than "saved".
+      showToast(res.data?.message || 'Supplier profile saved', 'success');
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to save supplier profile', 'error');
     } finally {
@@ -390,6 +473,7 @@ export default function SupplierDetails() {
     { value: 'directors', label: 'Directors', count: directorCount },
     { value: 'references', label: 'References', count: referenceCount },
     { value: 'documents', label: 'Documents', count: checklistDocuments.length },
+    { value: 'vetting', label: 'Vetting' },
     { value: 'performance', label: 'Performance', count: evaluations.length },
     { value: 'reports', label: 'Reports' }
   ];
@@ -702,6 +786,68 @@ export default function SupplierDetails() {
                   <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-sm text-amber-800">
                     <span className="font-medium">KYS override: </span>{supplier.kysExemptReason}
                   </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === 'vetting' && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Vetting &amp; Sourcing Record</h2>
+              <p className="text-sm text-gray-500 mt-1">Site visit records (§ 5.5) and supplier onboarding method (§ 6.2.1).</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+                <h3 className="font-semibold text-gray-800">Onboarding Method (§ 6.2.1)</h3>
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">How supplier joined the register</p>
+                  <p className="text-sm font-medium text-gray-900 capitalize">
+                    {supplier.onboardingMethod?.replace(/_/g, ' ') || '—'}
+                  </p>
+                </div>
+                {supplier.onboardingMethodNotes && (
+                  <div>
+                    <p className="text-xs text-gray-500 mb-0.5">Notes</p>
+                    <p className="text-sm text-gray-800">{supplier.onboardingMethodNotes}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-gray-800">Site Visit (§ 5.5)</h3>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    supplier.vettingStatus === 'passed' ? 'bg-green-100 text-green-700' :
+                    supplier.vettingStatus === 'failed' ? 'bg-red-100 text-red-700' :
+                    supplier.vettingStatus === 'in_progress' ? 'bg-amber-100 text-amber-700' :
+                    'bg-gray-100 text-gray-600'
+                  }`}>
+                    {supplier.vettingStatus?.replace(/_/g, ' ') || 'Not started'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-0.5">Visit date</p>
+                    <p className="font-medium text-gray-900">
+                      {supplier.siteVisitDate ? new Date(supplier.siteVisitDate).toLocaleDateString() : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-0.5">Conducted by</p>
+                    <p className="font-medium text-gray-900">{supplier.siteVisitBy || '—'}</p>
+                  </div>
+                </div>
+                {supplier.siteVisitNotes && (
+                  <div>
+                    <p className="text-xs text-gray-500 mb-0.5">Notes</p>
+                    <p className="text-sm text-gray-800">{supplier.siteVisitNotes}</p>
+                  </div>
+                )}
+                {canManage && (
+                  <VettingForm supplier={supplier} onSaved={refreshSupplier} showToast={showToast} />
                 )}
               </div>
             </div>

@@ -4,6 +4,7 @@ import {
   runDocumentExpiryAlertJob,
   runSupplierReevaluationAlertJob
 } from './alertJobs.js';
+import { runRetentionJob } from '../services/retention.service.js';
 import { logger } from '../lib/logger.js';
 import { activeSbus } from '../tenancy/registry.js';
 import { runWithSbu } from '../tenancy/sbuContext.js';
@@ -11,13 +12,18 @@ import { runWithSbu } from '../tenancy/sbuContext.js';
 const INTERVAL_MS = parseInt(process.env.ALERT_JOBS_INTERVAL_MS || String(60 * 60 * 1000), 10);
 const ENABLED = process.env.ALERT_JOBS_ENABLED !== 'false';
 
-let timer: ReturnType<typeof setInterval> | null = null;
+const RETENTION_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
-async function runAlertJobs(): Promise<void> {
+let timer: ReturnType<typeof setInterval> | null = null;
+let lastRetentionRun = 0;
+
+async function runAlertJobs(includeRetention: boolean): Promise<void> {
   await runLowStockAlertJob();
   await runRfqDeadlineAlertJob();
   await runDocumentExpiryAlertJob();
   await runSupplierReevaluationAlertJob();
+  // Deletes only short-lived data (see retention.service); once a day is plenty.
+  if (includeRetention) await runRetentionJob();
 }
 
 /**
@@ -27,6 +33,9 @@ async function runAlertJobs(): Promise<void> {
  */
 async function tick(): Promise<void> {
   logger.debug('Running scheduled alert jobs…');
+
+  const includeRetention = Date.now() - lastRetentionRun >= RETENTION_INTERVAL_MS;
+  if (includeRetention) lastRetentionRun = Date.now();
 
   let sbus: Awaited<ReturnType<typeof activeSbus>> = [];
   try {
@@ -39,13 +48,13 @@ async function tick(): Promise<void> {
   if (sbus.length === 0) {
     // Registry not seeded yet: fall back to the single-tenant behaviour so
     // alerts keep working between deploying this and running seed:sbu-registry.
-    await runAlertJobs();
+    await runAlertJobs(includeRetention);
     return;
   }
 
   for (const sbu of sbus) {
     try {
-      await runWithSbu(sbu, () => runAlertJobs());
+      await runWithSbu(sbu, () => runAlertJobs(includeRetention));
     } catch (error) {
       logger.error(`Alert jobs failed for SBU ${sbu.code}`, error);
     }

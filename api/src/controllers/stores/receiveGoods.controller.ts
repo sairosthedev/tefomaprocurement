@@ -15,7 +15,10 @@ const receiveGoods = async (req: Request, res: Response): Promise<any> => {
       notes,
       deliveredBy,
       inspectedByName,
-      inspectedByDepartment
+      inspectedByDepartment,
+      witnesses,
+      hasHazardousMaterials,
+      msdsReference
     } = req.body;
 
     // Rev 9 clause 6.6.2: quality checks are performed by a department
@@ -78,6 +81,16 @@ const receiveGoods = async (req: Request, res: Response): Promise<any> => {
       po.deliverToSite ||
       (await resolveSiteId(req.user, req.body.receivedAtSiteId));
 
+    // 5-day return deadline (6.6.7–6.6.9): set when any item arrives damaged/defective.
+    const hasFaultyItems = items.some((i: any) => i.condition && i.condition !== 'good');
+    const returnDeadline = hasFaultyItems
+      ? new Date(new Date(deliveryDate).getTime() + 5 * 24 * 60 * 60 * 1000)
+      : undefined;
+
+    const witnessRecord = witnesses && (witnesses.mt || witnesses.security || witnesses.sheq)
+      ? { mt: witnesses.mt?.trim(), security: witnesses.security?.trim(), sheq: witnesses.sheq?.trim() }
+      : undefined;
+
     if (delivery) {
       // Update existing pending delivery to received
       delivery.deliveryNoteNumber = deliveryNoteNumber;
@@ -91,6 +104,10 @@ const receiveGoods = async (req: Request, res: Response): Promise<any> => {
         delivery.inspectedByDepartment = inspectorDepartment;
         delivery.inspectedAt = new Date();
       }
+      if (witnessRecord) delivery.witnesses = witnessRecord;
+      if (hasHazardousMaterials !== undefined) delivery.hasHazardousMaterials = Boolean(hasHazardousMaterials);
+      if (msdsReference) delivery.msdsReference = String(msdsReference).trim();
+      if (returnDeadline) delivery.returnDeadline = returnDeadline;
       delivery.items = items;
       delivery.isPartialDelivery = !allReceived;
       delivery.isFinalDelivery = allReceived;
@@ -111,6 +128,10 @@ const receiveGoods = async (req: Request, res: Response): Promise<any> => {
         inspectedByName: inspectorName,
         inspectedByDepartment: inspectorDepartment,
         inspectedAt: inspectorName ? new Date() : undefined,
+        witnesses: witnessRecord,
+        hasHazardousMaterials: Boolean(hasHazardousMaterials),
+        msdsReference: msdsReference ? String(msdsReference).trim() : undefined,
+        returnDeadline,
         items,
         isPartialDelivery: !allReceived,
         isFinalDelivery: allReceived,

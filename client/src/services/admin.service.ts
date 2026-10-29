@@ -12,5 +12,6 @@ export const adminAPI: any = {
   updateSite: (id: any, data: any) => http.put(`/admin/sites/${id}`, data),
   deleteSite: (id: any) => http.delete(`/admin/sites/${id}`),
   getAuditLogs: (params?: any) => http.get('/admin/audit-logs', { params }),
-  getAuditLogStats: (params?: any) => http.get('/admin/audit-logs/stats', { params })
+  getAuditLogStats: (params?: any) => http.get('/admin/audit-logs/stats', { params }),
+  getEvidencePack: (params?: { from?: string; to?: string }) => http.get('/admin/evidence-pack', { params })
 };

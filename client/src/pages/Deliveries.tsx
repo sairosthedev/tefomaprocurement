@@ -43,7 +43,11 @@ export default function Deliveries() {
     // representative, who is usually not a system user — so it is a name, not a
     // picker. Optional: left blank when nobody attended.
     inspectedByName: '',
-    inspectedByDepartment: ''
+    inspectedByDepartment: '',
+    // Clause 6.8.5: functional witnesses at goods receipt
+    witnesses: { mt: '', security: '', sheq: '' },
+    hasHazardousMaterials: false,
+    msdsReference: ''
   });
   const [printingId, setPrintingId] = useState<string | null>(null);
   const [isReceiving, setIsReceiving] = useState<any>(false);
@@ -146,6 +150,13 @@ export default function Deliveries() {
         },
         inspectedByName: receiveData.inspectedByName?.trim() || undefined,
         inspectedByDepartment: receiveData.inspectedByDepartment?.trim() || undefined,
+        witnesses: {
+          mt: receiveData.witnesses?.mt?.trim() || undefined,
+          security: receiveData.witnesses?.security?.trim() || undefined,
+          sheq: receiveData.witnesses?.sheq?.trim() || undefined
+        },
+        hasHazardousMaterials: Boolean(receiveData.hasHazardousMaterials),
+        msdsReference: receiveData.msdsReference?.trim() || undefined,
         notes: ''
       });
 
@@ -566,6 +577,59 @@ export default function Deliveries() {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Clause 6.8.5 — functional witnesses */}
+            <div className="border border-gray-200 rounded-xl p-4">
+              <p className="text-sm font-medium text-gray-700 mb-3">Witnesses present (§ 6.8.5)</p>
+              <div className="grid grid-cols-3 gap-3">
+                {(['mt', 'security', 'sheq'] as const).map((role) => (
+                  <div key={role}>
+                    <label className="block text-xs font-medium text-gray-600 mb-1 uppercase">{role}</label>
+                    <input
+                      type="text"
+                      value={receiveData.witnesses?.[role] || ''}
+                      onChange={(e: any) =>
+                        setReceiveData((prev: any) => ({
+                          ...prev,
+                          witnesses: { ...prev.witnesses, [role]: e.target.value }
+                        }))
+                      }
+                      placeholder="Name"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Clause 6.6.3 — hazardous materials */}
+            <div className="border border-gray-200 rounded-xl p-4 space-y-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={Boolean(receiveData.hasHazardousMaterials)}
+                  onChange={(e: any) =>
+                    setReceiveData((prev: any) => ({ ...prev, hasHazardousMaterials: e.target.checked }))
+                  }
+                  className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <span className="text-sm font-medium text-gray-700">Delivery contains hazardous materials (§ 6.6.3)</span>
+              </label>
+              {receiveData.hasHazardousMaterials && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">MSDS reference / document number</label>
+                  <input
+                    type="text"
+                    value={receiveData.msdsReference || ''}
+                    onChange={(e: any) =>
+                      setReceiveData((prev: any) => ({ ...prev, msdsReference: e.target.value }))
+                    }
+                    placeholder="e.g. MSDS-2026-0042"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                </div>
+              )}
             </div>
 
             <div>

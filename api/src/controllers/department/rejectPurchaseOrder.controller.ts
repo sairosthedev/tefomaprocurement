@@ -1,14 +1,9 @@
 import type { Request, Response } from 'express';
 import { PurchaseOrder, PurchaseRequisition } from '../../models/index.js';
 import { isProcurementHead } from '@fossil/shared';
-
-const toIdString = (value: any): string | undefined => {
-  if (!value) return undefined;
-  if (typeof value === 'object' && value._id) return value._id.toString();
-  return value.toString();
-};
 import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole } from '../../services/notification.service.js';
+import { canActOnDepartment } from '../../lib/departmentScope.js';
 
 const rejectPurchaseOrder = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -53,9 +48,9 @@ const rejectPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       const requisition = po.purchaseRequisition
         ? await PurchaseRequisition.findById(po.purchaseRequisition).select('department')
         : null;
-      const deptId = toIdString((requisition as any)?.department);
-      const allowed = deptId
-        ? deptId === toIdString(req.user!.department)
+      const reqDept = (requisition as any)?.department;
+      const allowed = reqDept
+        ? await canActOnDepartment(req.user, reqDept)
         : isProcurementHead(req.user);
       if (!allowed) {
         return res.status(403).json({

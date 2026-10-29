@@ -3,14 +3,7 @@ import { isProcurementHead } from '@fossil/shared';
 import { PurchaseRequisition } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { createNotification } from '../../services/notification.service.js';
-
-// `req.user.department` is populated by the protect middleware, so it may be a
-// document rather than a raw ObjectId. Normalize either shape to a hex id.
-const toIdString = (value: any): string | undefined => {
-  if (!value) return undefined;
-  if (typeof value === 'object' && value._id) return value._id.toString();
-  return value.toString();
-};
+import { canActOnDepartment } from '../../lib/departmentScope.js';
 
 /**
  * Remove a single line item from a requisition during an approval stage.
@@ -44,7 +37,7 @@ const removeRequisitionItem = async (req: Request, res: Response): Promise<any> 
     // Verify the user holds approval authority for this stage.
     let authorized = false;
     if (status === 'pending_hod' && role === 'department_head') {
-      authorized = toIdString(requisition.department) === toIdString(req.user!.department);
+      authorized = await canActOnDepartment(req.user, requisition.department);
     } else if (
       status === 'pending_acceptance' &&
       (role === 'procurement_officer' || isProcurementHead(req.user))

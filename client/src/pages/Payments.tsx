@@ -5,7 +5,18 @@ import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Calendar } from 'lucide-react';
+
+function nextPaymentRun(): { date: Date; label: string; daysAway: number } {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun,1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat
+  const candidates = [2, 4]; // Tuesday=2, Thursday=4
+  let daysUntil = candidates.map(d => (d - day + 7) % 7 || 7).sort((a, b) => a - b)[0];
+  const date = new Date(now);
+  date.setDate(now.getDate() + daysUntil);
+  const label = daysUntil === 1 ? 'Tomorrow' : daysUntil === 0 ? 'Today' : date.toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'short' });
+  return { date, label, daysAway: daysUntil };
+}
 
 export default function Payments() {
   const { showToast } = useToast();
@@ -34,6 +45,17 @@ export default function Payments() {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <PageHeader title="Payments" />
+
+      {(() => {
+        const { label, daysAway } = nextPaymentRun();
+        const cls = daysAway <= 1 ? 'bg-green-50 border-green-200 text-green-800' : 'bg-blue-50 border-blue-200 text-blue-800';
+        return (
+          <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border mb-6 text-sm ${cls}`}>
+            <Calendar className="h-4 w-4 flex-shrink-0" />
+            <span>Next payment run: <strong>{label}</strong> — payments are processed on Tuesdays and Thursdays only (§ procedure).</span>
+          </div>
+        );
+      })()}
 
       {loading ? (
         <div className="flex justify-center py-12">

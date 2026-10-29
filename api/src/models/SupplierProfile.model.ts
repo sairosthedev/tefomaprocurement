@@ -145,6 +145,18 @@ export interface ISupplierProfile extends Document {
   proposedBusiness?: string;
   tradeVolume?: string;
   tradeProducts?: string[];
+  /**
+   * How this supplier was sourced onto the register (6.2.1). 'newspaper' means
+   * they responded to a public newspaper invitation — recorded for audit trail
+   * even though the invitation itself happens outside the system.
+   */
+  onboardingMethod?: 'newspaper' | 'direct_application' | 'referral' | 'existing' | 'other';
+  onboardingMethodNotes?: string;
+  /** Site visit / vetting record (clause 5.5). */
+  siteVisitDate?: Date;
+  siteVisitBy?: string;
+  siteVisitNotes?: string;
+  vettingStatus?: 'not_started' | 'in_progress' | 'passed' | 'failed';
   isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -320,6 +332,19 @@ const SupplierProfileSchema = new Schema<ISupplierProfile>({
   proposedBusiness: String,
   tradeVolume: String,
   tradeProducts: [{ type: String, trim: true }],
+  onboardingMethod: {
+    type: String,
+    enum: ['newspaper', 'direct_application', 'referral', 'existing', 'other']
+  },
+  onboardingMethodNotes: { type: String, trim: true },
+  siteVisitDate: Date,
+  siteVisitBy: { type: String, trim: true },
+  siteVisitNotes: { type: String, trim: true },
+  vettingStatus: {
+    type: String,
+    enum: ['not_started', 'in_progress', 'passed', 'failed'],
+    default: 'not_started'
+  },
   isDeleted: {
     type: Boolean,
     default: false

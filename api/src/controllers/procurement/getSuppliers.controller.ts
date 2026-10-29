@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 
 import { SupplierProfile } from '../../models/index.js';
+import { maskBankNumbers } from '../../lib/bankMasking.js';
 
 const getSuppliers = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -50,7 +51,8 @@ const getSuppliers = async (req: Request, res: Response): Promise<any> => {
 
     res.status(200).json({
       success: true,
-      data: suppliers,
+      // A list never needs full account numbers; the detail view does.
+      data: maskBankNumbers(suppliers),
       pagination: {
         page: pageNum,
         limit: limitNum,

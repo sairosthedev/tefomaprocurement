@@ -12,6 +12,16 @@ import { formatCurrency } from '../lib/constants';
 import Pagination from '../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
+function approvalAge(updatedAt: string): { label: string; state: 'ok' | 'warning' | 'overdue' } {
+  const ms = Date.now() - new Date(updatedAt).getTime();
+  const mins = Math.floor(ms / 60000);
+  const hrs = Math.floor(mins / 60);
+  const label = hrs > 0 ? `${hrs}h ${mins % 60}m` : `${mins}m`;
+  const state = ms > 3600000 ? 'overdue' : ms > 2700000 ? 'warning' : 'ok';
+  return { label, state };
+}
+
+
 const statusColors: any = {
   pending_hod: 'bg-purple-100 text-purple-700',
   pending_dept_hod: 'bg-purple-100 text-purple-700',
@@ -297,7 +307,17 @@ export default function Approvals() {
                       )}
                     </td>
                     <td className="py-4 px-6 text-sm text-gray-500">
-                      {new Date(item.createdAt).toLocaleDateString('en-ZA')}
+                      <div>{new Date(item.createdAt).toLocaleDateString('en-ZA')}</div>
+                      {(() => {
+                        const { label, state } = approvalAge(item.updatedAt || item.createdAt);
+                        const cls = state === 'overdue' ? 'bg-red-100 text-red-700' : state === 'warning' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600';
+                        return (
+                          <span className={`mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>
+                            <Clock className="h-3 w-3" />
+                            {label}{state !== 'ok' ? ' — overdue (§ 1hr SLA)' : ''}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="py-4 px-6">
                       <button

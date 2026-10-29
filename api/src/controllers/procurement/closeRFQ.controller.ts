@@ -1,8 +1,10 @@
 import type { Request, Response } from 'express';
 
-import { RFQ, Quotation } from '../../models/index.js';
+import { RFQ, Quotation, User } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { snapshotRanking } from '../../services/quotationRanking.service.js';
+import { createNotifications } from '../../services/notification.service.js';
+import { isProcurementHead } from '@fossil/shared';
 
 /**
  * Close an open RFQ to stop accepting bids and reveal them for evaluation.
@@ -61,6 +63,31 @@ const closeRFQ = async (req: Request, res: Response): Promise<any> => {
       },
       req
     });
+
+    // If fewer than 3 quotations, a waiver is required before award. Notify the
+    // COO and Head of Procurement so the waiver can be approved without delay.
+    if (quotationCount < 3) {
+      try {
+        const approvers = (
+          await User.find({ role: { $in: ['coo', 'department_head'] }, status: 'active', isDeleted: false })
+            .select('_id role email firstName lastName department')
+            .populate('department', 'name code')
+        ).filter((u: any) => u.role === 'coo' || isProcurementHead(u));
+
+        if (approvers.length) {
+          await createNotifications(approvers, {
+            type: 'rfq_deadline_approaching',
+            title: 'Quotation waiver required',
+            message: `RFQ ${rfq.rfqNumber} closed with only ${quotationCount} quotation${quotationCount !== 1 ? 's' : ''} (minimum 3). A waiver must be approved before an award can be made.`,
+            entity: 'RFQ',
+            entityId: rfq._id,
+            relatedUser: req.user!._id
+          });
+        }
+      } catch (notifyErr) {
+        console.error('Waiver notification failed for RFQ', rfq.rfqNumber, notifyErr);
+      }
+    }
 
     res.status(200).json({
       success: true,
