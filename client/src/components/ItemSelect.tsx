@@ -19,6 +19,8 @@ interface ItemSelectProps {
   freeTextValue?: string;
   placeholder?: string;
   className?: string;
+  /** When set, only catalog items in this category are shown. */
+  category?: string;
 }
 
 /**
@@ -31,7 +33,8 @@ export function ItemSelect({
   onFreeText,
   freeTextValue = '',
   placeholder = 'Search stock catalog or type description…',
-  className = ''
+  className = '',
+  category = ''
 }: ItemSelectProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(freeTextValue || value?.name || '');
@@ -56,7 +59,7 @@ export function ItemSelect({
     debounceRef.current = setTimeout(async () => {
       try {
         setLoading(true);
-        const res = await api.get('/department/catalog-items', { params: { search: query, limit: 15 } });
+        const res = await api.get('/department/catalog-items', { params: { search: query, limit: 15, ...(category ? { category } : {}) } });
         setResults(res.data.data || []);
       } catch {
         setResults([]);
@@ -65,7 +68,7 @@ export function ItemSelect({
       }
     }, 250);
     return () => clearTimeout(debounceRef.current);
-  }, [query, open]);
+  }, [query, open, category]);
 
   const select = (item: CatalogItem) => {
     onChange(item);
@@ -115,7 +118,11 @@ export function ItemSelect({
             </div>
           ) : results.length === 0 ? (
             <p className="px-3 py-3 text-xs text-gray-500">
-              {query.trim() ? 'No catalog match — will be treated as non-stock item' : 'Type to search catalog…'}
+              {query.trim()
+                ? 'No catalog match — will be treated as a non-stock item'
+                : category
+                  ? 'Type to search within this category, or describe the item freely'
+                  : 'Select a category first to filter catalog items'}
             </p>
           ) : (
             results.map((item) => (

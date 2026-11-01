@@ -5,10 +5,11 @@ import { resolveSiteId } from '../../lib/siteScope.js';
 /** Search the stock catalog so requisition lines can link to real inventory items. */
 const searchCatalogItems = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { search = '', limit = 20 } = req.query as Record<string, string>;
+    const { search = '', limit = 20, category = '' } = req.query as Record<string, string>;
     const siteId = await resolveSiteId(req.user);
 
     const query: any = { isDeleted: false, status: 'active' };
+    if (category.trim()) query.category = category.trim();
     if (search.trim()) {
       const regex = new RegExp(search.trim(), 'i');
       query.$or = [{ name: regex }, { code: regex }, { description: regex }];

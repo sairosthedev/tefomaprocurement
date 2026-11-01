@@ -306,7 +306,17 @@ export default function CreateRequisition() {
                     </label>
                     <CategorySelect
                       value={item.category || ''}
-                      onChange={(code) => updateItem(index, 'category', code)}
+                      onChange={(code) => {
+                        const newItems = [...formData.items];
+                        newItems[index] = {
+                          ...newItems[index],
+                          category: code,
+                          // Clear description and catalog link when category changes
+                          description: '',
+                          catalogItem: null
+                        };
+                        setFormData({ ...formData, items: newItems });
+                      }}
                       placeholder="Select category"
                     />
                   </div>
@@ -318,6 +328,7 @@ export default function CreateRequisition() {
                     <ItemSelect
                       value={item.catalogItem}
                       freeTextValue={item.description}
+                      category={item.category || ''}
                       onChange={(catalogItem) => {
                         const newItems = [...formData.items];
                         newItems[index] = {
@@ -332,7 +343,7 @@ export default function CreateRequisition() {
                         setFormData({ ...formData, items: newItems });
                       }}
                       onFreeText={(text) => updateItem(index, 'description', text)}
-                      placeholder="Search stock catalog or type description…"
+                      placeholder={item.category ? 'Search catalog or describe…' : 'Select a category first'}
                       className="w-full pl-8 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     />
                     {item.catalogItem && (
