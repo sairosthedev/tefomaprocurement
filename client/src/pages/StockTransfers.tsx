@@ -231,7 +231,7 @@ export default function StockTransfers() {
         </select>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="overflow-x-auto">
         {loading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />

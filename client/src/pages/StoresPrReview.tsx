@@ -176,7 +176,7 @@ export default function StoresPrReview() {
       ) : (
         <div className="space-y-6">
           {items.map((pr) => (
-            <div key={pr._id} className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
+            <div key={pr._id} className="border border-gray-200 overflow-x-auto">
               <div className="px-5 pt-4">
                 <WorkflowStepper
                   compact
@@ -319,7 +319,7 @@ export default function StoresPrReview() {
               </div>
             </div>
           ))}
-          <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
+          <div>
             <Pagination
               page={page}
               pages={pagination.pages}

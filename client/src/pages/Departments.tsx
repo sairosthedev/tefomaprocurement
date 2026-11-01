@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../components/Toast';
 import api, { adminAPI } from '../lib/api';
-import { Building2, Plus, Edit, Trash2, Users, Loader2 } from 'lucide-react';
+import { Building2, Plus, Loader2 } from 'lucide-react';
 import Modal, { ModalFooter } from '../components/Modal';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
@@ -138,66 +138,56 @@ export default function Departments() {
         </div>
       ) : (
         <>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {departments.map((dept: any) => (
-            <div key={dept._id} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-primary/10 rounded-xl">
-                    <Building2 className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{dept.name}</h3>
-                    {dept.code && (
-                      <span className="text-xs font-mono text-gray-400">{dept.code}</span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => handleEdit(dept)}
-                    className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(dept._id)}
-                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-
-              {dept.description && (
-                <p className="text-sm text-gray-500 mt-4 line-clamp-2">{dept.description}</p>
-              )}
-
-              <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <Users className="h-4 w-4" />
-                  <span>{dept.userCount || 0} member{dept.userCount !== 1 ? 's' : ''}</span>
-                </div>
-                {dept.head && dept.head.firstName ? (
-                  <span className="text-sm text-gray-500">
-                    Head: {dept.head.firstName} {dept.head.lastName || ''}
-                  </span>
-                ) : (
-                  <span className="text-sm text-gray-400 italic">No head assigned</span>
-                )}
-              </div>
-            </div>
-          ))}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr>
+                <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Code</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Name</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Description</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Head</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Members</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {departments.map((dept: any) => (
+                <tr key={dept._id} className="hover:bg-gray-50">
+                  <td className="py-2 px-3 border border-gray-200 font-mono text-xs text-gray-500">{dept.code || '—'}</td>
+                  <td className="py-2 px-3 border border-gray-200 font-medium">{dept.name}</td>
+                  <td className="py-2 px-3 border border-gray-200 text-gray-500">{dept.description || '—'}</td>
+                  <td className="py-2 px-3 border border-gray-200">
+                    {dept.head?.firstName ? `${dept.head.firstName} ${dept.head.lastName || ''}` : <span className="text-gray-400 italic">None</span>}
+                  </td>
+                  <td className="py-2 px-3 border border-gray-200">{dept.userCount || 0}</td>
+                  <td className="py-2 px-3 border border-gray-200">
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => handleEdit(dept)}
+                        className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100 text-gray-700"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(dept._id)}
+                        className="px-2 py-1 text-xs border border-red-300 rounded hover:bg-red-50 text-red-600"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-6">
-          <Pagination
-            page={page}
-            pages={pagination.pages}
-            total={pagination.total}
-            onPageChange={setPage}
-            itemLabel="departments"
-          />
-        </div>
+        <Pagination
+          page={page}
+          pages={pagination.pages}
+          total={pagination.total}
+          onPageChange={setPage}
+          itemLabel="departments"
+        />
         </>
       )}
 
