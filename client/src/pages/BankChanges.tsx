@@ -218,20 +218,20 @@ export default function BankChanges() {
                 <WorkflowStepper compact steps={bankChangeSteps(request)} />
 
                 <div className="overflow-x-auto mb-4">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm border-collapse">
                     <thead>
                       <tr>
-                        <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Field</th>
-                        <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">From</th>
-                        <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">To</th>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Field</th>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">From</th>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">To</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody>
                       {(request.changes || []).map((change: any, i: number) => (
                         <tr key={i} className="hover:bg-gray-50">
-                          <td className="py-2.5 px-4 font-medium text-gray-800">{change.field}</td>
-                          <td className="py-2.5 px-4 text-gray-500">{change.from || '—'}</td>
-                          <td className="py-2.5 px-4 text-gray-900 font-medium">{change.to || '—'}</td>
+                          <td className="py-2 px-3 border border-gray-200 font-medium text-gray-800">{change.field}</td>
+                          <td className="py-2 px-3 border border-gray-200 text-gray-500">{change.from || '—'}</td>
+                          <td className="py-2 px-3 border border-gray-200 text-gray-900 font-medium">{change.to || '—'}</td>
                         </tr>
                       ))}
                     </tbody>

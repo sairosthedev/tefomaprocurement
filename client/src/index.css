@@ -47,6 +47,16 @@
   .scrollbar-thin::-webkit-scrollbar-track {
     background: transparent;
   }
+
+  /* Still scrolls on a very short screen, but never shows a bar. */
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* Force primary navy for sidebar */

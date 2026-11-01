@@ -16,6 +16,7 @@ import approveStockTransfer from './approveStockTransfer.controller.js';
 import shipStockTransfer from './shipStockTransfer.controller.js';
 import receiveStockTransfer from './receiveStockTransfer.controller.js';
 import getPendingPurchaseRequisitions from './getPendingPurchaseRequisitions.controller.js';
+import getReviewedPurchaseRequisitions from './getReviewedPurchaseRequisitions.controller.js';
 import fulfillRequisitionFromStock from './fulfillRequisitionFromStock.controller.js';
 import forwardRequisitionToProcurement from './forwardRequisitionToProcurement.controller.js';
 import autoProcessRequisition from './autoProcessRequisition.controller.js';
@@ -43,6 +44,7 @@ export default {
   shipStockTransfer,
   receiveStockTransfer,
   getPendingPurchaseRequisitions,
+  getReviewedPurchaseRequisitions,
   fulfillRequisitionFromStock,
   forwardRequisitionToProcurement,
   autoProcessRequisition,

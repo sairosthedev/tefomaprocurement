@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { storesAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
@@ -224,20 +224,20 @@ export default function StoresPrReview() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Package</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Details</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Units</th>
-                      <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Qty Req.</th>
-                      <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Qty Issued</th>
-                      <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">In Stock</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Hint</th>
-                      <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Actions</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Package</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Details</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Units</th>
+                      <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Qty Req.</th>
+                      <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Qty Issued</th>
+                      <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">In Stock</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Hint</th>
+                      <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody>
                     {pr.items?.map((line: any, i: number) => {
                       const avail = line.storeAvailability;
                       const action = avail?.suggestedAction;
@@ -247,17 +247,17 @@ export default function StoresPrReview() {
 
                       return (
                         <tr key={i} className={isFullyIssued ? 'bg-emerald-50/40' : undefined}>
-                          <td className="py-2.5 px-4 text-gray-600">{line.package || '—'}</td>
-                          <td className="py-2.5 px-4 font-medium text-gray-900">{line.description}</td>
-                          <td className="py-2.5 px-4 text-gray-600">{line.unit}</td>
-                          <td className="py-2.5 px-4 text-right">{line.quantity}</td>
-                          <td className="py-2.5 px-4 text-right font-medium text-emerald-700">
+                          <td className="py-2 px-3 border border-gray-200 text-gray-600">{line.package || '—'}</td>
+                          <td className="py-2 px-3 border border-gray-200 font-medium text-gray-900">{line.description}</td>
+                          <td className="py-2 px-3 border border-gray-200 text-gray-600">{line.unit}</td>
+                          <td className="py-2 px-3 border border-gray-200 text-right">{line.quantity}</td>
+                          <td className="py-2 px-3 border border-gray-200 text-right font-medium text-emerald-700">
                             {issued > 0 ? issued : '—'}
                           </td>
-                          <td className="py-2.5 px-4 text-right font-medium">
+                          <td className="py-2 px-3 border border-gray-200 text-right font-medium">
                             {avail ? avail.quantityAtSite ?? 0 : '—'}
                           </td>
-                          <td className="py-2.5 px-4">
+                          <td className="py-2 px-3 border border-gray-200">
                             {action ? (
                               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${actionColor[action] || 'text-gray-600 bg-gray-100'}`}>
                                 {actionLabel[action] || action}
@@ -266,7 +266,7 @@ export default function StoresPrReview() {
                               <span className="text-xs text-gray-400">—</span>
                             )}
                           </td>
-                          <td className="py-2.5 px-4 text-right">
+                          <td className="py-2 px-3 border border-gray-200 text-right">
                             <button
                               type="button"
                               onClick={() => searchInventory(pr, i, line)}

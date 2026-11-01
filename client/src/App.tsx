@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
-import { SplashScreen } from './components/SplashScreen';
+import { SplashScreen, shouldShowSplash } from './components/SplashScreen';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
 import { EnvironmentBanner } from './components/EnvironmentBanner';
@@ -88,8 +88,12 @@ function AppLayout({ children, allowedRoles }: any) {
   );
 }
 
+// Decided once at load: StrictMode runs state initialisers twice, and the
+// second call would see the flag the first one set.
+const SHOW_SPLASH = shouldShowSplash();
+
 function App() {
-  const [splashDone, setSplashDone] = useState(false);
+  const [splashDone, setSplashDone] = useState(!SHOW_SPLASH);
 
   return (
     <>

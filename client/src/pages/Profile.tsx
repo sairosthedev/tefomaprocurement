@@ -4,6 +4,7 @@ import { useToast } from '../components/Toast';
 import { authAPI } from '../lib/api';
 import { User, Mail, Phone, Building2, Shield, Save, Loader2, Key, Eye, EyeOff } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
+import SbuSettingsPanel from '../components/SbuSettingsPanel';
 
 export default function Profile() {
   const { user, updateUser } = useAuth();
@@ -264,6 +265,8 @@ export default function Profile() {
           </form>
         )}
       </div>
+
+      {user?.role === 'admin' && <SbuSettingsPanel />}
     </div>
   );
 }

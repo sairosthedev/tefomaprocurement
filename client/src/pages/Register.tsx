@@ -1,11 +1,20 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { authAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
-import { Loader2, Eye, EyeOff, Building2, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, Building2, ArrowLeft } from 'lucide-react';
 import Logo from '../components/Logo';
 import { CategoryMultiSelect } from '../components/CategorySelect';
 import { PROVINCES, COUNTRIES, BANKS, ACCOUNT_TYPES } from '../lib/constants';
+import { FormSteps, FormStepNav } from '../components/FormSteps';
+
+const STEPS = [
+  { label: 'Account', description: 'Who is signing up' },
+  { label: 'Company', description: 'Registration and categories' },
+  { label: 'Address', description: 'Where you operate' },
+  { label: 'Banking', description: 'Where you are paid' },
+  { label: 'Review', description: 'Check, then register' }
+];
 
 export default function Register() {
   const [step, setStep] = useState<any>(1);
@@ -102,9 +111,13 @@ export default function Register() {
 
   const nextStep = () => {
     if (validateStep()) {
-      setStep((prev: any) => prev + 1);
+      setStep((prev: any) => Math.min(prev + 1, STEPS.length));
     }
   };
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [step]);
 
   const prevStep = () => {
     setStep((prev: any) => prev - 1);
@@ -112,6 +125,11 @@ export default function Register() {
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
+    // Enter in a field before the review step moves on; only the last step registers.
+    if (step < STEPS.length) {
+      nextStep();
+      return;
+    }
     if (!validateStep()) return;
 
     setLoading(true);
@@ -198,23 +216,8 @@ export default function Register() {
         </div>
 
         {/* Progress Steps */}
-        <div className="px-8 py-4 border-b border-gray-100">
-          <div className="flex items-center justify-between">
-            {['Account', 'Company', 'Address', 'Banking'].map((label: any, idx: any) => (
-              <div key={label} className="flex items-center">
-                <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                  step > idx + 1 ? 'bg-primary text-white' :
-                  step === idx + 1 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'
-                }`}>
-                  {step > idx + 1 ? '✓' : idx + 1}
-                </div>
-                <span className={`ml-2 text-sm font-medium ${
-                  step === idx + 1 ? 'text-primary' : 'text-gray-500'
-                }`}>{label}</span>
-                {idx < 3 && <div className="w-8 md:w-16 h-0.5 bg-gray-200 mx-2" />}
-              </div>
-            ))}
-          </div>
+        <div className="px-8 pt-6">
+          <FormSteps steps={STEPS} current={step - 1} onSelect={(i) => setStep(i + 1)} />
         </div>
 
         {/* Form */}
@@ -535,36 +538,84 @@ export default function Register() {
             </div>
           )}
 
-          {/* Navigation Buttons */}
-          <div className="flex gap-3 mt-8">
-            {step > 1 && (
-              <button
-                type="button"
-                onClick={prevStep}
-                className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors"
-              >
-                Back
-              </button>
-            )}
-            {step < 4 ? (
-              <button
-                type="button"
-                onClick={nextStep}
-                className="flex-1 px-4 py-3 bg-primary hover:bg-primary-dark text-white font-medium rounded-xl transition-colors"
-              >
-                Continue
-              </button>
-            ) : (
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 px-4 py-3 bg-primary hover:bg-primary-dark text-white font-medium rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {loading && <Loader2 className="h-5 w-5 animate-spin" />}
-                {loading ? 'Registering...' : 'Complete Registration'}
-              </button>
-            )}
-          </div>
+          {/* Step 5: Review */}
+          {step === 5 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Review your registration</h3>
+              {[
+                {
+                  title: 'Account',
+                  to: 1,
+                  rows: [
+                    ['Name', `${formData.firstName} ${formData.lastName}`.trim()],
+                    ['Email', formData.email],
+                    ['Phone', formData.phone]
+                  ]
+                },
+                {
+                  title: 'Company',
+                  to: 2,
+                  rows: [
+                    ['Company name', formData.companyName],
+                    ['Trading name', formData.tradingName],
+                    ['Registration number', formData.registrationNumber],
+                    ['VAT number', formData.vatNumber],
+                    ['Categories', formData.categories.length ? `${formData.categories.length} selected` : '']
+                  ]
+                },
+                {
+                  title: 'Address',
+                  to: 3,
+                  rows: [
+                    ['Street', formData.street],
+                    ['City', formData.city],
+                    ['Province / state', formData.province],
+                    ['Country', resolvedCountry()]
+                  ]
+                },
+                {
+                  title: 'Banking',
+                  to: 4,
+                  rows: [
+                    ['Bank', formData.bankName],
+                    // Only the last digits, as everywhere else the number is shown.
+                    ['Account number', formData.accountNumber ? `•••• ${formData.accountNumber.slice(-4)}` : ''],
+                    ['Branch code', formData.branchCode],
+                    ['Account type', ACCOUNT_TYPES.find((t: any) => t.value === formData.accountType)?.label || formData.accountType]
+                  ]
+                }
+              ].map((section) => (
+                <div key={section.title} className="rounded-xl border border-gray-200 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="font-semibold text-gray-900">{section.title}</p>
+                    <button type="button" onClick={() => setStep(section.to)} className="text-sm font-medium text-primary hover:underline">
+                      Edit
+                    </button>
+                  </div>
+                  <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                    {section.rows.map(([label, value]) => (
+                      <div key={label} className="flex gap-2">
+                        <dt className="text-gray-500">{label}:</dt>
+                        <dd className="text-gray-900 truncate">{value || '—'}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              ))}
+              <p className="text-sm text-gray-500">
+                After registering, upload your compliance documents. Your account is activated once Procurement verifies them.
+              </p>
+            </div>
+          )}
+
+          <FormStepNav
+            current={step - 1}
+            total={STEPS.length}
+            onBack={prevStep}
+            onNext={nextStep}
+            finishLabel={loading ? 'Registering...' : 'Complete Registration'}
+            submitting={loading}
+          />
         </form>
       </div>
     </div>

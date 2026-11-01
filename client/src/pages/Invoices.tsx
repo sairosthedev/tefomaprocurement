@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { financeAPI } from '../lib/api';
 import { formatCurrency } from '../lib/constants';
@@ -100,38 +100,38 @@ export default function Invoices() {
         <div className="text-center py-12 text-gray-500">No invoices found</div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm border-collapse">
             <thead>
               <tr>
-                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Invoice</th>
-                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">PO</th>
-                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Supplier</th>
-                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Amount</th>
-                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Status</th>
-                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Match</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Invoice</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">PO</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Supplier</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Amount</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Status</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Match</th>
                 <th className="py-2.5 px-4 bg-gray-50 border-b border-gray-200" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody>
               {invoices.map((inv) => (
                 <tr key={inv._id} className="hover:bg-gray-50">
-                  <td className="py-2.5 px-4 font-medium">{inv.invoiceNumber}</td>
-                  <td className="py-2.5 px-4">{inv.purchaseOrder?.poNumber || '—'}</td>
-                  <td className="py-2.5 px-4">{inv.supplier?.companyName || '—'}</td>
-                  <td className="py-2.5 px-4">{formatCurrency(inv.totalAmount, inv.currency || getCurrentSbuCurrency())}</td>
-                  <td className="py-2.5 px-4">
+                  <td className="py-2 px-3 border border-gray-200 font-medium">{inv.invoiceNumber}</td>
+                  <td className="py-2 px-3 border border-gray-200">{inv.purchaseOrder?.poNumber || '—'}</td>
+                  <td className="py-2 px-3 border border-gray-200">{inv.supplier?.companyName || '—'}</td>
+                  <td className="py-2 px-3 border border-gray-200">{formatCurrency(inv.totalAmount, inv.currency || getCurrentSbuCurrency())}</td>
+                  <td className="py-2 px-3 border border-gray-200">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[inv.status] || 'bg-gray-100'}`}>
                       {formatStatus(inv.status)}
                     </span>
                   </td>
-                  <td className="py-2.5 px-4">
+                  <td className="py-2 px-3 border border-gray-200">
                     {inv.matchResult?.matched ? (
                       <CheckCircle className="h-5 w-5 text-green-600" />
                     ) : (
                       <AlertTriangle className="h-5 w-5 text-amber-500" />
                     )}
                   </td>
-                  <td className="py-2.5 px-4">
+                  <td className="py-2 px-3 border border-gray-200">
                     <ViewButton onClick={() => navigate(`/app/invoices/${inv._id}`)} />
                   </td>
                 </tr>

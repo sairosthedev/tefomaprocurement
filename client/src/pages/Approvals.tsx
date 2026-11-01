@@ -7,7 +7,7 @@ import {
   CheckCircle, XCircle, Eye, Loader2, Clock, 
   DollarSign, FileText, AlertTriangle, Package, ShoppingCart
 } from 'lucide-react';
-import Modal from '../components/Modal';
+import Modal, { ModalFooter } from '../components/Modal';
 import { WorkflowStepper } from '../components/WorkflowStepper';
 import { purchaseOrderSteps } from '../lib/purchaseOrderSteps';
 import { formatCurrency } from '../lib/constants';
@@ -259,36 +259,36 @@ export default function Approvals() {
         ) : (
           <>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm border-collapse">
               <thead>
                 <tr>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">PO Number</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Supplier</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Items</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Value</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Status</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Created</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Actions</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">PO Number</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Supplier</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Items</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Value</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Created</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {pendingItems.map((item: any) => (
-                  <tr key={item._id} className={`hover:bg-gray-50 ${isHighValue(item) ? 'bg-red-50/30' : ''}`}>
-                    <td className="py-2.5 px-4">
+                  <tr key={item._id} className="hover:bg-gray-50">
+                    <td className="py-2 px-3 border border-gray-200">
                       <span className="font-mono text-sm font-medium text-primary break-all">
                         {item.poNumber || `PO-${item._id.slice(-6).toUpperCase()}`}
                       </span>
                     </td>
-                    <td className="py-2.5 px-4">
+                    <td className="py-2 px-3 border border-gray-200">
                       <p className="font-medium text-gray-900">
                         {item.supplier?.companyName || 'Unknown Supplier'}
                       </p>
                       <p className="text-sm text-gray-500">{item.supplier?.contactEmail}</p>
                     </td>
-                    <td className="py-2.5 px-4">
+                    <td className="py-2 px-3 border border-gray-200">
                       <span className="text-sm text-gray-600">{item.items?.length || 0} items</span>
                     </td>
-                    <td className="py-2.5 px-4">
+                    <td className="py-2 px-3 border border-gray-200">
                       <span className={`font-semibold ${isHighValue(item) ? 'text-red-600' : 'text-gray-900'}`}>
                         {formatCurrency(item.totalAmount || 0, item.currency)}
                       </span>
@@ -296,7 +296,7 @@ export default function Approvals() {
                         <span className="ml-2 text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">High Value</span>
                       )}
                     </td>
-                    <td className="py-2.5 px-4">
+                    <td className="py-2 px-3 border border-gray-200">
                       {item.status === 'pending_approvals' ? (
                         <div className="flex flex-col gap-1">
                           <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${item.financeApproved ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
@@ -312,7 +312,7 @@ export default function Approvals() {
                         </span>
                       )}
                     </td>
-                    <td className="py-2.5 px-4 text-sm text-gray-500">
+                    <td className="py-2 px-3 border border-gray-200 text-sm text-gray-500">
                       <div>{new Date(item.createdAt).toLocaleDateString('en-ZA')}</div>
                       {(() => {
                         const { label, state } = approvalAge(item.updatedAt || item.createdAt);
@@ -325,10 +325,10 @@ export default function Approvals() {
                         );
                       })()}
                     </td>
-                    <td className="py-2.5 px-4">
+                    <td className="py-2 px-3 border border-gray-200">
                       <button
                         onClick={() => { setSelectedItem(item); setShowModal(true); }}
-                        className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                        className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100 text-gray-700"
                       >
                         Review
                       </button>
@@ -354,7 +354,7 @@ export default function Approvals() {
         isOpen={showModal}
         onClose={() => { setShowModal(false); setComment(''); }}
         title="Review Purchase Order"
-        size="lg"
+        size="xl"
       >
         {selectedItem && (
           <div className="space-y-6">
@@ -458,39 +458,39 @@ export default function Approvals() {
             <div>
               <label className="text-sm text-gray-500 mb-2 block">Line Items</label>
               <div className="overflow-x-auto max-h-48 overflow-y-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm border-collapse">
                   <thead className="sticky top-0">
                     <tr>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Description</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Qty</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Unit Price</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Total</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Description</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Qty</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Unit Price</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Total</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody>
                     {selectedItem.items?.map((item: any, index: any) => (
                       <tr key={index} className="hover:bg-gray-50">
-                        <td className="py-2.5 px-4">{item.description}</td>
-                        <td className="py-2.5 px-4">{item.quantity} {item.unit}</td>
-                        <td className="py-2.5 px-4">{formatCurrency(item.unitPrice || 0, selectedItem.currency)}</td>
-                        <td className="py-2.5 px-4 font-medium">{formatCurrency(item.totalPrice || 0, selectedItem.currency)}</td>
+                        <td className="py-2 px-3 border border-gray-200">{item.description}</td>
+                        <td className="py-2 px-3 border border-gray-200">{item.quantity} {item.unit}</td>
+                        <td className="py-2 px-3 border border-gray-200">{formatCurrency(item.unitPrice || 0, selectedItem.currency)}</td>
+                        <td className="py-2 px-3 border border-gray-200 font-medium">{formatCurrency(item.totalPrice || 0, selectedItem.currency)}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot className="bg-gray-50 border-t border-gray-200">
                     <tr>
-                      <td colSpan={3} className="py-2.5 px-4 text-sm font-medium text-right">Subtotal:</td>
-                      <td className="py-2.5 px-4 text-sm font-medium">{formatCurrency(selectedItem.subtotal || 0, selectedItem.currency)}</td>
+                      <td colSpan={3} className="py-2 px-3 text-sm font-medium text-right border border-gray-200">Subtotal:</td>
+                      <td className="py-2 px-3 text-sm font-medium border border-gray-200">{formatCurrency(selectedItem.subtotal || 0, selectedItem.currency)}</td>
                     </tr>
                     {selectedItem.vatAmount > 0 && (
                       <tr>
-                        <td colSpan={3} className="py-2.5 px-4 text-sm font-medium text-right">VAT:</td>
-                        <td className="py-2.5 px-4 text-sm font-medium">{formatCurrency(selectedItem.vatAmount || 0, selectedItem.currency)}</td>
+                        <td colSpan={3} className="py-2 px-3 text-sm font-medium text-right border border-gray-200">VAT:</td>
+                        <td className="py-2 px-3 text-sm font-medium border border-gray-200">{formatCurrency(selectedItem.vatAmount || 0, selectedItem.currency)}</td>
                       </tr>
                     )}
                     <tr className="border-t border-gray-200">
-                      <td colSpan={3} className="py-2.5 px-4 text-sm font-bold text-right">Total:</td>
-                      <td className="py-2.5 px-4 text-sm font-bold">{formatCurrency(selectedItem.totalAmount || 0, selectedItem.currency)}</td>
+                      <td colSpan={3} className="py-2 px-3 text-sm font-bold text-right border border-gray-200">Total:</td>
+                      <td className="py-2 px-3 text-sm font-bold border border-gray-200">{formatCurrency(selectedItem.totalAmount || 0, selectedItem.currency)}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -535,7 +535,7 @@ export default function Approvals() {
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+            <ModalFooter>
               <button
                 onClick={() => { setShowModal(false); setComment(''); }}
                 className="px-4 py-2.5 text-gray-700 font-medium hover:bg-gray-100 rounded-xl transition-colors"
@@ -559,7 +559,7 @@ export default function Approvals() {
                 {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                 Approve
               </button>
-            </div>
+            </ModalFooter>
           </div>
         )}
       </Modal>

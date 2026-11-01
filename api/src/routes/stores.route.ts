@@ -43,6 +43,8 @@ router.get('/movements', stores.getMovements);
 
 // Purchase requisitions — stores gate
 router.get('/purchase-requisitions/pending', stores.getPendingPurchaseRequisitions);
+// Already reviewed by stores, with where each has got to since (RFQ, POs).
+router.get('/purchase-requisitions/reviewed', stores.getReviewedPurchaseRequisitions);
 router.put('/purchase-requisitions/:id/auto-process', stores.autoProcessRequisition);
 router.put('/purchase-requisitions/:id/issue-line', stores.issuePurchaseRequisitionLine);
 router.put('/purchase-requisitions/:id/fulfill', stores.fulfillRequisitionFromStock);

@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { storesAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import Modal from '../components/Modal';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
+import { FormSteps, FormStepNav } from '../components/FormSteps';
+import { WorkflowStepper, type WorkflowStep } from '../components/WorkflowStepper';
 import { ArrowLeftRight, Loader2, Plus, CheckCircle, Truck, PackageCheck } from 'lucide-react';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -16,6 +18,39 @@ const STATUS_COLORS: Record<string, string> = {
   rejected: 'bg-red-100 text-red-700',
   cancelled: 'bg-gray-100 text-gray-700'
 };
+
+const CREATE_STEPS = [
+  { label: 'Sites', description: 'Where the stock moves' },
+  { label: 'Items', description: 'What and how much' },
+  { label: 'Review & create', description: 'Check, then create' }
+];
+
+const fmtDate = (d?: string) => (d ? new Date(d).toLocaleDateString('en-ZA') : undefined);
+
+/** A transfer from request to stock booked in at the receiving site. */
+function transferSteps(t: any): WorkflowStep[] {
+  const stopped = t.status === 'rejected' || t.status === 'cancelled';
+  const shipped = ['in_transit', 'received', 'partially_received'].includes(t.status);
+  const raw = [
+    { key: 'requested', label: 'Requested', done: t.status !== 'draft', detail: fmtDate(t.createdAt) },
+    // Shipping straight from pending is allowed, so a shipped transfer counts as past approval.
+    { key: 'approved', label: 'Approved', done: t.status === 'approved' || shipped, detail: fmtDate(t.approvedAt) },
+    { key: 'shipped', label: 'In transit', done: shipped, detail: fmtDate(t.shippedAt) },
+    {
+      key: 'received',
+      label: 'Received',
+      done: t.status === 'received' || t.status === 'partially_received',
+      detail: t.status === 'partially_received' ? 'Partly received' : fmtDate(t.receivedAt)
+    }
+  ];
+  const current = raw.findIndex((s) => !s.done);
+  return raw.map((s, i) => ({
+    key: s.key,
+    label: s.label,
+    detail: i === current && stopped ? (t.status === 'rejected' ? 'Rejected' : 'Cancelled') : s.detail,
+    state: s.done ? 'done' : i === current ? (stopped ? 'stopped' : 'current') : 'upcoming'
+  }));
+}
 
 export default function StockTransfers() {
   const { showToast } = useToast();
@@ -33,6 +68,8 @@ export default function StockTransfers() {
   const [notes, setNotes] = useState('');
   const [lines, setLines] = useState([{ itemId: '', quantity: 1 }]);
   const [creating, setCreating] = useState(false);
+  const [createStep, setCreateStep] = useState(0);
+  const createTopRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadTransfers();
@@ -85,16 +122,41 @@ export default function StockTransfers() {
     }
   };
 
-  const handleCreate = async () => {
-    if (!fromSiteId || !toSiteId) {
+  const openCreate = () => {
+    setCreateStep(0);
+    setShowCreate(true);
+  };
+
+  const goToCreateStep = (step: number) => {
+    setCreateStep(step);
+    createTopRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  };
+
+  // Each step checks its own fields; handleCreate repeats them before saving.
+  const validateCreateStep = (step: number) => {
+    if (step === 0 && (!fromSiteId || !toSiteId)) {
       showToast('Select source and destination sites', 'error');
-      return;
+      return false;
+    }
+    if (step === 1 && !lines.some((l) => l.itemId && l.quantity > 0)) {
+      showToast('Add at least one item', 'error');
+      return false;
+    }
+    return true;
+  };
+
+  const nextCreateStep = () => {
+    if (validateCreateStep(createStep)) goToCreateStep(createStep + 1);
+  };
+
+  const handleCreate = async () => {
+    for (const step of [0, 1]) {
+      if (!validateCreateStep(step)) {
+        goToCreateStep(step);
+        return;
+      }
     }
     const validLines = lines.filter((l) => l.itemId && l.quantity > 0);
-    if (validLines.length === 0) {
-      showToast('Add at least one item', 'error');
-      return;
-    }
 
     try {
       setCreating(true);
@@ -110,7 +172,11 @@ export default function StockTransfers() {
       setToSiteId('');
       setNotes('');
       setLines([{ itemId: '', quantity: 1 }]);
-      loadTransfers();
+      // The list is newest first: show page one, unfiltered, so the new transfer
+      // is at the top with its Approve / Ship step.
+      if (page === 1 && !statusFilter) loadTransfers();
+      setPage(1);
+      setStatusFilter('');
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to create transfer', 'error');
     } finally {
@@ -141,7 +207,7 @@ export default function StockTransfers() {
         actions={
           <button
             type="button"
-            onClick={() => setShowCreate(true)}
+            onClick={openCreate}
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark"
           >
             <Plus className="h-5 w-5" />
@@ -191,7 +257,10 @@ export default function StockTransfers() {
                     <p className="text-xs text-gray-400 mt-1">
                       {transfer.items?.length || 0} line(s) · {new Date(transfer.createdAt).toLocaleDateString('en-ZA')}
                     </p>
-                    <ul className="mt-3 space-y-1 text-sm text-gray-600">
+                    <div className="mt-3 max-w-xl">
+                      <WorkflowStepper compact steps={transferSteps(transfer)} />
+                    </div>
+                    <ul className="space-y-1 text-sm text-gray-600">
                       {transfer.items?.slice(0, 3).map((line: any, i: number) => (
                         <li key={i}>
                           {line.item?.name || line.item?.code} × {line.quantityRequested}
@@ -242,8 +311,20 @@ export default function StockTransfers() {
         <Pagination page={page} pages={pagination.pages} total={pagination.total} onPageChange={setPage} itemLabel="transfers" />
       </div>
 
-      <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Create stock transfer" size="lg">
+      <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Create stock transfer" size="xl">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            // Enter on an earlier step moves on rather than creating early.
+            if (createStep < CREATE_STEPS.length - 1) nextCreateStep();
+            else handleCreate();
+          }}
+        >
+        <div ref={createTopRef} className="scroll-mt-4" />
+        <FormSteps steps={CREATE_STEPS} current={createStep} onSelect={goToCreateStep} />
         <div className="space-y-4">
+          {createStep === 0 && (
+            <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">From site</label>
@@ -273,6 +354,11 @@ export default function StockTransfers() {
             </div>
           </div>
 
+            </>
+          )}
+
+          {createStep === 1 && (
+            <>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Items</label>
             <div className="space-y-2">
@@ -328,20 +414,69 @@ export default function StockTransfers() {
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-xl">
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleCreate}
-              disabled={creating}
-              className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-xl hover:bg-primary-dark disabled:opacity-50"
-            >
-              {creating ? 'Creating…' : 'Create transfer'}
-            </button>
-          </div>
+            </>
+          )}
+
+          {createStep === 2 && (() => {
+            const siteLabel = (id: string) => { const x = sites.find((site) => site._id === id); return x ? `${x.name} (${x.code})` : '—'; };
+            const itemLabel = (id: string) => {
+              const row = inventory.find((r: any) => r.item?._id === id);
+              return row?.item?.name || row?.name || id;
+            };
+            return (
+              <div className="space-y-4 text-sm">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-gray-500">From</p>
+                    <p className="font-medium text-gray-900">{siteLabel(fromSiteId)}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">To</p>
+                    <p className="font-medium text-gray-900">{siteLabel(toSiteId)}</p>
+                  </div>
+                </div>
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Item</th>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Quantity</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {lines
+                        .filter((l) => l.itemId && l.quantity > 0)
+                        .map((l, i) => (
+                          <tr key={i}>
+                            <td className="py-2 px-3 border border-gray-200">{itemLabel(l.itemId)}</td>
+                            <td className="py-2 px-3 border border-gray-200">{l.quantity}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+                {notes.trim() && (
+                  <div>
+                    <p className="text-gray-500">Notes</p>
+                    <p className="text-gray-900">{notes}</p>
+                  </div>
+                )}
+                <p className="text-xs text-gray-500">The transfer is then approved, shipped and received at the destination.</p>
+              </div>
+            );
+          })()}
         </div>
+
+        <FormStepNav
+          current={createStep}
+          total={CREATE_STEPS.length}
+          onBack={() => goToCreateStep(createStep - 1)}
+          onNext={nextCreateStep}
+          onCancel={() => setShowCreate(false)}
+          finishLabel={creating ? 'Creating…' : 'Create transfer'}
+          submitting={creating}
+        />
+        </form>
       </Modal>
     </div>
   );

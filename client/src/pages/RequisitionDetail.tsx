@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api, { departmentAPI, procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
@@ -452,24 +452,24 @@ export default function RequisitionDetail() {
                 )}
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Package</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Details</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Units</th>
-                      <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Qty Req.</th>
-                      <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Qty Delivered</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Package</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Details</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Units</th>
+                      <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Qty Req.</th>
+                      <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Qty Delivered</th>
                       {canEditItems && (
-                        <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Action</th>
+                        <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Action</th>
                       )}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody>
                     {requisition.items.map((item: any, index: any) => (
                       <tr key={item._id || index} className="hover:bg-gray-50">
-                        <td className="py-2.5 px-4 text-gray-600">{item.package || '—'}</td>
-                        <td className="py-2.5 px-4">
+                        <td className="py-2 px-3 border border-gray-200 text-gray-600">{item.package || '—'}</td>
+                        <td className="py-2 px-3 border border-gray-200">
                           <p className="font-medium text-gray-900">{item.description || item.name}</p>
                           {(item.specification || item.specifications) && (
                             <p className="text-xs text-gray-400 mt-0.5">{item.specification || item.specifications}</p>
@@ -480,8 +480,8 @@ export default function RequisitionDetail() {
                             compact
                           />
                         </td>
-                        <td className="py-2.5 px-4 text-gray-600">{item.unit}</td>
-                        <td className="py-2.5 px-4 text-right">
+                        <td className="py-2 px-3 border border-gray-200 text-gray-600">{item.unit}</td>
+                        <td className="py-2 px-3 border border-gray-200 text-right">
                           {canEditItems && editingItemId === item._id ? (
                             <div className="flex items-center gap-1.5">
                               <input

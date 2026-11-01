@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -29,7 +29,7 @@ import {
   UserCheck,
   Circle
 } from 'lucide-react';
-import Modal, { ConfirmModal } from '../components/Modal';
+import Modal, { ModalFooter } from '../components/Modal';
 
 const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
@@ -555,7 +555,7 @@ export default function QuotationDetail() {
           label: 'Go to authorization',
           onClick: () => complianceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
         };
-        let next: { title: string; description?: string; waiting?: boolean; action?: NextStepAction } | null = null;
+        let next: { title: string; description?: string; waiting?: boolean; done?: boolean; action?: NextStepAction } | null = null;
 
         if (['rejected', 'expired', 'superseded'].includes(quotation.status)) {
           next = null;
@@ -564,6 +564,7 @@ export default function QuotationDetail() {
         } else if (po) {
           next = {
             title: `Purchase order ${po.poNumber} is raised`,
+            done: true,
             description: `Status: ${String(po.status).replace(/_/g, ' ')}. Its approval and delivery continue on the order.`,
             action: isProcurement ? { label: 'Open purchase order', to: `/app/purchase-orders/${po._id}` } : undefined
           };
@@ -590,7 +591,7 @@ export default function QuotationDetail() {
         }
 
         return next ? (
-          <NextStepCard title={next.title} description={next.description} waiting={next.waiting} action={next.action} />
+          <NextStepCard title={next.title} description={next.description} waiting={next.waiting} done={next.done} action={next.action} />
         ) : null;
       })()}
 
@@ -837,20 +838,20 @@ export default function QuotationDetail() {
           <div className="border-t pt-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Quoted Items</h3>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr>
-                    <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Description</th>
-                    <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Quantity</th>
-                    <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Unit</th>
-                    <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Unit Price</th>
-                    <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Total</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Description</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Quantity</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Unit</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Unit Price</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Total</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody>
                   {quotation.items.map((item: any, index: any) => (
                     <tr key={index} className="hover:bg-gray-50">
-                      <td className="py-2.5 px-4">
+                      <td className="py-2 px-3 border border-gray-200">
                         <p className="font-medium text-gray-900">{item.description}</p>
                         {item.specifications && (
                           <p className="text-xs text-gray-500 mt-1">{item.specifications}</p>
@@ -874,12 +875,12 @@ export default function QuotationDetail() {
                         )}
                         <EquipmentDetailsView attachments={item.attachments} compact />
                       </td>
-                      <td className="py-2.5 px-4 text-right text-gray-900">{item.quantity}</td>
-                      <td className="py-2.5 px-4 text-right text-gray-900">{item.unit}</td>
-                      <td className="py-2.5 px-4 text-right text-gray-900">
+                      <td className="py-2 px-3 border border-gray-200 text-right text-gray-900">{item.quantity}</td>
+                      <td className="py-2 px-3 border border-gray-200 text-right text-gray-900">{item.unit}</td>
+                      <td className="py-2 px-3 border border-gray-200 text-right text-gray-900">
                         {formatCurrency(item.unitPrice || 0, quotation.currency || getCurrentSbuCurrency())}
                       </td>
-                      <td className="py-2.5 px-4 text-right font-medium text-gray-900">
+                      <td className="py-2 px-3 border border-gray-200 text-right font-medium text-gray-900">
                         {formatCurrency((item.quantity || 0) * (item.unitPrice || 0), quotation.currency || getCurrentSbuCurrency())}
                       </td>
                     </tr>
@@ -890,7 +891,7 @@ export default function QuotationDetail() {
                     <td colSpan={4} className="py-2.5 px-4 text-right font-semibold text-gray-900">
                       Total Amount:
                     </td>
-                    <td className="py-2.5 px-4 text-right font-bold text-lg text-gray-900">
+                    <td className="py-2 px-3 border border-gray-200 text-right font-bold text-lg text-gray-900">
                       {formatCurrency(quotation.totalAmount || 0, quotation.currency || getCurrentSbuCurrency())}
                     </td>
                   </tr>
@@ -934,7 +935,7 @@ export default function QuotationDetail() {
         title="Accept Quotation"
       >
         <p className="text-gray-700 mb-6">Are you sure you want to accept this quotation?</p>
-        <div className="flex justify-end gap-3">
+        <ModalFooter>
           <button
             onClick={() => setShowAcceptModal(false)}
             className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
@@ -953,7 +954,7 @@ export default function QuotationDetail() {
             )}
             Accept Quotation
           </button>
-        </div>
+        </ModalFooter>
       </Modal>
 
       {/* Reject Modal */}
@@ -990,7 +991,7 @@ export default function QuotationDetail() {
             />
           </div>
         </div>
-        <div className="flex justify-end gap-3 mt-6">
+        <ModalFooter>
           <button
             onClick={() => {
               setShowRejectModal(false);
@@ -1013,7 +1014,7 @@ export default function QuotationDetail() {
             )}
             Reject Quotation
           </button>
-        </div>
+        </ModalFooter>
       </Modal>
 
       {/* Request Revision Modal */}
@@ -1056,7 +1057,7 @@ export default function QuotationDetail() {
             />
           </div>
         </div>
-        <div className="flex justify-end gap-3 mt-6">
+        <ModalFooter>
           <button
             onClick={() => {
               setShowReviseModal(false);
@@ -1075,7 +1076,7 @@ export default function QuotationDetail() {
             {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <DollarSign className="h-4 w-4" />}
             Request Revision
           </button>
-        </div>
+        </ModalFooter>
       </Modal>
 
       {/* Create PO Modal */}
@@ -1083,6 +1084,7 @@ export default function QuotationDetail() {
         isOpen={showCreatePOModal}
         onClose={() => setShowCreatePOModal(false)}
         title="Create Purchase Order"
+        size="lg"
       >
         <form
           onSubmit={(e) => {

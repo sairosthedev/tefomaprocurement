@@ -14,7 +14,9 @@ const AuthContext = createContext<any>(null);
 
 export function AuthProvider({ children }: any) {
   const [user, setUser] = useState<any>(() => readStoredSession().user);
-  const [loading, setLoading] = useState<any>(true);
+  // With a stored user the app renders straight away and /auth/me refreshes
+  // it in the background; an invalid token still clears the session there.
+  const [loading, setLoading] = useState<any>(() => !readStoredSession().user);
 
   const hydrateFromStorage = useCallback(() => {
     const { user: storedUser } = readStoredSession();

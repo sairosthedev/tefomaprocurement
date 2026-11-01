@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
+import { useAuth } from '../context/AuthContext';
+import { isProcurementHead } from '@fossil/shared';
 import PageHeader from '../components/PageHeader';
+import { WorkflowStepper, NextStepCard, type WorkflowStep, type NextStepAction } from '../components/WorkflowStepper';
 import EquipmentDetailsView from '../components/EquipmentDetailsView';
 import RfqRankingPanel from '../components/RfqRankingPanel';
 import {
@@ -24,10 +27,83 @@ const statusColors: any = {
   cancelled: 'bg-red-100 text-red-700'
 };
 
+/** Where an RFQ's award stands, for the whole-quotation and the split (per-line) paths. */
+function awardProgress(rfq: any) {
+  const lines: any[] = rfq.lineAwards || [];
+  // Opening the award matrix seeds a pending line per item, so lines alone do
+  // not make a split award: one must be flagged or actually awarded.
+  const split = !!rfq.splitAward || lines.some((l) => l.status && l.status !== 'pending');
+  if (split) {
+    const awarded = lines.filter((l) => l.status === 'awarded');
+    return {
+      split,
+      selectedId: null as string | null,
+      selected: awarded.length > 0,
+      authorized: awarded.length > 0 && awarded.every((l) => l.pmAuthorization?.by),
+      done: awarded.length > 0 && awarded.every((l) => l.poGenerated),
+      detail: lines.length ? `${awarded.length}/${lines.length} lines` : undefined
+    };
+  }
+  const selectedId = rfq.hodSelection?.quotation || rfq.pmAuthorization?.quotation || null;
+  return {
+    split,
+    selectedId: selectedId ? String(selectedId._id || selectedId) : null,
+    selected: !!selectedId,
+    authorized: !!rfq.pmAuthorization?.quotation,
+    // acceptQuotation moves the RFQ to 'awarded'.
+    done: rfq.status === 'awarded',
+    detail: undefined as string | undefined
+  };
+}
+
+/** Requisition, published, quotes in, winner selected, authorized, awarded. */
+function rfqSteps(rfq: any): WorkflowStep[] {
+  const a = awardProgress(rfq);
+  const closed = ['closed', 'evaluating', 'awarded'].includes(rfq.status) || !!rfq.closedAt;
+  const pr = rfq.purchaseRequisition;
+  const raw: Array<{ key: string; label: string; done: boolean; detail?: string; to?: string }> = [
+    {
+      key: 'pr',
+      label: 'Requisition',
+      done: true,
+      detail: pr?.requisitionNumber,
+      to: pr?._id ? `/app/requisitions/${pr._id}` : undefined
+    },
+    { key: 'published', label: 'Published', done: rfq.status !== 'draft' && (rfq.status !== 'cancelled' || !!rfq.publishedAt) },
+    {
+      key: 'quotes',
+      label: 'Quotes in',
+      done: closed,
+      detail: typeof rfq.bidCount === 'number' ? `${rfq.bidCount} received` : undefined
+    },
+    { key: 'selected', label: 'Winner selected', done: a.selected, detail: a.detail },
+    {
+      key: 'authorized',
+      label: 'Authorized',
+      done: a.authorized,
+      to: a.selectedId ? `/app/quotations/${a.selectedId}` : a.split && a.selected ? `/app/rfqs/${rfq._id}/award` : undefined
+    },
+    { key: 'awarded', label: a.split ? 'POs generated' : 'Awarded', done: a.done }
+  ];
+
+  const stopped = rfq.status === 'cancelled';
+  const current = raw.findIndex((s) => !s.done);
+  return raw.map((s, i) => ({
+    key: s.key,
+    label: s.label,
+    detail: i === current && stopped ? 'Cancelled' : s.detail,
+    to: s.to,
+    state: s.done ? 'done' : i === current ? (stopped ? 'stopped' : 'current') : 'upcoming'
+  }));
+}
+
 export default function RFQDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { user } = useAuth();
+  const procurementHead = isProcurementHead(user);
+  const rankingRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState<any>(true);
   const [closing, setClosing] = useState<any>(false);
   const [rfq, setRfq] = useState<any>(null);
@@ -158,6 +234,66 @@ export default function RFQDetail() {
         }
       />
 
+      <WorkflowStepper steps={rfqSteps(rfq)} />
+      {(() => {
+        const a = awardProgress(rfq);
+        const award = `/app/rfqs/${rfq._id}/award`;
+        const bids = rfq.bidCount ?? 0;
+        let next: { title: string; description?: string; waiting?: boolean; done?: boolean; action?: NextStepAction } | null = null;
+
+        if (rfq.status === 'cancelled') {
+          next = null;
+        } else if (rfq.status === 'draft') {
+          next = {
+            title: 'Publish the RFQ',
+            description: 'Invited suppliers can quote once it is published.',
+            action: { label: 'Publish RFQ', onClick: handlePublish }
+          };
+        } else if (rfq.status === 'open') {
+          next = bidsAreSealed
+            ? {
+                title: 'Suppliers are quoting',
+                description: `Bids stay sealed until ${new Date(rfq.submissionDeadline).toLocaleString()}. ${bids} received so far. You can close early once every invited supplier has responded.`,
+                waiting: true,
+                action: { label: closing ? 'Closing...' : 'Close RFQ & reveal bids', onClick: handleClose, disabled: closing }
+              }
+            : {
+                title: 'Close the RFQ to evaluate the bids',
+                description: `The deadline has passed. ${bids} bid(s) received.`,
+                action: { label: closing ? 'Closing...' : 'Close RFQ & reveal bids', onClick: handleClose, disabled: closing }
+              };
+        } else if (rfq.status === 'closed' && bids === 0) {
+          next = { title: 'No quotations were received', description: 'Invite more suppliers on a new RFQ, or cancel this one.' };
+        } else if (!a.selected) {
+          next = a.split
+            ? { title: 'Award each line to a supplier', action: { label: 'Open award matrix', to: award } }
+            : {
+                title: 'Compare the quotes and select the winner',
+                description: 'Open the best-ranked quotation and select it with a justification, or split the award by line.',
+                action: { label: 'Compare quotes', onClick: () => rankingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
+              };
+        } else if (!a.authorized) {
+          const to = a.split ? award : `/app/quotations/${a.selectedId}`;
+          next = procurementHead
+            ? { title: 'Authorize the selected award', action: { label: 'Review award', to } }
+            : { title: 'Head of Procurement authorization', waiting: true, action: { label: 'View selection', to } };
+        } else if (!a.done) {
+          next = a.split
+            ? { title: 'Generate the purchase orders', description: 'One per supplier, for the authorized lines.', action: { label: 'Open award matrix', to: award } }
+            : { title: 'Accept the quotation and raise the purchase order', action: { label: 'Open winning quotation', to: `/app/quotations/${a.selectedId}` } };
+        } else {
+          next = a.split
+            ? { title: 'Purchase orders generated', done: true, action: { label: 'View purchase orders', to: '/app/purchase-orders' } }
+            : a.selectedId
+            ? { title: 'Award accepted', done: true, description: 'The purchase order is raised and followed from the winning quotation.', action: { label: 'Open winning quotation', to: `/app/quotations/${a.selectedId}` } }
+            : null;
+        }
+
+        return next ? (
+          <NextStepCard title={next.title} description={next.description} waiting={next.waiting} done={next.done} action={next.action} />
+        ) : null;
+      })()}
+
       {/* Details */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
         {/* Basic Info */}
@@ -241,11 +377,13 @@ export default function RFQDetail() {
         {/* Ranked responses. Above the invitation list on purpose: once bids are
             in, how they compare matters more than who was asked. */}
         {!bidsAreSealed && ['closed', 'evaluating', 'awarded'].includes(rfq.status) && (
-          <RfqRankingPanel
-            rfqId={rfq._id}
-            refreshKey={rfq.status}
-            onViewQuotation={(quotationId) => navigate(`/app/quotations/${quotationId}`)}
-          />
+          <div ref={rankingRef} className="scroll-mt-6">
+            <RfqRankingPanel
+              rfqId={rfq._id}
+              refreshKey={rfq.status}
+              onViewQuotation={(quotationId) => navigate(`/app/quotations/${quotationId}`)}
+            />
+          </div>
         )}
 
         {/* Invited Suppliers */}

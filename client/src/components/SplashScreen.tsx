@@ -1,11 +1,27 @@
 import React, { useState, useEffect } from 'react';
 
+const SHOWN_KEY = 'splashShown';
+
+/**
+ * The splash plays once per browser tab session. Showing it on every reload
+ * stacked a fixed delay in front of the page's own loading state.
+ */
+export function shouldShowSplash(): boolean {
+  try {
+    if (sessionStorage.getItem(SHOWN_KEY)) return false;
+    sessionStorage.setItem(SHOWN_KEY, '1');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function SplashScreen({ onComplete }: { onComplete: () => void }) {
   const [exiting, setExiting] = useState(false);
 
   useEffect(() => {
-    const exitTimer = setTimeout(() => setExiting(true), 2400);
-    const doneTimer = setTimeout(() => onComplete(), 2900);
+    const exitTimer = setTimeout(() => setExiting(true), 1300);
+    const doneTimer = setTimeout(() => onComplete(), 1700);
     return () => {
       clearTimeout(exitTimer);
       clearTimeout(doneTimer);
@@ -44,10 +60,10 @@ export function SplashScreen({ onComplete }: { onComplete: () => void }) {
           100% { background-position: 200%  center; }
         }
 
-        .sl-logo  { animation: sl-enter   0.75s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both; }
-        .sl-tag   { animation: sl-tagline 0.55s ease-out 0.85s both; }
-        .sl-bar   { animation: sl-bar     2.1s cubic-bezier(0.4, 0, 0.2, 1) 0.3s both; }
-        .sl-exit  { animation: sl-exit    0.5s ease-in forwards; }
+        .sl-logo  { animation: sl-enter   0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.05s both; }
+        .sl-tag   { animation: sl-tagline 0.45s ease-out 0.5s both; }
+        .sl-bar   { animation: sl-bar     1.15s cubic-bezier(0.4, 0, 0.2, 1) 0.1s both; }
+        .sl-exit  { animation: sl-exit    0.4s ease-in forwards; }
 
         .sl-mark  { animation: sl-float-a var(--dur, 4s) ease-in-out var(--delay, 0s) infinite; }
 

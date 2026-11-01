@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../components/Toast';
 import api from '../../lib/api';
@@ -241,37 +241,37 @@ export default function MyRFQs() {
         ) : (
           <>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm border-collapse">
               <thead>
                 <tr>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">RFQ #</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Title</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Items</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Closing</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Status</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Actions</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">RFQ #</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Title</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Items</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Closing</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {rfqs.map((rfq: any) => {
                   const remaining = getRemainingTime(rfq.submissionDeadline);
                   const canSubmit = rfq.status === 'open' && !rfq.hasSubmitted && remaining.text !== 'Closed';
 
                   return (
                     <tr key={rfq._id} className="hover:bg-gray-50">
-                      <td className="py-2.5 px-4">
+                      <td className="py-2 px-3 border border-gray-200">
                         <span className="font-mono font-medium text-primary">
                           {rfq.rfqNumber || `RFQ-${rfq._id.slice(-6).toUpperCase()}`}
                         </span>
                       </td>
-                      <td className="py-2.5 px-4">
+                      <td className="py-2 px-3 border border-gray-200">
                         <p className="font-medium text-gray-900">{rfq.title}</p>
                         <p className="text-xs text-gray-500 truncate max-w-xs">{rfq.description}</p>
                       </td>
-                      <td className="py-2.5 px-4">
+                      <td className="py-2 px-3 border border-gray-200">
                         <span className="text-gray-600">{rfq.items?.length || 0} items</span>
                       </td>
-                      <td className="py-2.5 px-4">
+                      <td className="py-2 px-3 border border-gray-200">
                         <div className="flex items-center gap-2">
                           <Clock className={`h-4 w-4 ${remaining.urgent ? 'text-red-500' : 'text-gray-400'}`} />
                           <span className={`${remaining.urgent ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
@@ -282,7 +282,7 @@ export default function MyRFQs() {
                           {new Date(rfq.submissionDeadline).toLocaleDateString('en-ZA')}
                         </p>
                       </td>
-                      <td className="py-2.5 px-4">
+                      <td className="py-2 px-3 border border-gray-200">
                         {rfq.quotationStatus === 'accepted' ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
                             <PartyPopper className="h-3.5 w-3.5" />
@@ -298,7 +298,7 @@ export default function MyRFQs() {
                           </span>
                         )}
                       </td>
-                      <td className="py-2.5 px-4">
+                      <td className="py-2 px-3 border border-gray-200">
                         <div className="flex items-center gap-2">
                           <ViewButton
                             onClick={() => navigate(`/app/my-rfqs/${rfq._id}`)}
@@ -335,7 +335,7 @@ export default function MyRFQs() {
         isOpen={showViewModal}
         onClose={() => setShowViewModal(false)}
         title="RFQ Details"
-        size="lg"
+        size="xl"
       >
         {selectedRFQ && (
           <div className="space-y-6">
@@ -377,22 +377,22 @@ export default function MyRFQs() {
             <div>
               <label className="text-sm text-gray-500 mb-2 block">Items Required</label>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">#</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Description</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Quantity</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Specification</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">#</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Description</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Quantity</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Specification</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody>
                     {selectedRFQ.items?.map((item: any, index: any) => (
                       <tr key={index} className="hover:bg-gray-50">
-                        <td className="py-2.5 px-4">{index + 1}</td>
-                        <td className="py-2.5 px-4 font-medium">{item.description}</td>
-                        <td className="py-2.5 px-4">{item.quantity} {item.unit}</td>
-                        <td className="py-2.5 px-4 text-gray-500">{item.specification || '-'}</td>
+                        <td className="py-2 px-3 border border-gray-200">{index + 1}</td>
+                        <td className="py-2 px-3 border border-gray-200 font-medium">{item.description}</td>
+                        <td className="py-2 px-3 border border-gray-200">{item.quantity} {item.unit}</td>
+                        <td className="py-2 px-3 border border-gray-200 text-gray-500">{item.specification || '-'}</td>
                       </tr>
                     ))}
                   </tbody>

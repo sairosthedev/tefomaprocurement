@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { adminAPI } from '../lib/api';
-import { Modal } from '../components/Modal';
+import { Modal, ModalFooter } from '../components/Modal';
 import { useToast } from '../components/Toast';
 import FilterSelect from '../components/FilterSelect';
 import PageHeader from '../components/PageHeader';
 import { 
-  Search, 
+  Search,
   Plus,
   UserCircle,
   Mail,
@@ -13,8 +13,6 @@ import {
   Loader2,
   CheckCircle,
   XCircle,
-  Edit,
-  Trash2,
   Eye,
   EyeOff,
   Users as UsersIcon
@@ -280,21 +278,21 @@ export default function Users() {
         ) : (
           <>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm border-collapse">
               <thead>
                 <tr>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">User</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Email</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Role</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Department</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Status</th>
-                  <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Actions</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">User</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Email</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Role</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Department</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Status</th>
+                  <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {users.map((user: any) => (
                   <tr key={user._id} className="hover:bg-gray-50">
-                    <td className="py-2.5 px-4">
+                    <td className="py-2 px-3 border border-gray-200">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">
                           <span className="text-sm font-semibold text-primary">
@@ -307,22 +305,22 @@ export default function Users() {
                         </div>
                       </div>
                     </td>
-                    <td className="py-2.5 px-4">
+                    <td className="py-2 px-3 border border-gray-200">
                       <div className="flex items-center gap-2 text-gray-600">
                         <Mail className="h-4 w-4 text-gray-400" />
                         {user.email}
                       </div>
                     </td>
-                    <td className="py-2.5 px-4">
+                    <td className="py-2 px-3 border border-gray-200">
                       <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${(roleColors as Record<string, string>)[user.role] || ''}`}>
                         <Shield className="h-3.5 w-3.5" />
                         {(roleNames as Record<string, string>)[user.role] || user.role}
                       </span>
                     </td>
-                    <td className="py-2.5 px-4 text-gray-600">
+                    <td className="py-2 px-3 border border-gray-200 text-gray-600">
                       {user.department?.name || '-'}
                     </td>
-                    <td className="py-2.5 px-4">
+                    <td className="py-2 px-3 border border-gray-200">
                       {user.status === 'active' ? (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
                           <CheckCircle className="h-3.5 w-3.5" />
@@ -335,21 +333,19 @@ export default function Users() {
                         </span>
                       )}
                     </td>
-                    <td className="py-2.5 px-4 text-right">
+                    <td className="py-2 px-3 border border-gray-200 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => handleOpenModal(user)}
-                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                          title="Edit"
+                          className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100 text-gray-700"
                         >
-                          <Edit className="h-4 w-4 text-gray-500" />
+                          Edit
                         </button>
                         <button
                           onClick={() => handleDelete(user)}
-                          className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete"
+                          className="px-2 py-1 text-xs border border-red-200 rounded hover:bg-red-50 text-red-600"
                         >
-                          <Trash2 className="h-4 w-4 text-red-500" />
+                          Delete
                         </button>
                       </div>
                     </td>
@@ -374,7 +370,7 @@ export default function Users() {
         isOpen={showModal}
         onClose={() => { setShowModal(false); resetForm(); setEditingUser(null); }}
         title={editingUser ? 'Edit User' : 'Add New User'}
-        size="md"
+        size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -507,7 +503,7 @@ export default function Users() {
             </div>
           </div>
 
-          <div className="flex gap-3 pt-4">
+          <ModalFooter>
             <button
               type="button"
               onClick={() => { setShowModal(false); resetForm(); setEditingUser(null); }}
@@ -522,7 +518,7 @@ export default function Users() {
             >
               {saving ? 'Saving...' : editingUser ? 'Update User' : 'Create User'}
             </button>
-          </div>
+          </ModalFooter>
         </form>
       </Modal>
     </div>

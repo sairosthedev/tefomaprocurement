@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supplierAPI } from '../../lib/api';
 import { formatCurrency } from '../../lib/constants';
@@ -57,31 +57,31 @@ export default function MyInvoices() {
         <p className="text-center text-gray-500 py-12">No invoices submitted yet.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm border-collapse">
             <thead>
               <tr>
-                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Invoice</th>
-                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">PO</th>
-                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Amount</th>
-                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Status</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Invoice</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">PO</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Amount</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody>
               {invoices.map((inv) => (
                 <React.Fragment key={inv._id}>
                   <tr
                     className="hover:bg-gray-50 cursor-pointer"
                     onClick={() => setOpenId(openId === inv._id ? null : inv._id)}
                   >
-                    <td className="py-2.5 px-4 font-medium">
+                    <td className="py-2 px-3 border border-gray-200 font-medium">
                       <span className="inline-flex items-center gap-1.5">
                         {openId === inv._id ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
                         {inv.invoiceNumber}
                       </span>
                     </td>
-                    <td className="py-2.5 px-4">{inv.purchaseOrder?.poNumber}</td>
-                    <td className="py-2.5 px-4">{formatCurrency(inv.totalAmount, inv.currency || getCurrentSbuCurrency())}</td>
-                    <td className="py-2.5 px-4 capitalize">{inv.status.replace(/_/g, ' ')}</td>
+                    <td className="py-2 px-3 border border-gray-200">{inv.purchaseOrder?.poNumber}</td>
+                    <td className="py-2 px-3 border border-gray-200">{formatCurrency(inv.totalAmount, inv.currency || getCurrentSbuCurrency())}</td>
+                    <td className="py-2 px-3 border border-gray-200 capitalize">{inv.status.replace(/_/g, ' ')}</td>
                   </tr>
                   {openId === inv._id && (
                     <tr>

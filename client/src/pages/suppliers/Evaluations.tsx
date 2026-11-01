@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+﻿import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   CheckCircle2,
@@ -13,6 +13,7 @@ import { useToast } from '../../components/Toast'
 import { useAuth } from '../../context/AuthContext'
 import PageHeader, { PageStatCard } from '../../components/PageHeader'
 import Pagination from '../../components/Pagination'
+import Modal from '../../components/Modal'
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination'
 import { FormSteps, FormStepNav } from '../../components/FormSteps'
 
@@ -299,37 +300,37 @@ export default function Evaluations() {
       {activeTab === 'all' && (
         <div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm border-collapse">
               <thead>
                 <tr>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Supplier</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Type</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Score</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Recommendation</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Status</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Date</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Next review</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Supplier</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Type</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Score</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Recommendation</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Date</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Next review</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {allEvaluations.map((evaluation) => (
                   <tr key={evaluation._id} className="hover:bg-gray-50">
-                    <td className="py-2.5 px-4 font-medium text-gray-900">{supplierName(evaluation)}</td>
-                    <td className="py-2.5 px-4 capitalize text-gray-600">{String(evaluation.evaluationType || '').replace(/_/g, ' ')}</td>
-                    <td className="py-2.5 px-4">
+                    <td className="py-2 px-3 border border-gray-200 font-medium text-gray-900">{supplierName(evaluation)}</td>
+                    <td className="py-2 px-3 border border-gray-200 capitalize text-gray-600">{String(evaluation.evaluationType || '').replace(/_/g, ' ')}</td>
+                    <td className="py-2 px-3 border border-gray-200">
                       <span className="inline-flex items-center gap-1 font-semibold text-gray-900">
                         <Star className="h-3.5 w-3.5 text-amber-500" />
                         {evaluation.overallScore}/5
                       </span>
                     </td>
-                    <td className="py-2.5 px-4 capitalize text-gray-600">{evaluation.recommendation}</td>
-                    <td className="py-2.5 px-4">
+                    <td className="py-2 px-3 border border-gray-200 capitalize text-gray-600">{evaluation.recommendation}</td>
+                    <td className="py-2 px-3 border border-gray-200">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[evaluation.status] || 'bg-gray-100 text-gray-700'}`}>
                         {STATUS_LABELS[evaluation.status] || evaluation.status}
                       </span>
                     </td>
-                    <td className="py-2.5 px-4 text-gray-600">{formatDate(evaluation.createdAt)}</td>
-                    <td className="py-2.5 px-4 text-gray-600">{formatDate(evaluation.nextReviewDue)}</td>
+                    <td className="py-2 px-3 border border-gray-200 text-gray-600">{formatDate(evaluation.createdAt)}</td>
+                    <td className="py-2 px-3 border border-gray-200 text-gray-600">{formatDate(evaluation.nextReviewDue)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -350,20 +351,14 @@ export default function Evaluations() {
         </div>
       )}
 
-      {showCreateModal && selectedSupplier && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl">
-            <div className="sticky top-0 flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Evaluate supplier</h2>
-                <p className="text-sm text-gray-500">{selectedSupplier.companyName}</p>
-              </div>
-              <button type="button" onClick={closeCreateModal} className="p-2 rounded-lg hover:bg-gray-100">
-                <X className="h-5 w-5 text-gray-500" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateEvaluation} className="px-6 py-5 space-y-5">
+      <Modal
+        isOpen={showCreateModal && !!selectedSupplier}
+        onClose={closeCreateModal}
+        title="Evaluate supplier"
+        subtitle={selectedSupplier?.companyName}
+        size="lg"
+      >
+            <form onSubmit={handleCreateEvaluation} className="space-y-5">
               <FormSteps steps={EVALUATION_STEPS} current={evalStep} onSelect={setEvalStep} />
 
               {evalStep === 0 && (
@@ -476,9 +471,7 @@ export default function Evaluations() {
                 submitting={submitting}
               />
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
     </div>
   )
 }

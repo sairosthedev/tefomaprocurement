@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { adminAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
-import Modal from '../components/Modal';
+import Modal, { ModalFooter } from '../components/Modal';
 import { Building2, Edit, Loader2, MapPin, Plus, Trash2 } from 'lucide-react';
 import { PROVINCES } from '../lib/constants';
 
@@ -182,7 +182,7 @@ export default function Sites() {
         </div>
       )}
 
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editing ? 'Edit site' : 'Add site'}>
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editing ? 'Edit site' : 'Add site'} size="lg">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -246,7 +246,7 @@ export default function Sites() {
             />
             Has local store inventory
           </label>
-          <div className="flex justify-end gap-3">
+          <ModalFooter>
             <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-gray-700 rounded-xl hover:bg-gray-100">
               Cancel
             </button>
@@ -258,7 +258,7 @@ export default function Sites() {
             >
               {saving ? 'Saving…' : 'Save'}
             </button>
-          </div>
+          </ModalFooter>
         </div>
       </Modal>
     </div>

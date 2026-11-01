@@ -13,5 +13,7 @@ export const adminAPI: any = {
   deleteSite: (id: any) => http.delete(`/admin/sites/${id}`),
   getAuditLogs: (params?: any) => http.get('/admin/audit-logs', { params }),
   getAuditLogStats: (params?: any) => http.get('/admin/audit-logs/stats', { params }),
-  getEvidencePack: (params?: { from?: string; to?: string }) => http.get('/admin/evidence-pack', { params })
+  getEvidencePack: (params?: { from?: string; to?: string }) => http.get('/admin/evidence-pack', { params }),
+  // Read-only: currency, COO limit and branding are set by group operators.
+  getSbuSettings: () => http.get('/admin/sbu-settings')
 };

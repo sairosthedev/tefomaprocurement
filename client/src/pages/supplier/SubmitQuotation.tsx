@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '../../components/Toast';
 import api from '../../lib/api';
@@ -223,21 +223,21 @@ export default function SubmitQuotation() {
             <div>
               <label className="text-sm font-medium text-gray-700 mb-3 block">Item Pricing</label>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Item</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Qty</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Unit Price *</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Brand</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Total</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Item</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Qty</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Unit Price *</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Brand</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Total</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody>
                     {formData.items.map((item: any, index: any) => (
                       <React.Fragment key={index}>
                       <tr>
-                        <td className="py-2.5 px-4">
+                        <td className="py-2 px-3 border border-gray-200">
                           <p className="font-medium text-gray-900">{item.description}</p>
                           {item.specifications && (
                             <p className="text-xs text-gray-500 mt-0.5">{item.specifications}</p>
@@ -248,10 +248,10 @@ export default function SubmitQuotation() {
                             compact
                           />
                         </td>
-                        <td className="py-2.5 px-4 text-gray-600">
+                        <td className="py-2 px-3 border border-gray-200 text-gray-600">
                           {item.quantity} {item.unit}
                         </td>
-                        <td className="py-2.5 px-4">
+                        <td className="py-2 px-3 border border-gray-200">
                           <input
                             type="number"
                             step="0.01"
@@ -262,7 +262,7 @@ export default function SubmitQuotation() {
                             placeholder="0.00"
                           />
                         </td>
-                        <td className="py-2.5 px-4">
+                        <td className="py-2 px-3 border border-gray-200">
                           <input
                             type="text"
                             value={item.brand}
@@ -271,7 +271,7 @@ export default function SubmitQuotation() {
                             placeholder="Brand name"
                           />
                         </td>
-                        <td className="py-2.5 px-4 font-medium text-gray-900">
+                        <td className="py-2 px-3 border border-gray-200 font-medium text-gray-900">
                           {formatCurrency(item.quantity * (parseFloat(item.unitPrice) || 0), formData.currency)}
                         </td>
                       </tr>
@@ -332,7 +332,7 @@ export default function SubmitQuotation() {
                       <td colSpan={4} className="py-2.5 px-4 text-right font-semibold text-gray-700">
                         Grand Total:
                       </td>
-                      <td className="py-2.5 px-4 text-lg font-bold text-primary">
+                      <td className="py-2 px-3 border border-gray-200 text-lg font-bold text-primary">
                         {formatCurrency(calculateTotal(), formData.currency)}
                       </td>
                     </tr>
@@ -419,19 +419,19 @@ export default function SubmitQuotation() {
             </dl>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr>
-                    <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Item</th>
-                    <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Qty</th>
-                    <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Unit Price</th>
-                    <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Total</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Item</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Qty</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Unit Price</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Total</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody>
                   {formData.items.map((item: any, index: any) => (
                     <tr key={index} className="hover:bg-gray-50">
-                      <td className="py-2.5 px-4">
+                      <td className="py-2 px-3 border border-gray-200">
                         <p className="font-medium text-gray-900">{item.description}</p>
                         {(item.brand || item.isAlternative) && (
                           <p className="text-xs text-gray-500 mt-0.5">
@@ -445,13 +445,13 @@ export default function SubmitQuotation() {
                           </p>
                         )}
                       </td>
-                      <td className="py-2.5 px-4 text-gray-600">
+                      <td className="py-2 px-3 border border-gray-200 text-gray-600">
                         {item.quantity} {item.unit}
                       </td>
-                      <td className="py-2.5 px-4 text-gray-600">
+                      <td className="py-2 px-3 border border-gray-200 text-gray-600">
                         {formatCurrency(parseFloat(item.unitPrice) || 0, formData.currency)}
                       </td>
-                      <td className="py-2.5 px-4 font-medium text-gray-900">
+                      <td className="py-2 px-3 border border-gray-200 font-medium text-gray-900">
                         {formatCurrency(item.quantity * (parseFloat(item.unitPrice) || 0), formData.currency)}
                       </td>
                     </tr>
@@ -462,7 +462,7 @@ export default function SubmitQuotation() {
                     <td colSpan={3} className="py-2.5 px-4 text-right font-semibold text-gray-700">
                       Grand Total:
                     </td>
-                    <td className="py-2.5 px-4 text-lg font-bold text-primary">
+                    <td className="py-2 px-3 border border-gray-200 text-lg font-bold text-primary">
                       {formatCurrency(calculateTotal(), formData.currency)}
                     </td>
                   </tr>

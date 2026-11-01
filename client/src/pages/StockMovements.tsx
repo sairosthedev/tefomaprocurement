@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import api from '../lib/api';
 import { useToast } from '../components/Toast';
 import { 
@@ -169,51 +169,51 @@ export default function StockMovements() {
         ) : (
           <>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm border-collapse">
               <thead>
                 <tr>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Type</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Item</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Quantity</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Reference</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Performed By</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Date</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Notes</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Type</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Item</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Quantity</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Reference</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Performed By</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Date</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Notes</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {movements.map((movement: any) => {
                   const typeInfo = movementTypes[movement.type] || movementTypes['adjustment'];
                   const Icon = typeInfo.icon;
                   return (
                     <tr key={movement._id} className="hover:bg-gray-50">
-                      <td className="py-2.5 px-4">
+                      <td className="py-2 px-3 border border-gray-200">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${typeInfo.color}`}>
                           <Icon className="h-3.5 w-3.5" />
                           {typeInfo.label}
                         </span>
                       </td>
-                      <td className="py-2.5 px-4">
+                      <td className="py-2 px-3 border border-gray-200">
                         <p className="font-medium text-gray-900">{movement.item?.name}</p>
                         <p className="text-xs text-gray-500 font-mono">{movement.item?.itemCode}</p>
                       </td>
-                      <td className="py-2.5 px-4">
+                      <td className="py-2 px-3 border border-gray-200">
                         <span className={`font-semibold ${movement.quantity > 0 ? 'text-green-600' : 'text-red-600'}`}>
                           {movement.quantity > 0 ? '+' : ''}{movement.quantity} {movement.unit}
                         </span>
                       </td>
-                      <td className="py-2.5 px-4">
+                      <td className="py-2 px-3 border border-gray-200">
                         <span className="font-mono text-primary">{movement.reference}</span>
                       </td>
-                      <td className="py-2.5 px-4 text-gray-600">
+                      <td className="py-2 px-3 border border-gray-200 text-gray-600">
                         {movement.performedBy?.firstName} {movement.performedBy?.lastName}
                       </td>
-                      <td className="py-2.5 px-4 text-gray-500">
+                      <td className="py-2 px-3 border border-gray-200 text-gray-500">
                         {new Date(movement.createdAt).toLocaleDateString('en-ZA')}
                         <br />
                         <span className="text-xs">{new Date(movement.createdAt).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}</span>
                       </td>
-                      <td className="py-2.5 px-4 text-gray-500 max-w-xs truncate">
+                      <td className="py-2 px-3 border border-gray-200 text-gray-500 max-w-xs truncate">
                         {movement.notes || '-'}
                       </td>
                     </tr>

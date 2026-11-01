@@ -69,7 +69,7 @@ export default function EquipmentDetailsView({ equipment, attachments, compact =
       {/* Lightbox — data plates are unreadable at thumbnail size */}
       {preview && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-6"
+          className="fixed inset-0 z-[70] bg-black/80 flex items-center justify-center p-6"
           onClick={() => setPreview(null)}
         >
           <button

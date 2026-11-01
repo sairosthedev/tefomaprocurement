@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import api, { storesAPI, departmentAPI } from '../lib/api';
@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import ViewButton from '../components/ViewButton';
-import Modal from '../components/Modal';
+import Modal, { ModalFooter } from '../components/Modal';
 import Pagination from '../components/Pagination';
 import { ItemSelect } from '../components/ItemSelect';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
@@ -362,27 +362,27 @@ export default function StoreRequisitions() {
         ) : (
           <>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm border-collapse">
               <thead>
                 <tr>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">SR #</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">SR #</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">
                     {isStoresOfficer ? 'Requested By' : 'Items'}
                   </th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Status</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Date</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Actions</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Date</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {requisitions.map((req: any) => (
                   <tr key={req._id} className="hover:bg-gray-50">
-                    <td className="py-2.5 px-4">
+                    <td className="py-2 px-3 border border-gray-200">
                       <span className="font-mono text-sm font-medium text-primary">
                         {req.requisitionNumber || `SR-${req._id.slice(-6).toUpperCase()}`}
                       </span>
                     </td>
-                    <td className="py-2.5 px-4">
+                    <td className="py-2 px-3 border border-gray-200">
                       {isStoresOfficer ? (
                         <div>
                           <p className="font-medium text-gray-900">
@@ -394,15 +394,15 @@ export default function StoreRequisitions() {
                         <span className="text-sm text-gray-600">{req.items?.length || 0} items</span>
                       )}
                     </td>
-                    <td className="py-2.5 px-4">
+                    <td className="py-2 px-3 border border-gray-200">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[req.status] || statusColors.pending}`}>
                         {req.status || 'Pending'}
                       </span>
                     </td>
-                    <td className="py-2.5 px-4 text-gray-500">
+                    <td className="py-2 px-3 border border-gray-200 text-gray-500">
                       {new Date(req.createdAt).toLocaleDateString('en-ZA')}
                     </td>
-                    <td className="py-2.5 px-4">
+                    <td className="py-2 px-3 border border-gray-200">
                       <div className="flex items-center gap-2">
                         <ViewButton
                           onClick={() => { setSelectedRequisition(req); setShowViewModal(true); }}
@@ -473,6 +473,7 @@ export default function StoreRequisitions() {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         title="Request from Store"
+        size="lg"
       >
         <form
           onSubmit={(e) => {
@@ -561,19 +562,19 @@ export default function StoreRequisitions() {
         {createStep === 1 && (
           <div className="space-y-3">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr>
-                    <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Item</th>
-                    <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Quantity</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Item</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Quantity</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody>
                   {formData.items
                     .filter((item: any) => item.description.trim())
                     .map((item: any, index: number) => (
                       <tr key={index} className="hover:bg-gray-50">
-                        <td className="py-2.5 px-4">
+                        <td className="py-2 px-3 border border-gray-200">
                           {item.description}
                           {item.catalogItem ? (
                             <span className="block text-xs text-emerald-600">
@@ -584,7 +585,7 @@ export default function StoreRequisitions() {
                             <span className="block text-xs text-amber-600">Not linked to the catalog</span>
                           )}
                         </td>
-                        <td className="py-2.5 px-4">{item.quantity}</td>
+                        <td className="py-2 px-3 border border-gray-200">{item.quantity}</td>
                       </tr>
                     ))}
                 </tbody>
@@ -613,6 +614,7 @@ export default function StoreRequisitions() {
         isOpen={showViewModal}
         onClose={() => setShowViewModal(false)}
         title="Requisition Details"
+        size="lg"
       >
         {selectedRequisition && (
           <div className="space-y-4">
@@ -698,22 +700,22 @@ export default function StoreRequisitions() {
             <div>
               <label className="text-sm text-gray-500 mb-2 block">Items Requested</label>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Item</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Qty Requested</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Qty Issued</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Item</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Qty Requested</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Qty Issued</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody>
                     {selectedRequisition.items?.map((item: any, index: any) => (
                       <tr key={index} className="hover:bg-gray-50">
-                        <td className="py-2.5 px-4">
+                        <td className="py-2 px-3 border border-gray-200">
                           {item.item?.name || item.item?.description || item.description || 'N/A'}
                         </td>
-                        <td className="py-2.5 px-4">{item.quantityRequested || item.quantity || '-'}</td>
-                        <td className="py-2.5 px-4">{item.quantityIssued || '-'}</td>
+                        <td className="py-2 px-3 border border-gray-200">{item.quantityRequested || item.quantity || '-'}</td>
+                        <td className="py-2 px-3 border border-gray-200">{item.quantityIssued || '-'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -750,7 +752,7 @@ export default function StoreRequisitions() {
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          <ModalFooter>
             <button
               onClick={() => {
                 setShowApproveModal(false);
@@ -779,7 +781,7 @@ export default function StoreRequisitions() {
                 </>
               )}
             </button>
-          </div>
+          </ModalFooter>
         </div>
       </Modal>
 
@@ -810,7 +812,7 @@ export default function StoreRequisitions() {
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          <ModalFooter>
             <button
               onClick={() => {
                 setShowRejectModal(false);
@@ -839,7 +841,7 @@ export default function StoreRequisitions() {
                 </>
               )}
             </button>
-          </div>
+          </ModalFooter>
         </div>
       </Modal>
 
@@ -852,6 +854,7 @@ export default function StoreRequisitions() {
           setSelectedRequisition(null);
         }}
         title="Issue Stock"
+        size="lg"
       >
         <div className="space-y-4">
           <p className="text-sm text-gray-600">
@@ -907,7 +910,7 @@ export default function StoreRequisitions() {
             block to complete by hand.
           </p>
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          <ModalFooter>
             <button
               onClick={() => {
                 setShowIssueModal(false);
@@ -933,7 +936,7 @@ export default function StoreRequisitions() {
                 'Issue Items'
               )}
             </button>
-          </div>
+          </ModalFooter>
         </div>
       </Modal>
     </div>

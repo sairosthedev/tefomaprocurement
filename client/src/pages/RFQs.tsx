@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
-import Tabs from '../components/Tabs';
+import FilterSelect from '../components/FilterSelect';
 import PageHeader from '../components/PageHeader';
 import { 
   Search, 
@@ -99,7 +99,7 @@ export default function RFQs() {
 
       {/* Filters */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
@@ -110,18 +110,18 @@ export default function RFQs() {
               className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
             />
           </div>
-          <Tabs
-            tabs={[
-              { value: '', label: 'All', icon: FileSearch },
-              { value: 'draft', label: 'Draft', icon: Clock },
-              { value: 'open', label: 'Open', icon: FileSearch },
-              { value: 'closed', label: 'Closed', icon: XCircle },
-              { value: 'evaluating', label: 'Evaluating', icon: Clock },
-              { value: 'awarded', label: 'Awarded', icon: CheckCircle }
+          <FilterSelect
+            label="Status"
+            options={[
+              { value: '', label: 'All' },
+              { value: 'draft', label: 'Draft' },
+              { value: 'open', label: 'Open' },
+              { value: 'closed', label: 'Closed' },
+              { value: 'evaluating', label: 'Evaluating' },
+              { value: 'awarded', label: 'Awarded' }
             ]}
-            activeTab={statusFilter}
-            onTabChange={setStatusFilter}
-            variant="pills"
+            value={statusFilter}
+            onChange={setStatusFilter}
           />
         </div>
       </div>

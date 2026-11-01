@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supplierAPI } from '../../lib/api';
 import { formatCurrency } from '../../lib/constants';
@@ -220,18 +220,18 @@ export default function SubmitInvoice() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Line items (from received quantities)</label>
-                <table className="w-full text-sm">
+                <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Description</th>
-                      <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Qty</th>
-                      <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Total</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Description</th>
+                      <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Qty</th>
+                      <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Total</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody>
                     {items.map((item, i) => (
                       <tr key={i} className="hover:bg-gray-50">
-                        <td className="py-2.5 px-4">{item.description}</td>
+                        <td className="py-2 px-3 border border-gray-200">{item.description}</td>
                         <td className="text-right py-2.5 px-4">{item.quantity}</td>
                         <td className="text-right py-2.5 px-4">{formatCurrency(item.totalPrice, selectedCurrency)}</td>
                       </tr>
@@ -274,27 +274,27 @@ export default function SubmitInvoice() {
                 <dd className="font-medium text-gray-900">{items.length}</dd>
               </dl>
 
-              <table className="w-full text-sm">
+              <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr>
-                    <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap"></th>
-                    <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Purchase order</th>
-                    <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">This invoice</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap"></th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Purchase order</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">This invoice</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody>
                   <tr className="hover:bg-gray-50">
-                    <td className="py-2.5 px-4">Subtotal</td>
+                    <td className="py-2 px-3 border border-gray-200">Subtotal</td>
                     <td className="text-right py-2.5 px-4">{formatCurrency(poSubtotal, selectedCurrency)}</td>
                     <td className="text-right py-2.5 px-4">{formatCurrency(invoiceSubtotal, selectedCurrency)}</td>
                   </tr>
                   <tr className="hover:bg-gray-50">
-                    <td className="py-2.5 px-4">VAT</td>
+                    <td className="py-2 px-3 border border-gray-200">VAT</td>
                     <td className="text-right py-2.5 px-4">{formatCurrency(poVat, selectedCurrency)}</td>
                     <td className="text-right py-2.5 px-4">{formatCurrency(Number(vatAmount) || 0, selectedCurrency)}</td>
                   </tr>
                   <tr className="hover:bg-gray-50 font-semibold">
-                    <td className="py-2.5 px-4">Total</td>
+                    <td className="py-2 px-3 border border-gray-200">Total</td>
                     <td className="text-right py-2.5 px-4">{formatCurrency(poTotal, selectedCurrency)}</td>
                     <td className="text-right py-2.5 px-4">{formatCurrency(invoiceTotal, selectedCurrency)}</td>
                   </tr>

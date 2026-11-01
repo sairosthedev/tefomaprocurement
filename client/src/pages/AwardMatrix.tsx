@@ -150,7 +150,7 @@ export default function AwardMatrix() {
   const unawarded = quotedLines.length - awardedLines.length;
   const allOrdered = awardedLines.length > 0 && poLines.length === awardedLines.length;
   // The viewer's own step first, then what they are waiting on.
-  const next: { title: string; description?: string; waiting?: boolean; action?: any } | null =
+  const next: { title: string; description?: string; waiting?: boolean; done?: boolean; action?: any } | null =
     pendingAuth > 0 && canAuthorize
       ? { title: `Authorize ${pendingAuth} awarded line${pendingAuth === 1 ? '' : 's'}`, description: 'Use Authorize on each line below.' }
       : unawarded > 0 && canSelect
@@ -164,7 +164,7 @@ export default function AwardMatrix() {
       : anyAwarded
       ? { title: 'Procurement to generate the purchase orders', waiting: true }
       : allOrdered
-      ? { title: 'Purchase orders generated', description: 'Each one is submitted for approval from its own page.', action: canSelect ? { label: 'View purchase orders', to: '/app/purchase-orders' } : undefined }
+      ? { title: 'Purchase orders generated', done: true, description: 'Each one is submitted for approval from its own page.', action: canSelect ? { label: 'View purchase orders', to: '/app/purchase-orders' } : undefined }
       : null;
 
   return (
@@ -178,7 +178,7 @@ export default function AwardMatrix() {
       />
 
       <WorkflowStepper steps={steps} />
-      {next && <NextStepCard title={next.title} description={next.description} waiting={next.waiting} action={next.action} />}
+      {next && <NextStepCard title={next.title} description={next.description} waiting={next.waiting} done={next.done} action={next.action} />}
 
       <div className="flex items-start gap-2 mb-4 p-3 bg-amber-50 border border-amber-100 rounded-xl text-sm text-amber-800">
         <Sparkles className="h-4 w-4 mt-0.5 shrink-0" />
@@ -190,23 +190,23 @@ export default function AwardMatrix() {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm border-collapse">
           <thead>
             <tr>
-              <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Line</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Line</th>
               {suppliers.map((s) => (
-                <th key={s.supplierId} className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">{s.name}</th>
+                <th key={s.supplierId} className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">{s.name}</th>
               ))}
-              <th className="text-center py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Status</th>
-              <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Actions</th>
+              <th className="text-center py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Status</th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody>
             {lines.map((line) => {
               const awardedTo = line.awardedSupplier ? String(line.awardedSupplier) : null;
               return (
                 <tr key={String(line.rfqLineId)} className="hover:bg-gray-50">
-                  <td className="py-2.5 px-4">
+                  <td className="py-2 px-3 border border-gray-200">
                     <p className="font-medium text-gray-900">{line.description}</p>
                     <p className="text-xs text-gray-500">Qty {line.quantity}</p>
                     {line.mixedCurrency ? (
@@ -226,7 +226,7 @@ export default function AwardMatrix() {
                     const bid = line.bids.find((b: any) => b.supplierId === s.supplierId);
                     const isAwarded = awardedTo === s.supplierId;
                     return (
-                      <td key={s.supplierId} className="text-right py-2.5 px-4">
+                      <td key={s.supplierId} className="text-right py-2 px-3 border border-gray-200">
                         {bid && !canSelect ? (
                           <span className={isAwarded ? 'px-2 py-1 rounded-lg bg-green-100 text-green-800 font-semibold' : 'px-2 py-1 text-gray-800'}>
                             {bidPrice(bid.unitPrice, bid.currency)}
@@ -266,10 +266,10 @@ export default function AwardMatrix() {
                       </td>
                     );
                   })}
-                  <td className="text-center py-2.5 px-4">
+                  <td className="text-center py-2 px-3 border border-gray-200">
                     <StatusPill line={line} />
                   </td>
-                  <td className="text-right py-2.5 px-4 whitespace-nowrap">
+                  <td className="text-right py-2 px-3 border border-gray-200 whitespace-nowrap">
                     {line.status === 'awarded' && !line.pmAuthorization?.by && !canAuthorize && (
                       <span className="text-xs text-amber-600">Awaiting Head of Procurement</span>
                     )}

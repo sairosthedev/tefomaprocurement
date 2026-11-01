@@ -23,6 +23,8 @@ import {
   XCircle
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
+import { WorkflowStepper, NextStepCard, type NextStepAction } from '../components/WorkflowStepper';
+import { supplierSteps } from '../lib/supplierOnboardingSteps';
 
 const statusColors: any = {
   pending: 'bg-amber-100 text-amber-700',
@@ -501,6 +503,42 @@ export default function SupplierDetails() {
 
   const StatusIcon = statusIcons[supplier.status] || Clock;
 
+  const openStatusActions = (action: string) => {
+    setPendingAction(action);
+    setTimeout(() => document.getElementById('supplier-status-actions')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0);
+  };
+
+  // The one onboarding step left for this viewer.
+  const nextStep: { title: string; description?: string; waiting?: boolean; action?: NextStepAction } | null = (() => {
+    if (supplier.status === 'pending') {
+      if (!canManage) return { title: 'Procurement to verify KYS and activate this supplier', waiting: true };
+      const checklistDone = supplier.kysComplete || completion.ticked === completion.keys.length;
+      if (checklistDone) {
+        return {
+          title: 'Verify KYS and activate the supplier',
+          description: 'Every required check is complete. Activation lets them be awarded work.',
+          action: { label: kysSaving ? 'Activating...' : 'Verify KYS & activate', onClick: () => verifyKys(false), disabled: kysSaving }
+        };
+      }
+      return {
+        title: 'Complete the KYS documents and checklist',
+        description:
+          !supplier.tier || supplier.tier === 'unclassified'
+            ? `Set the diligence tier first: it decides how many checks are required. ${completion.ticked} of ${completion.keys.length} done.`
+            : `${completion.ticked} of ${completion.keys.length} required checks done.`,
+        action: tab === 'documents' ? undefined : { label: 'Open documents & KYS', onClick: () => handleTabChange('documents') }
+      };
+    }
+    if ((supplier.status === 'suspended' || supplier.status === 'dormant') && canManage) {
+      return {
+        title: `This supplier is ${supplier.status}`,
+        description: 'Reactivate them once the reason has been resolved.',
+        action: { label: 'Reactivate', onClick: () => openStatusActions('reactivate') }
+      };
+    }
+    return null;
+  })();
+
   const renderValue = (label: string, value: any) => (
     <div>
       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
@@ -526,6 +564,18 @@ export default function SupplierDetails() {
           </button>
         }
       />
+
+      <div>
+        <WorkflowStepper steps={supplierSteps(supplier, completion.ticked, completion.keys.length)} />
+        {nextStep && (
+          <NextStepCard
+            title={nextStep.title}
+            description={nextStep.description}
+            waiting={nextStep.waiting}
+            action={nextStep.action}
+          />
+        )}
+      </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
         <div className="flex items-center justify-between gap-4">
@@ -1068,7 +1118,7 @@ export default function SupplierDetails() {
             )}
           </div>
         ) : (
-          <div className="p-4 border border-gray-200 rounded-xl space-y-3">
+          <div id="supplier-status-actions" className="p-4 border border-gray-200 rounded-xl space-y-3">
             <p className="text-sm font-medium text-gray-900">
               {pendingAction === 'suspend' && 'Suspend this supplier?'}
               {pendingAction === 'reactivate' && 'Reactivate this supplier?'}

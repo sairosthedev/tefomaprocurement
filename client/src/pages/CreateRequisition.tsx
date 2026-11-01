@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 import api from '../lib/api';
-import { Plus, Trash2, Save, Send, Package, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Save } from 'lucide-react';
 import { UNITS_OF_MEASUREMENT, formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
 import { CategorySelect } from '../components/CategorySelect';
 import { ItemSelect, type CatalogItem } from '../components/ItemSelect';
 import PageHeader from '../components/PageHeader';
 import EquipmentDetailsPanel from '../components/EquipmentDetailsPanel';
+import { FormSteps, FormStepNav } from '../components/FormSteps';
 import { categoryNeedsEquipmentDetails } from '@fossil/shared';
 
 const emptyItem = () => ({
@@ -26,10 +27,17 @@ const emptyItem = () => ({
   catalogItem: null as CatalogItem | null
 });
 
+const STEPS = [
+  { label: 'Details', description: 'What the request is for' },
+  { label: 'Items', description: 'What to buy, and rough prices' },
+  { label: 'Review & submit', description: 'Check, then send for approval' }
+];
+
 export default function CreateRequisition() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [loading, setLoading] = useState<any>(false);
+  const [step, setStep] = useState(0);
   const [formData, setFormData] = useState<any>({
     title: '',
     workOrder: '',
@@ -79,6 +87,35 @@ export default function CreateRequisition() {
     const newItems = [...formData.items];
     newItems[index] = { ...newItems[index], attachments };
     setFormData({ ...formData, items: newItems });
+  };
+
+  const goTo = (index: number) => {
+    setStep(index);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  /** The checks handleSave runs on submit, run per step so problems show where they are. */
+  const stepIsComplete = (index: number) => {
+    if (index === 0 && !formData.title.trim()) {
+      showToast('Please enter a title', 'error');
+      return false;
+    }
+    if (index === 1) {
+      const validItems = formData.items.filter((item: any) => item.description.trim());
+      if (validItems.length === 0) {
+        showToast('Please add at least one item before submitting', 'error');
+        return false;
+      }
+      if (validItems.some((item: any) => !item.category)) {
+        showToast('Please select a category for every item', 'error');
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const goNext = () => {
+    if (stepIsComplete(step)) goTo(Math.min(step + 1, STEPS.length - 1));
   };
 
   const handleSave = async (submit = false) => {
@@ -136,7 +173,8 @@ export default function CreateRequisition() {
           submit ? 'Requisition submitted for approval' : 'Requisition saved as draft',
           'success'
         );
-        navigate('/app/requisitions');
+        const createdId = response.data.data?._id;
+        navigate(createdId ? `/app/requisitions/${createdId}` : '/app/requisitions');
       }
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to save requisition', 'error');
@@ -154,9 +192,27 @@ export default function CreateRequisition() {
         subtitle="Request items for your department — digital IR form"
       />
 
+      <FormSteps steps={STEPS} current={step} onSelect={goTo} />
+
       {/* Form */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (step < STEPS.length - 1) goNext();
+          else handleSave(true);
+        }}
+        onKeyDown={(e) => {
+          // Enter in a field moves on a step instead of submitting early.
+          const target = e.target as HTMLElement;
+          if (e.key === 'Enter' && target.tagName === 'INPUT' && step < STEPS.length - 1) {
+            e.preventDefault();
+            goNext();
+          }
+        }}
+        className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6"
+      >
         {/* Basic Info */}
+        {step === 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -205,8 +261,10 @@ export default function CreateRequisition() {
             </select>
           </div>
         </div>
+        )}
 
         {/* Items */}
+        {step === 1 && (
         <div>
           <div className="flex items-center justify-between mb-4">
             <label className="text-sm font-medium text-gray-700">
@@ -381,45 +439,102 @@ export default function CreateRequisition() {
             </p>
           )}
         </div>
+        )}
 
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
-          <button
-            type="button"
-            onClick={() => navigate('/app/requisitions')}
-            className="px-4 py-2.5 text-gray-700 font-medium hover:bg-gray-100 rounded-xl transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSave(false)}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Save className="h-4 w-4" />
-            Save Draft
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSave(true)}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-medium rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Submitting...</span>
-              </>
-            ) : (
-              <>
-                <Send className="h-4 w-4" />
-                <span>Submit for Approval</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
+        {/* Review: everything the approver will see, before it is sent. */}
+        {step === 2 && (
+          <div className="space-y-6">
+            <dl className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="md:col-span-2">
+                <dt className="text-gray-500">Title</dt>
+                <dd className="font-medium text-gray-900">{formData.title}</dd>
+              </div>
+              {formData.description && (
+                <div className="md:col-span-2">
+                  <dt className="text-gray-500">Description</dt>
+                  <dd className="text-gray-900 whitespace-pre-line">{formData.description}</dd>
+                </div>
+              )}
+              <div>
+                <dt className="text-gray-500">Work Order</dt>
+                <dd className="text-gray-900">{formData.workOrder || '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-gray-500">Urgency</dt>
+                <dd className="text-gray-900">{formData.urgency === 'high' ? 'High Priority' : 'Normal'}</dd>
+              </div>
+            </dl>
+
+            <div className="overflow-x-auto rounded-xl border border-gray-100">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Item</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Category</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Qty</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Est. unit</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Line total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {formData.items
+                    .filter((item: any) => item.description.trim())
+                    .map((item: any, index: number) => {
+                      const lineTotal = (Number(item.estimatedUnitPrice) || 0) * (Number(item.quantity) || 0);
+                      return (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="py-2 px-3 border border-gray-200 text-gray-900">
+                            {item.description}
+                            {item.specification && <span className="block text-xs text-gray-500">{item.specification}</span>}
+                          </td>
+                          <td className="py-2 px-3 border border-gray-200 text-gray-700">{item.category}</td>
+                          <td className="py-2 px-3 border border-gray-200 text-right tabular-nums">{item.quantity} {item.unit}</td>
+                          <td className="py-2 px-3 border border-gray-200 text-right tabular-nums">
+                            {Number(item.estimatedUnitPrice) ? formatCurrency(Number(item.estimatedUnitPrice), getCurrentSbuCurrency()) : '—'}
+                          </td>
+                          <td className="py-2 px-3 border border-gray-200 text-right tabular-nums font-medium">
+                            {lineTotal ? formatCurrency(lineTotal, getCurrentSbuCurrency()) : '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 text-sm">
+              <span className="text-gray-500">Estimated total</span>
+              <span className="text-lg font-semibold text-gray-900 tabular-nums">
+                {estimatedTotal > 0 ? formatCurrency(estimatedTotal, getCurrentSbuCurrency()) : '—'}
+              </span>
+            </div>
+            <p className="text-xs text-gray-500">
+              Submitting sends this to your department head for approval. Save a draft to finish it later.
+            </p>
+          </div>
+        )}
+
+        <FormStepNav
+          current={step}
+          total={STEPS.length}
+          onBack={() => goTo(step - 1)}
+          onNext={goNext}
+          onCancel={() => navigate('/app/requisitions')}
+          finishLabel={loading ? 'Submitting...' : 'Submit for Approval'}
+          submitting={loading}
+          extra={
+            <button
+              type="button"
+              onClick={() => handleSave(false)}
+              disabled={loading}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Save className="h-4 w-4" />
+              Save Draft
+            </button>
+          }
+        />
+      </form>
     </div>
   );
 }

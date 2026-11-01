@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 import api, { procurementAPI } from '../lib/api';
@@ -473,30 +473,30 @@ export default function CreateRFQ() {
 
             {requisition?.items?.length > 0 ? (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">#</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Description</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Specification</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Quantity</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Unit</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">#</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Description</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Specification</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Quantity</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Unit</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody>
                     {requisition.items.map((item: any, index: any) => (
                       <tr key={index} className="hover:bg-gray-50">
-                        <td className="py-2.5 px-4 text-gray-500">{index + 1}</td>
-                        <td className="py-2.5 px-4">
+                        <td className="py-2 px-3 border border-gray-200 text-gray-500">{index + 1}</td>
+                        <td className="py-2 px-3 border border-gray-200">
                           <span className="font-medium text-gray-900">{item.description}</span>
                         </td>
-                        <td className="py-2.5 px-4 text-gray-600">
+                        <td className="py-2 px-3 border border-gray-200 text-gray-600">
                           {item.specification || item.specifications || '-'}
                         </td>
-                        <td className="py-2.5 px-4">
+                        <td className="py-2 px-3 border border-gray-200">
                           <span className="font-semibold text-gray-900">{item.quantity}</span>
                         </td>
-                        <td className="py-2.5 px-4 text-gray-600">{item.unit || 'Each'}</td>
+                        <td className="py-2 px-3 border border-gray-200 text-gray-600">{item.unit || 'Each'}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { financeAPI } from '../lib/api';
 import { formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
@@ -66,24 +66,24 @@ export default function Payments() {
         <p className="text-gray-500 text-center py-12">No payments recorded yet. Record payment from an approved invoice.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm border-collapse">
             <thead>
               <tr>
-                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Payment #</th>
-                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Supplier</th>
-                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Amount</th>
-                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Date</th>
-                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Status</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Payment #</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Supplier</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Amount</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Date</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody>
               {payments.map((p) => (
                 <tr key={p._id} className="hover:bg-gray-50">
-                  <td className="py-2.5 px-4 font-medium">{p.paymentNumber}</td>
-                  <td className="py-2.5 px-4">{p.supplier?.companyName}</td>
-                  <td className="py-2.5 px-4">{formatCurrency(p.amount, p.currency || p.invoice?.currency || getCurrentSbuCurrency())}</td>
-                  <td className="py-2.5 px-4">{new Date(p.paymentDate).toLocaleDateString()}</td>
-                  <td className="py-2.5 px-4 capitalize">{p.status}</td>
+                  <td className="py-2 px-3 border border-gray-200 font-medium">{p.paymentNumber}</td>
+                  <td className="py-2 px-3 border border-gray-200">{p.supplier?.companyName}</td>
+                  <td className="py-2 px-3 border border-gray-200">{formatCurrency(p.amount, p.currency || p.invoice?.currency || getCurrentSbuCurrency())}</td>
+                  <td className="py-2 px-3 border border-gray-200">{new Date(p.paymentDate).toLocaleDateString()}</td>
+                  <td className="py-2 px-3 border border-gray-200 capitalize">{p.status}</td>
                 </tr>
               ))}
             </tbody>

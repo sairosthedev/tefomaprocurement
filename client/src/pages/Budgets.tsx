@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { financeAPI } from '../lib/api';
-import { DollarSign, TrendingUp, AlertCircle, Loader2, PieChart, Edit2 } from 'lucide-react';
+import { DollarSign, TrendingUp, AlertCircle, Loader2, PieChart } from 'lucide-react';
 import { formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
 import PageHeader from '../components/PageHeader';
-import Modal from '../components/Modal';
+import Modal, { ModalFooter } from '../components/Modal';
 
 export default function Budgets() {
   const { user } = useAuth();
@@ -218,22 +218,22 @@ export default function Budgets() {
           <p className="text-center text-gray-500 py-12">No departments configured yet.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm border-collapse">
               <thead>
                 <tr>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Department</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Allocated</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Utilized</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Committed</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Available</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Utilization</th>
-                  {canEditAllocations && <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Actions</th>}
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Department</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Allocated</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Utilized</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Committed</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Available</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Utilization</th>
+                  {canEditAllocations && <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Actions</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {budgetData.departments.map((dept: any) => (
-                  <tr key={dept.departmentId} className={dept.isOverBudget ? 'bg-red-50/50 hover:bg-red-50' : 'hover:bg-gray-50'}>
-                    <td className="py-2.5 px-4 font-medium text-gray-900">
+                  <tr key={dept.departmentId} className="hover:bg-gray-50">
+                    <td className="py-2 px-3 border border-gray-200 font-medium text-gray-900">
                       {dept.name}
                       {dept.isOverBudget && (
                         <span className="ml-2 inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
@@ -246,15 +246,15 @@ export default function Budgets() {
                         </span>
                       )}
                     </td>
-                    <td className="py-2.5 px-4 text-gray-600">{formatCurrency(dept.budget, dept.currency || currency)}</td>
-                    <td className="py-2.5 px-4 text-gray-600">{formatCurrency(dept.utilised ?? dept.utilized, dept.currency || currency)}</td>
-                    <td className="py-2.5 px-4 text-gray-600">{formatCurrency(dept.committed, dept.currency || currency)}</td>
+                    <td className="py-2 px-3 border border-gray-200 text-gray-600">{formatCurrency(dept.budget, dept.currency || currency)}</td>
+                    <td className="py-2 px-3 border border-gray-200 text-gray-600">{formatCurrency(dept.utilised ?? dept.utilized, dept.currency || currency)}</td>
+                    <td className="py-2 px-3 border border-gray-200 text-gray-600">{formatCurrency(dept.committed, dept.currency || currency)}</td>
                     {/* Overspend shows as a negative figure rather than being
                         floored at zero, which hid it entirely. */}
-                    <td className={`py-2.5 px-4 ${dept.available < 0 ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
+                    <td className={`py-2 px-3 border border-gray-200 ${dept.available < 0 ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
                       {formatCurrency(dept.available, dept.currency || currency)}
                     </td>
-                    <td className="py-2.5 px-4">
+                    <td className="py-2 px-3 border border-gray-200">
                       <div className="flex items-center gap-3">
                         <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden max-w-[100px]">
                           <div
@@ -268,13 +268,12 @@ export default function Budgets() {
                       </div>
                     </td>
                     {canEditAllocations && (
-                      <td className="py-2.5 px-4 text-right">
+                      <td className="py-2 px-3 border border-gray-200 text-right">
                         <button
                           type="button"
                           onClick={() => openEdit(dept)}
-                          className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary-dark"
+                          className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100 text-gray-700"
                         >
-                          <Edit2 className="h-4 w-4" />
                           Edit
                         </button>
                       </td>
@@ -306,7 +305,7 @@ export default function Budgets() {
               className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
-          <div className="flex justify-end gap-3">
+          <ModalFooter>
             <button
               type="button"
               onClick={() => setEditDept(null)}
@@ -322,7 +321,7 @@ export default function Budgets() {
             >
               {saving ? 'Saving…' : 'Save'}
             </button>
-          </div>
+          </ModalFooter>
         </div>
       </Modal>
     </div>

@@ -180,20 +180,20 @@ function ChangeTable({ log }: { log: any }) {
   if (changes.length > 0) {
     return (
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm border-collapse">
           <thead>
             <tr>
-              <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Field</th>
-              <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Before</th>
-              <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">After</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Field</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Before</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">After</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody>
             {changes.map((c: any, i: number) => (
               <tr key={`${c.field}-${i}`} className="hover:bg-gray-50">
-                <td className="py-2.5 px-4 font-medium text-gray-700 align-top">{formatField(c.field)}</td>
-                <td className="py-2.5 px-4 text-gray-500 align-top break-words">{formatValue(c.from)}</td>
-                <td className="py-2.5 px-4 text-gray-900 align-top break-words font-medium">{formatValue(c.to)}</td>
+                <td className="py-2 px-3 border border-gray-200 font-medium text-gray-700 align-top">{formatField(c.field)}</td>
+                <td className="py-2 px-3 border border-gray-200 text-gray-500 align-top break-words">{formatValue(c.from)}</td>
+                <td className="py-2 px-3 border border-gray-200 text-gray-900 align-top break-words font-medium">{formatValue(c.to)}</td>
               </tr>
             ))}
           </tbody>

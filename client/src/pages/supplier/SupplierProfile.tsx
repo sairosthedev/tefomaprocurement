@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { PROVINCES, BANKS, SUPPLIER_CATEGORIES } from '../../lib/constants';
 import PageHeader from '../../components/PageHeader';
+import { WorkflowStepper, NextStepCard } from '../../components/WorkflowStepper';
+import { supplierBankChangeJourney } from '../../lib/supplierJourney';
 
 export default function SupplierProfile() {
   const { showToast } = useToast();
@@ -44,9 +46,10 @@ export default function SupplierProfile() {
     fetchProfile();
   }, []);
 
-  const fetchProfile = async () => {
+  // `quiet` refreshes in place, without the full-page loader.
+  const fetchProfile = async (quiet = false) => {
     try {
-      setLoading(true);
+      if (!quiet) setLoading(true);
       const response = await api.get('/supplier/profile');
       if (response.data.success && response.data.data) {
         setProfile(response.data.data);
@@ -76,6 +79,7 @@ export default function SupplierProfile() {
       if (response.data.success) {
         if (response.data.bankChangePending) {
           setBankDirty(false);
+          fetchProfile(true);
           showToast(
             'Profile saved. Your banking change needs verification and approval before it takes effect.',
             'success'
@@ -349,6 +353,31 @@ export default function SupplierProfile() {
         {/* Bank Details */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-6">Bank Details</h2>
+
+          {/* A recent banking change: where it stands, so a supplier knows
+              which account they will be paid into. */}
+          {profile.bankChangeRequest && (
+            <div className="mb-6">
+              <p className="text-sm font-medium text-gray-700 mb-1">Your latest banking change</p>
+              <WorkflowStepper steps={supplierBankChangeJourney(profile.bankChangeRequest).steps} compact />
+              {['pending_verification', 'pending_approval'].includes(profile.bankChangeRequest.status) ? (
+                <NextStepCard
+                  waiting
+                  title={
+                    profile.bankChangeRequest.status === 'pending_verification'
+                      ? 'Procurement to call you back on a number already on file'
+                      : 'A second person to approve the change'
+                  }
+                  description="Payments continue to your current account until the change is approved."
+                />
+              ) : profile.bankChangeRequest.status === 'rejected' ? (
+                <NextStepCard
+                  title="Your banking change was rejected"
+                  description={profile.bankChangeRequest.rejectionReason || 'Contact Procurement before submitting it again.'}
+                />
+              ) : null}
+            </div>
+          )}
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>

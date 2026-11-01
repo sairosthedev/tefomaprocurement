@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { isProcurementHead } from '@fossil/shared';
 import FilterSelect from '../components/FilterSelect';
 import PageHeader from '../components/PageHeader';
-import Modal from '../components/Modal';
+import Modal, { ModalFooter } from '../components/Modal';
 import { FormSteps, FormStepNav } from '../components/FormSteps';
 import { CategoryMultiSelect } from '../components/CategorySelect';
 import { getCategoryName } from '../lib/constants';
@@ -396,24 +396,24 @@ export default function Suppliers() {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr>
-                    <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">
+                    <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">
                       Supplier
                     </th>
-                    <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">
+                    <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">
                       Contact
                     </th>
-                    <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">
+                    <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">
                       Vendor status
                     </th>
-                    <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">
+                    <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody>
                   {suppliers.map((supplier: any) => {
                     const StatusIcon = statusIcons[supplier.status] || Clock;
                     const kys = kysStatus(supplier);
@@ -423,7 +423,7 @@ export default function Suppliers() {
 
                     return (
                       <tr key={supplier._id} className="hover:bg-gray-50">
-                        <td className="py-2.5 px-4">
+                        <td className="py-2 px-3 border border-gray-200">
                           <div className="flex items-center gap-3 min-w-0 max-w-md">
                             <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
                               <Building2 className="h-5 w-5 text-primary" />
@@ -439,7 +439,7 @@ export default function Suppliers() {
                           </div>
                         </td>
 
-                        <td className="py-2.5 px-4">
+                        <td className="py-2 px-3 border border-gray-200">
                           <div className="flex items-center gap-2 text-sm text-gray-600 min-w-0 max-w-xs">
                             <Mail className="h-4 w-4 text-gray-400 shrink-0" />
                             <span className="truncate" title={supplier.user?.email}>
@@ -448,7 +448,7 @@ export default function Suppliers() {
                           </div>
                         </td>
 
-                        <td className="py-2.5 px-4">
+                        <td className="py-2 px-3 border border-gray-200">
                           <div className="space-y-1.5">
                             <span
                               className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium capitalize ${statusColors[supplier.status]}`}
@@ -462,23 +462,13 @@ export default function Suppliers() {
                           </div>
                         </td>
 
-                        <td className="py-2.5 px-4 text-right">
+                        <td className="py-2 px-3 border border-gray-200 text-right">
                           <button
                             type="button"
                             onClick={() => openSupplierProfile(supplier)}
-                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                            title={
-                              kysPending
-                                ? 'View vendor profile & KYS documents'
-                                : 'View vendor profile'
-                            }
-                            aria-label={
-                              kysPending
-                                ? 'View vendor profile and KYS documents'
-                                : 'View vendor profile'
-                            }
+                            className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100 text-gray-700"
                           >
-                            <Eye className="h-4 w-4 text-gray-500" />
+                            View
                           </button>
                         </td>
                       </tr>
@@ -504,7 +494,7 @@ export default function Suppliers() {
         isOpen={showAddModal}
         onClose={closeAddModal}
         title="Add New Supplier"
-        size="lg"
+        size="xl"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <FormSteps steps={ADD_SUPPLIER_STEPS} current={addStep} onSelect={setAddStep} />
@@ -951,12 +941,12 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
                   )}
 
                   <div className="overflow-auto max-h-[45vh]">
-                    <table className="w-full text-xs">
+                    <table className="w-full text-xs border-collapse">
                       <thead className="sticky top-0">
                         <tr>
-                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap w-8">#</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap w-8">#</th>
                           {(['companyName', 'registrationNumber', 'contactPerson', 'email', 'phone', 'categories'] as (keyof SupplierImportRow)[]).map((f) => (
-                            <th key={f} className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">
+                            <th key={f} className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">
                               {f === 'companyName' ? 'Company' :
                                f === 'registrationNumber' ? 'Reg no' :
                                f === 'contactPerson' ? 'Contact' :
@@ -967,12 +957,12 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
                           ))}
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
+                      <tbody>
                         {importRows.map((row, i) => {
                           const issues = rowIssues(row);
                           return (
-                            <tr key={i} className={issues.length > 0 ? 'bg-amber-50/50' : ''}>
-                              <td className="py-1 px-2 text-gray-400">{i + 1}</td>
+                            <tr key={i} className={issues.length > 0 ? 'bg-amber-50/50' : 'hover:bg-gray-50'}>
+                              <td className="py-1 px-2 border border-gray-200 text-gray-400">{i + 1}</td>
                               {(['companyName', 'registrationNumber', 'contactPerson', 'email', 'phone', 'categories'] as (keyof SupplierImportRow)[]).map((f) => (
                                 <td key={f} className="py-1 px-1">
                                   <input
@@ -1049,18 +1039,18 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
                 <div>
                   <h4 className="text-sm font-semibold text-gray-900 mb-2">Successfully Imported:</h4>
                   <div className="max-h-40 overflow-y-auto">
-                    <table className="w-full text-xs">
+                    <table className="w-full text-xs border-collapse">
                       <thead>
                         <tr>
-                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Company</th>
-                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Email</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Company</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Email</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
+                      <tbody>
                         {bulkImportResults.success.map((item: any, idx: any) => (
                           <tr key={idx} className="hover:bg-gray-50">
-                            <td className="py-2.5 px-4">{item.companyName}</td>
-                            <td className="py-2.5 px-4">{item.email}</td>
+                            <td className="py-2 px-3 border border-gray-200">{item.companyName}</td>
+                            <td className="py-2 px-3 border border-gray-200">{item.email}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1073,20 +1063,20 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
                 <div>
                   <h4 className="text-sm font-semibold text-red-900 mb-2">Failed:</h4>
                   <div className="max-h-40 overflow-y-auto">
-                    <table className="w-full text-xs">
+                    <table className="w-full text-xs border-collapse">
                       <thead>
                         <tr>
-                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Company</th>
-                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Email</th>
-                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Reason</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Company</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Email</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Reason</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
+                      <tbody>
                         {bulkImportResults.failed.map((item: any, idx: any) => (
                           <tr key={idx} className="hover:bg-gray-50">
-                            <td className="py-2.5 px-4">{item.companyName}</td>
-                            <td className="py-2.5 px-4">{item.email}</td>
-                            <td className="py-2.5 px-4 text-red-600">{item.reason}</td>
+                            <td className="py-2 px-3 border border-gray-200">{item.companyName}</td>
+                            <td className="py-2 px-3 border border-gray-200">{item.email}</td>
+                            <td className="py-2 px-3 border border-gray-200 text-red-600">{item.reason}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1095,7 +1085,7 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
                 </div>
               )}
 
-              <div className="flex justify-end pt-3 border-t border-gray-100">
+              <ModalFooter>
                 <button
                   type="button"
                   onClick={() => {
@@ -1107,7 +1097,7 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
                 >
                   Close
                 </button>
-              </div>
+              </ModalFooter>
             </div>
           )}
         </div>

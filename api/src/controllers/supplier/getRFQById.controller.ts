@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 
-import { RFQ, SupplierProfile } from '../../models/index.js';
+import { PurchaseOrder, Quotation, RFQ, SupplierProfile } from '../../models/index.js';
 
 const getRFQById = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -37,12 +37,44 @@ const getRFQById = async (req: Request, res: Response): Promise<any> => {
       }
     );
 
+    // The supplier's own latest quote and any order placed from it, so the page
+    // can show where this RFQ stands for them. Never another supplier's outcome.
+    const quotation: any = await Quotation.findOne({
+      rfq: rfq._id,
+      supplier: profile._id,
+      status: { $ne: 'superseded' }
+    })
+      .sort({ createdAt: -1 })
+      .select('quotationNumber status')
+      .lean();
+    const quotationStatus = quotation?.status || null;
+    const revisionRequested = quotationStatus === 'revision_requested';
+    const purchaseOrder: any =
+      quotationStatus === 'accepted'
+        ? await PurchaseOrder.findOne({
+            rfq: rfq._id,
+            supplier: profile._id,
+            isDeleted: false,
+            status: { $in: ['approved', 'issued', 'partially_received', 'completed'] }
+          })
+            .select('poNumber status approvalHistory')
+            .lean()
+        : null;
+    // Same test as the supplier's PO list: the supplier recorded an acknowledgement.
+    const poAcknowledged = !!purchaseOrder?.approvalHistory?.some((h: any) => h.action === 'acknowledged');
+
     res.status(200).json({
       success: true,
       data: {
         ...rfq.toObject(),
         hasResponded: invitation?.responded || false,
-        hasSubmitted: invitation?.responded || false
+        hasSubmitted: (invitation?.responded || false) && !revisionRequested,
+        revisionRequested,
+        quotationStatus,
+        quotationNumber: quotation?.quotationNumber || null,
+        purchaseOrder: purchaseOrder
+          ? { poNumber: purchaseOrder.poNumber, status: purchaseOrder.status, isAcknowledged: poAcknowledged }
+          : null
       }
     });
   } catch (error: any) {

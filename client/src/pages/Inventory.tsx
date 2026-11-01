@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { useToast } from '../components/Toast';
@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import ViewButton from '../components/ViewButton';
-import Modal from '../components/Modal';
+import Modal, { ModalFooter } from '../components/Modal';
 import { CategorySelect } from '../components/CategorySelect';
 import { formatCurrency, UNITS_OF_MEASUREMENT, getCategoryName } from '../lib/constants';
 import Pagination from '../components/Pagination';
@@ -491,20 +491,20 @@ export default function Inventory() {
         ) : (
           <>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm border-collapse">
               <thead>
                 <tr>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Item Code</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Name</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Category</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Stock Level</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Reorder Level</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Unit Price</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Status</th>
-                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Actions</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Item Code</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Name</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Category</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Stock Level</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Reorder Level</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Unit Price</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {inventory.map((inv: any) => {
                   const item = inv.item || {};
                   const isLowStock = inv.quantityOnHand <= (item.reorderLevel || 0);
@@ -513,32 +513,32 @@ export default function Inventory() {
                   const isIssuing = issuingItemId === item._id;
                   return (
                     <tr key={inv._id} className={`hover:bg-gray-50 ${isLowStock ? 'bg-red-50/50' : ''}`}>
-                      <td className="py-2.5 px-4">
+                      <td className="py-2 px-3 border border-gray-200">
                         <span className="font-mono font-medium text-primary">
                           {item.code || `ITM-${inv._id.slice(-6).toUpperCase()}`}
                         </span>
                       </td>
-                      <td className="py-2.5 px-4">
+                      <td className="py-2 px-3 border border-gray-200">
                         <p className="font-medium text-gray-900">{item.name || '-'}</p>
                         <p className="text-xs text-gray-500 truncate max-w-xs">{item.description || ''}</p>
                       </td>
-                      <td className="py-2.5 px-4">
+                      <td className="py-2 px-3 border border-gray-200">
                         <span className="text-gray-600" title={item.category || ''}>
                           {item.category ? getCategoryName(item.category) : '-'}
                         </span>
                       </td>
-                      <td className="py-2.5 px-4">
+                      <td className="py-2 px-3 border border-gray-200">
                         <span className={`font-semibold ${isLowStock ? 'text-red-600' : 'text-gray-900'}`}>
                           {inv.quantityOnHand || 0} {item.unit || 'each'}
                         </span>
                       </td>
-                      <td className="py-2.5 px-4 text-gray-500">
+                      <td className="py-2 px-3 border border-gray-200 text-gray-500">
                         {item.reorderLevel || 0} {item.unit || 'each'}
                       </td>
-                      <td className="py-2.5 px-4 text-gray-900">
+                      <td className="py-2 px-3 border border-gray-200 text-gray-900">
                         {formatCurrency(inv.unitCost || 0, getCurrentSbuCurrency())}
                       </td>
-                      <td className="py-2.5 px-4">
+                      <td className="py-2 px-3 border border-gray-200">
                         {isLowStock ? (
                           <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
                             Low Stock
@@ -549,7 +549,7 @@ export default function Inventory() {
                           </span>
                         )}
                       </td>
-                      <td className="py-2.5 px-4">
+                      <td className="py-2 px-3 border border-gray-200">
                         <div className="flex items-center gap-2">
                           {issueContext && (
                             <button
@@ -598,6 +598,7 @@ export default function Inventory() {
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         title="Add Inventory Item"
+        size="lg"
       >
         <form
           onSubmit={(e) => {
@@ -824,6 +825,7 @@ export default function Inventory() {
         isOpen={showImportModal}
         onClose={resetImport}
         title="Bulk Import Inventory"
+        size="xl"
       >
         <FormSteps steps={IMPORT_STEPS} current={importResult ? 2 : importRows.length > 0 ? 1 : 0} />
         <div className="space-y-4">
@@ -876,24 +878,24 @@ export default function Inventory() {
                     Preview — {importRows.length} row{importRows.length > 1 ? 's' : ''}
                   </p>
                   <div className="overflow-x-auto max-h-56 overflow-y-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-sm border-collapse">
                       <thead className="sticky top-0">
                         <tr>
-                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Name</th>
-                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Category</th>
-                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Unit</th>
-                          <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Qty</th>
-                          <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Price</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Name</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Category</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Unit</th>
+                          <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Qty</th>
+                          <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Price</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
+                      <tbody>
                         {importRows.slice(0, 50).map((r: any, i: number) => (
                           <tr key={i} className="hover:bg-gray-50">
-                            <td className="py-2.5 px-4 text-gray-900">{r.name || r.code}</td>
-                            <td className="py-2.5 px-4 text-gray-500">{r.category || '—'}</td>
-                            <td className="py-2.5 px-4 text-gray-500">{r.unit || 'each'}</td>
-                            <td className="py-2.5 px-4 text-right text-gray-900">{r.quantity ?? '—'}</td>
-                            <td className="py-2.5 px-4 text-right text-gray-900">{r.unitPrice ?? '—'}</td>
+                            <td className="py-2 px-3 border border-gray-200 text-gray-900">{r.name || r.code}</td>
+                            <td className="py-2 px-3 border border-gray-200 text-gray-500">{r.category || '—'}</td>
+                            <td className="py-2 px-3 border border-gray-200 text-gray-500">{r.unit || 'each'}</td>
+                            <td className="py-2 px-3 border border-gray-200 text-right text-gray-900">{r.quantity ?? '—'}</td>
+                            <td className="py-2 px-3 border border-gray-200 text-right text-gray-900">{r.unitPrice ?? '—'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -925,7 +927,7 @@ export default function Inventory() {
               </div>
               {importResult.results?.some((r: any) => r.status === 'failed') && (
                 <div className="border border-red-100 rounded-xl overflow-hidden max-h-40 overflow-y-auto">
-                  <table className="w-full text-xs">
+                  <table className="w-full text-xs border-collapse">
                     <tbody className="divide-y divide-red-50">
                       {importResult.results
                         .filter((r: any) => r.status === 'failed')
@@ -942,7 +944,7 @@ export default function Inventory() {
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          <ModalFooter>
             <button
               onClick={resetImport}
               className="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 rounded-lg"
@@ -959,7 +961,7 @@ export default function Inventory() {
                 Import {importRows.length > 0 ? `${importRows.length} rows` : ''}
               </button>
             )}
-          </div>
+          </ModalFooter>
         </div>
       </Modal>
     </div>
