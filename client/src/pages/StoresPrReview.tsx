@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { storesAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
@@ -141,7 +141,7 @@ export default function StoresPrReview() {
                   const fullyIssued = allLinesFullyIssued(pr);
                   return (
                     <tr key={pr._id} className="hover:bg-gray-50">
-                      <td className="py-2 px-3 border border-gray-200 font-mono text-xs font-medium">{pr.requisitionNumber}</td>
+                      <td className="py-2 px-3 border border-gray-200 font-mono text-xs font-medium whitespace-nowrap">{pr.requisitionNumber}</td>
                       <td className="py-2 px-3 border border-gray-200">{pr.title}</td>
                       <td className="py-2 px-3 border border-gray-200">{pr.department?.name || '—'}</td>
                       <td className="py-2 px-3 border border-gray-200 whitespace-nowrap">
@@ -154,36 +154,43 @@ export default function StoresPrReview() {
                       <td className="py-2 px-3 border border-gray-200 whitespace-nowrap">
                         {formatCurrency(pr.estimatedTotal, pr.currency || getCurrentSbuCurrency())}
                       </td>
-                      <td className="py-2 px-3 border border-gray-200">
+                      <td className="py-2 px-3 border border-gray-200 whitespace-nowrap">
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${stage.cls}`}>{stage.label}</span>
                       </td>
                       <td className="py-2 px-3 border border-gray-200">
-                        <div className="flex gap-1 flex-wrap">
-                          <button
-                            disabled={!!acting}
-                            onClick={() => autoProcess(pr._id)}
-                            className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100 text-gray-700 disabled:opacity-50 whitespace-nowrap"
-                          >
-                            {acting === `auto-${pr._id}` ? <Loader2 className="h-3 w-3 animate-spin inline" /> : null}
-                            Auto-process
-                          </button>
-                          <button
-                            disabled={!!acting || !fullyIssued}
-                            onClick={() => fulfillFromStock(pr._id)}
-                            title={fullyIssued ? 'Mark as fulfilled from stock' : 'Issue all lines first'}
-                            className="px-2 py-1 text-xs border border-emerald-300 rounded hover:bg-emerald-50 text-emerald-700 disabled:opacity-50 whitespace-nowrap"
-                          >
-                            {acting === `fulfill-${pr._id}` ? <Loader2 className="h-3 w-3 animate-spin inline" /> : null}
-                            Fulfill from stock
-                          </button>
-                          <button
-                            disabled={acting === pr._id}
-                            onClick={() => forward(pr._id)}
-                            className="px-2 py-1 text-xs border border-primary text-primary rounded hover:bg-primary/5 disabled:opacity-50 whitespace-nowrap"
-                          >
-                            {acting === pr._id ? <Loader2 className="h-3 w-3 animate-spin inline" /> : null}
-                            Forward to procurement
-                          </button>
+                        {/* One solid button for the step this row is on: close it out once
+                            every line is issued, otherwise send it on to procurement. */}
+                        <div className="flex items-center gap-2 whitespace-nowrap">
+                          {fullyIssued ? (
+                            <button
+                              disabled={!!acting}
+                              onClick={() => fulfillFromStock(pr._id)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+                            >
+                              {acting === `fulfill-${pr._id}` && <Loader2 className="h-3 w-3 animate-spin" />}
+                              Fulfill from stock
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                disabled={!!acting}
+                                onClick={() => forward(pr._id)}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded bg-primary text-white hover:bg-primary-dark disabled:opacity-50"
+                              >
+                                {acting === pr._id && <Loader2 className="h-3 w-3 animate-spin" />}
+                                Forward to procurement
+                              </button>
+                              <button
+                                disabled={!!acting}
+                                onClick={() => autoProcess(pr._id)}
+                                title="Issue whatever is in stock and forward the rest"
+                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded border border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                              >
+                                {acting === `auto-${pr._id}` && <Loader2 className="h-3 w-3 animate-spin" />}
+                                Auto-process
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
