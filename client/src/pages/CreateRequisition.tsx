@@ -298,9 +298,23 @@ export default function CreateRequisition() {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-12 gap-3">
-                  <div className="col-span-12 md:col-span-6">
-                    <label className="block text-xs text-gray-500 mb-1">Details</label>
+                <div className="grid grid-cols-12 gap-4">
+                  {/* Category first — determines what type of item is being requested */}
+                  <div className="col-span-12 md:col-span-5">
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Category <span className="text-red-500">*</span>
+                    </label>
+                    <CategorySelect
+                      value={item.category || ''}
+                      onChange={(code) => updateItem(index, 'category', code)}
+                      placeholder="Select category"
+                    />
+                  </div>
+
+                  <div className="col-span-12 md:col-span-7">
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Description <span className="text-red-500">*</span>
+                    </label>
                     <ItemSelect
                       value={item.catalogItem}
                       freeTextValue={item.description}
@@ -319,7 +333,7 @@ export default function CreateRequisition() {
                       }}
                       onFreeText={(text) => updateItem(index, 'description', text)}
                       placeholder="Search stock catalog or type description…"
-                      className="w-full"
+                      className="w-full pl-8 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     />
                     {item.catalogItem && (
                       <p className="text-xs text-emerald-600 mt-1">
@@ -327,55 +341,42 @@ export default function CreateRequisition() {
                       </p>
                     )}
                   </div>
-                  <div className="col-span-12 md:col-span-6">
-                    <label className="block text-xs text-gray-500 mb-1">
-                      Category <span className="text-red-500">*</span>
-                    </label>
-                    <CategorySelect
-                      value={item.category || ''}
-                      onChange={(code) => updateItem(index, 'category', code)}
-                      placeholder="Select category"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white flex items-center justify-between"
-                    />
-                  </div>
 
-                  <div className="col-span-4 md:col-span-4">
-                    <label className="block text-xs text-gray-500 mb-1">Package</label>
+                  <div className="col-span-4 md:col-span-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Package</label>
                     <input
                       type="text"
                       value={item.package}
                       onChange={(e: any) => updateItem(index, 'package', e.target.value)}
                       placeholder="e.g. Box"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     />
                   </div>
                   <div className="col-span-4 md:col-span-3">
-                    <label className="block text-xs text-gray-500 mb-1">Quantity</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Quantity</label>
                     <input
                       type="number"
                       min="1"
                       value={item.quantity}
                       onChange={(e: any) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     />
                   </div>
                   <div className="col-span-4 md:col-span-3">
-                    <label className="block text-xs text-gray-500 mb-1">Unit</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Unit</label>
                     <select
                       value={item.unit}
                       onChange={(e: any) => updateItem(index, 'unit', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white"
                     >
                       {UNITS_OF_MEASUREMENT.map((unit: any) => (
                         <option key={unit} value={unit}>{unit}</option>
                       ))}
                     </select>
                   </div>
-                  {/* Drives the budget check. Left optional so a requester who
-                      genuinely cannot estimate is not blocked from asking. */}
-                  <div className="col-span-8 md:col-span-4">
-                    <label className="block text-xs text-gray-500 mb-1">
-                      Est. unit price <span className="text-gray-400">(optional)</span>
+                  <div className="col-span-8 md:col-span-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Est. unit price <span className="text-gray-400 font-normal text-xs">(optional)</span>
                     </label>
                     <input
                       type="number"
@@ -384,12 +385,12 @@ export default function CreateRequisition() {
                       value={item.estimatedUnitPrice}
                       onChange={(e: any) => updateItem(index, 'estimatedUnitPrice', e.target.value)}
                       placeholder="0.00"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     />
                   </div>
-                  <div className="col-span-4 md:col-span-2">
-                    <label className="block text-xs text-gray-500 mb-1">Line total</label>
-                    <div className="px-3 py-2 text-sm text-gray-700 font-medium tabular-nums">
+                  <div className="col-span-4 md:col-span-2 flex flex-col justify-end">
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Line total</label>
+                    <div className="px-3 py-2 text-sm text-gray-700 font-medium tabular-nums border border-gray-200 rounded-lg bg-gray-50">
                       {(Number(item.estimatedUnitPrice) || 0) * (Number(item.quantity) || 0)
                         ? formatCurrency(
                             (Number(item.estimatedUnitPrice) || 0) * (Number(item.quantity) || 0),
@@ -400,13 +401,15 @@ export default function CreateRequisition() {
                   </div>
 
                   <div className="col-span-12">
-                    <label className="block text-xs text-gray-500 mb-1">Specification (optional)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Specification <span className="text-gray-400 font-normal text-xs">(optional)</span>
+                    </label>
                     <input
                       type="text"
                       value={item.specification}
                       onChange={(e: any) => updateItem(index, 'specification', e.target.value)}
                       placeholder="e.g., 80gsm white"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     />
                   </div>
 
