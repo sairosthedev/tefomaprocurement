@@ -5,7 +5,62 @@ import { formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
+import { WorkflowStepper, NextStepCard, type WorkflowStep } from '../components/WorkflowStepper';
 import { Loader2, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+
+/**
+ * The invoice's path to payment: the order and its goods receipt come first,
+ * then the supplier's invoice, the three-way match, Finance approval and payment.
+ */
+function invoiceSteps(invoice: any, match: any): WorkflowStep[] {
+  const status = invoice.status;
+  const stopped = status === 'rejected' || status === 'cancelled';
+  const approved = ['approved', 'partially_paid', 'paid'].includes(status);
+  const received = Boolean(match) && match.hasGrv !== false && (match.receivedValue ?? 0) > 0;
+  const matched = approved || Boolean(match?.matched) || Boolean(invoice.varianceOverride);
+  const po = invoice.purchaseOrder;
+
+  const raw: Array<{ key: string; label: string; done: boolean; detail?: string; to?: string }> = [
+    {
+      key: 'po',
+      label: 'Purchase order',
+      done: true,
+      detail: po?.poNumber,
+      to: po?._id ? `/app/purchase-orders/${po._id}` : undefined
+    },
+    {
+      key: 'grv',
+      label: 'Goods received',
+      done: received || approved,
+      detail: match?.grvNumbers?.length ? match.grvNumbers.join(', ') : undefined
+    },
+    { key: 'submitted', label: 'Invoice submitted', done: status !== 'draft', detail: invoice.invoiceNumber },
+    {
+      key: 'match',
+      label: 'Three-way match',
+      done: matched,
+      detail: invoice.varianceOverride ? 'Variance approved' : status === 'variance' ? 'Variance' : undefined
+    },
+    { key: 'approval', label: 'Finance approval', done: approved },
+    {
+      key: 'paid',
+      label: 'Paid',
+      done: status === 'paid',
+      detail: status === 'partially_paid' ? 'Partly paid' : undefined,
+      to: status === 'paid' || status === 'partially_paid' ? '/app/payments' : undefined
+    }
+  ];
+
+  // A rejection stops the invoice at the approval step, whatever the match said.
+  const current = stopped ? raw.findIndex((s) => s.key === 'approval') : raw.findIndex((s) => !s.done);
+  return raw.map((s, i) => ({
+    key: s.key,
+    label: s.label,
+    detail: i === current && stopped ? (status === 'rejected' ? 'Rejected' : 'Cancelled') : s.detail,
+    to: s.to,
+    state: i === current ? (stopped ? 'stopped' : 'current') : s.done ? 'done' : 'upcoming'
+  }));
+}
 
 export default function InvoiceDetail() {
   const { id } = useParams();
@@ -120,6 +175,43 @@ export default function InvoiceDetail() {
         }
       />
 
+      <WorkflowStepper steps={invoiceSteps(invoice, match)} />
+      {canApprove && awaitingGrv ? (
+        <NextStepCard
+          waiting
+          title="Stores to receive the goods"
+          description="An invoice is payable only once the goods are receipted on a GRV. It can still be rejected below."
+        />
+      ) : canApprove ? (
+        <NextStepCard
+          title={match && !match.matched ? 'Resolve the variance' : 'Approve the invoice for payment'}
+          description={
+            match && !match.matched
+              ? 'The invoice does not match the order and goods received. Reject it, or approve with a written reason below.'
+              : 'The invoice matches the order and the goods received.'
+          }
+          action={match && !match.matched ? undefined : { label: 'Approve', onClick: () => handleApprove(), disabled: acting }}
+        />
+      ) : canPay ? (
+        <NextStepCard
+          title="Record the payment"
+          description="Approved for payment. Payments are run on Tuesdays and Thursdays."
+          action={{ label: 'Record payment', onClick: handlePay, disabled: acting }}
+        />
+      ) : invoice.status === 'partially_paid' ? (
+        <NextStepCard
+          title="Pay the balance"
+          description={`Balance due: ${formatCurrency(invoice.balanceDue ?? 0, currency)}`}
+          action={{ label: 'Open payments', to: '/app/payments' }}
+        />
+      ) : null}
+
+      {invoice.status === 'rejected' && invoice.rejectionReason && (
+        <div className="mb-6 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <strong>Rejected:</strong> {invoice.rejectionReason}
+        </div>
+      )}
+
       {match && (
         <div className={`rounded-xl p-6 mb-6 ${match.matched ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
           <h2 className="font-semibold flex items-center gap-2 mb-3">
@@ -149,21 +241,30 @@ export default function InvoiceDetail() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow p-6 mb-6">
+      <div className="mb-6">
         <h2 className="font-semibold mb-3">Line items</h2>
-        <table className="w-full text-sm">
-          <thead><tr className="border-b"><th className="text-left py-2">Description</th><th className="text-right py-2">Qty</th><th className="text-right py-2">Unit</th><th className="text-right py-2">Total</th></tr></thead>
-          <tbody>
-            {invoice.items.map((item: any, i: number) => (
-              <tr key={i} className="border-b">
-                <td className="py-2">{item.description}</td>
-                <td className="text-right py-2">{item.quantity}</td>
-                <td className="text-right py-2">{formatCurrency(item.unitPrice, currency)}</td>
-                <td className="text-right py-2">{formatCurrency(item.totalPrice, currency)}</td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr>
+                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Description</th>
+                <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Qty</th>
+                <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Unit</th>
+                <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Total</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {invoice.items.map((item: any, i: number) => (
+                <tr key={i} className="hover:bg-gray-50">
+                  <td className="py-2.5 px-4">{item.description}</td>
+                  <td className="text-right py-2.5 px-4">{item.quantity}</td>
+                  <td className="text-right py-2.5 px-4">{formatCurrency(item.unitPrice, currency)}</td>
+                  <td className="text-right py-2.5 px-4">{formatCurrency(item.totalPrice, currency)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {(canApprove || canPay) && (

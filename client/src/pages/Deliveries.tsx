@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useToast } from '../components/Toast';
 import api, { storesAPI } from '../lib/api';
 import {
@@ -11,6 +11,8 @@ import Modal from '../components/Modal';
 import { formatCurrency } from '../lib/constants';
 import Pagination from '../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
+import { FormSteps, FormStepNav } from '../components/FormSteps';
+import { WorkflowStepper, NextStepCard, type WorkflowStep } from '../components/WorkflowStepper';
 
 const statusColors: any = {
   pending: 'bg-yellow-100 text-yellow-700',
@@ -20,6 +22,55 @@ const statusColors: any = {
   partially_accepted: 'bg-amber-100 text-amber-700',
   rejected: 'bg-red-100 text-red-700'
 };
+
+const RECEIVE_STEPS = [
+  { label: 'Delivery', description: 'Delivery note and driver' },
+  { label: 'Count items', description: 'Quantities received' },
+  { label: 'Inspection', description: 'Inspector, witnesses, hazards' },
+  { label: 'Review & receive', description: 'Check, then confirm receipt' }
+];
+
+const INSPECTED_STATUSES = ['inspected', 'accepted', 'partially_accepted', 'rejected'];
+
+/** A delivery from the supplier's notice to goods in stock. */
+function deliverySteps(delivery: any): WorkflowStep[] {
+  const status = delivery.status;
+  const received = status !== 'pending';
+  const inspected = INSPECTED_STATUSES.includes(status) || Boolean(delivery.inspectedAt);
+  const stocked = ['accepted', 'partially_accepted'].includes(status);
+  const raw = [
+    { key: 'po', label: 'Purchase order', done: true, detail: delivery.purchaseOrder?.poNumber },
+    {
+      key: 'received',
+      label: 'Goods received',
+      done: received,
+      detail: received
+        ? delivery.grvNumber
+        : delivery.expectedDeliveryDate
+          ? `Expected ${new Date(delivery.expectedDeliveryDate).toLocaleDateString('en-ZA')}`
+          : 'Awaiting delivery'
+    },
+    {
+      key: 'inspected',
+      label: 'Inspected',
+      done: inspected,
+      detail: delivery.inspectedByName || (delivery.inspectedBy ? `${delivery.inspectedBy.firstName} ${delivery.inspectedBy.lastName}` : undefined)
+    },
+    {
+      key: 'stock',
+      label: 'In stock',
+      done: stocked,
+      detail: status === 'partially_accepted' ? 'Partly accepted' : undefined
+    }
+  ];
+  const current = raw.findIndex((s) => !s.done);
+  return raw.map((s, i) => ({
+    key: s.key,
+    label: s.label,
+    detail: i === current && status === 'rejected' ? 'Rejected' : s.detail,
+    state: s.done ? 'done' : i === current ? (status === 'rejected' ? 'stopped' : 'current') : 'upcoming'
+  }));
+}
 
 const formatStatus = (status: any) => {
   return status?.replace('_', ' ').charAt(0).toUpperCase() + status?.replace('_', ' ').slice(1);
@@ -51,6 +102,8 @@ export default function Deliveries() {
   });
   const [printingId, setPrintingId] = useState<string | null>(null);
   const [isReceiving, setIsReceiving] = useState<any>(false);
+  const [receiveStep, setReceiveStep] = useState(0);
+  const receiveTopRef = useRef<HTMLDivElement>(null);
   const [acceptNotes, setAcceptNotes] = useState('');
   const [acceptStatus, setAcceptStatus] = useState<'accepted' | 'partially_accepted' | 'rejected'>('accepted');
   const [isAccepting, setIsAccepting] = useState(false);
@@ -112,23 +165,50 @@ export default function Deliveries() {
         receivedQuantity: item.quantity - (item.quantityReceived || 0)
       }))
     });
+    setReceiveStep(0);
     setShowReceiveModal(true);
+  };
+
+  // Each step of the receiving form checks its own fields before moving on;
+  // handleReceive repeats the checks so a jump back and forth cannot skip them.
+  const validateReceiveStep = (step: number) => {
+    if (step === 0) {
+      if (!receiveData.deliveryNote.trim()) {
+        showToast('Please enter delivery note number', 'error');
+        return false;
+      }
+      if (!receiveData.deliveredBy?.name?.trim()) {
+        showToast('Please record who delivered the goods', 'error');
+        return false;
+      }
+    }
+    if (step === 1 && !receiveData.items.some((item: any) => item.receivedQuantity > 0)) {
+      showToast('Enter the quantity received for at least one item', 'error');
+      return false;
+    }
+    return true;
+  };
+
+  const goToReceiveStep = (step: number) => {
+    setReceiveStep(step);
+    receiveTopRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  };
+
+  const nextReceiveStep = () => {
+    if (validateReceiveStep(receiveStep)) goToReceiveStep(receiveStep + 1);
   };
 
   const handleReceive = async () => {
     try {
-      if (!receiveData.deliveryNote.trim()) {
-        showToast('Please enter delivery note number', 'error');
-        return;
-      }
-
-      if (!receiveData.deliveredBy?.name?.trim()) {
-        showToast("Please record who delivered the goods", 'error');
-        return;
+      for (const step of [0, 1]) {
+        if (!validateReceiveStep(step)) {
+          goToReceiveStep(step);
+          return;
+        }
       }
 
       setIsReceiving(true);
-      await api.post('/stores/deliveries', {
+      const res = await api.post('/stores/deliveries', {
         purchaseOrderId: selectedPO._id,
         deliveryNoteNumber: receiveData.deliveryNote,
         deliveryDate: new Date().toISOString(),
@@ -160,7 +240,7 @@ export default function Deliveries() {
         notes: ''
       });
 
-      showToast('Goods received successfully', 'success');
+      showToast(res.data?.message || 'Goods received successfully', 'success');
       setShowReceiveModal(false);
       setReceiveData({
         deliveryNote: '',
@@ -168,6 +248,23 @@ export default function Deliveries() {
         deliveredBy: { name: '', idNumber: '', vehicleRegistration: '', contactNumber: '' }
       });
       fetchData();
+      // Open the new GRV, where the next step (accepting or printing it) is.
+      const created = res.data?.data;
+      if (created?._id) {
+        setSelectedDelivery({
+          ...created,
+          purchaseOrder: { _id: selectedPO._id, poNumber: selectedPO.poNumber, supplier: selectedPO.supplier },
+          supplier: selectedPO.supplier,
+          items: (created.items || []).map((item: any) => ({
+            ...item,
+            orderedQuantity: item.orderedQuantity ?? item.quantityOrdered,
+            receivedQuantity: item.receivedQuantity ?? item.quantityReceived
+          }))
+        });
+        setAcceptStatus('accepted');
+        setAcceptNotes('');
+        setShowViewModal(true);
+      }
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to receive goods', 'error');
     } finally {
@@ -313,8 +410,8 @@ export default function Deliveries() {
       </div>
 
       {/* Deliveries List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100">
+      <div>
+        <div className="px-4 py-3 border-b border-gray-100">
           <h2 className="font-semibold text-gray-900">Recent Deliveries</h2>
         </div>
         
@@ -330,60 +427,60 @@ export default function Deliveries() {
         ) : (
           <>
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
+            <table className="w-full text-sm">
+              <thead>
                 <tr>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">GRV #</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">PO #</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Supplier</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Delivery Note</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Status</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Items</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Date</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Actions</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">GRV #</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">PO #</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Supplier</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Delivery Note</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Status</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Items</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Date</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {deliveries.map((delivery: any) => (
                   <tr key={delivery._id} className="hover:bg-gray-50">
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       {delivery.status === 'pending' ? (
-                        <span className="text-sm text-yellow-600 italic">Awaiting GRV</span>
+                        <span className="text-yellow-600 italic">Awaiting GRV</span>
                       ) : (
-                        <span className="font-mono text-sm font-medium text-primary">
+                        <span className="font-mono font-medium text-primary">
                           {delivery.grvNumber || '-'}
                         </span>
                       )}
                     </td>
-                    <td className="py-4 px-6">
-                      <span className="font-mono text-sm text-gray-600">
+                    <td className="py-2.5 px-4">
+                      <span className="font-mono text-gray-600">
                         {delivery.purchaseOrder?.poNumber || '-'}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
-                      <p className="text-sm text-gray-900">{delivery.supplier?.companyName || delivery.purchaseOrder?.supplier?.companyName || '-'}</p>
+                    <td className="py-2.5 px-4">
+                      <p className="text-gray-900">{delivery.supplier?.companyName || delivery.purchaseOrder?.supplier?.companyName || '-'}</p>
                     </td>
-                    <td className="py-4 px-6">
-                      <span className="text-sm text-gray-600">
+                    <td className="py-2.5 px-4">
+                      <span className="text-gray-600">
                         {delivery.deliveryNoteNumber || (delivery.status === 'pending' ? 'Not yet provided' : '-')}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[delivery.status] || statusColors.received}`}>
                         {formatStatus(delivery.status)}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
-                      <span className="text-sm text-gray-600">{delivery.items?.length || 0} items</span>
+                    <td className="py-2.5 px-4">
+                      <span className="text-gray-600">{delivery.items?.length || 0} items</span>
                     </td>
-                    <td className="py-4 px-6 text-sm text-gray-500">
+                    <td className="py-2.5 px-4 text-gray-500">
                       {delivery.status === 'pending' && delivery.expectedDeliveryDate ? (
                         <span>Expected: {new Date(delivery.expectedDeliveryDate).toLocaleDateString('en-ZA')}</span>
                       ) : (
                         new Date(delivery.deliveryDate || delivery.createdAt).toLocaleDateString('en-ZA')
                       )}
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       <div className="flex items-center gap-2">
                         <ViewButton
                           onClick={() => { setSelectedDelivery(delivery); setShowViewModal(true); }}
@@ -429,7 +526,7 @@ export default function Deliveries() {
         )}
       </div>
 
-      {/* Receive Modal */}
+      {/* Receive Modal — one step per part of the paper GRV */}
       <Modal
         isOpen={showReceiveModal}
         onClose={() => setShowReceiveModal(false)}
@@ -437,7 +534,17 @@ export default function Deliveries() {
         size="lg"
       >
         {selectedPO && (
-          <div className="space-y-6">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              // Enter on an earlier step moves on rather than receiving early.
+              if (receiveStep < RECEIVE_STEPS.length - 1) nextReceiveStep();
+              else handleReceive();
+            }}
+          >
+            <div ref={receiveTopRef} className="scroll-mt-4" />
+            <FormSteps steps={RECEIVE_STEPS} current={receiveStep} onSelect={goToReceiveStep} />
+            <div className="space-y-6">
             <div className="bg-gray-50 rounded-xl p-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -451,247 +558,312 @@ export default function Deliveries() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Delivery Note Number <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={receiveData.deliveryNote}
-                onChange={(e: any) => setReceiveData({ ...receiveData, deliveryNote: e.target.value })}
-                placeholder={selectedPO.pendingDelivery?.deliveryNoteNumber || "Enter supplier's delivery note number"}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              />
-              {selectedPO.pendingDelivery?.deliveryNoteNumber && (
+              {receiveStep === 0 && (
                 <>
-                  {receiveData.deliveryNote === selectedPO.pendingDelivery.deliveryNoteNumber ? (
-                    <p className="text-xs text-blue-600 mt-1">
-                      ℹ️ This matches the delivery note number provided by the supplier. Please verify it matches the physical delivery note document.
-                    </p>
-                  ) : receiveData.deliveryNote && receiveData.deliveryNote !== selectedPO.pendingDelivery.deliveryNoteNumber ? (
-                    <p className="text-xs text-amber-600 mt-1">
-                      ⚠️ Supplier provided: <strong>{selectedPO.pendingDelivery.deliveryNoteNumber}</strong> - The entered number differs. Please verify.
-                    </p>
-                  ) : (
-                    <p className="text-xs text-blue-600 mt-1">
-                      ℹ️ Supplier provided: <strong>{selectedPO.pendingDelivery.deliveryNoteNumber}</strong> - Pre-filled above. Please verify it matches the physical delivery note.
-                    </p>
-                  )}
-                </>
-              )}
-              <p className="text-xs text-gray-500 mt-1">
-                This is the number from the supplier's delivery note document that accompanies the goods.
-                {selectedPO.pendingDelivery?.deliveryNoteNumber ? ' The supplier has already provided a delivery note number above.' : ' If the supplier provided a delivery note number when acknowledging the PO, it will be pre-filled.'}
-              </p>
-            </div>
-
-            <div className="border border-gray-200 rounded-xl p-4">
-              <label className="block text-sm font-semibold text-gray-800 mb-1">
-                Delivered by <span className="text-red-500">*</span>
-              </label>
-              <p className="text-xs text-gray-500 mb-3">
-                Record the driver or supplier representative who physically handed over the goods.
-                This is printed on the GRV for signature.
-              </p>
-              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Full name <span className="text-red-500">*</span>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Delivery Note Number <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    value={receiveData.deliveredBy?.name || ''}
-                    onChange={(e: any) => updateDeliveredBy('name', e.target.value)}
-                    placeholder="e.g. John Moyo"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    value={receiveData.deliveryNote}
+                    onChange={(e: any) => setReceiveData({ ...receiveData, deliveryNote: e.target.value })}
+                    placeholder={selectedPO.pendingDelivery?.deliveryNoteNumber || "Enter supplier's delivery note number"}
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   />
+                  {selectedPO.pendingDelivery?.deliveryNoteNumber && (
+                    <>
+                      {receiveData.deliveryNote === selectedPO.pendingDelivery.deliveryNoteNumber ? (
+                        <p className="text-xs text-blue-600 mt-1">
+                          ℹ️ This matches the delivery note number provided by the supplier. Please verify it matches the physical delivery note document.
+                        </p>
+                      ) : receiveData.deliveryNote && receiveData.deliveryNote !== selectedPO.pendingDelivery.deliveryNoteNumber ? (
+                        <p className="text-xs text-amber-600 mt-1">
+                          ⚠️ Supplier provided: <strong>{selectedPO.pendingDelivery.deliveryNoteNumber}</strong> - The entered number differs. Please verify.
+                        </p>
+                      ) : (
+                        <p className="text-xs text-blue-600 mt-1">
+                          ℹ️ Supplier provided: <strong>{selectedPO.pendingDelivery.deliveryNoteNumber}</strong> - Pre-filled above. Please verify it matches the physical delivery note.
+                        </p>
+                      )}
+                    </>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    This is the number from the supplier's delivery note document that accompanies the goods.
+                    {selectedPO.pendingDelivery?.deliveryNoteNumber ? ' The supplier has already provided a delivery note number above.' : ' If the supplier provided a delivery note number when acknowledging the PO, it will be pre-filled.'}
+                  </p>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">ID number</label>
-                  <input
-                    type="text"
-                    value={receiveData.deliveredBy?.idNumber || ''}
-                    onChange={(e: any) => updateDeliveredBy('idNumber', e.target.value)}
-                    placeholder="National ID / licence"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Vehicle registration</label>
-                  <input
-                    type="text"
-                    value={receiveData.deliveredBy?.vehicleRegistration || ''}
-                    onChange={(e: any) => updateDeliveredBy('vehicleRegistration', e.target.value)}
-                    placeholder="e.g. AEB 1234"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Contact number</label>
-                  <input
-                    type="text"
-                    value={receiveData.deliveredBy?.contactNumber || ''}
-                    onChange={(e: any) => updateDeliveredBy('contactNumber', e.target.value)}
-                    placeholder="Phone number"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  />
-                </div>
-              </div>
-              <p className="text-xs text-gray-500 mt-3">
-                You are recorded as the receiving officer.
-              </p>
-            </div>
 
-            <div className="border border-gray-200 rounded-xl p-4">
-              <label className="block text-sm font-semibold text-gray-800 mb-1">
-                Inspected by <span className="text-gray-400 font-normal">(optional)</span>
-              </label>
-              <p className="text-xs text-gray-500 mb-3">
-                The department representative who checked the goods for damage and quality
-                (procedure clause 6.6.2). Leave blank if nobody attended — the GRV then prints an
-                empty block to sign by hand.
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Full name</label>
-                  <input
-                    type="text"
-                    value={receiveData.inspectedByName || ''}
-                    onChange={(e: any) =>
-                      setReceiveData((prev: any) => ({ ...prev, inspectedByName: e.target.value }))
-                    }
-                    placeholder="e.g. Tendai Chikwana"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Department</label>
-                  <input
-                    type="text"
-                    value={receiveData.inspectedByDepartment || ''}
-                    onChange={(e: any) =>
-                      setReceiveData((prev: any) => ({ ...prev, inspectedByDepartment: e.target.value }))
-                    }
-                    placeholder="e.g. Workshop"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Clause 6.8.5 — functional witnesses */}
-            <div className="border border-gray-200 rounded-xl p-4">
-              <p className="text-sm font-medium text-gray-700 mb-3">Witnesses present (§ 6.8.5)</p>
-              <div className="grid grid-cols-3 gap-3">
-                {(['mt', 'security', 'sheq'] as const).map((role) => (
-                  <div key={role}>
-                    <label className="block text-xs font-medium text-gray-600 mb-1 uppercase">{role}</label>
-                    <input
-                      type="text"
-                      value={receiveData.witnesses?.[role] || ''}
-                      onChange={(e: any) =>
-                        setReceiveData((prev: any) => ({
-                          ...prev,
-                          witnesses: { ...prev.witnesses, [role]: e.target.value }
-                        }))
-                      }
-                      placeholder="Name"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                    />
+                <div className="border border-gray-200 rounded-xl p-4">
+                  <label className="block text-sm font-semibold text-gray-800 mb-1">
+                    Delivered by <span className="text-red-500">*</span>
+                  </label>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Record the driver or supplier representative who physically handed over the goods.
+                    This is printed on the GRV for signature.
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Full name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={receiveData.deliveredBy?.name || ''}
+                        onChange={(e: any) => updateDeliveredBy('name', e.target.value)}
+                        placeholder="e.g. John Moyo"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">ID number</label>
+                      <input
+                        type="text"
+                        value={receiveData.deliveredBy?.idNumber || ''}
+                        onChange={(e: any) => updateDeliveredBy('idNumber', e.target.value)}
+                        placeholder="National ID / licence"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Vehicle registration</label>
+                      <input
+                        type="text"
+                        value={receiveData.deliveredBy?.vehicleRegistration || ''}
+                        onChange={(e: any) => updateDeliveredBy('vehicleRegistration', e.target.value)}
+                        placeholder="e.g. AEB 1234"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Contact number</label>
+                      <input
+                        type="text"
+                        value={receiveData.deliveredBy?.contactNumber || ''}
+                        onChange={(e: any) => updateDeliveredBy('contactNumber', e.target.value)}
+                        placeholder="Phone number"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
+                    </div>
                   </div>
-                ))}
-              </div>
-            </div>
+                  <p className="text-xs text-gray-500 mt-3">
+                    You are recorded as the receiving officer.
+                  </p>
+                </div>
 
-            {/* Clause 6.6.3 — hazardous materials */}
-            <div className="border border-gray-200 rounded-xl p-4 space-y-3">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={Boolean(receiveData.hasHazardousMaterials)}
-                  onChange={(e: any) =>
-                    setReceiveData((prev: any) => ({ ...prev, hasHazardousMaterials: e.target.checked }))
-                  }
-                  className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
-                />
-                <span className="text-sm font-medium text-gray-700">Delivery contains hazardous materials (§ 6.6.3)</span>
-              </label>
-              {receiveData.hasHazardousMaterials && (
+                </>
+              )}
+
+              {receiveStep === 1 && (
+                <>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">MSDS reference / document number</label>
-                  <input
-                    type="text"
-                    value={receiveData.msdsReference || ''}
-                    onChange={(e: any) =>
-                      setReceiveData((prev: any) => ({ ...prev, msdsReference: e.target.value }))
-                    }
-                    placeholder="e.g. MSDS-2026-0042"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  />
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">Items to Receive</label>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr>
+                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Item</th>
+                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Ordered</th>
+                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Received</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {receiveData.items.map((item: any, index: any) => (
+                          <tr key={index} className="hover:bg-gray-50">
+                            <td className="py-2.5 px-4">{item.description}</td>
+                            <td className="py-2.5 px-4">{item.quantity} {item.unit}</td>
+                            <td className="py-2.5 px-4">
+                              <input
+                                type="number"
+                                min="0"
+                                max={item.quantity - (item.previouslyReceived || 0)}
+                                value={item.receivedQuantity}
+                                onChange={(e: any) => updateReceivedQty(index, e.target.value)}
+                                className="w-24 px-3 py-1.5 border border-gray-200 rounded-lg text-sm"
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                </>
+              )}
+
+              {receiveStep === 2 && (
+                <>
+                <div className="border border-gray-200 rounded-xl p-4">
+                  <label className="block text-sm font-semibold text-gray-800 mb-1">
+                    Inspected by <span className="text-gray-400 font-normal">(optional)</span>
+                  </label>
+                  <p className="text-xs text-gray-500 mb-3">
+                    The department representative who checked the goods for damage and quality
+                    (procedure clause 6.6.2). Leave blank if nobody attended — the GRV then prints an
+                    empty block to sign by hand.
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Full name</label>
+                      <input
+                        type="text"
+                        value={receiveData.inspectedByName || ''}
+                        onChange={(e: any) =>
+                          setReceiveData((prev: any) => ({ ...prev, inspectedByName: e.target.value }))
+                        }
+                        placeholder="e.g. Tendai Chikwana"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Department</label>
+                      <input
+                        type="text"
+                        value={receiveData.inspectedByDepartment || ''}
+                        onChange={(e: any) =>
+                          setReceiveData((prev: any) => ({ ...prev, inspectedByDepartment: e.target.value }))
+                        }
+                        placeholder="e.g. Workshop"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Clause 6.8.5 — functional witnesses */}
+                <div className="border border-gray-200 rounded-xl p-4">
+                  <p className="text-sm font-medium text-gray-700 mb-3">Witnesses present (§ 6.8.5)</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {(['mt', 'security', 'sheq'] as const).map((role) => (
+                      <div key={role}>
+                        <label className="block text-xs font-medium text-gray-600 mb-1 uppercase">{role}</label>
+                        <input
+                          type="text"
+                          value={receiveData.witnesses?.[role] || ''}
+                          onChange={(e: any) =>
+                            setReceiveData((prev: any) => ({
+                              ...prev,
+                              witnesses: { ...prev.witnesses, [role]: e.target.value }
+                            }))
+                          }
+                          placeholder="Name"
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Clause 6.6.3 — hazardous materials */}
+                <div className="border border-gray-200 rounded-xl p-4 space-y-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(receiveData.hasHazardousMaterials)}
+                      onChange={(e: any) =>
+                        setReceiveData((prev: any) => ({ ...prev, hasHazardousMaterials: e.target.checked }))
+                      }
+                      className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Delivery contains hazardous materials (§ 6.6.3)</span>
+                  </label>
+                  {receiveData.hasHazardousMaterials && (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">MSDS reference / document number</label>
+                      <input
+                        type="text"
+                        value={receiveData.msdsReference || ''}
+                        onChange={(e: any) =>
+                          setReceiveData((prev: any) => ({ ...prev, msdsReference: e.target.value }))
+                        }
+                        placeholder="e.g. MSDS-2026-0042"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                </>
+              )}
+
+              {receiveStep === 3 && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-gray-500">Delivery note</p>
+                      <p className="font-medium text-gray-900">{receiveData.deliveryNote || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Delivered by</p>
+                      <p className="font-medium text-gray-900">
+                        {receiveData.deliveredBy?.name || '—'}
+                        {receiveData.deliveredBy?.vehicleRegistration ? ` · ${receiveData.deliveredBy.vehicleRegistration}` : ''}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Inspected by</p>
+                      <p className="font-medium text-gray-900">
+                        {receiveData.inspectedByName?.trim()
+                          ? `${receiveData.inspectedByName}${receiveData.inspectedByDepartment ? ` (${receiveData.inspectedByDepartment})` : ''}`
+                          : 'Nobody attended — signed by hand on the GRV'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Witnesses</p>
+                      <p className="font-medium text-gray-900">
+                        {(['mt', 'security', 'sheq'] as const)
+                          .filter((role) => receiveData.witnesses?.[role]?.trim())
+                          .map((role) => `${role.toUpperCase()}: ${receiveData.witnesses[role]}`)
+                          .join(' · ') || '—'}
+                      </p>
+                    </div>
+                    {receiveData.hasHazardousMaterials && (
+                      <div className="col-span-2">
+                        <p className="text-gray-500">Hazardous materials</p>
+                        <p className="font-medium text-amber-700">Yes — MSDS {receiveData.msdsReference || 'not recorded'}</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="border border-gray-200 rounded-xl overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr>
+                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200">Item</th>
+                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200">Ordered</th>
+                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200">Receiving now</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {receiveData.items.map((item: any, index: any) => (
+                          <tr key={index}>
+                            <td className="py-2.5 px-4">{item.description}</td>
+                            <td className="py-2.5 px-4">{item.quantity} {item.unit}</td>
+                            <td className={`py-2.5 px-4 font-medium ${item.receivedQuantity > 0 ? 'text-green-700' : 'text-gray-400'}`}>
+                              {item.receivedQuantity} {item.unit}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Confirming records the GRV and moves the goods into stock. Lines with nothing received are left off.
+                  </p>
                 </div>
               )}
             </div>
 
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Items to Receive</label>
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Item</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Ordered</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Received</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {receiveData.items.map((item: any, index: any) => (
-                      <tr key={index}>
-                        <td className="py-3 px-4 text-sm">{item.description}</td>
-                        <td className="py-3 px-4 text-sm">{item.quantity} {item.unit}</td>
-                        <td className="py-3 px-4">
-                          <input
-                            type="number"
-                            min="0"
-                            max={item.quantity - (item.previouslyReceived || 0)}
-                            value={item.receivedQuantity}
-                            onChange={(e: any) => updateReceivedQty(index, e.target.value)}
-                            className="w-24 px-3 py-1.5 border border-gray-200 rounded-lg text-sm"
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-              <button
-                onClick={() => setShowReceiveModal(false)}
-                disabled={isReceiving}
-                className="px-4 py-2.5 text-gray-700 font-medium hover:bg-gray-100 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleReceive}
-                disabled={isReceiving}
-                className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-medium rounded-xl hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isReceiving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="h-4 w-4" />
-                    Confirm Receipt
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
+            <FormStepNav
+              current={receiveStep}
+              total={RECEIVE_STEPS.length}
+              onBack={() => goToReceiveStep(receiveStep - 1)}
+              onNext={nextReceiveStep}
+              onCancel={() => setShowReceiveModal(false)}
+              finishLabel={isReceiving ? 'Processing...' : 'Confirm Receipt'}
+              submitting={isReceiving}
+            />
+          </form>
         )}
       </Modal>
 
@@ -704,6 +876,51 @@ export default function Deliveries() {
       >
         {selectedDelivery && (
           <div className="space-y-6">
+            <div>
+              <WorkflowStepper compact steps={deliverySteps(selectedDelivery)} />
+              {(() => {
+                const status = selectedDelivery.status;
+                if (status === 'pending') {
+                  const po = pendingPOs.find(
+                    (p: any) => String(p._id) === String(selectedDelivery.purchaseOrder?._id || selectedDelivery.purchaseOrder)
+                  );
+                  return (
+                    <NextStepCard
+                      title="Receive the goods when they arrive"
+                      description="Count them against the delivery note and record the GRV."
+                      action={
+                        po
+                          ? { label: 'Receive goods', onClick: () => { setShowViewModal(false); openReceiveModal(po); } }
+                          : undefined
+                      }
+                    />
+                  );
+                }
+                if (canAcceptDelivery(selectedDelivery)) {
+                  return (
+                    <NextStepCard
+                      title="Accept the goods into stock"
+                      description="Record the inspection decision at the bottom of this GRV."
+                    />
+                  );
+                }
+                if (canPrintGrv(selectedDelivery) && status !== 'rejected') {
+                  return (
+                    <NextStepCard
+                      title="Print the GRV for signature"
+                      description="The driver, receiving officer and inspector sign the printed copy."
+                      action={{
+                        label: printingId === selectedDelivery._id ? 'Opening...' : 'Print GRV',
+                        onClick: () => handlePrintGrv(selectedDelivery),
+                        disabled: printingId === selectedDelivery._id
+                      }}
+                    />
+                  );
+                }
+                return null;
+              })()}
+            </div>
+
             {selectedDelivery.status === 'pending' && (
               <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-200">
                 <div className="flex items-start gap-3">
@@ -816,21 +1033,21 @@ export default function Deliveries() {
 
             <div>
               <label className="text-sm text-gray-500 mb-2 block">Items Received</label>
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
                     <tr>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Item</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Ordered</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Received</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Item</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Ordered</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Received</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {selectedDelivery.items?.map((item: any, index: any) => (
-                      <tr key={index}>
-                        <td className="py-3 px-4 text-sm">{item.description}</td>
-                        <td className="py-3 px-4 text-sm">{item.orderedQuantity} {item.unit}</td>
-                        <td className="py-3 px-4 text-sm font-medium text-green-600">
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="py-2.5 px-4">{item.description}</td>
+                        <td className="py-2.5 px-4">{item.orderedQuantity} {item.unit}</td>
+                        <td className="py-2.5 px-4 font-medium text-green-600">
                           {item.receivedQuantity} {item.unit}
                         </td>
                       </tr>

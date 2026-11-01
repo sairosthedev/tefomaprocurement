@@ -8,6 +8,8 @@ import {
   DollarSign, FileText, AlertTriangle, Package, ShoppingCart
 } from 'lucide-react';
 import Modal from '../components/Modal';
+import { WorkflowStepper } from '../components/WorkflowStepper';
+import { purchaseOrderSteps } from '../lib/purchaseOrderSteps';
 import { formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
 import Pagination from '../components/Pagination';
@@ -25,7 +27,6 @@ function approvalAge(updatedAt: string): { label: string; state: 'ok' | 'warning
   const state = ms > 3600000 ? 'overdue' : ms > 2700000 ? 'warning' : 'ok';
   return { label, state };
 }
-
 
 const statusColors: any = {
   pending_hod: 'bg-purple-100 text-purple-700',
@@ -234,7 +235,7 @@ export default function Approvals() {
               <AlertTriangle className="h-6 w-6 text-red-600" />
             </div>
             <div>
-              <p className="text-sm text-red-600 font-medium">High Value (≥$10,000)</p>
+              <p className="text-sm text-red-600 font-medium">High Value (≥ USD 10,000 equiv.)</p>
               <p className="text-2xl font-bold text-red-700">
                 {pendingItems.filter((item: any) => isHighValue(item)).length}
               </p>
@@ -244,7 +245,7 @@ export default function Approvals() {
       </div>
 
       {/* Approvals List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -258,36 +259,36 @@ export default function Approvals() {
         ) : (
           <>
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
+            <table className="w-full text-sm">
+              <thead>
                 <tr>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">PO Number</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Supplier</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Items</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Value</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Status</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Created</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Actions</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">PO Number</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Supplier</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Items</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Value</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Status</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Created</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {pendingItems.map((item: any) => (
                   <tr key={item._id} className={`hover:bg-gray-50 ${isHighValue(item) ? 'bg-red-50/30' : ''}`}>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       <span className="font-mono text-sm font-medium text-primary break-all">
                         {item.poNumber || `PO-${item._id.slice(-6).toUpperCase()}`}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       <p className="font-medium text-gray-900">
                         {item.supplier?.companyName || 'Unknown Supplier'}
                       </p>
                       <p className="text-sm text-gray-500">{item.supplier?.contactEmail}</p>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       <span className="text-sm text-gray-600">{item.items?.length || 0} items</span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       <span className={`font-semibold ${isHighValue(item) ? 'text-red-600' : 'text-gray-900'}`}>
                         {formatCurrency(item.totalAmount || 0, item.currency)}
                       </span>
@@ -295,7 +296,7 @@ export default function Approvals() {
                         <span className="ml-2 text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">High Value</span>
                       )}
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       {item.status === 'pending_approvals' ? (
                         <div className="flex flex-col gap-1">
                           <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${item.financeApproved ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
@@ -311,7 +312,7 @@ export default function Approvals() {
                         </span>
                       )}
                     </td>
-                    <td className="py-4 px-6 text-sm text-gray-500">
+                    <td className="py-2.5 px-4 text-sm text-gray-500">
                       <div>{new Date(item.createdAt).toLocaleDateString('en-ZA')}</div>
                       {(() => {
                         const { label, state } = approvalAge(item.updatedAt || item.createdAt);
@@ -324,7 +325,7 @@ export default function Approvals() {
                         );
                       })()}
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       <button
                         onClick={() => { setSelectedItem(item); setShowModal(true); }}
                         className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
@@ -357,6 +358,8 @@ export default function Approvals() {
       >
         {selectedItem && (
           <div className="space-y-6">
+            <WorkflowStepper compact steps={purchaseOrderSteps(selectedItem)} />
+
             {/* PO Details */}
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -454,40 +457,40 @@ export default function Approvals() {
             {/* Items */}
             <div>
               <label className="text-sm text-gray-500 mb-2 block">Line Items</label>
-              <div className="border border-gray-200 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 sticky top-0">
+              <div className="overflow-x-auto max-h-48 overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0">
                     <tr>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Description</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Qty</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Unit Price</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Total</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Description</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Qty</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Unit Price</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Total</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {selectedItem.items?.map((item: any, index: any) => (
-                      <tr key={index}>
-                        <td className="py-3 px-4 text-sm">{item.description}</td>
-                        <td className="py-3 px-4 text-sm">{item.quantity} {item.unit}</td>
-                        <td className="py-3 px-4 text-sm">{formatCurrency(item.unitPrice || 0, selectedItem.currency)}</td>
-                        <td className="py-3 px-4 text-sm font-medium">{formatCurrency(item.totalPrice || 0, selectedItem.currency)}</td>
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="py-2.5 px-4">{item.description}</td>
+                        <td className="py-2.5 px-4">{item.quantity} {item.unit}</td>
+                        <td className="py-2.5 px-4">{formatCurrency(item.unitPrice || 0, selectedItem.currency)}</td>
+                        <td className="py-2.5 px-4 font-medium">{formatCurrency(item.totalPrice || 0, selectedItem.currency)}</td>
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot className="bg-gray-50">
+                  <tfoot className="bg-gray-50 border-t border-gray-200">
                     <tr>
-                      <td colSpan={3} className="py-3 px-4 text-sm font-medium text-right">Subtotal:</td>
-                      <td className="py-3 px-4 text-sm font-medium">{formatCurrency(selectedItem.subtotal || 0, selectedItem.currency)}</td>
+                      <td colSpan={3} className="py-2.5 px-4 text-sm font-medium text-right">Subtotal:</td>
+                      <td className="py-2.5 px-4 text-sm font-medium">{formatCurrency(selectedItem.subtotal || 0, selectedItem.currency)}</td>
                     </tr>
                     {selectedItem.vatAmount > 0 && (
                       <tr>
-                        <td colSpan={3} className="py-3 px-4 text-sm font-medium text-right">VAT:</td>
-                        <td className="py-3 px-4 text-sm font-medium">{formatCurrency(selectedItem.vatAmount || 0, selectedItem.currency)}</td>
+                        <td colSpan={3} className="py-2.5 px-4 text-sm font-medium text-right">VAT:</td>
+                        <td className="py-2.5 px-4 text-sm font-medium">{formatCurrency(selectedItem.vatAmount || 0, selectedItem.currency)}</td>
                       </tr>
                     )}
                     <tr className="border-t border-gray-200">
-                      <td colSpan={3} className="py-3 px-4 text-sm font-bold text-right">Total:</td>
-                      <td className="py-3 px-4 text-sm font-bold">{formatCurrency(selectedItem.totalAmount || 0, selectedItem.currency)}</td>
+                      <td colSpan={3} className="py-2.5 px-4 text-sm font-bold text-right">Total:</td>
+                      <td className="py-2.5 px-4 text-sm font-bold">{formatCurrency(selectedItem.totalAmount || 0, selectedItem.currency)}</td>
                     </tr>
                   </tfoot>
                 </table>

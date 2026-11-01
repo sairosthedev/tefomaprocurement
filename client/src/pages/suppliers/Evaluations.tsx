@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   CheckCircle2,
-  ClipboardList,
   Loader2,
   Plus,
   Star,
@@ -15,6 +14,7 @@ import { useAuth } from '../../context/AuthContext'
 import PageHeader, { PageStatCard } from '../../components/PageHeader'
 import Pagination from '../../components/Pagination'
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination'
+import { FormSteps, FormStepNav } from '../../components/FormSteps'
 
 type Tab = 'due' | 'all'
 
@@ -41,6 +41,12 @@ const EVALUATION_TYPES = [
   { value: 'initial', label: 'Initial evaluation' },
   { value: 're_evaluation', label: 'Re-evaluation' },
   { value: 'quarterly_review', label: 'Quarterly review' }
+]
+
+const EVALUATION_STEPS = [
+  { label: 'Scores', description: 'Each criterion, 1 to 5' },
+  { label: 'Recommendation', description: 'Type, outcome and notes' },
+  { label: 'Review', description: 'Check, then save' }
 ]
 
 function formatDate(value?: string) {
@@ -79,6 +85,7 @@ export default function Evaluations() {
   const [recommendation, setRecommendation] = useState('approve')
   const [scores, setScores] = useState<Record<string, number>>(emptyScores)
   const [otherNotes, setOtherNotes] = useState('')
+  const [evalStep, setEvalStep] = useState(0)
 
   const canCreate = user?.role === 'procurement_officer' || isProcurementHead(user)
 
@@ -132,6 +139,7 @@ export default function Evaluations() {
     setRecommendation('approve')
     setScores(emptyScores())
     setOtherNotes('')
+    setEvalStep(0)
     setShowCreateModal(true)
   }
 
@@ -140,14 +148,38 @@ export default function Evaluations() {
     setSelectedSupplier(null)
   }
 
-  const handleCreateEvaluation = async () => {
-    if (!selectedSupplier?._id) return
-
+  const scoresValid = () => {
     const missing = SUPPLIER_EVALUATION_CRITERIA.filter(
       (criterion) => !scores[criterion.key] || scores[criterion.key] < 1 || scores[criterion.key] > 5
     )
     if (missing.length > 0) {
       showToast('Please score every evaluation criterion (1–5)', 'error')
+      return false
+    }
+    return true
+  }
+
+  const nextEvalStep = () => {
+    if (evalStep === 0 && !scoresValid()) return
+    setEvalStep((s) => Math.min(EVALUATION_STEPS.length - 1, s + 1))
+  }
+
+  const averageScore = useMemo(() => {
+    const values = SUPPLIER_EVALUATION_CRITERIA.map((criterion) => scores[criterion.key] || 0)
+    return values.length ? Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10 : 0
+  }, [scores])
+
+  const handleCreateEvaluation = async (e?: React.FormEvent) => {
+    e?.preventDefault()
+    // Enter in a field on an earlier step moves on rather than saving.
+    if (evalStep < EVALUATION_STEPS.length - 1) {
+      nextEvalStep()
+      return
+    }
+    if (!selectedSupplier?._id) return
+
+    if (!scoresValid()) {
+      setEvalStep(0)
       return
     }
 
@@ -265,39 +297,39 @@ export default function Evaluations() {
       )}
 
       {activeTab === 'all' && (
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+        <div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+              <thead>
                 <tr>
-                  <th className="px-5 py-3">Supplier</th>
-                  <th className="px-5 py-3">Type</th>
-                  <th className="px-5 py-3">Score</th>
-                  <th className="px-5 py-3">Recommendation</th>
-                  <th className="px-5 py-3">Status</th>
-                  <th className="px-5 py-3">Date</th>
-                  <th className="px-5 py-3">Next review</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Supplier</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Type</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Score</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Recommendation</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Status</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Date</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Next review</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {allEvaluations.map((evaluation) => (
                   <tr key={evaluation._id} className="hover:bg-gray-50">
-                    <td className="px-5 py-4 font-medium text-gray-900">{supplierName(evaluation)}</td>
-                    <td className="px-5 py-4 capitalize text-gray-600">{String(evaluation.evaluationType || '').replace(/_/g, ' ')}</td>
-                    <td className="px-5 py-4">
+                    <td className="py-2.5 px-4 font-medium text-gray-900">{supplierName(evaluation)}</td>
+                    <td className="py-2.5 px-4 capitalize text-gray-600">{String(evaluation.evaluationType || '').replace(/_/g, ' ')}</td>
+                    <td className="py-2.5 px-4">
                       <span className="inline-flex items-center gap-1 font-semibold text-gray-900">
                         <Star className="h-3.5 w-3.5 text-amber-500" />
                         {evaluation.overallScore}/5
                       </span>
                     </td>
-                    <td className="px-5 py-4 capitalize text-gray-600">{evaluation.recommendation}</td>
-                    <td className="px-5 py-4">
+                    <td className="py-2.5 px-4 capitalize text-gray-600">{evaluation.recommendation}</td>
+                    <td className="py-2.5 px-4">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[evaluation.status] || 'bg-gray-100 text-gray-700'}`}>
                         {STATUS_LABELS[evaluation.status] || evaluation.status}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-gray-600">{formatDate(evaluation.createdAt)}</td>
-                    <td className="px-5 py-4 text-gray-600">{formatDate(evaluation.nextReviewDue)}</td>
+                    <td className="py-2.5 px-4 text-gray-600">{formatDate(evaluation.createdAt)}</td>
+                    <td className="py-2.5 px-4 text-gray-600">{formatDate(evaluation.nextReviewDue)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -331,7 +363,39 @@ export default function Evaluations() {
               </button>
             </div>
 
-            <div className="px-6 py-5 space-y-5">
+            <form onSubmit={handleCreateEvaluation} className="px-6 py-5 space-y-5">
+              <FormSteps steps={EVALUATION_STEPS} current={evalStep} onSelect={setEvalStep} />
+
+              {evalStep === 0 && (
+                <>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Scoring criteria (1 = poor, 5 = excellent)</h3>
+                <div className="space-y-4">
+                  {SUPPLIER_EVALUATION_CRITERIA.map((criterion) => (
+                    <div key={criterion.key}>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-sm text-gray-700">{criterion.label}</label>
+                        <span className="text-sm font-semibold text-primary">{scores[criterion.key]}/5</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={1}
+                        max={5}
+                        step={1}
+                        value={scores[criterion.key]}
+                        onChange={(e) => setScores({ ...scores, [criterion.key]: Number(e.target.value) })}
+                        className="w-full accent-primary"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+                </>
+              )}
+
+              {evalStep === 1 && (
+                <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Evaluation type</label>
@@ -360,29 +424,6 @@ export default function Evaluations() {
               </div>
 
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">Scoring criteria (1 = poor, 5 = excellent)</h3>
-                <div className="space-y-4">
-                  {SUPPLIER_EVALUATION_CRITERIA.map((criterion) => (
-                    <div key={criterion.key}>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="text-sm text-gray-700">{criterion.label}</label>
-                        <span className="text-sm font-semibold text-primary">{scores[criterion.key]}/5</span>
-                      </div>
-                      <input
-                        type="range"
-                        min={1}
-                        max={5}
-                        step={1}
-                        value={scores[criterion.key]}
-                        onChange={(e) => setScores({ ...scores, [criterion.key]: Number(e.target.value) })}
-                        className="w-full accent-primary"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
                 <textarea
                   value={otherNotes}
@@ -392,26 +433,49 @@ export default function Evaluations() {
                   className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm resize-none"
                 />
               </div>
-            </div>
+                </>
+              )}
 
-            <div className="sticky bottom-0 flex justify-end gap-3 border-t border-gray-100 bg-white px-6 py-4">
-              <button
-                type="button"
-                onClick={closeCreateModal}
-                className="rounded-xl px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleCreateEvaluation}
-                disabled={submitting}
-                className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-dark disabled:opacity-50"
-              >
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
-                Save evaluation
-              </button>
-            </div>
+              {evalStep === 2 && (
+                <div className="space-y-4 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                      <p className="text-xs text-gray-500">Average score</p>
+                      <p className="text-xl font-bold text-gray-900">{averageScore}/5</p>
+                    </div>
+                    <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                      <p className="text-xs text-gray-500">Type</p>
+                      <p className="font-semibold text-gray-900">{EVALUATION_TYPES.find((o) => o.value === evaluationType)?.label}</p>
+                    </div>
+                    <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                      <p className="text-xs text-gray-500">Recommendation</p>
+                      <p className="font-semibold text-gray-900">{RECOMMENDATION_OPTIONS.find((o) => o.value === recommendation)?.label}</p>
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-gray-100 divide-y divide-gray-100">
+                    {SUPPLIER_EVALUATION_CRITERIA.map((criterion) => (
+                      <div key={criterion.key} className="flex items-center justify-between px-3 py-2">
+                        <span className="text-gray-700">{criterion.label}</span>
+                        <span className="font-semibold text-gray-900">{scores[criterion.key]}/5</span>
+                      </div>
+                    ))}
+                  </div>
+                  {otherNotes.trim() && (
+                    <p className="text-gray-600"><span className="font-medium text-gray-900">Notes: </span>{otherNotes}</p>
+                  )}
+                </div>
+              )}
+
+              <FormStepNav
+                current={evalStep}
+                total={EVALUATION_STEPS.length}
+                onBack={() => setEvalStep((s) => Math.max(0, s - 1))}
+                onNext={nextEvalStep}
+                onCancel={closeCreateModal}
+                finishLabel={submitting ? 'Saving...' : 'Save evaluation'}
+                submitting={submitting}
+              />
+            </form>
           </div>
         </div>
       )}

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { procurementAPI } from '../services/procurement.service';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
+import FilterSelect from '../components/FilterSelect';
+import { WorkflowStepper, type WorkflowStep } from '../components/WorkflowStepper';
 import { Loader2, ShieldCheck, ShieldX, Phone, AlertTriangle, Landmark } from 'lucide-react';
 
 /**
@@ -12,6 +14,37 @@ import { Loader2, ShieldCheck, ShieldX, Phone, AlertTriangle, Landmark } from 'l
  * confirm it, and then a SECOND person — not the requester, not the caller —
  * approves. That sequence is the control against payment-redirection fraud.
  */
+const personName = (p: any) => (p ? `${p.firstName || ''} ${p.lastName || ''}`.trim() : undefined);
+
+/** Requested, verified by callback, approved by a second person, applied. */
+function bankChangeSteps(request: any): WorkflowStep[] {
+  const stopped = request.status === 'rejected' || request.status === 'cancelled';
+  const approved = request.status === 'approved';
+  const raw: Array<{ key: string; label: string; done: boolean; detail?: string }> = [
+    { key: 'requested', label: 'Requested', done: true, detail: personName(request.requestedBy) },
+    {
+      key: 'callback',
+      label: 'Callback verified',
+      done: Boolean(request.callback?.verifiedAt) || approved,
+      detail: personName(request.callback?.verifiedBy)
+    },
+    { key: 'approval', label: 'Second approval', done: approved, detail: personName(request.approvedBy) },
+    {
+      key: 'applied',
+      label: 'Applied, payments resume',
+      done: approved,
+      detail: request.appliedAt ? new Date(request.appliedAt).toLocaleDateString('en-ZA') : undefined
+    }
+  ];
+  const current = raw.findIndex((s) => !s.done);
+  return raw.map((s, i) => ({
+    key: s.key,
+    label: s.label,
+    detail: i === current && stopped ? (request.status === 'rejected' ? 'Rejected' : 'Cancelled') : s.detail,
+    state: i === current ? (stopped ? 'stopped' : 'current') : s.done ? 'done' : 'upcoming'
+  }));
+}
+
 export default function BankChanges() {
   const { showToast } = useToast();
   const [requests, setRequests] = useState<any[]>([]);
@@ -133,20 +166,17 @@ export default function BankChanges() {
         subtitle="Payments to a supplier are held while a banking change is open. Verify by calling a number already on file, then have a second person approve."
       />
 
-      <div className="flex items-center gap-2 mb-6">
-        {['open', 'approved', 'rejected', 'all'].map((s) => (
-          <button
-            key={s}
-            onClick={() => setStatusFilter(s)}
-            className={`px-3 py-1.5 rounded-xl text-sm border capitalize ${
-              statusFilter === s
-                ? 'bg-slate-900 text-white border-slate-900'
-                : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-            }`}
-          >
-            {s}
-          </button>
-        ))}
+      <div className="mb-6">
+        <FilterSelect
+          options={[
+            { value: 'open', label: 'Open' },
+            { value: 'approved', label: 'Approved' },
+            { value: 'rejected', label: 'Rejected' },
+            { value: 'all', label: 'All' }
+          ]}
+          value={statusFilter}
+          onChange={setStatusFilter}
+        />
       </div>
 
       {loading ? (
@@ -185,21 +215,23 @@ export default function BankChanges() {
                   )}
                 </div>
 
-                <div className="rounded-xl border border-gray-100 overflow-hidden mb-4">
+                <WorkflowStepper compact steps={bankChangeSteps(request)} />
+
+                <div className="overflow-x-auto mb-4">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-50">
+                    <thead>
                       <tr>
-                        <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">Field</th>
-                        <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">From</th>
-                        <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">To</th>
+                        <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Field</th>
+                        <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">From</th>
+                        <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">To</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {(request.changes || []).map((change: any, i: number) => (
-                        <tr key={i}>
-                          <td className="py-2 px-3 font-medium text-gray-800">{change.field}</td>
-                          <td className="py-2 px-3 text-gray-500">{change.from || '—'}</td>
-                          <td className="py-2 px-3 text-gray-900 font-medium">{change.to || '—'}</td>
+                        <tr key={i} className="hover:bg-gray-50">
+                          <td className="py-2.5 px-4 font-medium text-gray-800">{change.field}</td>
+                          <td className="py-2.5 px-4 text-gray-500">{change.from || '—'}</td>
+                          <td className="py-2.5 px-4 text-gray-900 font-medium">{change.to || '—'}</td>
                         </tr>
                       ))}
                     </tbody>

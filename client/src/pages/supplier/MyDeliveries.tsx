@@ -8,6 +8,8 @@ import PageHeader from '../../components/PageHeader';
 import Pagination from '../../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
 import { formatCurrency } from '../../lib/constants';
+import { WorkflowStepper, NextStepCard } from '../../components/WorkflowStepper';
+import { supplierDeliveryJourney } from '../../lib/supplierJourney';
 
 const statusColors: any = {
   pending: 'bg-yellow-100 text-yellow-700',
@@ -132,7 +134,7 @@ export default function MyDeliveries() {
       </div>
 
       {/* Deliveries List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -157,42 +159,42 @@ export default function MyDeliveries() {
         ) : (
           <>
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
+            <table className="w-full text-sm">
+              <thead>
                 <tr>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">GRV #</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">PO Number</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Delivery Note</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Delivery Date</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Items</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Type</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Status</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Actions</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">GRV #</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">PO Number</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Delivery Note</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Delivery Date</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Items</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Type</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Status</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {deliveries.map((delivery: any) => (
                   <tr key={delivery._id} className="hover:bg-gray-50">
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       {delivery.status === 'pending' ? (
-                        <span className="text-sm text-yellow-600 italic">Awaiting GRV</span>
+                        <span className="text-yellow-600 italic">Awaiting GRV</span>
                       ) : (
-                        <span className="font-mono text-sm font-medium text-primary">
+                        <span className="font-mono font-medium text-primary">
                           {delivery.grvNumber || '-'}
                         </span>
                       )}
                     </td>
-                    <td className="py-4 px-6">
-                      <span className="font-mono text-sm text-gray-600">
+                    <td className="py-2.5 px-4">
+                      <span className="font-mono text-gray-600">
                         {delivery.purchaseOrder?.poNumber || '-'}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
-                      <span className="text-sm text-gray-600">
+                    <td className="py-2.5 px-4">
+                      <span className="text-gray-600">
                         {delivery.deliveryNoteNumber || (delivery.status === 'pending' ? 'Not yet provided' : '-')}
                       </span>
                     </td>
-                    <td className="py-4 px-6 text-sm text-gray-500">
+                    <td className="py-2.5 px-4 text-gray-500">
                       {delivery.status === 'pending' && delivery.expectedDeliveryDate ? (
                         <span>
                           Expected: {new Date(delivery.expectedDeliveryDate).toLocaleDateString('en-ZA')}
@@ -201,10 +203,10 @@ export default function MyDeliveries() {
                         new Date(delivery.deliveryDate).toLocaleDateString('en-ZA')
                       )}
                     </td>
-                    <td className="py-4 px-6">
-                      <span className="text-sm text-gray-600">{delivery.items?.length || 0} items</span>
+                    <td className="py-2.5 px-4">
+                      <span className="text-gray-600">{delivery.items?.length || 0} items</span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       {delivery.isPartialDelivery ? (
                         <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
                           Partial
@@ -215,12 +217,12 @@ export default function MyDeliveries() {
                         </span>
                       )}
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[delivery.status] || statusColors.received}`}>
                         {formatStatus(delivery.status)}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       <ViewButton
                         onClick={() => { setSelectedDelivery(delivery); setShowViewModal(true); }}
                       />
@@ -250,6 +252,21 @@ export default function MyDeliveries() {
       >
         {selectedDelivery && (
           <div className="space-y-6">
+            <div>
+              <WorkflowStepper steps={supplierDeliveryJourney(selectedDelivery).steps} compact />
+              {['accepted', 'partially_accepted'].includes(selectedDelivery.status) && selectedDelivery.purchaseOrder?._id ? (
+                <NextStepCard
+                  title="Submit your invoice"
+                  description={`Bill what Stores accepted against ${selectedDelivery.purchaseOrder.poNumber}.`}
+                  action={{ label: 'Submit invoice', to: `/app/submit-invoice?po=${selectedDelivery.purchaseOrder._id}` }}
+                />
+              ) : selectedDelivery.status !== 'rejected' ? (
+                <NextStepCard
+                  waiting
+                  title={selectedDelivery.status === 'pending' ? 'Stores to receive the goods' : 'Stores to inspect and accept the goods'}
+                />
+              ) : null}
+            </div>
             {selectedDelivery.status === 'pending' && (
               <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-200 mb-6">
                 <div className="flex items-start gap-3">
@@ -340,27 +357,27 @@ export default function MyDeliveries() {
 
             <div>
               <label className="text-sm text-gray-500 mb-2 block">Delivered Items</label>
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
                     <tr>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Description</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Ordered</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Received</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Description</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Ordered</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Received</th>
                       {selectedDelivery.status !== 'pending' && (
                         <>
-                          <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Rejected</th>
-                          <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Condition</th>
+                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Rejected</th>
+                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Condition</th>
                         </>
                       )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {selectedDelivery.items?.map((item: any, index: any) => (
-                      <tr key={index}>
-                        <td className="py-3 px-4 text-sm font-medium">{item.description}</td>
-                        <td className="py-3 px-4 text-sm text-gray-600">{item.quantityOrdered || '-'}</td>
-                        <td className="py-3 px-4 text-sm text-gray-900 font-medium">
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="py-2.5 px-4 font-medium">{item.description}</td>
+                        <td className="py-2.5 px-4 text-gray-600">{item.quantityOrdered || '-'}</td>
+                        <td className="py-2.5 px-4 font-medium text-gray-900">
                           {selectedDelivery.status === 'pending' ? (
                             <span className="text-yellow-600 italic">Pending</span>
                           ) : (
@@ -369,8 +386,8 @@ export default function MyDeliveries() {
                         </td>
                         {selectedDelivery.status !== 'pending' && (
                           <>
-                            <td className="py-3 px-4 text-sm text-red-600">{item.quantityRejected || 0}</td>
-                            <td className="py-3 px-4 text-sm">
+                            <td className="py-2.5 px-4 text-red-600">{item.quantityRejected || 0}</td>
+                            <td className="py-2.5 px-4">
                               <span className={`px-2 py-0.5 rounded text-xs ${
                                 item.condition === 'good' ? 'bg-green-100 text-green-700' :
                                 item.condition === 'damaged' ? 'bg-red-100 text-red-700' :

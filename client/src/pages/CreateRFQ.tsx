@@ -4,11 +4,23 @@ import { useToast } from '../components/Toast';
 import api, { procurementAPI } from '../lib/api';
 import { getCategoryName } from '../lib/constants';
 import PageHeader from '../components/PageHeader';
-import { 
-  Package, Calendar, Users, Send, 
+import { FormSteps, FormStepNav } from '../components/FormSteps';
+import {
+  Package, Calendar, Users, Send,
   Loader2, Plus, X, Search, CheckCircle, AlertCircle,
   Lock, FileText, Sparkles
 } from 'lucide-react';
+
+const STEPS = [
+  { label: 'Details', description: 'Title, deadline and terms' },
+  { label: 'Items', description: 'Lines from the requisition' },
+  { label: 'Suppliers', description: 'Who is invited to quote' },
+  { label: 'Review & send', description: 'Check, then publish' }
+];
+const STEP_DETAILS = 0;
+const STEP_ITEMS = 1;
+const STEP_SUPPLIERS = 2;
+const LAST_STEP = STEPS.length - 1;
 
 export default function CreateRFQ() {
   const navigate = useNavigate();
@@ -37,7 +49,8 @@ export default function CreateRFQ() {
   // dropping a possibly-real supplier is the worse error — but they count as
   // one supplier against the three-quote rule.
   const [suspectedDuplicates, setSuspectedDuplicates] = useState<any[]>([]);
-  
+  const [step, setStep] = useState(STEP_DETAILS);
+
   const [formData, setFormData] = useState<any>({
     title: '',
     description: '',
@@ -202,21 +215,62 @@ export default function CreateRFQ() {
     });
   };
 
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [step]);
+
+  // Checks a step must pass before the next one opens. The deadline is only
+  // demanded at publishing, as before, so a draft can still be saved without it.
+  const validateStep = (index: number): boolean => {
+    if (index === STEP_DETAILS && !formData.title?.trim()) {
+      showToast('Please enter an RFQ title', 'error');
+      return false;
+    }
+    if (index === STEP_ITEMS && enteredItemCount === 0) {
+      showToast('RFQ must have at least one item before it can be sent to suppliers', 'error');
+      return false;
+    }
+    if (index === STEP_SUPPLIERS && selectedSuppliers.length === 0) {
+      showToast('Please select at least one supplier', 'error');
+      return false;
+    }
+    return true;
+  };
+
+  const goNext = () => {
+    if (validateStep(step)) setStep((s) => Math.min(s + 1, LAST_STEP));
+  };
+
   const handleSubmit = async (e: any, asDraft = false) => {
     e.preventDefault();
+
+    // Enter in a field submits the form; before the last step it means "next".
+    if (!asDraft && step < LAST_STEP) {
+      goNext();
+      return;
+    }
+
+    if (!formData.title?.trim()) {
+      showToast('Please enter an RFQ title', 'error');
+      setStep(STEP_DETAILS);
+      return;
+    }
 
     if (!asDraft) {
       if (selectedSuppliers.length === 0) {
         showToast('Please select at least one supplier', 'error');
+        setStep(STEP_SUPPLIERS);
         return;
       }
       if (!formData.submissionDeadline) {
         showToast('Please set a submission deadline', 'error');
+        setStep(STEP_DETAILS);
         return;
       }
       const rfqItems = (requisition?.items || []).filter((item: any) => item.description?.trim());
       if (rfqItems.length === 0) {
         showToast('RFQ must have at least one item before it can be sent to suppliers', 'error');
+        setStep(STEP_ITEMS);
         return;
       }
     }
@@ -253,8 +307,9 @@ export default function CreateRFQ() {
         status: asDraft ? 'draft' : 'open'
       };
 
-      await procurementAPI.createRFQ(rfqData);
-      
+      const created = await procurementAPI.createRFQ(rfqData);
+      const rfqId = created.data?.data?._id;
+
       // Update requisition status to sourcing
       if (!asDraft && requisitionId) {
         try {
@@ -268,7 +323,8 @@ export default function CreateRFQ() {
       }
 
       showToast(asDraft ? 'RFQ saved as draft' : 'RFQ created and sent to suppliers', 'success');
-      navigate('/app/rfqs');
+      // Straight to the new RFQ, where its next steps are.
+      navigate(rfqId ? `/app/rfqs/${rfqId}` : '/app/rfqs');
     } catch (error: any) {
       console.error('Error creating RFQ:', error);
       showToast(error.response?.data?.message || 'Failed to create RFQ', 'error');
@@ -297,10 +353,12 @@ export default function CreateRFQ() {
         }
       />
 
+      <FormSteps steps={STEPS} current={step} onSelect={setStep} />
+
       <form onSubmit={(e: any) => handleSubmit(e, false)}>
         <div className="space-y-6">
           {/* Requisition Info Banner */}
-          {requisition && (
+          {requisition && step !== LAST_STEP && (
             <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5">
               <div className="flex items-start gap-3">
                 <div className="p-2 bg-blue-100 rounded-lg">
@@ -322,6 +380,8 @@ export default function CreateRFQ() {
             </div>
           )}
 
+          {step === STEP_DETAILS && (
+          <>
           {/* RFQ Details */}
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">RFQ Details</h2>
@@ -381,7 +441,22 @@ export default function CreateRFQ() {
             </div>
           </div>
 
+          {/* Terms & Conditions */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Terms & Conditions</h2>
+            <textarea
+              value={formData.termsAndConditions}
+              onChange={(e: any) => setFormData({...formData, termsAndConditions: e.target.value})}
+              rows={4}
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
+              placeholder="Enter terms and conditions for this RFQ..."
+            />
+          </div>
+          </>
+          )}
+
           {/* Items from Requisition - READ ONLY */}
+          {step === STEP_ITEMS && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
@@ -397,31 +472,31 @@ export default function CreateRFQ() {
             </div>
 
             {requisition?.items?.length > 0 ? (
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
                     <tr>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">#</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Description</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Specification</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Quantity</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Unit</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">#</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Description</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Specification</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Quantity</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Unit</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {requisition.items.map((item: any, index: any) => (
-                      <tr key={index} className="bg-gray-50/50">
-                        <td className="py-3 px-4 text-sm text-gray-500">{index + 1}</td>
-                        <td className="py-3 px-4">
-                          <span className="text-sm font-medium text-gray-900">{item.description}</span>
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="py-2.5 px-4 text-gray-500">{index + 1}</td>
+                        <td className="py-2.5 px-4">
+                          <span className="font-medium text-gray-900">{item.description}</span>
                         </td>
-                        <td className="py-3 px-4 text-sm text-gray-600">
+                        <td className="py-2.5 px-4 text-gray-600">
                           {item.specification || item.specifications || '-'}
                         </td>
-                        <td className="py-3 px-4">
-                          <span className="text-sm font-semibold text-gray-900">{item.quantity}</span>
+                        <td className="py-2.5 px-4">
+                          <span className="font-semibold text-gray-900">{item.quantity}</span>
                         </td>
-                        <td className="py-3 px-4 text-sm text-gray-600">{item.unit || 'Each'}</td>
+                        <td className="py-2.5 px-4 text-gray-600">{item.unit || 'Each'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -439,8 +514,10 @@ export default function CreateRFQ() {
               Items are locked from the original requisition and cannot be modified
             </p>
           </div>
+          )}
 
           {/* Select Suppliers */}
+          {step === STEP_SUPPLIERS && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Invite Suppliers</h2>
@@ -617,29 +694,120 @@ export default function CreateRFQ() {
               )}
             </div>
           </div>
+          )}
 
-          {/* Terms & Conditions */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Terms & Conditions</h2>
-            <textarea
-              value={formData.termsAndConditions}
-              onChange={(e: any) => setFormData({...formData, termsAndConditions: e.target.value})}
-              rows={4}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
-              placeholder="Enter terms and conditions for this RFQ..."
-            />
+          {/* Review & send: everything suppliers will receive, in one place */}
+          {step === LAST_STEP && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-6">
+            <h2 className="text-lg font-semibold text-gray-900">Review before sending</h2>
+
+            <section>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" /> Details
+                </h3>
+                <button type="button" onClick={() => setStep(STEP_DETAILS)} className="text-xs font-medium text-primary hover:underline">
+                  Edit
+                </button>
+              </div>
+              <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                <div className="md:col-span-2">
+                  <dt className="text-gray-500">Title</dt>
+                  <dd className="font-medium text-gray-900">{formData.title || '-'}</dd>
+                </div>
+                {requisition && (
+                  <div>
+                    <dt className="text-gray-500">Requisition</dt>
+                    <dd className="font-medium text-gray-900">{requisition.requisitionNumber}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt className="text-gray-500 flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> Submission deadline</dt>
+                  <dd className={`font-medium ${formData.submissionDeadline ? 'text-gray-900' : 'text-red-600'}`}>
+                    {formData.submissionDeadline
+                      ? new Date(formData.submissionDeadline).toLocaleString()
+                      : 'Not set (required to publish)'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500">Delivery required by</dt>
+                  <dd className="font-medium text-gray-900">
+                    {formData.deliveryRequiredBy ? new Date(formData.deliveryRequiredBy).toLocaleDateString() : '-'}
+                  </dd>
+                </div>
+                {formData.description && (
+                  <div className="md:col-span-2">
+                    <dt className="text-gray-500">Description / requirements</dt>
+                    <dd className="text-gray-700 whitespace-pre-line">{formData.description}</dd>
+                  </div>
+                )}
+                {formData.termsAndConditions && (
+                  <div className="md:col-span-2">
+                    <dt className="text-gray-500">Terms & conditions</dt>
+                    <dd className="text-gray-700 whitespace-pre-line">{formData.termsAndConditions}</dd>
+                  </div>
+                )}
+              </dl>
+            </section>
+
+            <section className="pt-5 border-t border-gray-100">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <Package className="h-4 w-4 text-primary" /> Items ({enteredItemCount})
+                </h3>
+                <button type="button" onClick={() => setStep(STEP_ITEMS)} className="text-xs font-medium text-primary hover:underline">
+                  View
+                </button>
+              </div>
+              <ul className="text-sm divide-y divide-gray-100">
+                {(requisition?.items || [])
+                  .filter((item: any) => item.description?.trim())
+                  .map((item: any, index: any) => (
+                    <li key={index} className="flex justify-between gap-4 py-1.5">
+                      <span className="text-gray-900">{item.description}</span>
+                      <span className="text-gray-600 whitespace-nowrap">
+                        {item.quantity} {item.unit || 'Each'}
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+            </section>
+
+            <section className="pt-5 border-t border-gray-100">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <Users className="h-4 w-4 text-primary" /> Suppliers invited ({selectedSuppliers.length})
+                </h3>
+                <button type="button" onClick={() => setStep(STEP_SUPPLIERS)} className="text-xs font-medium text-primary hover:underline">
+                  Edit
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {selectedSuppliers.map((supplier: any) => (
+                  <span key={supplier._id} className="text-sm bg-primary/10 text-primary px-3 py-1 rounded-full">
+                    {supplier.companyName}
+                  </span>
+                ))}
+              </div>
+              {belowMinimum && (
+                <p className="mt-3 text-sm text-red-700 flex items-start gap-1.5">
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  Fewer than 3 suppliers: awarding this RFQ will need an approved quotation waiver.
+                </p>
+              )}
+            </section>
           </div>
+          )}
 
-          {/* Actions */}
-          <div className="flex items-center justify-between pt-4">
-            <button
-              type="button"
-              onClick={() => navigate(-1)}
-              className="px-6 py-2.5 text-gray-700 font-medium hover:bg-gray-100 rounded-xl transition-colors"
-            >
-              Cancel
-            </button>
-            <div className="flex gap-3">
+          <FormStepNav
+            current={step}
+            total={STEPS.length}
+            onBack={() => setStep((s) => Math.max(s - 1, 0))}
+            onNext={goNext}
+            onCancel={() => navigate(-1)}
+            finishLabel="Publish RFQ"
+            submitting={submitting}
+            extra={
               <button
                 type="button"
                 onClick={(e: any) => handleSubmit(e, true)}
@@ -648,21 +816,8 @@ export default function CreateRFQ() {
               >
                 Save as Draft
               </button>
-              <button
-                type="submit"
-                disabled={submitting || selectedSuppliers.length === 0 || enteredItemCount === 0}
-                className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-medium rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50"
-                title={enteredItemCount === 0 ? 'Add at least one item before publishing' : undefined}
-              >
-                {submitting ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <Send className="h-5 w-5" />
-                )}
-                Publish RFQ
-              </button>
-            </div>
-          </div>
+            }
+          />
         </div>
       </form>
     </div>

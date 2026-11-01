@@ -9,6 +9,8 @@ import { PO_CANCELLATION_REASONS, isProcurementHead } from '@fossil/shared';
 import PageHeader from '../components/PageHeader';
 import CancelWorkflowModal from '../components/CancelWorkflowModal';
 import { canCancelPurchaseOrder, purchaseOrderCancelApiBase } from '../lib/cancellationAccess';
+import { WorkflowStepper, NextStepCard } from '../components/WorkflowStepper';
+import { purchaseOrderSteps, PO_WAITING_ON } from '../lib/purchaseOrderSteps';
 import { 
   ShoppingCart, 
   Calendar, 
@@ -186,6 +188,38 @@ export default function PurchaseOrderDetail() {
         reasons={PO_CANCELLATION_REASONS}
         onConfirm={handleCancelPurchaseOrder}
       />
+
+      <WorkflowStepper steps={purchaseOrderSteps(po, { withSources: true })} />
+      {po.status === 'draft' && isProcurement ? (
+        <NextStepCard
+          title="Submit this purchase order for approval"
+          description="It goes to the Head of Procurement, then Finance."
+          action={{ label: submitting ? 'Submitting...' : 'Submit for approval', onClick: handleSubmit, disabled: submitting }}
+        />
+      ) : PO_WAITING_ON[po.status] ? (
+        <NextStepCard
+          title={PO_WAITING_ON[po.status]}
+          waiting={!(
+            (po.status === 'pending_finance' && isFinance) ||
+            (po.status === 'pending_coo' && isCOO) ||
+            (['pending_hod', 'pending_proc_hod'].includes(po.status) && isProcurementHead(user))
+          )}
+          action={
+            (po.status === 'pending_finance' && isFinance) ||
+            (po.status === 'pending_coo' && isCOO) ||
+            (['pending_hod', 'pending_proc_hod'].includes(po.status) && isProcurementHead(user))
+              ? { label: 'Open approvals', to: '/app/approvals' }
+              : undefined
+          }
+        />
+      ) : po.status === 'issued' || po.status === 'partially_received' ? (
+        <NextStepCard
+          title="Supplier to deliver, and Stores to receive the goods"
+          description="Stores record the delivery against this order when it arrives."
+          waiting={user?.role !== 'stores_officer'}
+          action={user?.role === 'stores_officer' ? { label: 'Open deliveries', to: '/app/deliveries' } : undefined}
+        />
+      ) : null}
 
       {po.status === 'cancelled' && po.cancellationReason && (
         <div className="mb-6 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -374,29 +408,29 @@ export default function PurchaseOrderDetail() {
           <div className="border-t pt-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Order Items</h3>
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Description</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-700">Quantity</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-700">Unit Price</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-700">Total</th>
+                  <tr>
+                    <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Description</th>
+                    <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Quantity</th>
+                    <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Unit Price</th>
+                    <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Total</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-gray-100">
                   {po.items.map((item: any, index: any) => (
-                    <tr key={index} className="border-b border-gray-100">
-                      <td className="py-3 px-4">
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="py-2.5 px-4">
                         <p className="font-medium text-gray-900">{item.description}</p>
                         {item.unit && (
                           <p className="text-xs text-gray-500 mt-1">Unit: {item.unit}</p>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-right text-sm text-gray-900">{item.quantity}</td>
-                      <td className="py-3 px-4 text-right text-sm text-gray-900">
+                      <td className="py-2.5 px-4 text-right text-gray-900">{item.quantity}</td>
+                      <td className="py-2.5 px-4 text-right text-gray-900">
                         {formatCurrency(item.unitPrice || 0, po.currency)}
                       </td>
-                      <td className="py-3 px-4 text-right text-sm font-medium text-gray-900">
+                      <td className="py-2.5 px-4 text-right font-medium text-gray-900">
                         {formatCurrency((item.quantity || 0) * (item.unitPrice || 0), po.currency)}
                       </td>
                     </tr>
@@ -404,10 +438,10 @@ export default function PurchaseOrderDetail() {
                 </tbody>
                 <tfoot>
                   <tr className="bg-gray-50">
-                    <td colSpan={3} className="py-3 px-4 text-right font-semibold text-gray-900">
+                    <td colSpan={3} className="py-2.5 px-4 text-right font-semibold text-gray-900">
                       Total Amount:
                     </td>
-                    <td className="py-3 px-4 text-right font-bold text-lg text-gray-900">
+                    <td className="py-2.5 px-4 text-right font-bold text-lg text-gray-900">
                       {formatCurrency(po.totalAmount || 0, po.currency)}
                     </td>
                   </tr>

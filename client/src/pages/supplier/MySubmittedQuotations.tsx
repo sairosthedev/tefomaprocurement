@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../components/Toast';
 import api from '../../lib/api';
-import Tabs from '../../components/Tabs';
+import FilterSelect from '../../components/FilterSelect';
 import { 
   FileText, Loader2, CheckCircle, XCircle, Clock, 
   Search, Calendar, DollarSign, Package, AlertCircle,
@@ -15,6 +15,8 @@ import Pagination from '../../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
 import { formatCurrency } from '../../lib/constants';
 import { getCurrentSbuCurrency } from '../../lib/sbu';
+import { WorkflowStepper, NextStepCard } from '../../components/WorkflowStepper';
+import { supplierQuotationJourney, supplierQuotationNext } from '../../lib/supplierJourney';
 
 const statusColors: any = {
   submitted: 'bg-blue-100 text-blue-700',
@@ -78,11 +80,11 @@ export default function MySubmittedQuotations() {
   };
 
   const quotationStatusTabs = [
-    { value: '', label: 'All', icon: FileText, count: quotations.length },
-    { value: 'submitted', label: 'Submitted', icon: Clock, count: quotations.filter((q: any) => q.status === 'submitted').length },
-    { value: 'under_review', label: 'Under Review', icon: Eye, count: quotations.filter((q: any) => q.status === 'under_review').length },
-    { value: 'accepted', label: 'Accepted', icon: CheckCircle, count: quotations.filter((q: any) => q.status === 'accepted' || q.status === 'awarded').length },
-    { value: 'rejected', label: 'Rejected', icon: XCircle, count: quotations.filter((q: any) => q.status === 'rejected').length }
+    { value: '', label: 'All', count: quotations.length },
+    { value: 'submitted', label: 'Submitted', count: quotations.filter((q: any) => q.status === 'submitted').length },
+    { value: 'under_review', label: 'Under Review', count: quotations.filter((q: any) => q.status === 'under_review').length },
+    { value: 'accepted', label: 'Accepted', count: quotations.filter((q: any) => q.status === 'accepted' || q.status === 'awarded').length },
+    { value: 'rejected', label: 'Rejected', count: quotations.filter((q: any) => q.status === 'rejected').length }
   ];
 
   return (
@@ -154,7 +156,7 @@ export default function MySubmittedQuotations() {
 
       {/* Filters */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
@@ -165,17 +167,17 @@ export default function MySubmittedQuotations() {
               className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
             />
           </div>
-          <Tabs
-            tabs={quotationStatusTabs}
-            activeTab={statusFilter}
-            onTabChange={setStatusFilter}
-            variant="pills"
+          <FilterSelect
+            label="Status"
+            options={quotationStatusTabs}
+            value={statusFilter}
+            onChange={setStatusFilter}
           />
         </div>
       </div>
 
       {/* Quotations Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -191,30 +193,30 @@ export default function MySubmittedQuotations() {
         ) : (
           <>
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
+            <table className="w-full text-sm">
+              <thead>
                 <tr>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Quotation #</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">RFQ Details</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Total Amount</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Delivery Period</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Submitted Date</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Status</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Actions</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Quotation #</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">RFQ Details</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Total Amount</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Delivery Period</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Submitted Date</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Status</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {quotations.map((quote: any) => (
-                  <tr key={quote._id} className="hover:bg-gray-50 transition-colors">
-                    <td className="py-4 px-6">
-                      <span className="font-mono text-sm font-medium text-primary">
+                  <tr key={quote._id} className="hover:bg-gray-50">
+                    <td className="py-2.5 px-4">
+                      <span className="font-mono font-medium text-primary">
                         {quote.quotationNumber || `QT-${quote._id.slice(-6).toUpperCase()}`}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       <div>
                         <p className="font-medium text-gray-900">{quote.rfq?.title || 'N/A'}</p>
-                        <p className="text-sm text-gray-500 font-mono">{quote.rfq?.rfqNumber || 'N/A'}</p>
+                        <p className="text-xs text-gray-500 font-mono">{quote.rfq?.rfqNumber || 'N/A'}</p>
                         {quote.rfq?.submissionDeadline && (
                           <p className="text-xs text-gray-400 mt-1">
                             Deadline: {new Date(quote.rfq.submissionDeadline).toLocaleDateString('en-ZA')}
@@ -222,33 +224,33 @@ export default function MySubmittedQuotations() {
                         )}
                       </div>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       <div>
-                        <span className="font-semibold text-gray-900 text-lg">
+                        <span className="font-semibold text-gray-900">
                           {formatCurrency(quote.totalAmount, quote.currency || getCurrentSbuCurrency())}
                         </span>
                         <p className="text-xs text-gray-500 mt-1">{quote.currency || getCurrentSbuCurrency()}</p>
                       </div>
                     </td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <td className="py-2.5 px-4">
+                      <div className="flex items-center gap-2 text-gray-600">
                         <Package className="h-4 w-4" />
                         <span>{quote.deliveryPeriod || quote.deliveryDays || 'N/A'} days</span>
                       </div>
                     </td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <td className="py-2.5 px-4">
+                      <div className="flex items-center gap-2 text-gray-600">
                         <Calendar className="h-4 w-4" />
                         <span>{new Date(quote.submittedAt || quote.createdAt).toLocaleDateString('en-ZA')}</span>
                       </div>
                       <p className="text-xs text-gray-400 mt-1">
-                        {new Date(quote.submittedAt || quote.createdAt).toLocaleTimeString('en-ZA', { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
+                        {new Date(quote.submittedAt || quote.createdAt).toLocaleTimeString('en-ZA', {
+                          hour: '2-digit',
+                          minute: '2-digit'
                         })}
                       </p>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[quote.status] || statusColors.submitted}`}>
                         {statusLabels[quote.status] || quote.status?.replace('_', ' ') || 'Submitted'}
                       </span>
@@ -259,7 +261,7 @@ export default function MySubmittedQuotations() {
                         </div>
                       ) : null}
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       <ViewButton
                         onClick={() => {
                           setSelectedQuotation(quote);
@@ -292,6 +294,20 @@ export default function MySubmittedQuotations() {
       >
         {selectedQuotation && (
           <div className="space-y-6">
+            <div>
+              <WorkflowStepper steps={supplierQuotationJourney(selectedQuotation).steps} compact />
+              {(() => {
+                const next = supplierQuotationNext(selectedQuotation);
+                return next ? (
+                  <NextStepCard
+                    title={next.title}
+                    description={next.description}
+                    waiting={next.waiting}
+                    action={next.to ? { label: next.label || 'Open', to: next.to } : undefined}
+                  />
+                ) : null;
+              })()}
+            </div>
             {/* Status Banner */}
             {(selectedQuotation.status === 'accepted' || selectedQuotation.status === 'awarded') && (
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4">
@@ -413,34 +429,34 @@ export default function MySubmittedQuotations() {
             {/* Items Table */}
             <div>
               <label className="text-sm text-gray-500 font-medium mb-3 block">Quoted Items</label>
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
                     <tr>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Item Description</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Quantity</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Unit</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Unit Price</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Brand</th>
-                      <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600">Total</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Item Description</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Quantity</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Unit</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Unit Price</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Brand</th>
+                      <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Total</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {selectedQuotation.items?.map((item: any, index: any) => (
-                      <tr key={index}>
-                        <td className="py-3 px-4">
-                          <p className="text-sm font-medium text-gray-900">{item.description}</p>
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="py-2.5 px-4">
+                          <p className="font-medium text-gray-900">{item.description}</p>
                           {item.notes && (
                             <p className="text-xs text-gray-500 mt-1">{item.notes}</p>
                           )}
                         </td>
-                        <td className="py-3 px-4 text-sm text-gray-600">{item.quantity}</td>
-                        <td className="py-3 px-4 text-sm text-gray-600">{item.unit}</td>
-                        <td className="py-3 px-4 text-sm font-medium text-gray-900">
+                        <td className="py-2.5 px-4 text-gray-600">{item.quantity}</td>
+                        <td className="py-2.5 px-4 text-gray-600">{item.unit}</td>
+                        <td className="py-2.5 px-4 font-medium text-gray-900">
                           {formatCurrency(item.unitPrice, selectedQuotation.currency || getCurrentSbuCurrency())}
                         </td>
-                        <td className="py-3 px-4 text-sm text-gray-600">{item.brand || '-'}</td>
-                        <td className="py-3 px-4 text-sm font-semibold text-gray-900 text-right">
+                        <td className="py-2.5 px-4 text-gray-600">{item.brand || '-'}</td>
+                        <td className="py-2.5 px-4 font-semibold text-gray-900 text-right">
                           {formatCurrency(item.totalPrice || (item.quantity * item.unitPrice), selectedQuotation.currency || getCurrentSbuCurrency())}
                         </td>
                       </tr>
@@ -448,10 +464,10 @@ export default function MySubmittedQuotations() {
                   </tbody>
                   <tfoot className="bg-gray-50">
                     <tr>
-                      <td colSpan={5} className="py-3 px-4 text-right font-semibold text-gray-700">
+                      <td colSpan={5} className="py-2.5 px-4 text-right font-semibold text-gray-700">
                         Grand Total:
                       </td>
-                      <td className="py-3 px-4 text-lg font-bold text-primary text-right">
+                      <td className="py-2.5 px-4 text-lg font-bold text-primary text-right">
                         {formatCurrency(selectedQuotation.totalAmount, selectedQuotation.currency || getCurrentSbuCurrency())}
                       </td>
                     </tr>

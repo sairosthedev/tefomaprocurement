@@ -99,39 +99,39 @@ export default function Invoices() {
       ) : invoices.length === 0 ? (
         <div className="text-center py-12 text-gray-500">No invoices found</div>
       ) : (
-        <div className="bg-white rounded-xl shadow overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
               <tr>
-                <th className="text-left p-4 text-sm font-medium text-gray-600">Invoice</th>
-                <th className="text-left p-4 text-sm font-medium text-gray-600">PO</th>
-                <th className="text-left p-4 text-sm font-medium text-gray-600">Supplier</th>
-                <th className="text-left p-4 text-sm font-medium text-gray-600">Amount</th>
-                <th className="text-left p-4 text-sm font-medium text-gray-600">Status</th>
-                <th className="text-left p-4 text-sm font-medium text-gray-600">Match</th>
-                <th className="p-4" />
+                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Invoice</th>
+                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">PO</th>
+                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Supplier</th>
+                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Amount</th>
+                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Status</th>
+                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Match</th>
+                <th className="py-2.5 px-4 bg-gray-50 border-b border-gray-200" />
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-100">
               {invoices.map((inv) => (
-                <tr key={inv._id} className="border-b hover:bg-gray-50">
-                  <td className="p-4 font-medium">{inv.invoiceNumber}</td>
-                  <td className="p-4">{inv.purchaseOrder?.poNumber || '—'}</td>
-                  <td className="p-4">{inv.supplier?.companyName || '—'}</td>
-                  <td className="p-4">{formatCurrency(inv.totalAmount, inv.currency || getCurrentSbuCurrency())}</td>
-                  <td className="p-4">
+                <tr key={inv._id} className="hover:bg-gray-50">
+                  <td className="py-2.5 px-4 font-medium">{inv.invoiceNumber}</td>
+                  <td className="py-2.5 px-4">{inv.purchaseOrder?.poNumber || '—'}</td>
+                  <td className="py-2.5 px-4">{inv.supplier?.companyName || '—'}</td>
+                  <td className="py-2.5 px-4">{formatCurrency(inv.totalAmount, inv.currency || getCurrentSbuCurrency())}</td>
+                  <td className="py-2.5 px-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[inv.status] || 'bg-gray-100'}`}>
                       {formatStatus(inv.status)}
                     </span>
                   </td>
-                  <td className="p-4">
+                  <td className="py-2.5 px-4">
                     {inv.matchResult?.matched ? (
                       <CheckCircle className="h-5 w-5 text-green-600" />
                     ) : (
                       <AlertTriangle className="h-5 w-5 text-amber-500" />
                     )}
                   </td>
-                  <td className="p-4">
+                  <td className="py-2.5 px-4">
                     <ViewButton onClick={() => navigate(`/app/invoices/${inv._id}`)} />
                   </td>
                 </tr>

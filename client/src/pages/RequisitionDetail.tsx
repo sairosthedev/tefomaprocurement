@@ -9,6 +9,8 @@ import PageHeader from '../components/PageHeader';
 import CancelWorkflowModal from '../components/CancelWorkflowModal';
 import EquipmentDetailsView from '../components/EquipmentDetailsView';
 import { canCancelRequisition, requisitionCancelApiBase } from '../lib/cancellationAccess';
+import { WorkflowStepper, NextStepCard } from '../components/WorkflowStepper';
+import { requisitionJourney } from '../lib/procurementJourney';
 import { 
   FileText, 
   Calendar, 
@@ -117,6 +119,7 @@ export default function RequisitionDetail() {
   const isOwner =
     !!userId && String(requisition?.requestedBy?._id || requisition?.requestedBy || '') === userId;
   const mayCancelRequisition = canCancelRequisition(user, requisition);
+  const [accepting, setAccepting] = useState(false);
 
   // An approver may drop line items they don't want purchased before approving.
   const canEditItems =
@@ -160,6 +163,21 @@ export default function RequisitionDetail() {
       showToast(error.response?.data?.message || 'Failed to submit requisition', 'error');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Accepting is only ever followed by sourcing, so the RFQ form opens next
+  // with this requisition already chosen.
+  const handleAccept = async () => {
+    try {
+      setAccepting(true);
+      await api.put(`/procurement/requisitions/${id}/accept`, { comments: '' });
+      showToast('Requisition accepted — now create its RFQ', 'success');
+      navigate(`/app/rfqs/create?requisition=${id}`);
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to accept requisition', 'error');
+    } finally {
+      setAccepting(false);
     }
   };
 
@@ -334,6 +352,37 @@ export default function RequisitionDetail() {
         onConfirm={handleCancelRequisition}
       />
 
+      {(() => {
+        const { steps, next } = requisitionJourney(requisition, {
+          isOwner,
+          isDepartment,
+          isProcurement,
+          isProcurementHead: procHead,
+          isStores: user?.role === 'stores_officer'
+        });
+        const key = next?.action?.key;
+        return (
+          <>
+            <WorkflowStepper steps={steps} />
+            {next && (
+              <NextStepCard
+                title={next.title}
+                description={next.description}
+                waiting={next.waiting}
+                action={
+                  next.action && {
+                    label: key === 'accept' && accepting ? 'Accepting...' : next.action.label,
+                    to: next.action.to,
+                    onClick: key === 'submit' ? handleSubmit : key === 'accept' ? handleAccept : undefined,
+                    disabled: key === 'submit' ? submitting : key === 'accept' ? accepting : undefined
+                  }
+                }
+              />
+            )}
+          </>
+        );
+      })()}
+
       {requisition.status === 'cancelled' && requisition.cancellationReason && (
         <div className="mb-6 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-800">
           <strong>Cancellation reason:</strong> {requisition.cancellationReason}
@@ -402,26 +451,26 @@ export default function RequisitionDetail() {
                   </span>
                 )}
               </div>
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
                     <tr>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Package</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Details</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Units</th>
-                      <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600">Qty Req.</th>
-                      <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600">Qty Delivered</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Package</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Details</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Units</th>
+                      <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Qty Req.</th>
+                      <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Qty Delivered</th>
                       {canEditItems && (
-                        <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600">Action</th>
+                        <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Action</th>
                       )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {requisition.items.map((item: any, index: any) => (
-                      <tr key={item._id || index}>
-                        <td className="py-3 px-4 text-sm text-gray-600">{item.package || '—'}</td>
-                        <td className="py-3 px-4">
-                          <p className="text-sm font-medium text-gray-900">{item.description || item.name}</p>
+                      <tr key={item._id || index} className="hover:bg-gray-50">
+                        <td className="py-2.5 px-4 text-gray-600">{item.package || '—'}</td>
+                        <td className="py-2.5 px-4">
+                          <p className="font-medium text-gray-900">{item.description || item.name}</p>
                           {(item.specification || item.specifications) && (
                             <p className="text-xs text-gray-400 mt-0.5">{item.specification || item.specifications}</p>
                           )}
@@ -431,8 +480,8 @@ export default function RequisitionDetail() {
                             compact
                           />
                         </td>
-                        <td className="py-3 px-4 text-sm text-gray-600">{item.unit}</td>
-                        <td className="py-3 px-4 text-right">
+                        <td className="py-2.5 px-4 text-gray-600">{item.unit}</td>
+                        <td className="py-2.5 px-4 text-right">
                           {canEditItems && editingItemId === item._id ? (
                             <div className="flex items-center gap-1.5">
                               <input

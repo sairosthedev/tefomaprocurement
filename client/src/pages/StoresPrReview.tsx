@@ -8,6 +8,10 @@ import { getCurrentSbuCurrency } from '../lib/sbu';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
+import Tabs from '../components/Tabs';
+import StoresReviewedList from '../components/StoresReviewedList';
+import { WorkflowStepper, NextStepCard } from '../components/WorkflowStepper';
+import { requisitionJourney } from '../lib/procurementJourney';
 
 const actionLabel: Record<string, string> = {
   store_issue: 'Likely in stock',
@@ -29,10 +33,13 @@ export default function StoresPrReview() {
   const [acting, setActing] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(emptyPagination());
+  // "review" is the queue; "sent" is everything stores has already handled,
+  // so a forwarded requisition can still be followed to its delivery.
+  const [tab, setTab] = useState<'review' | 'sent'>('review');
 
   useEffect(() => {
-    load();
-  }, [page]);
+    if (tab === 'review') load();
+  }, [page, tab]);
 
   const load = async () => {
     try {
@@ -64,7 +71,7 @@ export default function StoresPrReview() {
     try {
       setActing(id);
       await storesAPI.forwardPurchaseRequisition(id, { notes: 'Forwarded to procurement after stores review' });
-      showToast('Forwarded to procurement', 'success');
+      showToast('Forwarded to procurement — follow it under "Sent on"', 'success');
       load();
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Action failed', 'error');
@@ -76,6 +83,46 @@ export default function StoresPrReview() {
   const allLinesFullyIssued = (pr: any) =>
     pr.items?.length > 0 &&
     pr.items.every((line: any) => (line.quantityFulfilledFromStock || 0) >= line.quantity);
+
+  /** What stores should do with this requisition now, from its lines. */
+  const storesNextStep = (pr: any) => {
+    if (allLinesFullyIssued(pr)) {
+      return {
+        title: 'Every line is issued — close it as fulfilled from stock',
+        action: {
+          label: acting === `fulfill-${pr._id}` ? 'Fulfilling...' : 'Fulfill from stock',
+          onClick: () => fulfillFromStock(pr._id),
+          disabled: !!acting
+        }
+      };
+    }
+    const anyInStock = pr.items?.some(
+      (line: any) =>
+        (line.quantityFulfilledFromStock || 0) < line.quantity &&
+        line.storeAvailability?.suggestedAction &&
+        line.storeAvailability.suggestedAction !== 'purchase'
+    );
+    if (anyInStock) {
+      return {
+        title: 'Issue what is in stock',
+        description: 'Search inventory for each line and issue from the stock row, or auto-process the lot. Forward anything left over to procurement.',
+        action: {
+          label: acting === `auto-${pr._id}` ? 'Processing...' : 'Auto-process stock',
+          onClick: () => autoProcess(pr._id),
+          disabled: !!acting
+        }
+      };
+    }
+    return {
+      title: 'Nothing is in stock — forward it to procurement',
+      description: 'Procurement then sources it through an RFQ.',
+      action: {
+        label: acting === pr._id ? 'Forwarding...' : 'Forward to procurement',
+        onClick: () => forward(pr._id),
+        disabled: !!acting
+      }
+    };
+  };
 
   const autoProcess = async (id: string) => {
     try {
@@ -110,7 +157,19 @@ export default function StoresPrReview() {
         subtitle="Search inventory for each requested item, confirm stock on hand, then issue from the inventory row. Forward anything not available to procurement."
       />
 
-      {loading ? (
+      <Tabs
+        className="mb-6"
+        activeTab={tab}
+        onTabChange={setTab}
+        tabs={[
+          { value: 'review', label: 'To review', count: tab === 'review' && !loading ? pagination.total : undefined },
+          { value: 'sent', label: 'Sent on' }
+        ]}
+      />
+
+      {tab === 'sent' ? (
+        <StoresReviewedList />
+      ) : loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
       ) : items.length === 0 ? (
         <p className="text-center text-gray-500 py-12">No requisitions awaiting stores review.</p>
@@ -118,6 +177,21 @@ export default function StoresPrReview() {
         <div className="space-y-6">
           {items.map((pr) => (
             <div key={pr._id} className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
+              <div className="px-5 pt-4">
+                <WorkflowStepper
+                  compact
+                  steps={
+                    requisitionJourney(pr, {
+                      isOwner: false,
+                      isDepartment: false,
+                      isProcurement: false,
+                      isProcurementHead: false,
+                      isStores: true
+                    }).steps
+                  }
+                />
+                <NextStepCard {...storesNextStep(pr)} />
+              </div>
               <div className="bg-gray-50 border-b border-gray-200 px-5 py-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                 <div>
                   <p className="text-[10px] uppercase tracking-wide text-gray-400">IR No.</p>
@@ -152,15 +226,15 @@ export default function StoresPrReview() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-gray-200 bg-white">
-                      <th className="text-left py-2.5 px-4 text-xs font-semibold text-gray-500">Package</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-semibold text-gray-500">Details</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-semibold text-gray-500">Units</th>
-                      <th className="text-right py-2.5 px-4 text-xs font-semibold text-gray-500">Qty Req.</th>
-                      <th className="text-right py-2.5 px-4 text-xs font-semibold text-gray-500">Qty Issued</th>
-                      <th className="text-right py-2.5 px-4 text-xs font-semibold text-gray-500">In Stock</th>
-                      <th className="text-left py-2.5 px-4 text-xs font-semibold text-gray-500">Hint</th>
-                      <th className="text-right py-2.5 px-4 text-xs font-semibold text-gray-500">Actions</th>
+                    <tr>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Package</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Details</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Units</th>
+                      <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Qty Req.</th>
+                      <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Qty Issued</th>
+                      <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">In Stock</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Hint</th>
+                      <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">

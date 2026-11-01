@@ -10,6 +10,8 @@ import Pagination from '../../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
 import { formatCurrency } from '../../lib/constants';
 import { getCurrentSbuCurrency } from '../../lib/sbu';
+import { WorkflowStepper, NextStepCard } from '../../components/WorkflowStepper';
+import { supplierPoJourney, supplierPoNext } from '../../lib/supplierJourney';
 
 const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
@@ -85,10 +87,13 @@ export default function MyPurchaseOrders() {
         deliveryNoteNumber: acknowledgeData.deliveryNoteNumber.trim() || undefined,
         expectedDeliveryDate: acknowledgeData.expectedDeliveryDate || undefined
       });
-      showToast('Purchase order acknowledged', 'success');
+      showToast('Purchase order acknowledged — next, deliver the goods', 'success');
       setShowAcknowledgeModal(false);
       setAcknowledgeData({ deliveryNoteNumber: '', expectedDeliveryDate: '' });
       fetchMyPurchaseOrders();
+      // Show the order again with its next step, rather than leaving the list.
+      setSelectedPO({ ...selectedPO, isAcknowledged: true });
+      setShowViewModal(true);
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to acknowledge', 'error');
     }
@@ -147,7 +152,7 @@ export default function MyPurchaseOrders() {
       </div>
 
       {/* Purchase Orders List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -160,49 +165,49 @@ export default function MyPurchaseOrders() {
         ) : (
           <>
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
+            <table className="w-full text-sm">
+              <thead>
                 <tr>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">PO #</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Items</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Total Value</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Delivery Expected</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Status</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Actions</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">PO #</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Items</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Total Value</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Delivery Expected</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Status</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {purchaseOrders.map((po: any) => (
                   <tr key={po._id} className="hover:bg-gray-50">
-                    <td className="py-4 px-6">
-                      <span className="font-mono text-sm font-medium text-primary">
+                    <td className="py-2.5 px-4">
+                      <span className="font-mono font-medium text-primary">
                         {po.poNumber}
                       </span>
                       <p className="text-xs text-gray-500 mt-1">
-                        {po.issuedAt 
+                        {po.issuedAt
                           ? new Date(po.issuedAt).toLocaleDateString('en-ZA')
                           : new Date(po.createdAt).toLocaleDateString('en-ZA')}
                       </p>
                     </td>
-                    <td className="py-4 px-6">
-                      <span className="text-sm text-gray-600">{po.items?.length || 0} items</span>
+                    <td className="py-2.5 px-4">
+                      <span className="text-gray-600">{po.items?.length || 0} items</span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       <span className="font-semibold text-gray-900">
                         {formatCurrency(po.totalAmount, po.currency || getCurrentSbuCurrency())}
                       </span>
                     </td>
-                    <td className="py-4 px-6 text-sm text-gray-500">
-                      {po.expectedDeliveryDate 
+                    <td className="py-2.5 px-4 text-gray-500">
+                      {po.expectedDeliveryDate
                         ? new Date(po.expectedDeliveryDate).toLocaleDateString('en-ZA')
                         : '-'}
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[po.status] || statusColors.sent}`}>
                         {po.status?.replace('_', ' ') || 'Received'}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       <div className="flex items-center gap-2">
                         <ViewButton
                           onClick={() => { setSelectedPO(po); setShowViewModal(true); }}
@@ -213,6 +218,14 @@ export default function MyPurchaseOrders() {
                             className="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
                           >
                             Acknowledge
+                          </button>
+                        )}
+                        {supplierPoNext(po)?.action === 'invoice' && (
+                          <button
+                            onClick={() => navigate(`/app/submit-invoice?po=${po._id}`)}
+                            className="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
+                          >
+                            Submit invoice
                           </button>
                         )}
                         {po.isAcknowledged && (
@@ -332,6 +345,20 @@ export default function MyPurchaseOrders() {
       >
         {selectedPO && (
           <div className="space-y-6">
+            <div>
+              <WorkflowStepper steps={supplierPoJourney(selectedPO).steps} compact />
+              {(() => {
+                const next = supplierPoNext(selectedPO);
+                if (!next) return null;
+                const action =
+                  next.action === 'acknowledge'
+                    ? { label: 'Acknowledge', onClick: () => { setShowViewModal(false); openAcknowledgeModal(selectedPO); } }
+                    : next.action === 'invoice'
+                      ? { label: 'Submit invoice', to: `/app/submit-invoice?po=${selectedPO._id}` }
+                      : undefined;
+                return <NextStepCard title={next.title} description={next.description} waiting={next.waiting} action={action} />;
+              })()}
+            </div>
             {/* Acknowledgment Info */}
             {selectedPO.isAcknowledged && (selectedPO.status === 'issued' || selectedPO.status === 'approved') && (
               <div className="bg-green-50 border border-green-200 rounded-xl p-4">
@@ -397,25 +424,25 @@ export default function MyPurchaseOrders() {
 
             <div>
               <label className="text-sm text-gray-500 mb-2 block">Order Items</label>
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
                     <tr>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Item</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Qty</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Unit Price</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Total</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Item</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Qty</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Unit Price</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Total</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {selectedPO.items?.map((item: any, index: any) => (
-                      <tr key={index}>
-                        <td className="py-3 px-4 text-sm font-medium">{item.description}</td>
-                        <td className="py-3 px-4 text-sm">{item.quantity} {item.unit}</td>
-                        <td className="py-3 px-4 text-sm">
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="py-2.5 px-4 font-medium">{item.description}</td>
+                        <td className="py-2.5 px-4">{item.quantity} {item.unit}</td>
+                        <td className="py-2.5 px-4">
                           {formatCurrency(item.unitPrice, selectedPO.currency || getCurrentSbuCurrency())}
                         </td>
-                        <td className="py-3 px-4 text-sm font-medium">
+                        <td className="py-2.5 px-4 font-medium">
                           {formatCurrency(item.totalPrice || item.quantity * item.unitPrice, selectedPO.currency || getCurrentSbuCurrency())}
                         </td>
                       </tr>

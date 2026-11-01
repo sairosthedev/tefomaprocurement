@@ -4,6 +4,8 @@ import { useToast } from '../../components/Toast';
 import api from '../../lib/api';
 import { Clock, Loader2, PartyPopper, Send } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
+import { WorkflowStepper, NextStepCard } from '../../components/WorkflowStepper';
+import { supplierRfqJourney, isQuoteDecided } from '../../lib/supplierJourney';
 
 export default function SupplierRFQDetail() {
   const { id } = useParams();
@@ -77,6 +79,33 @@ export default function SupplierRFQDetail() {
         }
       />
 
+      {(() => {
+        const { steps, stopped } = supplierRfqJourney(rfq, canSubmit);
+        const q = rfq.quotationStatus;
+        return (
+          <>
+            <WorkflowStepper steps={steps} />
+            {canSubmit ? (
+              <NextStepCard
+                title={rfq.revisionRequested ? 'Submit your revised quotation' : 'Submit your quotation'}
+                description={rfq.revisionRequested ? 'Procurement asked for a revised price.' : `Quotes close on ${new Date(rfq.submissionDeadline).toLocaleString('en-ZA')} (${remaining.text}).`}
+                action={{ label: rfq.revisionRequested ? 'Submit revised quote' : 'Submit quote', to: `/app/submit-quotation?rfq=${rfq._id}` }}
+              />
+            ) : rfq.purchaseOrder ? (
+              <NextStepCard
+                title={`Acknowledge purchase order ${rfq.purchaseOrder.poNumber}`}
+                description="Confirm the order and your delivery date, then deliver and invoice against it."
+                action={{ label: 'Open purchase orders', to: '/app/my-purchase-orders' }}
+              />
+            ) : q === 'accepted' ? (
+              <NextStepCard title="Procurement to issue the purchase order" description="It is approved internally before it reaches you." waiting />
+            ) : !stopped && q && !isQuoteDecided(q) ? (
+              <NextStepCard title="Procurement to evaluate the quotes" description="You are notified when a decision is made." waiting />
+            ) : null}
+          </>
+        );
+      })()}
+
       {rfq.revisionRequested && (
         <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
           <Send className="h-6 w-6 text-amber-600" />
@@ -128,23 +157,23 @@ export default function SupplierRFQDetail() {
 
         <div>
           <p className="text-sm font-medium text-gray-700 mb-2">Items required</p>
-          <div className="border border-gray-200 rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50">
+              <thead>
                 <tr>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">#</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Description</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Quantity</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Specification</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">#</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Description</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Quantity</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Specification</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {rfq.items?.map((item: any, index: number) => (
-                  <tr key={index}>
-                    <td className="py-3 px-4">{index + 1}</td>
-                    <td className="py-3 px-4 font-medium">{item.description}</td>
-                    <td className="py-3 px-4">{item.quantity} {item.unit}</td>
-                    <td className="py-3 px-4 text-gray-500">{item.specification || '—'}</td>
+                  <tr key={index} className="hover:bg-gray-50">
+                    <td className="py-2.5 px-4">{index + 1}</td>
+                    <td className="py-2.5 px-4 font-medium">{item.description}</td>
+                    <td className="py-2.5 px-4">{item.quantity} {item.unit}</td>
+                    <td className="py-2.5 px-4 text-gray-500">{item.specification || '—'}</td>
                   </tr>
                 ))}
               </tbody>

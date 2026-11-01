@@ -65,25 +65,25 @@ export default function Payments() {
       ) : payments.length === 0 ? (
         <p className="text-gray-500 text-center py-12">No payments recorded yet. Record payment from an approved invoice.</p>
       ) : (
-        <div className="bg-white rounded-xl shadow overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
               <tr>
-                <th className="text-left p-4 text-sm font-medium text-gray-600">Payment #</th>
-                <th className="text-left p-4 text-sm font-medium text-gray-600">Supplier</th>
-                <th className="text-left p-4 text-sm font-medium text-gray-600">Amount</th>
-                <th className="text-left p-4 text-sm font-medium text-gray-600">Date</th>
-                <th className="text-left p-4 text-sm font-medium text-gray-600">Status</th>
+                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Payment #</th>
+                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Supplier</th>
+                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Amount</th>
+                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Date</th>
+                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Status</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-100">
               {payments.map((p) => (
-                <tr key={p._id} className="border-b">
-                  <td className="p-4 font-medium">{p.paymentNumber}</td>
-                  <td className="p-4">{p.supplier?.companyName}</td>
-                  <td className="p-4">{formatCurrency(p.amount, p.currency || p.invoice?.currency || getCurrentSbuCurrency())}</td>
-                  <td className="p-4">{new Date(p.paymentDate).toLocaleDateString()}</td>
-                  <td className="p-4 capitalize">{p.status}</td>
+                <tr key={p._id} className="hover:bg-gray-50">
+                  <td className="py-2.5 px-4 font-medium">{p.paymentNumber}</td>
+                  <td className="py-2.5 px-4">{p.supplier?.companyName}</td>
+                  <td className="py-2.5 px-4">{formatCurrency(p.amount, p.currency || p.invoice?.currency || getCurrentSbuCurrency())}</td>
+                  <td className="py-2.5 px-4">{new Date(p.paymentDate).toLocaleDateString()}</td>
+                  <td className="py-2.5 px-4 capitalize">{p.status}</td>
                 </tr>
               ))}
             </tbody>

@@ -9,6 +9,8 @@ import Pagination from '../../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
 import { formatCurrency } from '../../lib/constants';
 import { getCurrentSbuCurrency } from '../../lib/sbu';
+import { WorkflowStepper, NextStepCard } from '../../components/WorkflowStepper';
+import { supplierQuotationJourney, supplierQuotationNext } from '../../lib/supplierJourney';
 import confetti from 'canvas-confetti';
 
 const statusColors: any = {
@@ -114,7 +116,7 @@ export default function MyQuotations() {
       </div>
 
       {/* Quotations List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -127,43 +129,43 @@ export default function MyQuotations() {
         ) : (
           <>
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
+            <table className="w-full text-sm">
+              <thead>
                 <tr>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Quote #</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">RFQ</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Total Amount</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Submitted</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Status</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Actions</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Quote #</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">RFQ</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Total Amount</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Submitted</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Status</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {quotations.map((quote: any) => (
                   <tr key={quote._id} className="hover:bg-gray-50">
-                    <td className="py-4 px-6">
-                      <span className="font-mono text-sm font-medium text-primary">
+                    <td className="py-2.5 px-4">
+                      <span className="font-mono font-medium text-primary">
                         {quote.quotationNumber || `QT-${quote._id.slice(-6).toUpperCase()}`}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       <p className="font-medium text-gray-900">{quote.rfq?.title || 'N/A'}</p>
-                      <p className="text-sm text-gray-500 font-mono">{quote.rfq?.rfqNumber}</p>
+                      <p className="text-xs text-gray-500 font-mono">{quote.rfq?.rfqNumber}</p>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       <span className="font-semibold text-gray-900">
                         {formatCurrency(quote.totalAmount, quote.currency || getCurrentSbuCurrency())}
                       </span>
                     </td>
-                    <td className="py-4 px-6 text-sm text-gray-500">
+                    <td className="py-2.5 px-4 text-gray-500">
                       {new Date(quote.createdAt).toLocaleDateString('en-ZA')}
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[quote.status] || statusColors.submitted}`}>
                         {quote.status === 'accepted' ? 'Accepted' : (quote.status?.replace('_', ' ') || 'Submitted')}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       <button
                         onClick={() => {
                           setSelectedQuotation(quote);
@@ -221,6 +223,20 @@ export default function MyQuotations() {
       >
         {selectedQuotation && (
           <div className="space-y-6">
+            <div>
+              <WorkflowStepper steps={supplierQuotationJourney(selectedQuotation).steps} compact />
+              {(() => {
+                const next = supplierQuotationNext(selectedQuotation);
+                return next ? (
+                  <NextStepCard
+                    title={next.title}
+                    description={next.description}
+                    waiting={next.waiting}
+                    action={next.to ? { label: next.label || 'Open', to: next.to } : undefined}
+                  />
+                ) : null;
+              })()}
+            </div>
             {/* Accepted Celebration Banner */}
             {selectedQuotation.status === 'accepted' && (
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 mb-4">
@@ -274,28 +290,28 @@ export default function MyQuotations() {
 
             <div>
               <label className="text-sm text-gray-500 mb-2 block">Items</label>
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
                     <tr>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Item</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Qty</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Unit Price</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Total</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Item</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Qty</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Unit Price</th>
+                      <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Total</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {selectedQuotation.items?.map((item: any, index: any) => (
-                      <tr key={index}>
-                        <td className="py-3 px-4 text-sm">
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="py-2.5 px-4">
                           <p className="font-medium">{item.description}</p>
                           {item.brand && <p className="text-xs text-gray-500">Brand: {item.brand}</p>}
                         </td>
-                        <td className="py-3 px-4 text-sm">{item.quantity} {item.unit}</td>
-                        <td className="py-3 px-4 text-sm">
+                        <td className="py-2.5 px-4">{item.quantity} {item.unit}</td>
+                        <td className="py-2.5 px-4">
                           {formatCurrency(item.unitPrice, selectedQuotation.currency || getCurrentSbuCurrency())}
                         </td>
-                        <td className="py-3 px-4 text-sm font-medium">
+                        <td className="py-2.5 px-4 font-medium">
                           {formatCurrency(item.totalPrice || item.quantity * item.unitPrice, selectedQuotation.currency || getCurrentSbuCurrency())}
                         </td>
                       </tr>

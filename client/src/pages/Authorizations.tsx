@@ -97,7 +97,7 @@ export default function Authorizations() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -112,25 +112,25 @@ export default function Authorizations() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
+            <table className="w-full text-sm">
+              <thead>
                 <tr>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">RFQ</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Award</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Value</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Justification</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Selected</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Actions</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">RFQ</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Award</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Value</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Justification</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Selected</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {items.map((item: any) => (
                   <tr key={`${item.rfqId}-${item.kind}`} className="hover:bg-gray-50">
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       <span className="font-mono text-sm font-medium text-primary break-all">{item.rfqNumber}</span>
                       <p className="text-sm text-gray-500 truncate max-w-xs">{item.title}</p>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       {item.kind === 'quotation' ? (
                         <>
                           <p className="font-medium text-gray-900">{item.supplierName || 'Unknown supplier'}</p>
@@ -145,21 +145,21 @@ export default function Authorizations() {
                         </>
                       )}
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       <span className="font-semibold text-gray-900">{valueOf(item)}</span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       <p className="text-sm text-gray-600 max-w-xs line-clamp-2">
                         {item.justification || (item.kind === 'lines' ? 'See each line' : '—')}
                       </p>
                     </td>
-                    <td className="py-4 px-6 text-sm text-gray-500">
+                    <td className="py-2.5 px-4 text-sm text-gray-500">
                       <p className="text-gray-900">{item.selectedBy || '—'}</p>
                       {item.selectedAt && (
                         <p className="text-xs">{new Date(item.selectedAt).toLocaleDateString('en-ZA')}</p>
                       )}
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       {item.selectedByMe ? (
                         // The API refuses self-authorization; say so rather
                         // than send them to a button that will fail.

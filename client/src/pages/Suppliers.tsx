@@ -4,9 +4,10 @@ import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { isProcurementHead } from '@fossil/shared';
-import Tabs from '../components/Tabs';
+import FilterSelect from '../components/FilterSelect';
 import PageHeader from '../components/PageHeader';
 import Modal from '../components/Modal';
+import { FormSteps, FormStepNav } from '../components/FormSteps';
 import { CategoryMultiSelect } from '../components/CategorySelect';
 import { getCategoryName } from '../lib/constants';
 import { 
@@ -53,6 +54,35 @@ const statusIcons: any = {
   dormant: Clock
 };
 
+const ADD_SUPPLIER_STEPS = [
+  { label: 'Company & login', description: 'Who they are, and their sign-in' },
+  { label: 'Business', description: 'Contact, tax and categories' },
+  { label: 'Banking', description: 'First bank account' },
+  { label: 'Review', description: 'Check, then create' }
+];
+
+const EMPTY_SUPPLIER_FORM = {
+  companyName: '',
+  tradingAs: '',
+  registrationNumber: '',
+  taxNumber: '',
+  vatNumber: '',
+  firstName: '',
+  lastName: '',
+  email: '',
+  password: 'password',
+  phone: '',
+  physicalAddress: '',
+  city: '',
+  province: '',
+  postalCode: '',
+  categories: [] as string[],
+  bankName: '',
+  bankAccountName: '',
+  bankAccountNumber: '',
+  bankBranchCode: ''
+};
+
 function needsKysAttention(supplier: any): boolean {
   return supplier.status === 'pending' || (!supplier.kysComplete && !supplier.kysExempt);
 }
@@ -92,29 +122,9 @@ export default function Suppliers() {
   });
   const [showAddModal, setShowAddModal] = useState<any>(false);
   const [submitting, setSubmitting] = useState<any>(false);
-  const [formData, setFormData] = useState<any>({
-    companyName: '',
-    tradingAs: '',
-    registrationNumber: '',
-    taxNumber: '',
-    vatNumber: '',
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: 'password',
-    phone: '',
-    physicalAddress: '',
-    city: '',
-    province: '',
-    postalCode: '',
-    categories: [] as string[],
-    bankName: '',
-    bankAccountName: '',
-    bankAccountNumber: '',
-    bankBranchCode: ''
-  });
+  const [formData, setFormData] = useState<any>(EMPTY_SUPPLIER_FORM);
   const [showPassword, setShowPassword] = useState<any>(false);
-  const [showOptionalFields, setShowOptionalFields] = useState<any>(false);
+  const [addStep, setAddStep] = useState(0);
   const [showBulkImportModal, setShowBulkImportModal] = useState<any>(false);
   const [bulkImportData, setBulkImportData] = useState<any>('');
   const [bulkImportResults, setBulkImportResults] = useState<any>(null);
@@ -170,17 +180,43 @@ export default function Suppliers() {
     }));
   };
 
-  const handleSubmit = async (e: any) => {
-    e.preventDefault();
-    
-    // Validate required fields
+  const closeAddModal = () => {
+    if (submitting) return;
+    setShowAddModal(false);
+    setFormData(EMPTY_SUPPLIER_FORM);
+    setShowPassword(false);
+    setAddStep(0);
+  };
+
+  /** The first step holds every required field; the others are optional. */
+  const companyStepValid = () => {
     if (!formData.companyName || !formData.email || !formData.firstName || !formData.lastName || !formData.registrationNumber) {
       showToast('Company name, email, first name, last name, and registration number are required', 'error');
+      return false;
+    }
+    if (!formData.password || formData.password.length < 6) {
+      showToast('Password must be at least 6 characters', 'error');
+      return false;
+    }
+    return true;
+  };
+
+  const nextAddStep = () => {
+    if (addStep === 0 && !companyStepValid()) return;
+    setAddStep((s: number) => Math.min(ADD_SUPPLIER_STEPS.length - 1, s + 1));
+  };
+
+  const handleSubmit = async (e: any) => {
+    e.preventDefault();
+
+    // Enter in a field on an earlier step moves on rather than creating.
+    if (addStep < ADD_SUPPLIER_STEPS.length - 1) {
+      nextAddStep();
       return;
     }
 
-    if (!formData.password || formData.password.length < 6) {
-      showToast('Password must be at least 6 characters', 'error');
+    if (!companyStepValid()) {
+      setAddStep(0);
       return;
     }
 
@@ -196,30 +232,17 @@ export default function Suppliers() {
       });
 
       if (response.data.success) {
-        showToast('Supplier created successfully', 'success');
+        showToast('Supplier created — complete KYS to activate them', 'success');
         setShowAddModal(false);
-        setFormData({
-          companyName: '',
-          tradingAs: '',
-          registrationNumber: '',
-          taxNumber: '',
-          vatNumber: '',
-          firstName: '',
-          lastName: '',
-          email: '',
-          password: 'password',
-          phone: '',
-          physicalAddress: '',
-          city: '',
-          province: '',
-          postalCode: '',
-          categories: [] as string[],
-          bankName: '',
-          bankAccountName: '',
-          bankAccountNumber: '',
-          bankBranchCode: ''
-        });
+        setFormData(EMPTY_SUPPLIER_FORM);
         setShowPassword(false);
+        setAddStep(0);
+        const newId = response.data.data?.id;
+        if (newId) {
+          // KYS is the new supplier's next step.
+          navigate(`/app/suppliers/${newId}?tab=documents`);
+          return;
+        }
         fetchSuppliers();
       }
     } catch (error: any) {
@@ -332,7 +355,7 @@ export default function Suppliers() {
 
       {/* Filters */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
@@ -343,24 +366,23 @@ export default function Suppliers() {
               className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
             />
           </div>
-          <Tabs
-            className="w-full"
-            tabs={[
-              { value: '', label: 'All', icon: Users },
-              { value: 'pending', label: 'Pending', icon: Clock },
-              { value: 'active', label: 'Active', icon: CheckCircle },
-              { value: 'suspended', label: 'Suspended', icon: XCircle },
-              { value: 'blacklisted', label: 'Blacklisted', icon: XCircle }
+          <FilterSelect
+            label="Status"
+            options={[
+              { value: '', label: 'All' },
+              { value: 'pending', label: 'Pending' },
+              { value: 'active', label: 'Active' },
+              { value: 'suspended', label: 'Suspended' },
+              { value: 'blacklisted', label: 'Blacklisted' }
             ]}
-            activeTab={statusFilter}
-            onTabChange={setStatusFilter}
-            variant="pills"
+            value={statusFilter}
+            onChange={setStatusFilter}
           />
         </div>
       </div>
 
       {/* Suppliers List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -374,19 +396,19 @@ export default function Suppliers() {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-100">
+              <table className="w-full text-sm">
+                <thead>
                   <tr>
-                    <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">
                       Supplier
                     </th>
-                    <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">
                       Contact
                     </th>
-                    <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">
                       Vendor status
                     </th>
-                    <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">
                       Actions
                     </th>
                   </tr>
@@ -400,8 +422,8 @@ export default function Suppliers() {
                       supplier.status.charAt(0).toUpperCase() + supplier.status.slice(1);
 
                     return (
-                      <tr key={supplier._id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4">
+                      <tr key={supplier._id} className="hover:bg-gray-50">
+                        <td className="py-2.5 px-4">
                           <div className="flex items-center gap-3 min-w-0 max-w-md">
                             <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
                               <Building2 className="h-5 w-5 text-primary" />
@@ -417,7 +439,7 @@ export default function Suppliers() {
                           </div>
                         </td>
 
-                        <td className="px-6 py-4">
+                        <td className="py-2.5 px-4">
                           <div className="flex items-center gap-2 text-sm text-gray-600 min-w-0 max-w-xs">
                             <Mail className="h-4 w-4 text-gray-400 shrink-0" />
                             <span className="truncate" title={supplier.user?.email}>
@@ -426,7 +448,7 @@ export default function Suppliers() {
                           </div>
                         </td>
 
-                        <td className="px-6 py-4">
+                        <td className="py-2.5 px-4">
                           <div className="space-y-1.5">
                             <span
                               className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium capitalize ${statusColors[supplier.status]}`}
@@ -440,7 +462,7 @@ export default function Suppliers() {
                           </div>
                         </td>
 
-                        <td className="px-6 py-4 text-right">
+                        <td className="py-2.5 px-4 text-right">
                           <button
                             type="button"
                             onClick={() => openSupplierProfile(supplier)}
@@ -480,39 +502,14 @@ export default function Suppliers() {
       {/* Add Supplier Modal */}
       <Modal
         isOpen={showAddModal}
-        onClose={() => {
-          if (!submitting) {
-            setShowAddModal(false);
-            setFormData({
-              companyName: '',
-              tradingAs: '',
-              registrationNumber: '',
-              taxNumber: '',
-              vatNumber: '',
-              firstName: '',
-              lastName: '',
-              email: '',
-              password: 'password',
-              phone: '',
-              physicalAddress: '',
-              city: '',
-              province: '',
-              postalCode: '',
-              categories: [] as string[],
-              bankName: '',
-              bankAccountName: '',
-              bankAccountNumber: '',
-              bankBranchCode: ''
-            });
-            setShowPassword(false);
-            setShowOptionalFields(false);
-          }
-        }}
+        onClose={closeAddModal}
         title="Add New Supplier"
-        size="md"
+        size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Essential Fields - Always Visible */}
+          <FormSteps steps={ADD_SUPPLIER_STEPS} current={addStep} onSelect={setAddStep} />
+
+          {addStep === 0 && (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -524,7 +521,6 @@ export default function Suppliers() {
                   name="companyName"
                   value={formData.companyName}
                   onChange={handleInputChange}
-                  required
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                 />
               </div>
@@ -537,7 +533,6 @@ export default function Suppliers() {
                   name="registrationNumber"
                   value={formData.registrationNumber}
                   onChange={handleInputChange}
-                  required
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                 />
               </div>
@@ -553,7 +548,6 @@ export default function Suppliers() {
                   name="firstName"
                   value={formData.firstName}
                   onChange={handleInputChange}
-                  required
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                 />
               </div>
@@ -566,7 +560,6 @@ export default function Suppliers() {
                   name="lastName"
                   value={formData.lastName}
                   onChange={handleInputChange}
-                  required
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                 />
               </div>
@@ -581,7 +574,6 @@ export default function Suppliers() {
                 name="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                required
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
               />
             </div>
@@ -596,8 +588,6 @@ export default function Suppliers() {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  required
-                  minLength={6}
                   className="w-full px-3 py-2 pr-10 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                 />
                 <button
@@ -611,20 +601,11 @@ export default function Suppliers() {
               <p className="text-xs text-gray-500 mt-0.5">Default: "password"</p>
             </div>
           </div>
+          )}
 
-          {/* Optional Fields - Collapsible */}
-          <div className="border-t border-gray-200 pt-3">
-            <button
-              type="button"
-              onClick={() => setShowOptionalFields(!showOptionalFields)}
-              className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 w-full"
-            >
-              <span>{showOptionalFields ? '−' : '+'}</span>
-              <span>Additional Information {showOptionalFields ? '(Hide)' : '(Show)'}</span>
-            </button>
-
-            {showOptionalFields && (
-              <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2">
+          {addStep === 1 && (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500">All optional. They can be completed later on the supplier's profile.</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Trading As</label>
@@ -722,7 +703,12 @@ export default function Suppliers() {
                     />
                   </div>
                 </div>
+              </div>
+          )}
 
+          {addStep === 2 && (
+                <div className="space-y-3">
+                <p className="text-xs text-gray-500">Optional. Bank details entered here are the supplier's first account; later changes go through bank-change approval.</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Bank Name</label>
@@ -765,35 +751,76 @@ export default function Suppliers() {
                     />
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
+                </div>
+          )}
 
-          {/* Form Actions */}
-          <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
-            <button
-              type="button"
-              onClick={() => setShowAddModal(false)}
-              disabled={submitting}
-              className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="px-4 py-2 bg-primary hover:bg-primary-dark text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                'Create Supplier'
-              )}
-            </button>
-          </div>
+          {addStep === 3 && (
+            <div className="space-y-3 text-sm">
+              {[
+                {
+                  title: 'Company & login',
+                  step: 0,
+                  rows: [
+                    ['Company', formData.companyName],
+                    ['Registration no.', formData.registrationNumber],
+                    ['Contact', `${formData.firstName} ${formData.lastName}`.trim()],
+                    ['Email', formData.email]
+                  ]
+                },
+                {
+                  title: 'Business details',
+                  step: 1,
+                  rows: [
+                    ['Trading as', formData.tradingAs],
+                    ['Phone', formData.phone],
+                    ['Tax / VAT', [formData.taxNumber, formData.vatNumber].filter(Boolean).join(' / ')],
+                    ['Categories', (formData.categories || []).map((c: string) => getCategoryName(c)).join(', ')],
+                    ['Address', [formData.physicalAddress, formData.city, formData.province, formData.postalCode].filter(Boolean).join(', ')]
+                  ]
+                },
+                {
+                  title: 'Banking',
+                  step: 2,
+                  rows: [
+                    ['Bank', formData.bankName],
+                    ['Account name', formData.bankAccountName],
+                    ['Account number', formData.bankAccountNumber],
+                    ['Branch code', formData.bankBranchCode]
+                  ]
+                }
+              ].map((section) => (
+                <div key={section.title} className="rounded-xl border border-gray-100 p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{section.title}</p>
+                    <button type="button" onClick={() => setAddStep(section.step)} className="text-xs font-medium text-primary hover:underline">
+                      Edit
+                    </button>
+                  </div>
+                  <dl className="grid grid-cols-3 gap-x-3 gap-y-1">
+                    {section.rows.map(([label, value]) => (
+                      <React.Fragment key={label}>
+                        <dt className="text-gray-500">{label}</dt>
+                        <dd className="col-span-2 text-gray-900 break-words">{value || '—'}</dd>
+                      </React.Fragment>
+                    ))}
+                  </dl>
+                </div>
+              ))}
+              <p className="text-xs text-gray-500">
+                The supplier is created as pending. Its profile opens next, to complete KYS before activation.
+              </p>
+            </div>
+          )}
+
+          <FormStepNav
+            current={addStep}
+            total={ADD_SUPPLIER_STEPS.length}
+            onBack={() => setAddStep((s: number) => Math.max(0, s - 1))}
+            onNext={nextAddStep}
+            onCancel={closeAddModal}
+            finishLabel={submitting ? 'Creating...' : 'Create Supplier'}
+            submitting={submitting}
+          />
         </form>
       </Modal>
 
@@ -923,13 +950,13 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
                     </div>
                   )}
 
-                  <div className="border border-gray-200 rounded-lg overflow-auto max-h-[45vh]">
+                  <div className="overflow-auto max-h-[45vh]">
                     <table className="w-full text-xs">
-                      <thead className="bg-gray-50 sticky top-0">
+                      <thead className="sticky top-0">
                         <tr>
-                          <th className="text-left py-2 px-2 font-semibold text-gray-600 w-8">#</th>
+                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap w-8">#</th>
                           {(['companyName', 'registrationNumber', 'contactPerson', 'email', 'phone', 'categories'] as (keyof SupplierImportRow)[]).map((f) => (
-                            <th key={f} className="text-left py-2 px-2 font-semibold text-gray-600">
+                            <th key={f} className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">
                               {f === 'companyName' ? 'Company' :
                                f === 'registrationNumber' ? 'Reg no' :
                                f === 'contactPerson' ? 'Contact' :
@@ -1021,19 +1048,19 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
               {bulkImportResults.success.length > 0 && (
                 <div>
                   <h4 className="text-sm font-semibold text-gray-900 mb-2">Successfully Imported:</h4>
-                  <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-lg">
+                  <div className="max-h-40 overflow-y-auto">
                     <table className="w-full text-xs">
-                      <thead className="bg-gray-50">
+                      <thead>
                         <tr>
-                          <th className="px-3 py-2 text-left">Company</th>
-                          <th className="px-3 py-2 text-left">Email</th>
+                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Company</th>
+                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Email</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {bulkImportResults.success.map((item: any, idx: any) => (
-                          <tr key={idx}>
-                            <td className="px-3 py-2">{item.companyName}</td>
-                            <td className="px-3 py-2">{item.email}</td>
+                          <tr key={idx} className="hover:bg-gray-50">
+                            <td className="py-2.5 px-4">{item.companyName}</td>
+                            <td className="py-2.5 px-4">{item.email}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1045,21 +1072,21 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
               {bulkImportResults.failed.length > 0 && (
                 <div>
                   <h4 className="text-sm font-semibold text-red-900 mb-2">Failed:</h4>
-                  <div className="max-h-40 overflow-y-auto border border-red-200 rounded-lg">
+                  <div className="max-h-40 overflow-y-auto">
                     <table className="w-full text-xs">
-                      <thead className="bg-red-50">
+                      <thead>
                         <tr>
-                          <th className="px-3 py-2 text-left">Company</th>
-                          <th className="px-3 py-2 text-left">Email</th>
-                          <th className="px-3 py-2 text-left">Reason</th>
+                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Company</th>
+                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Email</th>
+                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Reason</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-red-100">
+                      <tbody className="divide-y divide-gray-100">
                         {bulkImportResults.failed.map((item: any, idx: any) => (
-                          <tr key={idx}>
-                            <td className="px-3 py-2">{item.companyName}</td>
-                            <td className="px-3 py-2">{item.email}</td>
-                            <td className="px-3 py-2 text-red-600">{item.reason}</td>
+                          <tr key={idx} className="hover:bg-gray-50">
+                            <td className="py-2.5 px-4">{item.companyName}</td>
+                            <td className="py-2.5 px-4">{item.email}</td>
+                            <td className="py-2.5 px-4 text-red-600">{item.reason}</td>
                           </tr>
                         ))}
                       </tbody>

@@ -207,8 +207,8 @@ export default function Budgets() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+      <div>
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
           <h2 className="font-semibold text-gray-900">Department Budgets</h2>
           {canEditAllocations && (
             <p className="text-xs text-gray-500">Click edit to set FY allocations</p>
@@ -218,22 +218,22 @@ export default function Budgets() {
           <p className="text-center text-gray-500 py-12">No departments configured yet.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
+            <table className="w-full text-sm">
+              <thead>
                 <tr>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Department</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Allocated</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Utilized</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Committed</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Available</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Utilization</th>
-                  {canEditAllocations && <th className="text-right py-4 px-6 text-sm font-semibold text-gray-600">Actions</th>}
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Department</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Allocated</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Utilized</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Committed</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Available</th>
+                  <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Utilization</th>
+                  {canEditAllocations && <th className="text-right py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200 whitespace-nowrap">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {budgetData.departments.map((dept: any) => (
                   <tr key={dept.departmentId} className={dept.isOverBudget ? 'bg-red-50/50 hover:bg-red-50' : 'hover:bg-gray-50'}>
-                    <td className="py-4 px-6 font-medium text-gray-900">
+                    <td className="py-2.5 px-4 font-medium text-gray-900">
                       {dept.name}
                       {dept.isOverBudget && (
                         <span className="ml-2 inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
@@ -246,15 +246,15 @@ export default function Budgets() {
                         </span>
                       )}
                     </td>
-                    <td className="py-4 px-6 text-gray-600">{formatCurrency(dept.budget, dept.currency || currency)}</td>
-                    <td className="py-4 px-6 text-gray-600">{formatCurrency(dept.utilised ?? dept.utilized, dept.currency || currency)}</td>
-                    <td className="py-4 px-6 text-gray-600">{formatCurrency(dept.committed, dept.currency || currency)}</td>
+                    <td className="py-2.5 px-4 text-gray-600">{formatCurrency(dept.budget, dept.currency || currency)}</td>
+                    <td className="py-2.5 px-4 text-gray-600">{formatCurrency(dept.utilised ?? dept.utilized, dept.currency || currency)}</td>
+                    <td className="py-2.5 px-4 text-gray-600">{formatCurrency(dept.committed, dept.currency || currency)}</td>
                     {/* Overspend shows as a negative figure rather than being
                         floored at zero, which hid it entirely. */}
-                    <td className={`py-4 px-6 ${dept.available < 0 ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
+                    <td className={`py-2.5 px-4 ${dept.available < 0 ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
                       {formatCurrency(dept.available, dept.currency || currency)}
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       <div className="flex items-center gap-3">
                         <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden max-w-[100px]">
                           <div
@@ -268,7 +268,7 @@ export default function Budgets() {
                       </div>
                     </td>
                     {canEditAllocations && (
-                      <td className="py-4 px-6 text-right">
+                      <td className="py-2.5 px-4 text-right">
                         <button
                           type="button"
                           onClick={() => openEdit(dept)}
