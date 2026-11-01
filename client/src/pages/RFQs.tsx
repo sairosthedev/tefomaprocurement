@@ -9,9 +9,9 @@ import {
   FileSearch,
   Loader2,
   Send,
-  Clock
+  Clock,
+  Search
 } from 'lucide-react';
-import ViewButton from '../components/ViewButton';
 import Pagination from '../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
