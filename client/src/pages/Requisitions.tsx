@@ -71,6 +71,8 @@ export default function Requisitions() {
   const [budgetOverrideReason, setBudgetOverrideReason] = useState<string>('');
   const [actionLoading, setActionLoading] = useState<any>(false);
   const [submittingId, setSubmittingId] = useState<any>(null);
+  const [storeRequestedIds, setStoreRequestedIds] = useState<Set<string>>(new Set());
+  const [removingItemId, setRemovingItemId] = useState<any>(null);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(emptyPagination());
   // The create drawer lives in the URL (?new=1), so links from elsewhere can
@@ -209,6 +211,7 @@ export default function Requisitions() {
       });
 
       showToast('Store requisition created successfully', 'success');
+      setStoreRequestedIds((prev) => new Set(prev).add(requisition._id));
       fetchRequisitions();
     } catch (error: any) {
       console.error('Error creating store requisition:', error);
@@ -632,15 +635,12 @@ export default function Requisitions() {
                           </button>
                         )}
 
-                        {/* Request from Stores Button - Show when items are delivered to stores but not yet collected */}
-                        {isDeptHead && actsAsDepartment(req) && req.itemsDeliveredToStores && !req.itemsCollected && (
+                        {isDeptHead && actsAsDepartment(req) && req.itemsDeliveredToStores && !req.itemsCollected && !storeRequestedIds.has(req._id) && (
                           <button
                             onClick={() => handleRequestFromStores(req)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
-                            title="Request items from stores"
+                            className="px-2 py-1 text-xs border border-primary rounded bg-primary hover:bg-primary-dark text-white transition-colors"
                           >
-                            <Truck className="h-3.5 w-3.5" />
-                            Request from Stores
+                            Req. from Stores
                           </button>
                         )}
                         {/* Collected Badge - Show when items have been collected */}
