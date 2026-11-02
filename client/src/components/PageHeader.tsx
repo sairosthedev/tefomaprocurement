@@ -9,6 +9,8 @@ type PageHeaderProps = {
   backTo?: string;
   backLabel?: string;
   onBack?: () => void;
+  /** Space below the header; pages whose controls sit right under it pass a smaller one. */
+  bottomSpacing?: string;
 };
 
 export default function PageHeader({
@@ -17,7 +19,8 @@ export default function PageHeader({
   actions,
   backTo,
   backLabel = 'Back',
-  onBack
+  onBack,
+  bottomSpacing = 'mb-8'
 }: PageHeaderProps) {
   const navigate = useNavigate();
 
@@ -41,7 +44,7 @@ export default function PageHeader({
           {backLabel}
         </button>
       )}
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className={`${bottomSpacing} flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between`}>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
           {subtitle ? <p className="text-gray-500 mt-1">{subtitle}</p> : null}

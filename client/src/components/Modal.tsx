@@ -20,8 +20,9 @@ let openModals = 0;
 /**
  * Lock the page behind an open modal and close it on Escape. Only the top-most
  * modal answers Escape, so a confirm opened over a form closes on its own.
+ * Shared with Drawer, so the two stack correctly over each other.
  */
-function useModalBehaviour(isOpen: boolean, onClose?: () => void) {
+export function useModalBehaviour(isOpen: boolean, onClose?: () => void) {
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 

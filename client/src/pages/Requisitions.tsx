@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import api, { departmentAPI } from '../lib/api';
@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import ViewButton from '../components/ViewButton';
 import Modal, { ModalFooter } from '../components/Modal';
+import Drawer from '../components/Drawer';
+import RequisitionForm, { type RequisitionFormHandle } from '../components/RequisitionForm';
 import Pagination from '../components/Pagination';
 import { formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
@@ -77,6 +79,10 @@ export default function Requisitions() {
   const [removingItemId, setRemovingItemId] = useState<any>(null);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(emptyPagination());
+  // The create drawer lives in the URL (?new=1), so links from elsewhere can
+  // open it and the browser's Back button closes it.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const createFormRef = useRef<RequisitionFormHandle>(null);
   const [viewFilter, setViewFilter] = useState<'all' | 'mine' | 'team'>('all');
 
   // The Head of Procurement works the procurement list. It also carries their
@@ -95,6 +101,32 @@ export default function Requisitions() {
   // Department-side actions: everyone outside procurement, plus the Head of
   // Procurement on their own department's requisitions.
   const actsAsDepartment = (req: any) => !isProcurement || isOwnDept(req);
+  const canCreate = !isProcurement || procHead;
+  const createOpen = canCreate && searchParams.get('new') === '1';
+
+  const openCreate = () => {
+    setSearchParams((params) => {
+      params.set('new', '1');
+      return params;
+    });
+  };
+
+  const closeCreate = () => {
+    setSearchParams(
+      (params) => {
+        params.delete('new');
+        return params;
+      },
+      { replace: true }
+    );
+  };
+
+  const handleCreated = () => {
+    closeCreate();
+    // Newest first, so the new requisition is on page one.
+    if (page !== 1) setPage(1);
+    else fetchRequisitions();
+  };
 
   useEffect(() => {
     setPage(1);
@@ -293,68 +325,66 @@ export default function Requisitions() {
             ? 'Accept or reject requisitions from departments'
             : 'Track your purchase requests'
         }
-        actions={
-          !isProcurement || procHead ? (
-            <button
-              onClick={() => navigate('/app/requisitions/create')}
-              className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors"
-            >
-              <Plus className="h-5 w-5" />
-              New Requisition
-            </button>
-          ) : undefined
-        }
+        bottomSpacing="mb-4"
       />
 
-      {/* HOD view tabs */}
-      {isDeptHead && !isProcurement && (
-        <div className="flex gap-1 mb-4">
-          {(['all', 'mine', 'team'] as const).map((v) => (
-            <button
-              key={v}
-              onClick={() => setViewFilter(v)}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                viewFilter === v
-                  ? 'bg-primary text-white border-primary'
-                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              {v === 'all' ? 'All' : v === 'mine' ? 'My Requisitions' : 'Team Requisitions'}
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* Filters */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+      <div className="mb-4">
         <div className="flex flex-col md:flex-row md:items-center gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search requisitions..."
-              value={searchTerm}
-              onChange={(e: any) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+          {canCreate && (
+            <button
+              onClick={openCreate}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors whitespace-nowrap shrink-0"
+            >
+              <Plus className="h-4 w-4" />
+              New Requisition
+            </button>
+          )}
+          {/* Pushed to the right edge, with or without the button beside it. */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 md:ml-auto">
+            <div className="relative w-full sm:w-52">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search requisitions..."
+                value={searchTerm}
+                onChange={(e: any) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              />
+            </div>
+            {/* HOD view: their own requisitions, their team's, or both */}
+            {isDeptHead && !isProcurement && (
+              <FilterSelect
+                label="Show"
+                size="sm"
+                options={[
+                  { value: '', label: 'All' },
+                  { value: 'mine', label: 'My Requisitions' },
+                  { value: 'team', label: 'Team Requisitions' }
+                ]}
+                value={viewFilter === 'all' ? '' : viewFilter}
+                onChange={(v) => setViewFilter((v || 'all') as 'all' | 'mine' | 'team')}
+              />
+            )}
+            <FilterSelect
+              label="Status"
+              size="sm"
+              options={[
+                { value: '', label: 'All' },
+                ...(!isProcurement || procHead ? [{ value: 'draft', label: 'Draft' }] : []),
+                ...(procHead ? [{ value: 'pending_hod', label: 'Pending HOD Approval' }] : []),
+                { value: 'pending_acceptance', label: 'Pending Acceptance' },
+                { value: 'accepted', label: 'Accepted' },
+                { value: 'rejected', label: 'Rejected' },
+                { value: 'sourcing', label: 'Sourcing' },
+                { value: 'quoted', label: 'Quoted' },
+                { value: 'ordered', label: 'Ordered' },
+                { value: 'completed', label: 'Completed' }
+              ]}
+              value={statusFilter}
+              onChange={setStatusFilter}
             />
           </div>
-          <FilterSelect
-            label="Status"
-            options={[
-              { value: '', label: 'All' },
-              ...(!isProcurement || procHead ? [{ value: 'draft', label: 'Draft' }] : []),
-              ...(procHead ? [{ value: 'pending_hod', label: 'Pending HOD Approval' }] : []),
-              { value: 'pending_acceptance', label: 'Pending Acceptance' },
-              { value: 'accepted', label: 'Accepted' },
-              { value: 'rejected', label: 'Rejected' },
-              { value: 'sourcing', label: 'Sourcing' },
-              { value: 'quoted', label: 'Quoted' },
-              { value: 'ordered', label: 'Ordered' },
-              { value: 'completed', label: 'Completed' }
-            ]}
-            value={statusFilter}
-            onChange={setStatusFilter}
-          />
         </div>
       </div>
 
@@ -402,7 +432,7 @@ export default function Requisitions() {
             </p>
             {!isProcurement && (
               <button
-                onClick={() => navigate('/app/requisitions/create')}
+                onClick={openCreate}
                 className="mt-4 text-primary font-medium hover:underline"
               >
                 Create your first requisition
@@ -415,50 +445,49 @@ export default function Requisitions() {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">REQ #</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Title</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">REQ #</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Title</th>
                   {isProcurement && (
-                    <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Requested By</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Requested By</th>
                   )}
-                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Items</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Priority</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Status</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">PO Status</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Date</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Actions</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Items</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Priority</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">PO Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Date</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap"></th>
                 </tr>
               </thead>
               <tbody>
                 {requisitions.map((req: any) => (
-                  <tr key={req._id} className="hover:bg-gray-50">
-                    <td className="py-2 px-3 border border-gray-200">
+                  <tr key={req._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className="font-mono text-sm font-medium text-primary">
                         {req.requisitionNumber || `REQ-${req._id.slice(-6).toUpperCase()}`}
                       </span>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
-                      <p className="font-medium text-gray-900">{req.title || 'Untitled'}</p>
-                      <p className="text-sm text-gray-500 truncate max-w-xs">
-                        {req.justification || req.description || 'No description'}
+                    <td className="py-2 px-3 border-b border-gray-100">
+                      <p className="font-medium text-gray-900 truncate max-w-[14rem]" title={req.title || 'Untitled'}>
+                        {req.title || 'Untitled'}
                       </p>
                     </td>
                     {isProcurement && (
-                      <td className="py-2 px-3 border border-gray-200">
+                      <td className="py-2 px-3 border-b border-gray-100">
                         <p className="text-sm text-gray-900">
                           {req.requestedBy?.firstName} {req.requestedBy?.lastName}
                         </p>
                         <p className="text-xs text-gray-500">{req.department?.name || 'No dept'}</p>
                       </td>
                     )}
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className="text-gray-600">{req.items?.length || 0} items</span>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${priorityColors[req.priority] || priorityColors.medium}`}>
                         {req.priority || 'Medium'}
                       </span>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       {/* Show computed status: if PO exists, show 'ordered', if delivered to stores, show appropriate status */}
                       {(() => {
                         let displayStatus = req.status;
@@ -474,7 +503,7 @@ export default function Requisitions() {
                         );
                       })()}
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       {req.purchaseOrder ? (
                         <div className="flex flex-col gap-1">
                           <div className="font-mono text-sm font-semibold text-primary">
@@ -551,12 +580,14 @@ export default function Requisitions() {
                         <span className="text-xs text-gray-400">-</span>
                       )}
                     </td>
-                    <td className="py-2 px-3 border border-gray-200 text-gray-500">
+                    <td className="py-2 px-3 border-b border-gray-100 text-gray-500">
                       {new Date(req.createdAt).toLocaleDateString('en-ZA')}
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <div className="flex items-center gap-2">
                         <ViewButton
+                          size="xs"
+                          showIcon={false}
                           onClick={() => navigate(`/app/requisitions/${req._id}`)}
                         />
 
@@ -596,13 +627,13 @@ export default function Requisitions() {
                           <>
                             <button
                               onClick={() => openActionModal(req, 'approve')}
-                              className="px-2 py-1 text-xs border border-green-300 rounded hover:bg-green-50 text-green-700"
+                              className="px-2 py-1 text-xs border border-green-600 rounded bg-green-600 hover:bg-green-700 hover:border-green-700 text-white transition-colors"
                             >
                               Approve
                             </button>
                             <button
                               onClick={() => openActionModal(req, 'hod_reject')}
-                              className="px-2 py-1 text-xs border border-red-200 rounded hover:bg-red-50 text-red-600"
+                              className="px-2 py-1 text-xs border border-red-600 rounded bg-red-600 hover:bg-red-700 hover:border-red-700 text-white transition-colors"
                             >
                               Reject
                             </button>
@@ -614,13 +645,13 @@ export default function Requisitions() {
                           <>
                             <button
                               onClick={() => openActionModal(req, 'accept')}
-                              className="px-2 py-1 text-xs border border-green-300 rounded hover:bg-green-50 text-green-700"
+                              className="px-2 py-1 text-xs border border-green-600 rounded bg-green-600 hover:bg-green-700 hover:border-green-700 text-white transition-colors"
                             >
                               Accept
                             </button>
                             <button
                               onClick={() => openActionModal(req, 'reject')}
-                              className="px-2 py-1 text-xs border border-red-200 rounded hover:bg-red-50 text-red-600"
+                              className="px-2 py-1 text-xs border border-red-600 rounded bg-red-600 hover:bg-red-700 hover:border-red-700 text-white transition-colors"
                             >
                               Reject
                             </button>
@@ -961,22 +992,22 @@ export default function Requisitions() {
                 <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Item</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Quantity</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Specification</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Item</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Quantity</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Specification</th>
                       {canEditItems && (
-                        <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Action</th>
+                        <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Action</th>
                       )}
                     </tr>
                   </thead>
                   <tbody>
                     {selectedRequisition.items?.map((item: any, index: any) => (
-                      <tr key={item._id || index} className="hover:bg-gray-50">
-                        <td className="py-2 px-3 border border-gray-200">{item.description || item.name}</td>
-                        <td className="py-2 px-3 border border-gray-200">{item.quantity} {item.unit}</td>
-                        <td className="py-2 px-3 border border-gray-200 text-gray-500">{item.specification || item.specifications || '-'}</td>
+                      <tr key={item._id || index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                        <td className="py-2 px-3 border-b border-gray-100">{item.description || item.name}</td>
+                        <td className="py-2 px-3 border-b border-gray-100">{item.quantity} {item.unit}</td>
+                        <td className="py-2 px-3 border-b border-gray-100 text-gray-500">{item.specification || item.specifications || '-'}</td>
                         {canEditItems && (
-                          <td className="py-2 px-3 border border-gray-200 text-right">
+                          <td className="py-2 px-3 border-b border-gray-100 text-right">
                             <button
                               onClick={() => handleRemoveItem(item)}
                               disabled={removingItemId === item._id || (selectedRequisition.items?.length || 0) <= 1}
@@ -1159,6 +1190,15 @@ export default function Requisitions() {
           </ModalFooter>
         </div>
       </Modal>
+
+      <Drawer
+        isOpen={createOpen}
+        // The form decides: it offers to save a draft before anything is lost.
+        onClose={() => createFormRef.current?.requestClose()}
+        title="New Requisition"
+      >
+        <RequisitionForm ref={createFormRef} onCancel={closeCreate} onSaved={handleCreated} />
+      </Drawer>
     </div>
   );
 }

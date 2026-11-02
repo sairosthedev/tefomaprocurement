@@ -41,7 +41,6 @@ import PurchaseOrderDetail from './pages/PurchaseOrderDetail';
 // Department Head Pages
 import Requisitions from './pages/Requisitions';
 import RequisitionDetail from './pages/RequisitionDetail';
-import CreateRequisition from './pages/CreateRequisition';
 import StoreRequisitions from './pages/StoreRequisitions';
 import StoresPrReview from './pages/StoresPrReview';
 import Approvals from './pages/Approvals';
@@ -271,11 +270,8 @@ function App() {
                 <RequisitionDetail />
               </AppLayout>
             } />
-            <Route path="/app/requisitions/create" element={
-              <AppLayout allowedRoles={['department_head', 'end_user']}>
-                <CreateRequisition />
-              </AppLayout>
-            } />
+            {/* Creating now happens in a drawer on the list; old links land there. */}
+            <Route path="/app/requisitions/create" element={<Navigate to="/app/requisitions?new=1" replace />} />
             <Route path="/app/store-requisitions" element={
               <AppLayout allowedRoles={['department_head', 'stores_officer']}>
                 <StoreRequisitions />

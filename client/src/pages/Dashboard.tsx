@@ -236,12 +236,12 @@ export default function Dashboard() {
       ],
       department_head: [
         { label: 'Pending Approvals', icon: Clock, color: 'bg-amber-50 hover:bg-amber-100 text-amber-700', href: '/app/approvals' },
-        { label: 'Create Requisition', icon: FileText, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/requisitions/create' },
+        { label: 'Create Requisition', icon: FileText, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/requisitions?new=1' },
         { label: 'My Requisitions', icon: FileSearch, color: 'bg-blue-50 hover:bg-blue-100 text-blue-700', href: '/app/requisitions' },
         { label: 'View Reports', icon: TrendingUp, color: 'bg-green-50 hover:bg-green-100 text-green-700', href: '/app/reports' }
       ],
       end_user: [
-        { label: 'Create Requisition', icon: FileText, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/requisitions/create' },
+        { label: 'Create Requisition', icon: FileText, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/requisitions?new=1' },
         { label: 'My Requisitions', icon: FileSearch, color: 'bg-blue-50 hover:bg-blue-100 text-blue-700', href: '/app/requisitions' }
       ],
       supplier: [
