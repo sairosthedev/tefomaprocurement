@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import FilterSelect from '../components/FilterSelect';
@@ -13,6 +13,7 @@ import {
   Search
 } from 'lucide-react';
 import Pagination from '../components/Pagination';
+import { CreateRFQDrawer } from '../components/RFQForm';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 function sourcingDeadlineBadge(createdAt: string): { label: string; cls: string } | null {
@@ -48,6 +49,42 @@ export default function RFQs() {
   const [statusFilter, setStatusFilter] = useState<any>('');
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(emptyPagination());
+  // The create drawer lives in the URL (?new=1, with ?requisition= when it is
+  // raised from one), so links from elsewhere can open it and Back closes it.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const createOpen = searchParams.get('new') === '1';
+  const createFromRequisition = searchParams.get('requisition');
+
+  const openCreate = () => {
+    setSearchParams((params) => {
+      params.set('new', '1');
+      return params;
+    });
+  };
+
+  const closeCreate = () => {
+    setSearchParams(
+      (params) => {
+        params.delete('new');
+        params.delete('requisition');
+        return params;
+      },
+      { replace: true }
+    );
+  };
+
+  // Straight to the new RFQ, where its next steps are. Replacing the ?new=1
+  // entry means Back from there returns to the list, not to an empty form.
+  const handleCreated = (rfqId?: string) => {
+    if (rfqId) {
+      navigate(`/app/rfqs/${rfqId}`, { replace: true });
+      return;
+    }
+    closeCreate();
+    // Newest first, so the new RFQ is on page one.
+    if (page !== 1) setPage(1);
+    else fetchRFQs();
+  };
 
   useEffect(() => {
     setPage(1);
@@ -88,7 +125,7 @@ export default function RFQs() {
         <div className="flex flex-col md:flex-row md:items-center gap-4">
           <button
             type="button"
-            onClick={() => navigate('/app/rfqs/create')}
+            onClick={openCreate}
             className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors whitespace-nowrap shrink-0"
           >
             <Plus className="h-4 w-4" />
@@ -204,6 +241,13 @@ export default function RFQs() {
         />
         </>
       )}
+
+      <CreateRFQDrawer
+        isOpen={createOpen}
+        requisitionId={createFromRequisition}
+        onClose={closeCreate}
+        onSaved={handleCreated}
+      />
     </div>
   );
 }

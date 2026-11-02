@@ -11,6 +11,7 @@ import EquipmentDetailsView from '../components/EquipmentDetailsView';
 import { canCancelRequisition, requisitionCancelApiBase } from '../lib/cancellationAccess';
 import { WorkflowStepper, NextStepCard } from '../components/WorkflowStepper';
 import { requisitionJourney } from '../lib/procurementJourney';
+import { CreateRFQDrawer } from '../components/RFQForm';
 import { 
   FileText,
   CheckCircle,
@@ -118,6 +119,8 @@ export default function RequisitionDetail() {
     !!userId && String(requisition?.requestedBy?._id || requisition?.requestedBy || '') === userId;
   const mayCancelRequisition = canCancelRequisition(user, requisition);
   const [accepting, setAccepting] = useState(false);
+  // The RFQ form opens over this page, so the officer keeps their place.
+  const [creatingRfq, setCreatingRfq] = useState(false);
 
   // An approver may drop line items they don't want purchased before approving.
   const canEditItems =
@@ -171,7 +174,9 @@ export default function RequisitionDetail() {
       setAccepting(true);
       await api.put(`/procurement/requisitions/${id}/accept`, { comments: '' });
       showToast('Requisition accepted — now create its RFQ', 'success');
-      navigate(`/app/rfqs/create?requisition=${id}`);
+      setCreatingRfq(true);
+      // Show the accepted status underneath, for when the form is closed unsent.
+      fetchRequisition();
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to accept requisition', 'error');
     } finally {
@@ -272,6 +277,13 @@ export default function RequisitionDetail() {
     }
   };
 
+  // Straight to the new RFQ, where its next steps are.
+  const handleRfqCreated = (rfqId?: string) => {
+    setCreatingRfq(false);
+    if (rfqId) navigate(`/app/rfqs/${rfqId}`);
+    else fetchRequisition();
+  };
+
   if (loading) {
     return (
       <div className="p-8">
@@ -351,6 +363,13 @@ export default function RequisitionDetail() {
         onConfirm={handleCancelRequisition}
       />
 
+      <CreateRFQDrawer
+        isOpen={creatingRfq}
+        requisitionId={requisition._id}
+        onClose={() => setCreatingRfq(false)}
+        onSaved={handleRfqCreated}
+      />
+
       {(() => {
         const { steps, next } = requisitionJourney(requisition, {
           isOwner,
@@ -373,7 +392,11 @@ export default function RequisitionDetail() {
                   next.action && {
                     label: key === 'accept' && accepting ? 'Accepting...' : next.action.label,
                     to: next.action.to,
-                    onClick: key === 'submit' ? handleSubmit : key === 'accept' ? handleAccept : undefined,
+                    onClick:
+                      key === 'submit' ? handleSubmit
+                        : key === 'accept' ? handleAccept
+                        : key === 'createRfq' ? () => setCreatingRfq(true)
+                        : undefined,
                     disabled: key === 'submit' ? submitting : key === 'accept' ? accepting : undefined
                   }
                 }

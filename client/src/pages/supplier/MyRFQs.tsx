@@ -10,6 +10,7 @@ import ViewButton from '../../components/ViewButton';
 import Modal from '../../components/Modal';
 import PageHeader from '../../components/PageHeader';
 import Pagination from '../../components/Pagination';
+import { SubmitQuotationDrawer } from '../../components/QuotationForm';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
 
 const statusColors: any = {
@@ -121,10 +122,18 @@ export default function MyRFQs() {
   const [showConfetti, setShowConfetti] = useState<any>(false);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(emptyPagination());
+  // The RFQ open in the quotation drawer, priced from its row without leaving the list.
+  const [quoting, setQuoting] = useState<any>(null);
 
   useEffect(() => {
     fetchMyRFQs();
   }, [page]);
+
+  const handleQuoted = () => {
+    setQuoting(null);
+    // The quoted RFQ now shows as submitted.
+    fetchMyRFQs();
+  };
 
   const fetchMyRFQs = async () => {
     try {
@@ -305,7 +314,7 @@ export default function MyRFQs() {
                           />
                           {canSubmit && (
                             <button
-                              onClick={() => navigate(`/app/submit-quotation?rfq=${rfq._id}`)}
+                              onClick={() => setQuoting(rfq)}
                               className="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
                             >
                               Submit Quote
@@ -409,6 +418,14 @@ export default function MyRFQs() {
           </div>
         )}
       </Modal>
+
+      <SubmitQuotationDrawer
+        isOpen={!!quoting}
+        rfqId={quoting?._id}
+        rfq={quoting}
+        onClose={() => setQuoting(null)}
+        onSaved={handleQuoted}
+      />
     </div>
   );
 }

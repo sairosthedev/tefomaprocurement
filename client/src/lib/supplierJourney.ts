@@ -102,7 +102,7 @@ export function supplierQuotationNext(quote: any): { title: string; description?
   const s = quote.status as string;
   const rfqId = quote.rfq?._id || quote.rfq;
   if (s === 'revision_requested' && rfqId) {
-    return { title: 'Submit a revised quotation', description: 'Procurement asked you for a revised price.', to: `/app/submit-quotation?rfq=${rfqId}`, label: 'Submit revised quote' };
+    return { title: 'Submit a revised quotation', description: 'Procurement asked you for a revised price.', to: `/app/my-rfqs/${rfqId}?quote=1`, label: 'Submit revised quote' };
   }
   if (s === 'accepted' || s === 'awarded') {
     return { title: 'Procurement to issue the purchase order', description: 'It appears under My Purchase Orders once approved.', waiting: true, to: '/app/my-purchase-orders', label: 'My purchase orders' };

@@ -287,9 +287,6 @@ export function SidebarLayout({ children }: any) {
   const isHrefActive = (href?: string): boolean => {
     if (!href) return false
     if (href === '/app') return location.pathname === '/app'
-    if (href === '/app/my-rfqs') {
-      return location.pathname.startsWith(href) || location.pathname.startsWith('/app/submit-quotation')
-    }
     return location.pathname.startsWith(href)
   }
 

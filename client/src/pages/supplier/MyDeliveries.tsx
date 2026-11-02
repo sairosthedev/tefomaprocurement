@@ -10,6 +10,7 @@ import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/p
 import { formatCurrency } from '../../lib/constants';
 import { WorkflowStepper, NextStepCard } from '../../components/WorkflowStepper';
 import { supplierDeliveryJourney } from '../../lib/supplierJourney';
+import { SubmitInvoiceDrawer } from '../../components/InvoiceForm';
 
 const statusColors: any = {
   pending: 'bg-yellow-100 text-yellow-700',
@@ -28,6 +29,8 @@ export default function MyDeliveries() {
   const [showViewModal, setShowViewModal] = useState<any>(false);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(emptyPagination());
+  // The order the invoice drawer is billing; null while it is closed.
+  const [invoicingPoId, setInvoicingPoId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMyDeliveries();
@@ -258,7 +261,10 @@ export default function MyDeliveries() {
                 <NextStepCard
                   title="Submit your invoice"
                   description={`Bill what Stores accepted against ${selectedDelivery.purchaseOrder.poNumber}.`}
-                  action={{ label: 'Submit invoice', to: `/app/submit-invoice?po=${selectedDelivery.purchaseOrder._id}` }}
+                  action={{
+                    label: 'Submit invoice',
+                    onClick: () => { setShowViewModal(false); setInvoicingPoId(selectedDelivery.purchaseOrder._id); }
+                  }}
                 />
               ) : selectedDelivery.status !== 'rejected' ? (
                 <NextStepCard
@@ -414,6 +420,13 @@ export default function MyDeliveries() {
           </div>
         )}
       </Modal>
+
+      <SubmitInvoiceDrawer
+        isOpen={invoicingPoId !== null}
+        purchaseOrderId={invoicingPoId}
+        onClose={() => setInvoicingPoId(null)}
+        onSaved={() => setInvoicingPoId(null)}
+      />
     </div>
   );
 }

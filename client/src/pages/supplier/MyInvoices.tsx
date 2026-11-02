@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { supplierAPI } from '../../lib/api';
 import { formatCurrency } from '../../lib/constants';
 import { getCurrentSbuCurrency } from '../../lib/sbu';
@@ -10,15 +10,46 @@ import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/p
 import { Loader2, Plus, ChevronDown, ChevronRight } from 'lucide-react';
 import { WorkflowStepper, NextStepCard } from '../../components/WorkflowStepper';
 import { supplierInvoiceJourney } from '../../lib/supplierJourney';
+import { SubmitInvoiceDrawer } from '../../components/InvoiceForm';
 
 export default function MyInvoices() {
-  const navigate = useNavigate();
   const { showToast } = useToast();
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(emptyPagination());
   const [openId, setOpenId] = useState<string | null>(null);
+  // The submit drawer lives in the URL (?new=1, with ?po= for the order being
+  // billed), so links from elsewhere can open it and Back closes it.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const submitOpen = searchParams.get('new') === '1';
+
+  const openSubmit = (purchaseOrderId?: string) => {
+    setSearchParams((params) => {
+      params.set('new', '1');
+      if (purchaseOrderId) params.set('po', purchaseOrderId);
+      else params.delete('po');
+      return params;
+    });
+  };
+
+  const closeSubmit = () => {
+    setSearchParams(
+      (params) => {
+        params.delete('new');
+        params.delete('po');
+        return params;
+      },
+      { replace: true }
+    );
+  };
+
+  const handleSubmitted = () => {
+    closeSubmit();
+    // Newest first, so the new invoice is on page one.
+    if (page !== 1) setPage(1);
+    else fetchInvoices();
+  };
 
   useEffect(() => {
     fetchInvoices();
@@ -47,7 +78,7 @@ export default function MyInvoices() {
       <div className="mb-4 flex items-center gap-3">
         <button
           type="button"
-          onClick={() => navigate('/app/submit-invoice')}
+          onClick={() => openSubmit()}
           className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors whitespace-nowrap shrink-0"
         >
           <Plus className="h-4 w-4" />
@@ -97,7 +128,7 @@ export default function MyInvoices() {
                             description={inv.rejectionReason ? `Finance rejected it: ${inv.rejectionReason}` : 'Finance rejected this invoice.'}
                             action={
                               inv.purchaseOrder?._id
-                                ? { label: 'Submit corrected invoice', to: `/app/submit-invoice?po=${inv.purchaseOrder._id}` }
+                                ? { label: 'Submit corrected invoice', onClick: () => openSubmit(inv.purchaseOrder._id) }
                                 : undefined
                             }
                           />
@@ -129,6 +160,13 @@ export default function MyInvoices() {
           />
         </div>
       )}
+
+      <SubmitInvoiceDrawer
+        isOpen={submitOpen}
+        purchaseOrderId={searchParams.get('po')}
+        onClose={closeSubmit}
+        onSaved={handleSubmitted}
+      />
     </div>
   );
 }

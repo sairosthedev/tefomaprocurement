@@ -1,14 +1,14 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useToast } from '../components/Toast';
+import React, { forwardRef, useState, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import { useToast } from './Toast';
 import api, { procurementAPI } from '../lib/api';
 import { getCategoryName } from '../lib/constants';
-import PageHeader from '../components/PageHeader';
-import { FormSteps, FormStepNav } from '../components/FormSteps';
+import { ConfirmModal } from './Modal';
+import Drawer from './Drawer';
+import { FormSteps, FormStepNav } from './FormSteps';
 import {
-  Package, Calendar, Users, Send,
-  Loader2, Plus, X, Search, CheckCircle, AlertCircle,
-  Lock, FileText, Sparkles
+  Package, Calendar, Users,
+  Loader2, X, Search, CheckCircle, AlertCircle,
+  Lock, FileText, Sparkles, Save
 } from 'lucide-react';
 
 const STEPS = [
@@ -22,13 +22,39 @@ const STEP_ITEMS = 1;
 const STEP_SUPPLIERS = 2;
 const LAST_STEP = STEPS.length - 1;
 
-export default function CreateRFQ() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+const EMPTY_FORM = {
+  title: '',
+  description: '',
+  submissionDeadline: '',
+  deliveryRequiredBy: '',
+  termsAndConditions: '',
+  notes: ''
+};
+
+export interface RFQFormHandle {
+  /** Close the form, first asking to discard when anything has been entered. */
+  requestClose: () => void;
+}
+
+/**
+ * The RFQ wizard: details, items, suppliers, then review. Hosted in a drawer
+ * (see CreateRFQDrawer), so it reports back through callbacks rather than
+ * navigating away itself. The host routes its close gestures (✕, Escape,
+ * backdrop) through `requestClose`, so a half-built RFQ is not lost by accident.
+ */
+const RFQForm = forwardRef<RFQFormHandle, {
+  /** The accepted requisition the RFQ is raised from; its items become the RFQ's. */
+  requisitionId?: string | null;
+  /** Close without saving. */
+  onCancel: () => void;
+  /** Called once the RFQ is stored, with its id when the API returns one. */
+  onSaved: (rfqId?: string) => void;
+  /** Called with the requisition once it has loaded, so the host can name it. */
+  onRequisitionLoaded?: (requisition: any) => void;
+}>(function RFQForm({ requisitionId, onCancel, onSaved, onRequisitionLoaded }, ref) {
   const { showToast } = useToast();
-  
-  const requisitionId = searchParams.get('requisition');
-  
+  const topRef = useRef<HTMLDivElement>(null);
+
   const [loading, setLoading] = useState<any>(true);
   const [submitting, setSubmitting] = useState<any>(false);
   const [requisition, setRequisition] = useState<any>(null);
@@ -51,14 +77,26 @@ export default function CreateRFQ() {
   const [suspectedDuplicates, setSuspectedDuplicates] = useState<any[]>([]);
   const [step, setStep] = useState(STEP_DETAILS);
 
-  const [formData, setFormData] = useState<any>({
-    title: '',
-    description: '',
-    submissionDeadline: '',
-    deliveryRequiredBy: '',
-    termsAndConditions: '',
-    notes: ''
-  });
+  const [formData, setFormData] = useState<any>(EMPTY_FORM);
+  // What the form held before the officer touched it: blank, or the title and
+  // description carried over from the requisition.
+  const [prefill, setPrefill] = useState<any>(EMPTY_FORM);
+  // Set once the officer adds or removes a supplier from the proposed list.
+  const [selectionChanged, setSelectionChanged] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
+
+  const dirty =
+    step > STEP_DETAILS ||
+    selectionChanged ||
+    Object.keys(EMPTY_FORM).some((field) => formData[field] !== prefill[field]);
+
+  // A stray click on the backdrop should not throw away a half-built RFQ.
+  const requestClose = () => {
+    if (dirty) setConfirmClose(true);
+    else onCancel();
+  };
+
+  useImperativeHandle(ref, () => ({ requestClose }));
 
   useEffect(() => {
     if (requisitionId) {
@@ -76,14 +114,16 @@ export default function CreateRFQ() {
       // Fetch the requisition details
       const response = await api.get(`/procurement/requisitions?status=accepted`);
       const req = response.data.data?.find((r: any) => r._id === requisitionId);
-      
+
       if (req) {
         setRequisition(req);
-        setFormData((prev: any) => ({
-          ...prev,
+        const carried = {
           title: `RFQ for ${req.title}`,
           description: req.justification || ''
-        }));
+        };
+        setFormData((prev: any) => ({ ...prev, ...carried }));
+        setPrefill((prev: any) => ({ ...prev, ...carried }));
+        onRequisitionLoaded?.(req);
       } else {
         showToast('Requisition not found or not accepted', 'error');
       }
@@ -203,6 +243,7 @@ export default function CreateRFQ() {
       const ids = new Set(prev.map((s: any) => s._id));
       return [...prev, ...related.filter((m) => !ids.has(m._id))];
     });
+    setSelectionChanged(true);
   };
 
   const toggleSupplier = (supplier: any) => {
@@ -213,10 +254,12 @@ export default function CreateRFQ() {
       }
       return [...prev, supplier];
     });
+    setSelectionChanged(true);
   };
 
   useEffect(() => {
-    window.scrollTo({ top: 0 });
+    // Scrolls whichever container holds the form, page or drawer.
+    topRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   }, [step]);
 
   // Checks a step must pass before the next one opens. The deadline is only
@@ -323,8 +366,7 @@ export default function CreateRFQ() {
       }
 
       showToast(asDraft ? 'RFQ saved as draft' : 'RFQ created and sent to suppliers', 'success');
-      // Straight to the new RFQ, where its next steps are.
-      navigate(rfqId ? `/app/rfqs/${rfqId}` : '/app/rfqs');
+      onSaved(rfqId);
     } catch (error: any) {
       console.error('Error creating RFQ:', error);
       showToast(error.response?.data?.message || 'Failed to create RFQ', 'error');
@@ -335,25 +377,15 @@ export default function CreateRFQ() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-96">
+      <div className="flex items-center justify-center py-24">
         <Loader2 className="h-8 w-8 text-primary animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="p-8 max-w-5xl">
-      <PageHeader
-        onBack={() => navigate(-1)}
-        title="Create RFQ"
-        subtitle={
-          requisition
-            ? `Creating RFQ from requisition ${requisition.requisitionNumber}`
-            : 'Request for Quotation'
-        }
-      />
-
-      <FormSteps steps={STEPS} current={step} onSelect={setStep} />
+    <div ref={topRef} className="scroll-mt-6">
+      <FormSteps steps={STEPS} current={step} onSelect={setStep} variant="track" />
 
       <form onSubmit={(e: any) => handleSubmit(e, false)}>
         <div className="space-y-6">
@@ -383,9 +415,9 @@ export default function CreateRFQ() {
           {step === STEP_DETAILS && (
           <>
           {/* RFQ Details */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">RFQ Details</h2>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -442,7 +474,7 @@ export default function CreateRFQ() {
           </div>
 
           {/* Terms & Conditions */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Terms & Conditions</h2>
             <textarea
               value={formData.termsAndConditions}
@@ -457,7 +489,7 @@ export default function CreateRFQ() {
 
           {/* Items from Requisition - READ ONLY */}
           {step === STEP_ITEMS && (
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-semibold text-gray-900">Items</h2>
@@ -518,7 +550,7 @@ export default function CreateRFQ() {
 
           {/* Select Suppliers */}
           {step === STEP_SUPPLIERS && (
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Invite Suppliers</h2>
               <span className="text-sm text-primary font-medium">
@@ -637,8 +669,8 @@ export default function CreateRFQ() {
                         }`}
                       >
                         <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                          isSelected 
-                            ? 'bg-primary border-primary' 
+                          isSelected
+                            ? 'bg-primary border-primary'
                             : 'border-gray-300'
                         }`}>
                           {isSelected && <CheckCircle className="h-3.5 w-3.5 text-white" />}
@@ -698,7 +730,7 @@ export default function CreateRFQ() {
 
           {/* Review & send: everything suppliers will receive, in one place */}
           {step === LAST_STEP && (
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-6">
+          <div className="space-y-6">
             <h2 className="text-lg font-semibold text-gray-900">Review before sending</h2>
 
             <section>
@@ -804,29 +836,81 @@ export default function CreateRFQ() {
             total={STEPS.length}
             onBack={() => setStep((s) => Math.max(s - 1, 0))}
             onNext={goNext}
-            onCancel={() => navigate(-1)}
+            onCancel={requestClose}
             finishLabel="Publish RFQ"
             submitting={submitting}
+            size="sm"
             extra={
               <button
                 type="button"
                 onClick={(e: any) => handleSubmit(e, true)}
                 disabled={submitting}
-                className="px-6 py-2.5 border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="flex items-center justify-center gap-1.5 px-3 py-[7px] text-sm border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
+                <Save className="h-4 w-4" />
                 Save as Draft
               </button>
             }
           />
         </div>
       </form>
+
+      <ConfirmModal
+        isOpen={confirmClose}
+        onClose={() => setConfirmClose(false)}
+        onConfirm={onCancel}
+        title="Discard this RFQ?"
+        message="Nothing has been saved yet, so what you have entered will be lost."
+        confirmText="Discard"
+      />
     </div>
+  );
+});
+
+/**
+ * The RFQ form in its drawer, for the RFQ list and the requisition pages. The
+ * form is mounted only while open, so each opening starts from a fresh copy of
+ * the requisition and a fresh invitation proposal.
+ */
+export function CreateRFQDrawer({ isOpen, requisitionId, onClose, onSaved }: {
+  isOpen: boolean;
+  /** The accepted requisition to raise the RFQ from, if any. */
+  requisitionId?: string | null;
+  /** Close without saving; the form has already asked about discarding. */
+  onClose: () => void;
+  /** Called once the RFQ is stored, with its id when the API returns one. */
+  onSaved: (rfqId?: string) => void;
+}) {
+  const formRef = useRef<RFQFormHandle>(null);
+  // The requisition number is known only once the form has loaded it. Kept with
+  // its id, so a number from an earlier opening never names a different one.
+  const [loaded, setLoaded] = useState<{ id: string; number: string } | null>(null);
+  const subtitle =
+    requisitionId && loaded?.id === requisitionId
+      ? `From requisition ${loaded.number}`
+      : 'Request for Quotation';
+
+  return (
+    <Drawer
+      isOpen={isOpen}
+      // The form decides: it asks before anything entered is thrown away.
+      onClose={() => formRef.current?.requestClose()}
+      title="Create RFQ"
+      subtitle={subtitle}
+      size="xl"
+    >
+      <RFQForm
+        key={requisitionId || 'blank'}
+        ref={formRef}
+        requisitionId={requisitionId}
+        onCancel={onClose}
+        onSaved={onSaved}
+        onRequisitionLoaded={(req) =>
+          setLoaded({ id: req._id, number: req.requisitionNumber || `REQ-${req._id.slice(-6).toUpperCase()}` })
+        }
+      />
+    </Drawer>
   );
 }
 
-
-
-
-
-
-
+export default RFQForm;

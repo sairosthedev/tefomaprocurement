@@ -1,10 +1,11 @@
 ﻿import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useToast } from '../../components/Toast';
 import api from '../../lib/api';
 import { Clock, Loader2, PartyPopper, Send } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import { WorkflowStepper, NextStepCard } from '../../components/WorkflowStepper';
+import { SubmitQuotationDrawer } from '../../components/QuotationForm';
 import { supplierRfqJourney, isQuoteDecided } from '../../lib/supplierJourney';
 
 export default function SupplierRFQDetail() {
@@ -13,6 +14,32 @@ export default function SupplierRFQDetail() {
   const { showToast } = useToast();
   const [rfq, setRfq] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  // The quotation drawer lives in the URL (?quote=1), so links from elsewhere
+  // can open it and the browser's Back button closes it.
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const openQuote = () => {
+    setSearchParams((params) => {
+      params.set('quote', '1');
+      return params;
+    });
+  };
+
+  const closeQuote = () => {
+    setSearchParams(
+      (params) => {
+        params.delete('quote');
+        return params;
+      },
+      { replace: true }
+    );
+  };
+
+  const handleQuoted = () => {
+    closeQuote();
+    // Picks up the submitted (or revised) quote, so the steps and buttons move on.
+    loadRfq();
+  };
 
   useEffect(() => {
     if (id) loadRfq();
@@ -58,6 +85,8 @@ export default function SupplierRFQDetail() {
   const canSubmit =
     rfq.revisionRequested ||
     (rfq.status === 'open' && !rfq.hasSubmitted && remaining.canSubmit);
+  // A stale ?quote=1 link to an RFQ that can no longer be quoted just shows the RFQ.
+  const quoteOpen = canSubmit && searchParams.get('quote') === '1';
 
   return (
     <div className="p-8">
@@ -69,7 +98,7 @@ export default function SupplierRFQDetail() {
         actions={
           canSubmit ? (
             <button
-              onClick={() => navigate(`/app/submit-quotation?rfq=${rfq._id}`)}
+              onClick={openQuote}
               className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-medium rounded-xl hover:bg-primary-dark"
             >
               <Send className="h-4 w-4" />
@@ -89,7 +118,7 @@ export default function SupplierRFQDetail() {
               <NextStepCard
                 title={rfq.revisionRequested ? 'Submit your revised quotation' : 'Submit your quotation'}
                 description={rfq.revisionRequested ? 'Procurement asked for a revised price.' : `Quotes close on ${new Date(rfq.submissionDeadline).toLocaleString('en-ZA')} (${remaining.text}).`}
-                action={{ label: rfq.revisionRequested ? 'Submit revised quote' : 'Submit quote', to: `/app/submit-quotation?rfq=${rfq._id}` }}
+                action={{ label: rfq.revisionRequested ? 'Submit revised quote' : 'Submit quote', onClick: openQuote }}
               />
             ) : rfq.purchaseOrder ? (
               !rfq.purchaseOrder.isAcknowledged && ['approved', 'issued'].includes(rfq.purchaseOrder.status) ? (
@@ -196,6 +225,14 @@ export default function SupplierRFQDetail() {
           </div>
         )}
       </div>
+
+      <SubmitQuotationDrawer
+        isOpen={quoteOpen}
+        rfqId={rfq._id}
+        rfq={rfq}
+        onClose={closeQuote}
+        onSaved={handleQuoted}
+      />
     </div>
   );
 }

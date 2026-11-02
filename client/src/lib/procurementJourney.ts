@@ -20,7 +20,7 @@ export interface JourneyNext {
   description?: string;
   /** Someone else's step: shown as "waiting on". */
   waiting?: boolean;
-  action?: { label: string; to?: string; key?: 'submit' | 'accept' };
+  action?: { label: string; to?: string; key?: 'submit' | 'accept' | 'createRfq' };
 }
 
 const PO_ISSUED = ['issued', 'partially_received', 'completed'];
@@ -143,7 +143,7 @@ function nextFor(req: any, stage: number, v: JourneyViewer): JourneyNext | null 
     case 4:
       if (!rfq) {
         return v.isProcurement
-          ? { title: 'Create the RFQ', description: 'Invite suppliers to quote for these items.', action: { label: 'Create RFQ', to: `/app/rfqs/create?requisition=${req._id}` } }
+          ? { title: 'Create the RFQ', description: 'Invite suppliers to quote for these items.', action: { label: 'Create RFQ', key: 'createRfq' } }
           : { title: 'Procurement to send out an RFQ', waiting: true };
       }
       if (sourcing?.status === 'draft') {

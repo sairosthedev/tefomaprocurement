@@ -10,6 +10,7 @@ import ViewButton from '../components/ViewButton';
 import Modal, { ModalFooter } from '../components/Modal';
 import Drawer from '../components/Drawer';
 import RequisitionForm, { type RequisitionFormHandle } from '../components/RequisitionForm';
+import { CreateRFQDrawer } from '../components/RFQForm';
 import Pagination from '../components/Pagination';
 import { formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
@@ -91,6 +92,8 @@ export default function Requisitions() {
   // open it and the browser's Back button closes it.
   const [searchParams, setSearchParams] = useSearchParams();
   const createFormRef = useRef<RequisitionFormHandle>(null);
+  // The accepted requisition the RFQ drawer is open on, if any.
+  const [rfqFor, setRfqFor] = useState<string | null>(null);
   const [viewFilter, setViewFilter] = useState<'all' | 'mine' | 'team'>('all');
 
   // The Head of Procurement works the procurement list. It also carries their
@@ -138,6 +141,13 @@ export default function Requisitions() {
     closeCreate();
     // Newest first, so the new requisition is on page one.
     if (page !== 1) setPage(1);
+    else fetchRequisitions();
+  };
+
+  // Straight to the new RFQ, where its next steps are.
+  const handleRfqCreated = (rfqId?: string) => {
+    setRfqFor(null);
+    if (rfqId) navigate(`/app/rfqs/${rfqId}`);
     else fetchRequisitions();
   };
 
@@ -266,10 +276,9 @@ export default function Requisitions() {
       );
       setShowActionModal(false);
       if (actionType === 'accept') {
-        // Accepting is only ever followed by sourcing, so go straight there
-        // with the requisition already chosen.
-        navigate(`/app/rfqs/create?requisition=${selectedRequisition._id}`);
-        return;
+        // Accepting is only ever followed by sourcing, so the RFQ form opens
+        // next with the requisition already chosen.
+        setRfqFor(selectedRequisition._id);
       }
       setActionComment('');
       setBudgetOverrideReason('');
@@ -649,7 +658,7 @@ export default function Requisitions() {
 
                         {isProcurement && req.status === 'accepted' && (
                           <button
-                            onClick={() => navigate(`/app/rfqs/create?requisition=${req._id}`)}
+                            onClick={() => setRfqFor(req._id)}
                             className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
                           >
                             Create RFQ
@@ -808,6 +817,13 @@ export default function Requisitions() {
       >
         <RequisitionForm ref={createFormRef} onCancel={closeCreate} onSaved={handleCreated} />
       </Drawer>
+
+      <CreateRFQDrawer
+        isOpen={!!rfqFor}
+        requisitionId={rfqFor}
+        onClose={() => setRfqFor(null)}
+        onSaved={handleRfqCreated}
+      />
     </div>
   );
 }

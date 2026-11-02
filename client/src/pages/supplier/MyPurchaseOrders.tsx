@@ -12,6 +12,7 @@ import { formatCurrency } from '../../lib/constants';
 import { getCurrentSbuCurrency } from '../../lib/sbu';
 import { WorkflowStepper, NextStepCard } from '../../components/WorkflowStepper';
 import { supplierPoJourney, supplierPoNext } from '../../lib/supplierJourney';
+import { SubmitInvoiceDrawer } from '../../components/InvoiceForm';
 
 const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
@@ -45,6 +46,8 @@ export default function MyPurchaseOrders() {
   });
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(emptyPagination());
+  // The order the invoice drawer is billing; null while it is closed.
+  const [invoicingPoId, setInvoicingPoId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMyPurchaseOrders();
@@ -222,7 +225,7 @@ export default function MyPurchaseOrders() {
                         )}
                         {supplierPoNext(po)?.action === 'invoice' && (
                           <button
-                            onClick={() => navigate(`/app/submit-invoice?po=${po._id}`)}
+                            onClick={() => setInvoicingPoId(po._id)}
                             className="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
                           >
                             Submit invoice
@@ -354,7 +357,7 @@ export default function MyPurchaseOrders() {
                   next.action === 'acknowledge'
                     ? { label: 'Acknowledge', onClick: () => { setShowViewModal(false); openAcknowledgeModal(selectedPO); } }
                     : next.action === 'invoice'
-                      ? { label: 'Submit invoice', to: `/app/submit-invoice?po=${selectedPO._id}` }
+                      ? { label: 'Submit invoice', onClick: () => { setShowViewModal(false); setInvoicingPoId(selectedPO._id); } }
                       : undefined;
                 return <NextStepCard title={next.title} description={next.description} waiting={next.waiting} action={action} />;
               })()}
@@ -465,6 +468,17 @@ export default function MyPurchaseOrders() {
           </div>
         )}
       </Modal>
+
+      <SubmitInvoiceDrawer
+        isOpen={invoicingPoId !== null}
+        purchaseOrderId={invoicingPoId}
+        onClose={() => setInvoicingPoId(null)}
+        onSaved={() => {
+          setInvoicingPoId(null);
+          // The order's next step moves on from "Submit invoice".
+          fetchMyPurchaseOrders();
+        }}
+      />
     </div>
   );
 }
