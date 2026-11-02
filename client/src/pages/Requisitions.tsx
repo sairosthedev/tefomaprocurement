@@ -445,49 +445,49 @@ export default function Requisitions() {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">REQ #</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Title</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">REQ #</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Title</th>
                   {isProcurement && (
-                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Requested By</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Requested By</th>
                   )}
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Items</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Priority</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">PO Status</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Date</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap"></th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Items</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Priority</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">PO Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Date</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap"></th>
                 </tr>
               </thead>
               <tbody>
                 {requisitions.map((req: any) => (
                   <tr key={req._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
-                    <td className="py-2 px-3 border-b border-gray-100">
+                    <td className="py-2 px-3 border border-gray-200">
                       <span className="font-mono text-sm font-medium text-primary">
                         {req.requisitionNumber || `REQ-${req._id.slice(-6).toUpperCase()}`}
                       </span>
                     </td>
-                    <td className="py-2 px-3 border-b border-gray-100">
+                    <td className="py-2 px-3 border border-gray-200">
                       <p className="font-medium text-gray-900 truncate max-w-[14rem]" title={req.title || 'Untitled'}>
                         {req.title || 'Untitled'}
                       </p>
                     </td>
                     {isProcurement && (
-                      <td className="py-2 px-3 border-b border-gray-100">
+                      <td className="py-2 px-3 border border-gray-200">
                         <p className="text-sm text-gray-900">
                           {req.requestedBy?.firstName} {req.requestedBy?.lastName}
                         </p>
                         <p className="text-xs text-gray-500">{req.department?.name || 'No dept'}</p>
                       </td>
                     )}
-                    <td className="py-2 px-3 border-b border-gray-100">
+                    <td className="py-2 px-3 border border-gray-200">
                       <span className="text-gray-600">{req.items?.length || 0} items</span>
                     </td>
-                    <td className="py-2 px-3 border-b border-gray-100">
+                    <td className="py-2 px-3 border border-gray-200">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${priorityColors[req.priority] || priorityColors.medium}`}>
                         {req.priority || 'Medium'}
                       </span>
                     </td>
-                    <td className="py-2 px-3 border-b border-gray-100">
+                    <td className="py-2 px-3 border border-gray-200">
                       {/* Show computed status: if PO exists, show 'ordered', if delivered to stores, show appropriate status */}
                       {(() => {
                         let displayStatus = req.status;
@@ -503,7 +503,7 @@ export default function Requisitions() {
                         );
                       })()}
                     </td>
-                    <td className="py-2 px-3 border-b border-gray-100">
+                    <td className="py-2 px-3 border border-gray-200">
                       {req.purchaseOrder ? (
                         <div className="flex flex-col gap-1">
                           <div className="font-mono text-sm font-semibold text-primary">
@@ -580,10 +580,10 @@ export default function Requisitions() {
                         <span className="text-xs text-gray-400">-</span>
                       )}
                     </td>
-                    <td className="py-2 px-3 border-b border-gray-100 text-gray-500">
+                    <td className="py-2 px-3 border border-gray-200 text-gray-500">
                       {new Date(req.createdAt).toLocaleDateString('en-ZA')}
                     </td>
-                    <td className="py-2 px-3 border-b border-gray-100">
+                    <td className="py-2 px-3 border border-gray-200">
                       <div className="flex items-center gap-2">
                         <ViewButton
                           size="xs"
@@ -992,22 +992,22 @@ export default function Requisitions() {
                 <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Item</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Quantity</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Specification</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Item</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Quantity</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Specification</th>
                       {canEditItems && (
-                        <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Action</th>
+                        <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Action</th>
                       )}
                     </tr>
                   </thead>
                   <tbody>
                     {selectedRequisition.items?.map((item: any, index: any) => (
                       <tr key={item._id || index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
-                        <td className="py-2 px-3 border-b border-gray-100">{item.description || item.name}</td>
-                        <td className="py-2 px-3 border-b border-gray-100">{item.quantity} {item.unit}</td>
-                        <td className="py-2 px-3 border-b border-gray-100 text-gray-500">{item.specification || item.specifications || '-'}</td>
+                        <td className="py-2 px-3 border border-gray-200">{item.description || item.name}</td>
+                        <td className="py-2 px-3 border border-gray-200">{item.quantity} {item.unit}</td>
+                        <td className="py-2 px-3 border border-gray-200 text-gray-500">{item.specification || item.specifications || '-'}</td>
                         {canEditItems && (
-                          <td className="py-2 px-3 border-b border-gray-100 text-right">
+                          <td className="py-2 px-3 border border-gray-200 text-right">
                             <button
                               onClick={() => handleRemoveItem(item)}
                               disabled={removingItemId === item._id || (selectedRequisition.items?.length || 0) <= 1}
