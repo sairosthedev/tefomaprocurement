@@ -108,6 +108,7 @@ export default function Deliveries() {
   const [acceptStatus, setAcceptStatus] = useState<'accepted' | 'partially_accepted' | 'rejected'>('accepted');
   const [isAccepting, setIsAccepting] = useState(false);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
@@ -116,13 +117,13 @@ export default function Deliveries() {
 
   useEffect(() => {
     fetchData();
-  }, [page, searchTerm]);
+  }, [page, limit, searchTerm]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const [deliveriesRes, posRes] = await Promise.allSettled([
-        api.get('/stores/deliveries', { params: { search: searchTerm, page, limit: DEFAULT_PAGE_SIZE } }),
+        api.get('/stores/deliveries', { params: { search: searchTerm, page, limit } }),
         api.get('/stores/pending-deliveries')
       ]);
       
@@ -520,6 +521,8 @@ export default function Deliveries() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="deliveries"
           />
           </>

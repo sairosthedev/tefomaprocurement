@@ -136,6 +136,7 @@ export default function Suppliers() {
   const [dragActive, setDragActive] = useState(false);
   const importFileInput = useRef<HTMLInputElement | null>(null);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
@@ -144,7 +145,7 @@ export default function Suppliers() {
 
   useEffect(() => {
     fetchSuppliers();
-  }, [page, search, statusFilter]);
+  }, [page, limit, search, statusFilter]);
 
   const fetchSuppliers = async () => {
     try {
@@ -153,7 +154,7 @@ export default function Suppliers() {
         search, 
         status: statusFilter,
         page,
-        limit: DEFAULT_PAGE_SIZE
+        limit
       });
       setSuppliers(response.data.data);
       setPagination(parsePagination(response.data.pagination));
@@ -488,6 +489,8 @@ export default function Suppliers() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="suppliers"
           />
           </>

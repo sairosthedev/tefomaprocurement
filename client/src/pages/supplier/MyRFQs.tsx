@@ -121,13 +121,14 @@ export default function MyRFQs() {
   const [showViewModal, setShowViewModal] = useState<any>(false);
   const [showConfetti, setShowConfetti] = useState<any>(false);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
   // The RFQ open in the quotation drawer, priced from its row without leaving the list.
   const [quoting, setQuoting] = useState<any>(null);
 
   useEffect(() => {
     fetchMyRFQs();
-  }, [page]);
+  }, [page, limit]);
 
   const handleQuoted = () => {
     setQuoting(null);
@@ -138,7 +139,7 @@ export default function MyRFQs() {
   const fetchMyRFQs = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/supplier/rfqs', { params: { page, limit: DEFAULT_PAGE_SIZE } });
+      const response = await api.get('/supplier/rfqs', { params: { page, limit } });
       if (response.data.success) {
         setRFQs(response.data.data || []);
         setPagination(parsePagination(response.data.pagination));
@@ -333,6 +334,8 @@ export default function MyRFQs() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="RFQs"
           />
           </>

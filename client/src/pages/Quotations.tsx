@@ -92,6 +92,7 @@ export default function Quotations() {
     notes: ''
   });
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
@@ -100,7 +101,7 @@ export default function Quotations() {
 
   useEffect(() => {
     fetchQuotations();
-  }, [page, search, statusFilter]);
+  }, [page, limit, search, statusFilter]);
 
   const fetchQuotations = async () => {
     try {
@@ -109,7 +110,7 @@ export default function Quotations() {
         search, 
         status: statusFilter,
         page,
-        limit: DEFAULT_PAGE_SIZE
+        limit
       });
       setQuotations(response.data.data);
       setPagination(parsePagination(response.data.pagination));
@@ -357,6 +358,8 @@ export default function Quotations() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="quotations"
           />
           </>

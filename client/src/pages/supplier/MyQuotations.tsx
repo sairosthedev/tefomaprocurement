@@ -28,16 +28,17 @@ export default function MyQuotations() {
   const [selectedQuotation, setSelectedQuotation] = useState<any>(null);
   const [showViewModal, setShowViewModal] = useState<any>(false);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
     fetchMyQuotations();
-  }, [page]);
+  }, [page, limit]);
 
   const fetchMyQuotations = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/supplier/quotations', { params: { page, limit: DEFAULT_PAGE_SIZE } });
+      const response = await api.get('/supplier/quotations', { params: { page, limit } });
       if (response.data.success) {
         setQuotations(response.data.data || []);
         setPagination(parsePagination(response.data.pagination));
@@ -208,6 +209,8 @@ export default function MyQuotations() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="quotations"
           />
           </>

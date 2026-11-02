@@ -25,6 +25,7 @@ export default function StockMovements() {
   const [typeFilter, setTypeFilter] = useState<any>('');
   const [dateRange, setDateRange] = useState<any>('all');
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
@@ -33,13 +34,13 @@ export default function StockMovements() {
 
   useEffect(() => {
     fetchMovements();
-  }, [page, searchTerm, typeFilter, dateRange]);
+  }, [page, limit, searchTerm, typeFilter, dateRange]);
 
   const fetchMovements = async () => {
     try {
       setLoading(true);
       const response = await api.get('/stores/movements', {
-        params: { search: searchTerm, type: typeFilter, range: dateRange, page, limit: DEFAULT_PAGE_SIZE }
+        params: { search: searchTerm, type: typeFilter, range: dateRange, page, limit }
       });
       if (response.data.success) {
         setMovements(response.data.data || []);
@@ -227,6 +228,8 @@ export default function StockMovements() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="movements"
           />
           </>

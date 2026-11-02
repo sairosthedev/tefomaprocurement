@@ -45,18 +45,19 @@ export default function MyPurchaseOrders() {
     expectedDeliveryDate: ''
   });
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
   // The order the invoice drawer is billing; null while it is closed.
   const [invoicingPoId, setInvoicingPoId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMyPurchaseOrders();
-  }, [page]);
+  }, [page, limit]);
 
   const fetchMyPurchaseOrders = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/supplier/purchase-orders', { params: { page, limit: DEFAULT_PAGE_SIZE } });
+      const response = await api.get('/supplier/purchase-orders', { params: { page, limit } });
       if (response.data.success) {
         console.log('Purchase orders received:', response.data.data);
         setPurchaseOrders(response.data.data || []);
@@ -258,6 +259,8 @@ export default function MyPurchaseOrders() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="purchase orders"
           />
           </>

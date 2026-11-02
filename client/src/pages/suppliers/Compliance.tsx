@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+﻿import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, FileText, Loader2, ShieldCheck, UserCheck } from 'lucide-react'
 import { procurementAPI } from '../../services/procurement.service'
@@ -13,16 +13,17 @@ export default function Compliance() {
   const [report, setReport] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination())
 
   useEffect(() => {
     load()
-  }, [page])
+  }, [page, limit])
 
   const load = async () => {
     try {
       setLoading(true)
-      const response = await procurementAPI.getSupplierReports({ page, limit: DEFAULT_PAGE_SIZE })
+      const response = await procurementAPI.getSupplierReports({ page, limit })
       setReport(response.data.data)
       setPagination(parsePagination(response.data.pagination))
     } catch (error: any) {
@@ -162,6 +163,8 @@ export default function Compliance() {
               pages={pagination.pages}
               total={pagination.total}
               onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
               itemLabel="suppliers"
             />
           </div>

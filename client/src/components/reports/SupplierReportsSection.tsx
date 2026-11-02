@@ -47,6 +47,7 @@ export default function SupplierReportsSection() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
@@ -55,14 +56,14 @@ export default function SupplierReportsSection() {
 
   useEffect(() => {
     load();
-  }, [page, search, statusFilter]);
+  }, [page, limit, search, statusFilter]);
 
   const load = async () => {
     try {
       setLoading(true);
       const response = await procurementAPI.getSupplierReports({
         page,
-        limit: DEFAULT_PAGE_SIZE,
+        limit,
         search,
         status: statusFilter || undefined
       });
@@ -336,6 +337,8 @@ export default function SupplierReportsSection() {
           pages={pagination.pages}
           total={pagination.total}
           onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
           itemLabel="suppliers"
         />
 

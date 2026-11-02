@@ -67,6 +67,7 @@ export default function PurchaseOrders() {
   const [statusFilter, setStatusFilter] = useState<any>('');
   const [submitting, setSubmitting] = useState<any>(null);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
 
   const isFinance = user?.role === 'finance';
@@ -80,7 +81,7 @@ export default function PurchaseOrders() {
 
   useEffect(() => {
     fetchOrders();
-  }, [page, search, statusFilter, isFinance, isCoo]);
+  }, [page, limit, search, statusFilter, isFinance, isCoo]);
 
   const fetchOrders = async () => {
     try {
@@ -92,7 +93,7 @@ export default function PurchaseOrders() {
         search, 
         status: statusFilter,
         page,
-        limit: DEFAULT_PAGE_SIZE
+        limit
       });
       setOrders(response.data.data);
       setPagination(parsePagination(response.data.pagination));
@@ -284,6 +285,8 @@ export default function PurchaseOrders() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="purchase orders"
           />
           </>

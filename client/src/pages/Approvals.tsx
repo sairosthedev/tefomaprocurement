@@ -60,11 +60,12 @@ export default function Approvals() {
   const [actionLoading, setActionLoading] = useState<any>(false);
   const [comment, setComment] = useState<any>('');
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
     fetchPendingApprovals();
-  }, [page, user?.role]);
+  }, [page, limit, user?.role]);
 
   const fetchPendingApprovals = async () => {
     try {
@@ -88,7 +89,7 @@ export default function Approvals() {
           return;
       }
       
-      const response = await api.get(endpoint, { params: { page, limit: DEFAULT_PAGE_SIZE } });
+      const response = await api.get(endpoint, { params: { page, limit } });
       if (response.data.success) {
         setPendingItems(response.data.data || []);
         setPagination(parsePagination(response.data.pagination));
@@ -343,6 +344,8 @@ export default function Approvals() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="approvals"
           />
           </>

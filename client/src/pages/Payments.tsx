@@ -24,16 +24,17 @@ export default function Payments() {
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
     fetchPayments();
-  }, [page]);
+  }, [page, limit]);
 
   const fetchPayments = async () => {
     try {
       setLoading(true);
-      const res = await financeAPI.getPayments({ page, limit: DEFAULT_PAGE_SIZE });
+      const res = await financeAPI.getPayments({ page, limit });
       setPayments(res.data.data);
       setPagination(parsePagination(res.data.pagination));
     } catch (error: any) {
@@ -93,6 +94,8 @@ export default function Payments() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="payments"
           />
         </div>

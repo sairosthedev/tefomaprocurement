@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Loader2, Search, Truck, Check } from 'lucide-react';
 import { storesAPI } from '../lib/api';
@@ -82,6 +82,7 @@ export default function StoresReviewedList() {
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
@@ -98,7 +99,7 @@ export default function StoresReviewedList() {
         setLoading(true);
         const res = await storesAPI.getReviewedPurchaseRequisitions({
           page,
-          limit: DEFAULT_PAGE_SIZE,
+          limit,
           ...(stage ? { stage } : {}),
           ...(query ? { search: query } : {})
         });
@@ -112,7 +113,7 @@ export default function StoresReviewedList() {
       }
     })();
     return () => { cancelled = true; };
-  }, [page, stage, query]);
+  }, [page, limit, stage, query]);
 
   return (
     <div className="space-y-4">
@@ -210,6 +211,8 @@ export default function StoresReviewedList() {
               pages={pagination.pages}
               total={pagination.total}
               onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
               itemLabel="requisitions"
             />
           </div>

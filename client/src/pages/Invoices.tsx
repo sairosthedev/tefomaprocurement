@@ -27,6 +27,7 @@ export default function Invoices() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
@@ -35,12 +36,12 @@ export default function Invoices() {
 
   useEffect(() => {
     fetchInvoices();
-  }, [page, search, statusFilter]);
+  }, [page, limit, search, statusFilter]);
 
   const fetchInvoices = async () => {
     try {
       setLoading(true);
-      const res = await financeAPI.getInvoices({ search, status: statusFilter, page, limit: DEFAULT_PAGE_SIZE });
+      const res = await financeAPI.getInvoices({ search, status: statusFilter, page, limit });
       setInvoices(res.data.data);
       setPagination(parsePagination(res.data.pagination));
     } catch (error: any) {
@@ -143,6 +144,8 @@ export default function Invoices() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="invoices"
           />
         </div>

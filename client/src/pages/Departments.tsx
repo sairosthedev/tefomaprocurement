@@ -23,17 +23,18 @@ export default function Departments() {
     deputyHead: ''
   });
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
     fetchDepartments();
     fetchDepartmentHeads();
-  }, [page]);
+  }, [page, limit]);
 
   const fetchDepartments = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/admin/departments', { params: { page, limit: DEFAULT_PAGE_SIZE } });
+      const response = await api.get('/admin/departments', { params: { page, limit } });
       if (response.data.success) {
         setDepartments(response.data.data || []);
         setPagination(parsePagination(response.data.pagination));
@@ -191,6 +192,8 @@ export default function Departments() {
           pages={pagination.pages}
           total={pagination.total}
           onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
           itemLabel="departments"
         />
         </>

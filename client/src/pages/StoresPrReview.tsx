@@ -18,17 +18,18 @@ export default function StoresPrReview() {
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
   const [tab, setTab] = useState<'review' | 'sent'>('review');
 
   useEffect(() => {
     if (tab === 'review') load();
-  }, [page, tab]);
+  }, [page, limit, tab]);
 
   const load = async () => {
     try {
       setLoading(true);
-      const res = await storesAPI.getPendingPurchaseRequisitions({ page, limit: DEFAULT_PAGE_SIZE });
+      const res = await storesAPI.getPendingPurchaseRequisitions({ page, limit });
       setItems(res.data.data);
       setPagination(parsePagination(res.data.pagination));
     } catch (error: any) {
@@ -204,6 +205,8 @@ export default function StoresPrReview() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="requisitions"
           />
         </>

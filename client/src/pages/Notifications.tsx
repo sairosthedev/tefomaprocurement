@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
@@ -116,16 +116,17 @@ export default function Notifications() {
   const [loading, setLoading] = useState<any>(true);
   const [markingAll, setMarkingAll] = useState<any>(false);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
     fetchNotifications();
-  }, [page]);
+  }, [page, limit]);
 
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const response = await notificationsAPI.getNotifications({ page, limit: DEFAULT_PAGE_SIZE });
+      const response = await notificationsAPI.getNotifications({ page, limit });
       if (response.data.success) {
         setNotifications(response.data.data || []);
         setPagination(parsePagination(response.data.pagination));
@@ -251,6 +252,8 @@ export default function Notifications() {
           pages={pagination.pages}
           total={pagination.total}
           onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
           itemLabel="notifications"
         />
       </div>

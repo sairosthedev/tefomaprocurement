@@ -46,6 +46,7 @@ export default function MySubmittedQuotations() {
   const [selectedQuotation, setSelectedQuotation] = useState<any>(null);
   const [showViewModal, setShowViewModal] = useState<any>(false);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
@@ -54,7 +55,7 @@ export default function MySubmittedQuotations() {
 
   useEffect(() => {
     fetchQuotations();
-  }, [page, searchTerm, statusFilter]);
+  }, [page, limit, searchTerm, statusFilter]);
 
   const fetchQuotations = async () => {
     try {
@@ -64,7 +65,7 @@ export default function MySubmittedQuotations() {
           status: statusFilter || undefined,
           search: searchTerm || undefined,
           page,
-          limit: DEFAULT_PAGE_SIZE
+          limit
         }
       });
       if (response.data.success) {
@@ -279,6 +280,8 @@ export default function MySubmittedQuotations() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="quotations"
           />
           </>

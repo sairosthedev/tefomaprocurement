@@ -84,6 +84,7 @@ export default function Inventory() {
   const [parseError, setParseError] = useState<any>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
   const [stats, setStats] = useState({
     totalItems: 0,
@@ -158,7 +159,7 @@ export default function Inventory() {
 
   useEffect(() => {
     fetchInventory();
-  }, [page, searchTerm, categoryFilter, showLowStock]);
+  }, [page, limit, searchTerm, categoryFilter, showLowStock]);
 
   const handleSearchSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -180,7 +181,7 @@ export default function Inventory() {
           category: overrides?.category ?? categoryFilter,
           lowStock: overrides?.lowStock ?? showLowStock,
           page: overrides?.page ?? page,
-          limit: DEFAULT_PAGE_SIZE
+          limit
         }
       });
       if (response.data.success) {
@@ -586,6 +587,8 @@ export default function Inventory() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="items"
           />
           </>

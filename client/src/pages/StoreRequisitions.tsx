@@ -95,6 +95,7 @@ export default function StoreRequisitions() {
   const [creating, setCreating] = useState(false);
   const createTopRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
 
   const isStoresOfficer = user?.role === 'stores_officer';
@@ -105,14 +106,14 @@ export default function StoreRequisitions() {
 
   useEffect(() => {
     fetchRequisitions();
-  }, [page, searchTerm]);
+  }, [page, limit, searchTerm]);
 
   const fetchRequisitions = async () => {
     try {
       setLoading(true);
       const response = isStoresOfficer 
-        ? await storesAPI.getStoreRequisitions({ search: searchTerm, page, limit: DEFAULT_PAGE_SIZE })
-        : await departmentAPI.getStoreRequisitions({ search: searchTerm, page, limit: DEFAULT_PAGE_SIZE });
+        ? await storesAPI.getStoreRequisitions({ search: searchTerm, page, limit })
+        : await departmentAPI.getStoreRequisitions({ search: searchTerm, page, limit });
       
       if (response.data.success) {
         setRequisitions(response.data.data || []);
@@ -465,6 +466,8 @@ export default function StoreRequisitions() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="requisitions"
           />
           </>
