@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
 import { SplashScreen, shouldShowSplash } from './components/SplashScreen';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
@@ -28,7 +28,6 @@ import SupplierDetails from './pages/SupplierDetails';
 import RFQs from './pages/RFQs';
 import RFQDetail from './pages/RFQDetail';
 import AwardMatrix from './pages/AwardMatrix';
-import CreateRFQ from './pages/CreateRFQ';
 import Quotations from './pages/Quotations';
 import QuotationDetail from './pages/QuotationDetail';
 import BankChanges from './pages/BankChanges';
@@ -61,7 +60,6 @@ import StockTransfers from './pages/StockTransfers';
 // Supplier Portal Pages
 import MyRFQs from './pages/supplier/MyRFQs';
 import SupplierRFQDetail from './pages/supplier/SupplierRFQDetail';
-import SubmitQuotation from './pages/supplier/SubmitQuotation';
 import MyQuotations from './pages/supplier/MyQuotations';
 import MySubmittedQuotations from './pages/supplier/MySubmittedQuotations';
 import MyPurchaseOrders from './pages/supplier/MyPurchaseOrders';
@@ -69,7 +67,6 @@ import MyDeliveries from './pages/supplier/MyDeliveries';
 import SupplierProfile from './pages/supplier/SupplierProfile';
 import MyKys from './pages/supplier/MyKys';
 import MyInvoices from './pages/supplier/MyInvoices';
-import SubmitInvoice from './pages/supplier/SubmitInvoice';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import NotFound from './pages/NotFound';
@@ -77,6 +74,18 @@ import NotFound from './pages/NotFound';
 function SupplierKysRedirect() {
   const { id } = useParams();
   return <Navigate to={`/app/suppliers/${id}?tab=documents`} replace />;
+}
+
+/** Old create-page links: open the form's drawer on the page that hosts it, keeping their query. */
+function OpenInDrawer({ to }: { to: string }) {
+  const params = new URLSearchParams(useLocation().search);
+  params.set('new', '1');
+  return <Navigate to={`${to}?${params}`} replace />;
+}
+
+function SubmitQuotationRedirect() {
+  const rfq = new URLSearchParams(useLocation().search).get('rfq');
+  return <Navigate to={rfq ? `/app/my-rfqs/${rfq}?quote=1` : '/app/my-rfqs'} replace />;
 }
 
 function AppLayout({ children, allowedRoles }: any) {
@@ -212,11 +221,7 @@ function App() {
                 <RFQs />
               </AppLayout>
             } />
-            <Route path="/app/rfqs/create" element={
-              <AppLayout allowedRoles={['procurement_officer']}>
-                <CreateRFQ />
-              </AppLayout>
-            } />
+            <Route path="/app/rfqs/create" element={<OpenInDrawer to="/app/rfqs" />} />
             <Route path="/app/rfqs/:id" element={
               <AppLayout allowedRoles={['procurement_officer']}>
                 <RFQDetail />
@@ -343,11 +348,7 @@ function App() {
                 <SupplierRFQDetail />
               </AppLayout>
             } />
-            <Route path="/app/submit-quotation" element={
-              <AppLayout allowedRoles={['supplier']}>
-                <SubmitQuotation />
-              </AppLayout>
-            } />
+            <Route path="/app/submit-quotation" element={<SubmitQuotationRedirect />} />
             <Route path="/app/my-submitted-quotations" element={
               <AppLayout allowedRoles={['supplier']}>
                 <MySubmittedQuotations />
@@ -383,11 +384,7 @@ function App() {
                 <MyInvoices />
               </AppLayout>
             } />
-            <Route path="/app/submit-invoice" element={
-              <AppLayout allowedRoles={['supplier']}>
-                <SubmitInvoice />
-              </AppLayout>
-            } />
+            <Route path="/app/submit-invoice" element={<OpenInDrawer to="/app/my-invoices" />} />
 
             {/* Catch all */}
             <Route path="*" element={<NotFound />} />
