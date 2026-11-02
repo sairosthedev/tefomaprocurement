@@ -209,7 +209,7 @@ export default function PurchaseOrders() {
                 {orders.map((order: any) => {
                   const StatusIcon = statusIcons[order.status] || Clock;
                   return (
-                    <tr key={order._id} className="hover:bg-gray-50">
+                    <tr key={order._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                       <td className="py-2 px-3 border-b border-gray-100">
                         <span className="font-medium text-gray-900">{order.poNumber}</span>
                       </td>

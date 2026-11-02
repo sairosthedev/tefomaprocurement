@@ -115,7 +115,7 @@ export default function Invoices() {
             </thead>
             <tbody>
               {invoices.map((inv) => (
-                <tr key={inv._id} className="hover:bg-gray-50">
+                <tr key={inv._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                   <td className="py-2 px-3 border-b border-gray-100 font-medium">{inv.invoiceNumber}</td>
                   <td className="py-2 px-3 border-b border-gray-100">{inv.purchaseOrder?.poNumber || '—'}</td>
                   <td className="py-2 px-3 border-b border-gray-100">{inv.supplier?.companyName || '—'}</td>

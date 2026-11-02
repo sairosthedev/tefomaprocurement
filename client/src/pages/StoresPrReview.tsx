@@ -141,7 +141,7 @@ export default function StoresPrReview() {
                   const stage = storeStage(pr);
                   const fullyIssued = allLinesFullyIssued(pr);
                   return (
-                    <tr key={pr._id} className="hover:bg-gray-50">
+                    <tr key={pr._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                       <td className="py-2 px-3 border-b border-gray-100 font-mono text-xs font-medium whitespace-nowrap">{pr.requisitionNumber}</td>
                       <td className="py-2 px-3 border-b border-gray-100">{pr.title}</td>
                       <td className="py-2 px-3 border-b border-gray-100">{pr.department?.name || '—'}</td>

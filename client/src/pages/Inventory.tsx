@@ -892,7 +892,7 @@ export default function Inventory() {
                       </thead>
                       <tbody>
                         {importRows.slice(0, 50).map((r: any, i: number) => (
-                          <tr key={i} className="hover:bg-gray-50">
+                          <tr key={i} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                             <td className="py-2 px-3 border-b border-gray-100 text-gray-900">{r.name || r.code}</td>
                             <td className="py-2 px-3 border-b border-gray-100 text-gray-500">{r.category || '—'}</td>
                             <td className="py-2 px-3 border-b border-gray-100 text-gray-500">{r.unit || 'each'}</td>

@@ -268,7 +268,7 @@ export default function MyRFQs() {
                   const canSubmit = rfq.status === 'open' && !rfq.hasSubmitted && remaining.text !== 'Closed';
 
                   return (
-                    <tr key={rfq._id} className="hover:bg-gray-50">
+                    <tr key={rfq._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                       <td className="py-2 px-3 border-b border-gray-100">
                         <span className="font-mono font-medium text-primary">
                           {rfq.rfqNumber || `RFQ-${rfq._id.slice(-6).toUpperCase()}`}
@@ -400,7 +400,7 @@ export default function MyRFQs() {
                   </thead>
                   <tbody>
                     {selectedRFQ.items?.map((item: any, index: any) => (
-                      <tr key={index} className="hover:bg-gray-50">
+                      <tr key={index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                         <td className="py-2 px-3 border-b border-gray-100">{index + 1}</td>
                         <td className="py-2 px-3 border-b border-gray-100 font-medium">{item.description}</td>
                         <td className="py-2 px-3 border-b border-gray-100">{item.quantity} {item.unit}</td>

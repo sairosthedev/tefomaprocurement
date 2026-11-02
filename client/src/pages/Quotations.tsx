@@ -305,7 +305,7 @@ export default function Quotations() {
                 {quotations.map((quotation: any) => {
                   const StatusIcon = statusIcons[quotation.status] || DEFAULT_STATUS_ICON;
                   return (
-                    <tr key={quotation._id} className="hover:bg-gray-50">
+                    <tr key={quotation._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                       <td className="py-2 px-3 border-b border-gray-100">
                         <span className="font-medium text-gray-900">{quotation.quotationNumber}</span>
                       </td>
@@ -459,7 +459,7 @@ export default function Quotations() {
                   </thead>
                   <tbody>
                     {selectedQuotation.items?.map((item: any, index: any) => (
-                      <tr key={index} className="hover:bg-gray-50">
+                      <tr key={index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                         <td className="py-2 px-3 border-b border-gray-100">
                           <p className="font-medium text-gray-900">{item.description}</p>
                           {item.brand && (

@@ -182,7 +182,7 @@ export default function MyPurchaseOrders() {
               </thead>
               <tbody>
                 {purchaseOrders.map((po: any) => (
-                  <tr key={po._id} className="hover:bg-gray-50">
+                  <tr key={po._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                     <td className="py-2 px-3 border-b border-gray-100">
                       <span className="font-mono font-medium text-primary">
                         {po.poNumber}
@@ -442,7 +442,7 @@ export default function MyPurchaseOrders() {
                   </thead>
                   <tbody>
                     {selectedPO.items?.map((item: any, index: any) => (
-                      <tr key={index} className="hover:bg-gray-50">
+                      <tr key={index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                         <td className="py-2 px-3 border-b border-gray-100 font-medium">{item.description}</td>
                         <td className="py-2 px-3 border-b border-gray-100">{item.quantity} {item.unit}</td>
                         <td className="py-2 px-3 border-b border-gray-100">

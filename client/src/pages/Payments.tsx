@@ -79,7 +79,7 @@ export default function Payments() {
             </thead>
             <tbody>
               {payments.map((p) => (
-                <tr key={p._id} className="hover:bg-gray-50">
+                <tr key={p._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                   <td className="py-2 px-3 border-b border-gray-100 font-medium">{p.paymentNumber}</td>
                   <td className="py-2 px-3 border-b border-gray-100">{p.supplier?.companyName}</td>
                   <td className="py-2 px-3 border-b border-gray-100">{formatCurrency(p.amount, p.currency || p.invoice?.currency || getCurrentSbuCurrency())}</td>

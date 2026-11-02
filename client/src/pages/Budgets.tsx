@@ -232,7 +232,7 @@ export default function Budgets() {
               </thead>
               <tbody>
                 {budgetData.departments.map((dept: any) => (
-                  <tr key={dept.departmentId} className="hover:bg-gray-50">
+                  <tr key={dept.departmentId} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                     <td className="py-2 px-3 border-b border-gray-100 font-medium text-gray-900">
                       {dept.name}
                       {dept.isOverBudget && (

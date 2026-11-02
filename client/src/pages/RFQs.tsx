@@ -188,7 +188,7 @@ export default function RFQs() {
             </thead>
             <tbody>
               {rfqs.map((rfq: any) => (
-                <tr key={rfq._id} className="hover:bg-gray-50">
+                <tr key={rfq._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                   <td className="py-2 px-3 border-b border-gray-100 font-mono text-sm font-medium">{rfq.rfqNumber}</td>
                   <td className="py-2 px-3 border-b border-gray-100">{rfq.title}</td>
                   <td className="py-2 px-3 border-b border-gray-100">

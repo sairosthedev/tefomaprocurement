@@ -106,7 +106,7 @@ export default function MyInvoices() {
               {invoices.map((inv) => (
                 <React.Fragment key={inv._id}>
                   <tr
-                    className="hover:bg-gray-50 cursor-pointer"
+                    className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors cursor-pointer"
                     onClick={() => setOpenId(openId === inv._id ? null : inv._id)}
                   >
                     <td className="py-2 px-3 border-b border-gray-100 font-medium">

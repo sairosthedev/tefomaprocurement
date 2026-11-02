@@ -190,7 +190,7 @@ function ChangeTable({ log }: { log: any }) {
           </thead>
           <tbody>
             {changes.map((c: any, i: number) => (
-              <tr key={`${c.field}-${i}`} className="hover:bg-gray-50">
+              <tr key={`${c.field}-${i}`} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                 <td className="py-2 px-3 border-b border-gray-100 font-medium text-gray-700 align-top">{formatField(c.field)}</td>
                 <td className="py-2 px-3 border-b border-gray-100 text-gray-500 align-top break-words">{formatValue(c.from)}</td>
                 <td className="py-2 px-3 border-b border-gray-100 text-gray-900 align-top break-words font-medium">{formatValue(c.to)}</td>

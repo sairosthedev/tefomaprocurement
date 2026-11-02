@@ -187,7 +187,7 @@ export default function StockMovements() {
                   const typeInfo = movementTypes[movement.type] || movementTypes['adjustment'];
                   const Icon = typeInfo.icon;
                   return (
-                    <tr key={movement._id} className="hover:bg-gray-50">
+                    <tr key={movement._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                       <td className="py-2 px-3 border-b border-gray-100">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${typeInfo.color}`}>
                           <Icon className="h-3.5 w-3.5" />

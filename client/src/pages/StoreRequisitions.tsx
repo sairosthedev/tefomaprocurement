@@ -380,7 +380,7 @@ export default function StoreRequisitions() {
               </thead>
               <tbody>
                 {requisitions.map((req: any) => (
-                  <tr key={req._id} className="hover:bg-gray-50">
+                  <tr key={req._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                     <td className="py-2 px-3 border-b border-gray-100">
                       <span className="font-mono text-sm font-medium text-primary">
                         {req.requisitionNumber || `SR-${req._id.slice(-6).toUpperCase()}`}
@@ -579,7 +579,7 @@ export default function StoreRequisitions() {
                   {formData.items
                     .filter((item: any) => item.description.trim())
                     .map((item: any, index: number) => (
-                      <tr key={index} className="hover:bg-gray-50">
+                      <tr key={index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                         <td className="py-2 px-3 border-b border-gray-100">
                           {item.description}
                           {item.catalogItem ? (
@@ -716,7 +716,7 @@ export default function StoreRequisitions() {
                   </thead>
                   <tbody>
                     {selectedRequisition.items?.map((item: any, index: any) => (
-                      <tr key={index} className="hover:bg-gray-50">
+                      <tr key={index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                         <td className="py-2 px-3 border-b border-gray-100">
                           {item.item?.name || item.item?.description || item.description || 'N/A'}
                         </td>

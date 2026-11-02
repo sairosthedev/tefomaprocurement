@@ -296,7 +296,7 @@ export default function Users() {
               </thead>
               <tbody>
                 {users.map((user: any) => (
-                  <tr key={user._id} className="hover:bg-gray-50">
+                  <tr key={user._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                     <td className="py-2 px-3 border-b border-gray-100">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">

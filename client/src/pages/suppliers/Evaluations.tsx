@@ -315,7 +315,7 @@ export default function Evaluations() {
               </thead>
               <tbody>
                 {allEvaluations.map((evaluation) => (
-                  <tr key={evaluation._id} className="hover:bg-gray-50">
+                  <tr key={evaluation._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                     <td className="py-2 px-3 border-b border-gray-100 font-medium text-gray-900">{supplierName(evaluation)}</td>
                     <td className="py-2 px-3 border-b border-gray-100 capitalize text-gray-600">{String(evaluation.evaluationType || '').replace(/_/g, ' ')}</td>
                     <td className="py-2 px-3 border-b border-gray-100">
