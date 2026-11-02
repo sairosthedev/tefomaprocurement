@@ -59,7 +59,7 @@ export default function MyKys() {
   const onboarding = supplierOnboardingJourney(profile, requiredUploaded, requiredReqs.length, requiredVerified);
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
+    <div className="p-6 max-w-3xl">
       <PageHeader
         title={`KYS Compliance — ${profile?.companyName}`}
         subtitle="Upload your Know-Your-Supplier documents. Your account is activated once Procurement verifies the mandatory documents."

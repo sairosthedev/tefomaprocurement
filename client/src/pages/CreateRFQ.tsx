@@ -342,7 +342,7 @@ export default function CreateRFQ() {
   }
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-8 max-w-5xl">
       <PageHeader
         onBack={() => navigate(-1)}
         title="Create RFQ"

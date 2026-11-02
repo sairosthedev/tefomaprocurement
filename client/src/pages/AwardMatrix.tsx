@@ -168,7 +168,7 @@ export default function AwardMatrix() {
       : null;
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div className="p-8">
       {/* The COO is here only for line waivers and cannot open the RFQ. */}
       <PageHeader
         backTo={canSelect ? `/app/rfqs/${id}` : '/app'}

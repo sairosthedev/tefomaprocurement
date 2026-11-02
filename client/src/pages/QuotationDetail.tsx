@@ -418,7 +418,7 @@ export default function QuotationDetail() {
 
   if (sealedInfo) {
     return (
-      <div className="p-8 max-w-2xl mx-auto">
+      <div className="p-8 max-w-2xl">
         <PageHeader
           backTo={backTo}
           backLabel={backLabel}

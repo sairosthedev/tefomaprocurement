@@ -60,7 +60,7 @@ export default function SupplierRFQDetail() {
     (rfq.status === 'open' && !rfq.hasSubmitted && remaining.canSubmit);
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
+    <div className="p-8">
       <PageHeader
         backTo="/app/my-rfqs"
         backLabel="Back to My RFQs"

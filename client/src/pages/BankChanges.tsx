@@ -160,7 +160,7 @@ export default function BankChanges() {
   };
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div className="p-8">
       <PageHeader
         title="Supplier banking changes"
         subtitle="Payments to a supplier are held while a banking change is open. Verify by calling a number already on file, then have a second person approve."

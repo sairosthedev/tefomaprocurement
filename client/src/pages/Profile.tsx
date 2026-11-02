@@ -93,7 +93,7 @@ export default function Profile() {
   };
 
   return (
-    <div className="p-8 max-w-3xl mx-auto">
+    <div className="p-8 max-w-3xl">
       <PageHeader title="My Profile" subtitle="Manage your account settings" />
 
       {/* Profile Card */}

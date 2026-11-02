@@ -96,7 +96,7 @@ export default function StoresPrReview() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-6">
       <PageHeader
         title="Internal Requisitions — Stores Review"
         subtitle="Search inventory for each requested item, confirm stock on hand, then issue from the inventory row. Forward anything not available to procurement."

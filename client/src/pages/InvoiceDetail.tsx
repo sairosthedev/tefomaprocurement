@@ -164,7 +164,7 @@ export default function InvoiceDetail() {
     Boolean(match) && (match.hasGrv === false || (match.receivedValue ?? 0) <= 0);
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-6">
       <PageHeader
         backTo="/app/invoices"
         backLabel="Back to invoices"

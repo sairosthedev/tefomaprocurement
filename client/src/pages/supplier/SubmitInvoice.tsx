@@ -157,7 +157,7 @@ export default function SubmitInvoice() {
   const matches = Math.abs(difference) < 0.01;
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
+    <div className="p-6 max-w-3xl">
       <PageHeader
         backTo="/app/my-invoices"
         backLabel="Back"
