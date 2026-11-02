@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
@@ -399,16 +399,16 @@ export default function Suppliers() {
               <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr>
-                    <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">
                       Supplier
                     </th>
-                    <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">
                       Contact
                     </th>
-                    <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">
                       Vendor status
                     </th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">
+                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">
                       Actions
                     </th>
                   </tr>
@@ -944,9 +944,9 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
                     <table className="w-full text-xs border-collapse">
                       <thead className="sticky top-0">
                         <tr>
-                          <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap w-8">#</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap w-8">#</th>
                           {(['companyName', 'registrationNumber', 'contactPerson', 'email', 'phone', 'categories'] as (keyof SupplierImportRow)[]).map((f) => (
-                            <th key={f} className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">
+                            <th key={f} className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">
                               {f === 'companyName' ? 'Company' :
                                f === 'registrationNumber' ? 'Reg no' :
                                f === 'contactPerson' ? 'Contact' :
@@ -1042,8 +1042,8 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
                     <table className="w-full text-xs border-collapse">
                       <thead>
                         <tr>
-                          <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Company</th>
-                          <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Email</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Company</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Email</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1066,9 +1066,9 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
                     <table className="w-full text-xs border-collapse">
                       <thead>
                         <tr>
-                          <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Company</th>
-                          <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Email</th>
-                          <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Reason</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Company</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Email</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Reason</th>
                         </tr>
                       </thead>
                       <tbody>

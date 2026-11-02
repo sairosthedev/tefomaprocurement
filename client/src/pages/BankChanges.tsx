@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { procurementAPI } from '../services/procurement.service';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
@@ -221,9 +221,9 @@ export default function BankChanges() {
                   <table className="w-full text-sm border-collapse">
                     <thead>
                       <tr>
-                        <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">Field</th>
-                        <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">From</th>
-                        <th className="text-left py-2 px-3 text-xs font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-300 whitespace-nowrap">To</th>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Field</th>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">From</th>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">To</th>
                       </tr>
                     </thead>
                     <tbody>

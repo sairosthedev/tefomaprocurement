@@ -103,6 +103,9 @@ export default function Requisitions() {
   // Procurement on their own department's requisitions.
   const actsAsDepartment = (req: any) => !isProcurement || isOwnDept(req);
   const canCreate = !isProcurement || procHead;
+  // A department head's list mixes their own requisitions with their team's,
+  // so say whose each one is.
+  const showRequester = isProcurement || isDeptHead;
   const createOpen = canCreate && searchParams.get('new') === '1';
 
   const openCreate = () => {
@@ -321,11 +324,13 @@ export default function Requisitions() {
   return (
     <div className="p-8">
       <PageHeader
-        title={isProcurement ? 'Purchase Requisitions' : 'My Requisitions'}
+        title={isProcurement ? 'Purchase Requisitions' : isDeptHead ? 'Department Requisitions' : 'My Requisitions'}
         subtitle={
           isProcurement
             ? 'Accept or reject requisitions from departments'
-            : 'Track your purchase requests'
+            : isDeptHead
+              ? 'Requisitions you raised, and the ones your team raised for your approval'
+              : 'Track your purchase requests'
         }
         bottomSpacing="mb-4"
       />
@@ -361,8 +366,8 @@ export default function Requisitions() {
                 size="sm"
                 options={[
                   { value: '', label: 'All' },
-                  { value: 'mine', label: 'My Requisitions' },
-                  { value: 'team', label: 'Team Requisitions' }
+                  { value: 'mine', label: 'Raised by me' },
+                  { value: 'team', label: 'Raised by my team' }
                 ]}
                 value={viewFilter === 'all' ? '' : viewFilter}
                 onChange={(v) => setViewFilter((v || 'all') as 'all' | 'mine' | 'team')}
@@ -449,7 +454,7 @@ export default function Requisitions() {
                 <tr>
                   <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">REQ #</th>
                   <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Title</th>
-                  {isProcurement && (
+                  {showRequester && (
                     <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Requested By</th>
                   )}
                   <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Items</th>
@@ -473,12 +478,16 @@ export default function Requisitions() {
                         {req.title || 'Untitled'}
                       </p>
                     </td>
-                    {isProcurement && (
-                      <td className="py-2 px-3 border border-gray-200">
-                        <p className="text-sm text-gray-900">
-                          {req.requestedBy?.firstName} {req.requestedBy?.lastName}
-                        </p>
-                        <p className="text-xs text-gray-500">{req.department?.name || 'No dept'}</p>
+                    {showRequester && (
+                      <td className="py-2 px-3 border border-gray-200 whitespace-nowrap">
+                        {isOwner(req) ? (
+                          <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">You</span>
+                        ) : (
+                          <p className="text-sm text-gray-900">
+                            {req.requestedBy?.firstName} {req.requestedBy?.lastName}
+                          </p>
+                        )}
+                        {isProcurement && <p className="text-xs text-gray-500">{req.department?.name || 'No dept'}</p>}
                       </td>
                     )}
                     <td className="py-2 px-3 border border-gray-200">
