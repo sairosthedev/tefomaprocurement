@@ -80,7 +80,7 @@ const roleNavigation: any = {
     { name: "Dashboard", href: "/app", icon: LayoutDashboard },
     { name: "Approvals", href: "/app/approvals", icon: CheckSquare },
     { name: "Requisitions", icon: ClipboardList, children: [
-      { name: "My Requisitions", href: "/app/requisitions", icon: ClipboardList },
+      { name: "Department Requisitions", href: "/app/requisitions", icon: ClipboardList },
       { name: "Store Requisitions", href: "/app/store-requisitions", icon: Package },
     ] },
     { name: "Reports", href: "/app/reports", icon: BarChart3 },

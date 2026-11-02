@@ -5,7 +5,7 @@ import { buildDepartmentFilter } from '../../lib/departmentScope.js';
 
 const getRequisitions = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { status, page = 1, limit = 20 } = req.query as any;
+    const { status, page = 1, limit = 20, view = 'all' } = req.query as any;
 
     const query: any = { isDeleted: false };
 
@@ -14,6 +14,11 @@ const getRequisitions = async (req: Request, res: Response): Promise<any> => {
       query.requestedBy = req.user!._id;
     } else {
       Object.assign(query, await buildDepartmentFilter(req.user));
+      if (view === 'mine') {
+        query.requestedBy = req.user!._id;
+      } else if (view === 'team') {
+        query.requestedBy = { $ne: req.user!._id };
+      }
     }
 
     if (status) query.status = status;

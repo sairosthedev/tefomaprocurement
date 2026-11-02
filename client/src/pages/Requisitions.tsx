@@ -77,6 +77,7 @@ export default function Requisitions() {
   const [removingItemId, setRemovingItemId] = useState<any>(null);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(emptyPagination());
+  const [viewFilter, setViewFilter] = useState<'all' | 'mine' | 'team'>('all');
 
   // The Head of Procurement works the procurement list. It also carries their
   // own department's requisitions at every stage (the API adds them), and on
@@ -97,11 +98,11 @@ export default function Requisitions() {
 
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, statusFilter]);
+  }, [searchTerm, statusFilter, viewFilter]);
 
   useEffect(() => {
     fetchRequisitions();
-  }, [page, searchTerm, statusFilter, isProcurement]);
+  }, [page, searchTerm, statusFilter, isProcurement, viewFilter]);
 
   const fetchRequisitions = async () => {
     try {
@@ -113,7 +114,8 @@ export default function Requisitions() {
           search: searchTerm,
           status: statusFilter || undefined,
           page,
-          limit: DEFAULT_PAGE_SIZE
+          limit: DEFAULT_PAGE_SIZE,
+          ...(!isProcurement && isDeptHead ? { view: viewFilter } : {})
         }
       });
       if (response.data.success) {
@@ -303,6 +305,25 @@ export default function Requisitions() {
           ) : undefined
         }
       />
+
+      {/* HOD view tabs */}
+      {isDeptHead && !isProcurement && (
+        <div className="flex gap-1 mb-4">
+          {(['all', 'mine', 'team'] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setViewFilter(v)}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                viewFilter === v
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              {v === 'all' ? 'All' : v === 'mine' ? 'My Requisitions' : 'Team Requisitions'}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
