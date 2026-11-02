@@ -330,7 +330,7 @@ export default function Reports() {
       : 'Role-based insights, spend trends, and operational statistics.';
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    <div className="p-8">
       <PageHeader
         title="Reports & Analytics"
         subtitle={subtitle}

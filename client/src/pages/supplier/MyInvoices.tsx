@@ -38,7 +38,7 @@ export default function MyInvoices() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6">
       <PageHeader
         title="My Invoices"
         actions={

@@ -59,7 +59,7 @@ export default function Compliance() {
   const totalSuppliers = summary?.totalSuppliers ?? 0
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-8 space-y-6">
       <PageHeader
         title="Compliance"
         subtitle="KYS verification status and document coverage across your supplier base."

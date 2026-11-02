@@ -482,7 +482,7 @@ export default function SupplierDetails() {
 
   if (loading) {
     return (
-      <div className="p-8 max-w-7xl mx-auto flex items-center justify-center min-h-[50vh]">
+      <div className="p-8 flex items-center justify-center min-h-[50vh]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -490,7 +490,7 @@ export default function SupplierDetails() {
 
   if (!supplier) {
     return (
-      <div className="p-8 max-w-7xl mx-auto">
+      <div className="p-8">
         <PageHeader
           backTo="/app/suppliers"
           backLabel="Back to suppliers"
@@ -547,7 +547,7 @@ export default function SupplierDetails() {
   );
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-8 space-y-6">
       <PageHeader
         backTo="/app/suppliers"
         backLabel="Back to suppliers"

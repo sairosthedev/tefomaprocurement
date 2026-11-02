@@ -53,7 +53,7 @@ export default function Invoices() {
   const formatStatus = (s: string) => s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6">
       <PageHeader
         title="Invoices"
         subtitle="Three-way match and accounts payable"

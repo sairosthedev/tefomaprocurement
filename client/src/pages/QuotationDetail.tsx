@@ -475,7 +475,7 @@ export default function QuotationDetail() {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    <div className="p-8">
       <PageHeader
         backTo={backTo}
         backLabel={backLabel}

@@ -140,7 +140,7 @@ export default function PurchaseOrderDetail() {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    <div className="p-8">
       <PageHeader
         backTo="/app/purchase-orders"
         backLabel="Back to Purchase Orders"

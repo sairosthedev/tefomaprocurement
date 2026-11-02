@@ -149,7 +149,7 @@ export default function VerificationHub() {
   const visibleSections = selectedSection ? 1 : verificationSections.length
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-8 space-y-6">
       <PageHeader
         title="Verification Hub"
         subtitle="Review KYS completion, filter by checklist sections, and verify suppliers from one focused workspace."

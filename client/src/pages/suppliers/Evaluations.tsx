@@ -211,7 +211,7 @@ export default function Evaluations() {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-8 space-y-6">
       <PageHeader
         title="Evaluations"
         subtitle="Score suppliers against procurement criteria and track quarterly re-evaluations. Evaluations are saved immediately — no approval step."

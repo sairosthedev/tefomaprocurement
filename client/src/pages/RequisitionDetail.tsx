@@ -293,7 +293,7 @@ export default function RequisitionDetail() {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    <div className="p-8">
       <PageHeader
         backTo="/app/requisitions"
         backLabel="Back to Requisitions"
@@ -493,13 +493,13 @@ export default function RequisitionDetail() {
                             </div>
                           )}
                         </td>
-                        <td className="py-3 px-4 text-right">
+                        <td className="py-2 px-3 border border-gray-200 text-right">
                           <p className="text-sm font-medium text-emerald-700">
                             {(item.quantityFulfilledFromStock ?? 0) > 0 ? item.quantityFulfilledFromStock : '—'}
                           </p>
                         </td>
                         {canEditItems && (
-                          <td className="py-3 px-4 text-right">
+                          <td className="py-2 px-3 border border-gray-200 text-right">
                             <button
                               onClick={() => handleRemoveItem(item)}
                               disabled={removingItemId === item._id || requisition.items.length <= 1}
@@ -526,24 +526,25 @@ export default function RequisitionDetail() {
           {/* Status History */}
           {requisition.statusHistory && requisition.statusHistory.length > 0 && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Status History</h2>
-              <div className="space-y-3">
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">Status History</h2>
+              {/* One line per entry so the history doesn't push the page into scrolling. */}
+              <div className="divide-y divide-gray-100">
                 {requisition.statusHistory.map((history: any, index: any) => (
-                  <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div key={index} className="flex items-center gap-3 py-2">
                     {history.action === 'accepted' ? (
-                      <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
+                      <CheckCircle className="h-4 w-4 shrink-0 text-green-500" />
                     ) : history.action === 'rejected' ? (
-                      <XCircle className="h-5 w-5 text-red-500 mt-0.5" />
+                      <XCircle className="h-4 w-4 shrink-0 text-red-500" />
                     ) : (
-                      <Clock className="h-5 w-5 text-amber-500 mt-0.5" />
+                      <Clock className="h-4 w-4 shrink-0 text-amber-500" />
                     )}
-                    <div className="flex-1">
-                      <p className="text-sm font-medium capitalize text-gray-900">{history.action}</p>
-                      {history.comments && (
-                        <p className="text-xs text-gray-600 mt-1">{history.comments}</p>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-sm font-medium capitalize text-gray-900 whitespace-nowrap">
+                      {String(history.action || '').replace(/_/g, ' ')}
+                    </p>
+                    <p className="flex-1 min-w-0 truncate text-xs text-gray-500" title={history.comments}>
+                      {history.comments}
+                    </p>
+                    <p className="text-xs text-gray-400 whitespace-nowrap">
                       {new Date(history.timestamp).toLocaleString('en-ZA')}
                     </p>
                   </div>
@@ -598,7 +599,7 @@ export default function RequisitionDetail() {
                 <dd className="font-medium text-gray-900 text-right">{requisition.storesIssueNumber || '—'}</dd>
               </div>
             </dl>
-            <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
               <div className="p-3 rounded-lg bg-gray-50">
                 <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-1">Approved By (HOD)</p>
                 {requisition.hodApprovedBy ? (
@@ -643,31 +644,28 @@ export default function RequisitionDetail() {
           {/* Purchase Order Status */}
           {requisition.purchaseOrder && (
             <div className="bg-blue-50 rounded-2xl p-6 border border-blue-200">
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 mb-3">
                 <ShoppingCart className="h-5 w-5 text-blue-600" />
                 <h3 className="font-semibold text-blue-900">Purchase Order</h3>
               </div>
               <div className="space-y-3">
-                <div>
-                  <label className="text-xs text-gray-600">PO Number</label>
-                  <p className="font-mono font-bold text-primary text-lg mt-1 break-all">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-mono font-bold text-primary text-lg break-all">
                     {requisition.purchaseOrder.poNumber}
                   </p>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-600">Status</label>
-                  <p className="mt-1">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                      poStatusStyles[requisition.purchaseOrder.status]?.className || 'bg-amber-100 text-amber-700'
-                    }`}>
-                      {poStatusStyles[requisition.purchaseOrder.status]?.label || requisition.purchaseOrder.status}
-                    </span>
-                  </p>
+                  <span className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-medium ${
+                    poStatusStyles[requisition.purchaseOrder.status]?.className || 'bg-amber-100 text-amber-700'
+                  }`}>
+                    {poStatusStyles[requisition.purchaseOrder.status]?.label || requisition.purchaseOrder.status}
+                  </span>
                 </div>
                 {SEQUENTIAL_PO_STATUSES.includes(requisition.purchaseOrder.status) && (() => {
                   const po = requisition.purchaseOrder;
                   const steps = [
-                    { label: 'Department head', done: !!po.deptHodApproved },
+                    // New POs skip the department head; only older ones still wait on it.
+                    ...(po.status === 'pending_hod'
+                      ? [{ label: 'Department head', done: !!po.deptHodApproved }]
+                      : []),
                     { label: 'Head of Procurement', done: !!po.procHodApproved },
                     { label: 'Finance', done: !!po.financeApproved },
                     // The COO step applies only when the server flagged the PO
