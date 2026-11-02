@@ -12,14 +12,12 @@ import { canCancelRequisition, requisitionCancelApiBase } from '../lib/cancellat
 import { WorkflowStepper, NextStepCard } from '../components/WorkflowStepper';
 import { requisitionJourney } from '../lib/procurementJourney';
 import { 
-  FileText, 
-  Calendar, 
+  FileText,
   CheckCircle,
   XCircle,
   Clock,
   Loader2,
   ShoppingCart,
-  User,
   Send,
   Truck,
   Trash2,
@@ -299,6 +297,7 @@ export default function RequisitionDetail() {
       <PageHeader
         backTo="/app/requisitions"
         backLabel="Back to Requisitions"
+        bottomSpacing="mb-4"
         title={requisition.title || 'Requisition'}
         subtitle={`#${requisition.requisitionNumber || `REQ-${requisition._id?.slice(-6).toUpperCase()}`}`}
         actions={
@@ -364,7 +363,8 @@ export default function RequisitionDetail() {
         return (
           <>
             <WorkflowStepper steps={steps} />
-            {next && (
+            {/* A plain "Waiting on" note repeats what the stepper already shows; keep the card only when it has a button. */}
+            {next && (!next.waiting || next.action) && (
               <NextStepCard
                 title={next.title}
                 description={next.description}
@@ -388,43 +388,6 @@ export default function RequisitionDetail() {
           <strong>Cancellation reason:</strong> {requisition.cancellationReason}
         </div>
       )}
-
-      {/* IR header — mirrors paper Internal Requisition form */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          <div>
-            <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">Date</p>
-            <p className="text-sm font-semibold text-gray-900 flex items-center gap-1">
-              <Calendar className="h-3.5 w-3.5" />
-              {new Date(requisition.createdAt).toLocaleDateString('en-ZA')}
-            </p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">Work Order</p>
-            <p className="text-sm font-semibold text-gray-900">{requisition.workOrder || '—'}</p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">Stores Issue No.</p>
-            <p className="text-sm font-semibold text-gray-900">{requisition.storesIssueNumber || '—'}</p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">Requested By</p>
-            <p className="text-sm font-semibold text-gray-900">
-              {requisition.requestedBy?.firstName} {requisition.requestedBy?.lastName}
-            </p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">Dept</p>
-            <p className="text-sm font-semibold text-gray-900">{requisition.department?.name || '—'}</p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">Priority</p>
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${priorityColors[requisition.priority] || priorityColors.medium}`}>
-              {requisition.priority || 'Medium'}
-            </span>
-          </div>
-        </div>
-      </div>
 
       {/* Main Content - Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -595,6 +558,46 @@ export default function RequisitionDetail() {
           {/* Approvals — paper IR "Approved By" / "Authorised By" */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <h3 className="font-semibold text-gray-900 mb-4">Approvals</h3>
+            {/* IR header fields — mirrors the paper Internal Requisition form */}
+            <dl className="space-y-2.5 text-sm pb-4 mb-4 border-b border-gray-100">
+              <div className="flex items-start justify-between gap-3">
+                <dt className="text-gray-500">Date</dt>
+                <dd className="font-medium text-gray-900 text-right">
+                  {new Date(requisition.createdAt).toLocaleDateString('en-ZA')}
+                </dd>
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <dt className="text-gray-500">Requested by</dt>
+                <dd className="font-medium text-gray-900 text-right min-w-0">
+                  {requisition.requestedBy
+                    ? `${requisition.requestedBy.firstName} ${requisition.requestedBy.lastName}`
+                    : '—'}
+                  {requisition.requestedBy?.email && (
+                    <span className="block text-xs font-normal text-gray-500 break-all">{requisition.requestedBy.email}</span>
+                  )}
+                </dd>
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <dt className="text-gray-500">Department</dt>
+                <dd className="font-medium text-gray-900 text-right">{requisition.department?.name || '—'}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-gray-500">Priority</dt>
+                <dd>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${priorityColors[requisition.priority] || priorityColors.medium}`}>
+                    {requisition.priority || 'Medium'}
+                  </span>
+                </dd>
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <dt className="text-gray-500">Work order</dt>
+                <dd className="font-medium text-gray-900 text-right">{requisition.workOrder || '—'}</dd>
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <dt className="text-gray-500">Stores issue no.</dt>
+                <dd className="font-medium text-gray-900 text-right">{requisition.storesIssueNumber || '—'}</dd>
+              </div>
+            </dl>
             <div className="space-y-4">
               <div className="p-3 rounded-lg bg-gray-50">
                 <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-1">Approved By (HOD)</p>
@@ -785,24 +788,6 @@ export default function RequisitionDetail() {
                   )}
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Requested By */}
-          {requisition.requestedBy && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <User className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold text-gray-900">Requested By</h3>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-900">
-                  {requisition.requestedBy.firstName} {requisition.requestedBy.lastName}
-                </p>
-                {requisition.requestedBy.email && (
-                  <p className="text-xs text-gray-500">{requisition.requestedBy.email}</p>
-                )}
-              </div>
             </div>
           )}
 
