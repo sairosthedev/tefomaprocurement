@@ -133,7 +133,7 @@ export default function PurchaseOrders() {
           isProcurement ? (
             <button
               onClick={() => navigate('/app/quotations?status=accepted')}
-              className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+              className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium px-3 py-2 text-sm rounded-lg transition-colors"
             >
               <Plus className="h-5 w-5" />
               Create PO from Quotation
@@ -146,13 +146,13 @@ export default function PurchaseOrders() {
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
         <div className="flex flex-col md:flex-row md:items-center gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
               placeholder="Search purchase orders..."
               value={search}
               onChange={(e: any) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+              className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
           <FilterSelect

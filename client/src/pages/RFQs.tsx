@@ -83,7 +83,7 @@ export default function RFQs() {
         actions={
           <button
             onClick={() => navigate('/app/rfqs/create')}
-            className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+            className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium px-3 py-2 text-sm rounded-lg transition-colors"
           >
             <Plus className="h-5 w-5" />
             Create RFQ
@@ -95,13 +95,13 @@ export default function RFQs() {
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
         <div className="flex flex-col md:flex-row md:items-center gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
               placeholder="Search RFQs..."
               value={search}
               onChange={(e: any) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+              className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
           <FilterSelect
@@ -174,7 +174,7 @@ export default function RFQs() {
                     <div className="flex gap-1">
                       <button
                         onClick={() => navigate(`/app/rfqs/${rfq._id}`)}
-                        className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100 text-gray-700"
+                        className="px-2 py-1 text-xs border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors"
                       >
                         View
                       </button>

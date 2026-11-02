@@ -527,7 +527,7 @@ export default function QuotationDetail() {
             {isProcurement && quotation.status === 'accepted' && !quotation.existingPurchaseOrder && (
               <button
                 onClick={openCreatePO}
-                className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+                className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium px-3 py-2 text-sm rounded-lg transition-colors"
               >
                 <ShoppingCart className="h-4 w-4" />
                 Create Purchase Order
@@ -536,7 +536,7 @@ export default function QuotationDetail() {
             {isProcurement && quotation.existingPurchaseOrder && (
               <a
                 href={`/app/purchase-orders/${quotation.existingPurchaseOrder._id}`}
-                className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+                className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium px-3 py-2 text-sm rounded-lg transition-colors"
               >
                 <ShoppingCart className="h-4 w-4" />
                 View Purchase Order

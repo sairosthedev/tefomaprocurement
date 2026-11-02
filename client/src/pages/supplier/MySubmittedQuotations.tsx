@@ -158,7 +158,7 @@ export default function MySubmittedQuotations() {
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
         <div className="flex flex-col md:flex-row md:items-center gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
               placeholder="Search by quotation number, RFQ number, or title..."

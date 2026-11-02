@@ -166,7 +166,7 @@ export default function Departments() {
                     <div className="flex gap-1">
                       <button
                         onClick={() => handleEdit(dept)}
-                        className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100 text-gray-700"
+                        className="px-2 py-1 text-xs border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors"
                       >
                         Edit
                       </button>

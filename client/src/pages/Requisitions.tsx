@@ -57,6 +57,18 @@ const priorityColors: any = {
   urgent: 'bg-red-100 text-red-600'
 };
 
+// Purchase order statuses the label chains below don't name, in words rather
+// than the raw status code.
+const poStatusText = (status: string) =>
+  ({
+    pending_hod: 'Pending HOD',
+    pending_dept_hod: 'Pending Department Head',
+    pending_proc_hod: 'Pending Head of Procurement',
+    partially_received: 'Partly Received',
+    completed: 'Completed',
+    cancelled: 'Cancelled'
+  } as Record<string, string>)[status] || status;
+
 export default function Requisitions() {
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -468,7 +480,7 @@ export default function Requisitions() {
               <tbody>
                 {requisitions.map((req: any) => (
                   <tr key={req._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border border-gray-200 whitespace-nowrap">
                       <span className="font-mono text-sm font-medium text-primary">
                         {req.requisitionNumber || `REQ-${req._id.slice(-6).toUpperCase()}`}
                       </span>
@@ -490,15 +502,15 @@ export default function Requisitions() {
                         {isProcurement && <p className="text-xs text-gray-500">{req.department?.name || 'No dept'}</p>}
                       </td>
                     )}
-                    <td className="py-2 px-3 border border-gray-200">
-                      <span className="text-gray-600">{req.items?.length || 0} items</span>
+                    <td className="py-2 px-3 border border-gray-200 whitespace-nowrap">
+                      <span className="text-gray-600">{req.items?.length || 0} {req.items?.length === 1 ? 'item' : 'items'}</span>
                     </td>
                     <td className="py-2 px-3 border border-gray-200">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${priorityColors[req.priority] || priorityColors.medium}`}>
                         {req.priority || 'Medium'}
                       </span>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border border-gray-200 whitespace-nowrap">
                       {/* Show computed status: if PO exists, show 'ordered', if delivered to stores, show appropriate status */}
                       {(() => {
                         let displayStatus = req.status;
@@ -517,7 +529,7 @@ export default function Requisitions() {
                     <td className="py-2 px-3 border border-gray-200">
                       {req.purchaseOrder ? (
                         <div className="flex flex-col gap-1">
-                          <div className="font-mono text-sm font-semibold text-primary">
+                          <div className="font-mono text-sm font-semibold text-primary whitespace-nowrap">
                             {req.purchaseOrder.poNumber}
                           </div>
                           {req.purchaseOrder.supplier?.companyName && (
@@ -555,7 +567,7 @@ export default function Requisitions() {
                                req.purchaseOrder.status === 'issued' ? 'Issued' :
                                req.purchaseOrder.status === 'rejected' ? 'Rejected' :
                                req.purchaseOrder.status === 'draft' ? 'Draft' :
-                               req.purchaseOrder.status}
+                               poStatusText(req.purchaseOrder.status)}
                             </span>
                           )}
                         </div>
@@ -681,7 +693,7 @@ export default function Requisitions() {
                         {isDeptHead && actsAsDepartment(req) && req.itemsDeliveredToStores && !req.itemsCollected && !storeRequestedIds.has(req._id) && (
                           <button
                             onClick={() => handleRequestFromStores(req)}
-                            className="px-2 py-1 text-xs border border-primary rounded bg-primary hover:bg-primary-dark text-white transition-colors"
+                            className="px-2 py-1 text-xs border border-primary rounded bg-primary hover:bg-primary-dark text-white transition-colors whitespace-nowrap"
                           >
                             Req. from Stores
                           </button>
@@ -788,7 +800,7 @@ export default function Requisitions() {
                          selectedRequisition.purchaseOrder.status === 'approved' ? 'Approved' :
                          selectedRequisition.purchaseOrder.status === 'issued' ? 'Issued' :
                          selectedRequisition.purchaseOrder.status === 'rejected' ? 'Rejected' :
-                         selectedRequisition.purchaseOrder.status}
+                         poStatusText(selectedRequisition.purchaseOrder.status)}
                       </span>
                     </p>
                   </div>
@@ -922,7 +934,7 @@ export default function Requisitions() {
                          selectedRequisition.purchaseOrder.status === 'approved' ? 'Approved' :
                          selectedRequisition.purchaseOrder.status === 'issued' ? 'Issued' :
                          selectedRequisition.purchaseOrder.status === 'rejected' ? 'Rejected' :
-                         selectedRequisition.purchaseOrder.status}
+                         poStatusText(selectedRequisition.purchaseOrder.status)}
                       </span>
                     </p>
                   </div>

@@ -328,7 +328,7 @@ export default function Approvals() {
                     <td className="py-2 px-3 border border-gray-200">
                       <button
                         onClick={() => { setSelectedItem(item); setShowModal(true); }}
-                        className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100 text-gray-700"
+                        className="px-2 py-1 text-xs border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors"
                       >
                         Review
                       </button>
