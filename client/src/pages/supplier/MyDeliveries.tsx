@@ -28,18 +28,19 @@ export default function MyDeliveries() {
   const [selectedDelivery, setSelectedDelivery] = useState<any>(null);
   const [showViewModal, setShowViewModal] = useState<any>(false);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
   // The order the invoice drawer is billing; null while it is closed.
   const [invoicingPoId, setInvoicingPoId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMyDeliveries();
-  }, [page]);
+  }, [page, limit]);
 
   const fetchMyDeliveries = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/supplier/deliveries', { params: { page, limit: DEFAULT_PAGE_SIZE } });
+      const response = await api.get('/supplier/deliveries', { params: { page, limit } });
       if (response.data.success) {
         setDeliveries(response.data.data || []);
         setPagination(parsePagination(response.data.pagination));
@@ -177,7 +178,7 @@ export default function MyDeliveries() {
               </thead>
               <tbody>
                 {deliveries.map((delivery: any) => (
-                  <tr key={delivery._id} className="hover:bg-gray-50">
+                  <tr key={delivery._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                     <td className="py-2 px-3 border-b border-gray-100">
                       {delivery.status === 'pending' ? (
                         <span className="text-yellow-600 italic">Awaiting GRV</span>
@@ -240,6 +241,8 @@ export default function MyDeliveries() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="deliveries"
           />
           </>
@@ -380,7 +383,7 @@ export default function MyDeliveries() {
                   </thead>
                   <tbody>
                     {selectedDelivery.items?.map((item: any, index: any) => (
-                      <tr key={index} className="hover:bg-gray-50">
+                      <tr key={index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                         <td className="py-2 px-3 border-b border-gray-100 font-medium">{item.description}</td>
                         <td className="py-2 px-3 border-b border-gray-100 text-gray-600">{item.quantityOrdered || '-'}</td>
                         <td className="py-2 px-3 border-b border-gray-100 font-medium text-gray-900">

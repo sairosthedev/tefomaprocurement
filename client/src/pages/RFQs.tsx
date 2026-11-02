@@ -48,6 +48,7 @@ export default function RFQs() {
   const [search, setSearch] = useState<any>('');
   const [statusFilter, setStatusFilter] = useState<any>('');
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
   // The create drawer lives in the URL (?new=1, with ?requisition= when it is
   // raised from one), so links from elsewhere can open it and Back closes it.
@@ -92,7 +93,7 @@ export default function RFQs() {
 
   useEffect(() => {
     fetchRFQs();
-  }, [page, search, statusFilter]);
+  }, [page, limit, search, statusFilter]);
 
   const fetchRFQs = async () => {
     try {
@@ -101,7 +102,7 @@ export default function RFQs() {
         search, 
         status: statusFilter,
         page,
-        limit: DEFAULT_PAGE_SIZE
+        limit
       });
       setRFQs(response.data.data);
       setPagination(parsePagination(response.data.pagination));
@@ -187,7 +188,7 @@ export default function RFQs() {
             </thead>
             <tbody>
               {rfqs.map((rfq: any) => (
-                <tr key={rfq._id} className="hover:bg-gray-50">
+                <tr key={rfq._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                   <td className="py-2 px-3 border-b border-gray-100 font-mono text-sm font-medium">{rfq.rfqNumber}</td>
                   <td className="py-2 px-3 border-b border-gray-100">{rfq.title}</td>
                   <td className="py-2 px-3 border-b border-gray-100">
@@ -237,6 +238,8 @@ export default function RFQs() {
           pages={pagination.pages}
           total={pagination.total}
           onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
           itemLabel="RFQs"
         />
         </>

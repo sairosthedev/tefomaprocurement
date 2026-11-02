@@ -23,17 +23,18 @@ export default function Departments() {
     deputyHead: ''
   });
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
     fetchDepartments();
     fetchDepartmentHeads();
-  }, [page]);
+  }, [page, limit]);
 
   const fetchDepartments = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/admin/departments', { params: { page, limit: DEFAULT_PAGE_SIZE } });
+      const response = await api.get('/admin/departments', { params: { page, limit } });
       if (response.data.success) {
         setDepartments(response.data.data || []);
         setPagination(parsePagination(response.data.pagination));
@@ -157,7 +158,7 @@ export default function Departments() {
             </thead>
             <tbody>
               {departments.map((dept: any) => (
-                <tr key={dept._id} className="hover:bg-gray-50">
+                <tr key={dept._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                   <td className="py-2 px-3 border-b border-gray-100 font-mono text-xs text-gray-500">{dept.code || '—'}</td>
                   <td className="py-2 px-3 border-b border-gray-100 font-medium">{dept.name}</td>
                   <td className="py-2 px-3 border-b border-gray-100 text-gray-500">{dept.description || '—'}</td>
@@ -191,6 +192,8 @@ export default function Departments() {
           pages={pagination.pages}
           total={pagination.total}
           onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
           itemLabel="departments"
         />
         </>

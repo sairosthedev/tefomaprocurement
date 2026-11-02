@@ -228,7 +228,7 @@ export default function BankChanges() {
                     </thead>
                     <tbody>
                       {(request.changes || []).map((change: any, i: number) => (
-                        <tr key={i} className="hover:bg-gray-50">
+                        <tr key={i} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                           <td className="py-2 px-3 border-b border-gray-100 font-medium text-gray-800">{change.field}</td>
                           <td className="py-2 px-3 border-b border-gray-100 text-gray-500">{change.from || '—'}</td>
                           <td className="py-2 px-3 border-b border-gray-100 text-gray-900 font-medium">{change.to || '—'}</td>

@@ -45,18 +45,19 @@ export default function MyPurchaseOrders() {
     expectedDeliveryDate: ''
   });
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
   // The order the invoice drawer is billing; null while it is closed.
   const [invoicingPoId, setInvoicingPoId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMyPurchaseOrders();
-  }, [page]);
+  }, [page, limit]);
 
   const fetchMyPurchaseOrders = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/supplier/purchase-orders', { params: { page, limit: DEFAULT_PAGE_SIZE } });
+      const response = await api.get('/supplier/purchase-orders', { params: { page, limit } });
       if (response.data.success) {
         console.log('Purchase orders received:', response.data.data);
         setPurchaseOrders(response.data.data || []);
@@ -181,7 +182,7 @@ export default function MyPurchaseOrders() {
               </thead>
               <tbody>
                 {purchaseOrders.map((po: any) => (
-                  <tr key={po._id} className="hover:bg-gray-50">
+                  <tr key={po._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                     <td className="py-2 px-3 border-b border-gray-100">
                       <span className="font-mono font-medium text-primary">
                         {po.poNumber}
@@ -258,6 +259,8 @@ export default function MyPurchaseOrders() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="purchase orders"
           />
           </>
@@ -439,7 +442,7 @@ export default function MyPurchaseOrders() {
                   </thead>
                   <tbody>
                     {selectedPO.items?.map((item: any, index: any) => (
-                      <tr key={index} className="hover:bg-gray-50">
+                      <tr key={index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                         <td className="py-2 px-3 border-b border-gray-100 font-medium">{item.description}</td>
                         <td className="py-2 px-3 border-b border-gray-100">{item.quantity} {item.unit}</td>
                         <td className="py-2 px-3 border-b border-gray-100">

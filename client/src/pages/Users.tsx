@@ -76,6 +76,7 @@ export default function Users() {
     status: 'active'
   });
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
@@ -85,12 +86,12 @@ export default function Users() {
   useEffect(() => {
     fetchUsers();
     fetchDepartments();
-  }, [page, search, roleFilter]);
+  }, [page, limit, search, roleFilter]);
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await adminAPI.getUsers({ search, role: roleFilter, page, limit: DEFAULT_PAGE_SIZE });
+      const response = await adminAPI.getUsers({ search, role: roleFilter, page, limit });
       setUsers(response.data.data || []);
       setPagination(parsePagination(response.data.pagination));
     } catch (error: any) {
@@ -295,7 +296,7 @@ export default function Users() {
               </thead>
               <tbody>
                 {users.map((user: any) => (
-                  <tr key={user._id} className="hover:bg-gray-50">
+                  <tr key={user._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                     <td className="py-2 px-3 border-b border-gray-100">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">
@@ -363,6 +364,8 @@ export default function Users() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="users"
           />
           </>

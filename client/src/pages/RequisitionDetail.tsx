@@ -453,7 +453,7 @@ export default function RequisitionDetail() {
                   </thead>
                   <tbody>
                     {requisition.items.map((item: any, index: any) => (
-                      <tr key={item._id || index} className="hover:bg-gray-50">
+                      <tr key={item._id || index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                         <td className="py-2 px-3 border-b border-gray-100 text-gray-600">{item.package || '—'}</td>
                         <td className="py-2 px-3 border-b border-gray-100">
                           <p className="font-medium text-gray-900">{item.description || item.name}</p>

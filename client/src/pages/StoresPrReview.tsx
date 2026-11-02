@@ -18,17 +18,18 @@ export default function StoresPrReview() {
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
   const [tab, setTab] = useState<'review' | 'sent'>('review');
 
   useEffect(() => {
     if (tab === 'review') load();
-  }, [page, tab]);
+  }, [page, limit, tab]);
 
   const load = async () => {
     try {
       setLoading(true);
-      const res = await storesAPI.getPendingPurchaseRequisitions({ page, limit: DEFAULT_PAGE_SIZE });
+      const res = await storesAPI.getPendingPurchaseRequisitions({ page, limit });
       setItems(res.data.data);
       setPagination(parsePagination(res.data.pagination));
     } catch (error: any) {
@@ -140,7 +141,7 @@ export default function StoresPrReview() {
                   const stage = storeStage(pr);
                   const fullyIssued = allLinesFullyIssued(pr);
                   return (
-                    <tr key={pr._id} className="hover:bg-gray-50">
+                    <tr key={pr._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                       <td className="py-2 px-3 border-b border-gray-100 font-mono text-xs font-medium whitespace-nowrap">{pr.requisitionNumber}</td>
                       <td className="py-2 px-3 border-b border-gray-100">{pr.title}</td>
                       <td className="py-2 px-3 border-b border-gray-100">{pr.department?.name || '—'}</td>
@@ -204,6 +205,8 @@ export default function StoresPrReview() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="requisitions"
           />
         </>

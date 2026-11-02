@@ -60,11 +60,12 @@ export default function Approvals() {
   const [actionLoading, setActionLoading] = useState<any>(false);
   const [comment, setComment] = useState<any>('');
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
     fetchPendingApprovals();
-  }, [page, user?.role]);
+  }, [page, limit, user?.role]);
 
   const fetchPendingApprovals = async () => {
     try {
@@ -88,7 +89,7 @@ export default function Approvals() {
           return;
       }
       
-      const response = await api.get(endpoint, { params: { page, limit: DEFAULT_PAGE_SIZE } });
+      const response = await api.get(endpoint, { params: { page, limit } });
       if (response.data.success) {
         setPendingItems(response.data.data || []);
         setPagination(parsePagination(response.data.pagination));
@@ -273,7 +274,7 @@ export default function Approvals() {
               </thead>
               <tbody>
                 {pendingItems.map((item: any) => (
-                  <tr key={item._id} className="hover:bg-gray-50">
+                  <tr key={item._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                     <td className="py-2 px-3 border-b border-gray-100">
                       <span className="font-mono text-sm font-medium text-primary break-all">
                         {item.poNumber || `PO-${item._id.slice(-6).toUpperCase()}`}
@@ -343,6 +344,8 @@ export default function Approvals() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="approvals"
           />
           </>
@@ -469,7 +472,7 @@ export default function Approvals() {
                   </thead>
                   <tbody>
                     {selectedItem.items?.map((item: any, index: any) => (
-                      <tr key={index} className="hover:bg-gray-50">
+                      <tr key={index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                         <td className="py-2 px-3 border-b border-gray-100">{item.description}</td>
                         <td className="py-2 px-3 border-b border-gray-100">{item.quantity} {item.unit}</td>
                         <td className="py-2 px-3 border-b border-gray-100">{formatCurrency(item.unitPrice || 0, selectedItem.currency)}</td>

@@ -92,6 +92,7 @@ export default function Quotations() {
     notes: ''
   });
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
@@ -100,7 +101,7 @@ export default function Quotations() {
 
   useEffect(() => {
     fetchQuotations();
-  }, [page, search, statusFilter]);
+  }, [page, limit, search, statusFilter]);
 
   const fetchQuotations = async () => {
     try {
@@ -109,7 +110,7 @@ export default function Quotations() {
         search, 
         status: statusFilter,
         page,
-        limit: DEFAULT_PAGE_SIZE
+        limit
       });
       setQuotations(response.data.data);
       setPagination(parsePagination(response.data.pagination));
@@ -304,7 +305,7 @@ export default function Quotations() {
                 {quotations.map((quotation: any) => {
                   const StatusIcon = statusIcons[quotation.status] || DEFAULT_STATUS_ICON;
                   return (
-                    <tr key={quotation._id} className="hover:bg-gray-50">
+                    <tr key={quotation._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                       <td className="py-2 px-3 border-b border-gray-100">
                         <span className="font-medium text-gray-900">{quotation.quotationNumber}</span>
                       </td>
@@ -357,6 +358,8 @@ export default function Quotations() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="quotations"
           />
           </>
@@ -456,7 +459,7 @@ export default function Quotations() {
                   </thead>
                   <tbody>
                     {selectedQuotation.items?.map((item: any, index: any) => (
-                      <tr key={index} className="hover:bg-gray-50">
+                      <tr key={index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                         <td className="py-2 px-3 border-b border-gray-100">
                           <p className="font-medium text-gray-900">{item.description}</p>
                           {item.brand && (

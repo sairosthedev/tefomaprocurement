@@ -27,6 +27,7 @@ export default function Invoices() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
@@ -35,12 +36,12 @@ export default function Invoices() {
 
   useEffect(() => {
     fetchInvoices();
-  }, [page, search, statusFilter]);
+  }, [page, limit, search, statusFilter]);
 
   const fetchInvoices = async () => {
     try {
       setLoading(true);
-      const res = await financeAPI.getInvoices({ search, status: statusFilter, page, limit: DEFAULT_PAGE_SIZE });
+      const res = await financeAPI.getInvoices({ search, status: statusFilter, page, limit });
       setInvoices(res.data.data);
       setPagination(parsePagination(res.data.pagination));
     } catch (error: any) {
@@ -114,7 +115,7 @@ export default function Invoices() {
             </thead>
             <tbody>
               {invoices.map((inv) => (
-                <tr key={inv._id} className="hover:bg-gray-50">
+                <tr key={inv._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                   <td className="py-2 px-3 border-b border-gray-100 font-medium">{inv.invoiceNumber}</td>
                   <td className="py-2 px-3 border-b border-gray-100">{inv.purchaseOrder?.poNumber || '—'}</td>
                   <td className="py-2 px-3 border-b border-gray-100">{inv.supplier?.companyName || '—'}</td>
@@ -143,6 +144,8 @@ export default function Invoices() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="invoices"
           />
         </div>

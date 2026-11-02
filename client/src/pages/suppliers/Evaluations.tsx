@@ -76,6 +76,7 @@ export default function Evaluations() {
   const [suppliersDue, setSuppliersDue] = useState<any[]>([])
   const [allEvaluations, setAllEvaluations] = useState<any[]>([])
   const [allPage, setAllPage] = useState(1)
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE)
   const [allPagination, setAllPagination] = useState(emptyPagination())
 
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -99,7 +100,7 @@ export default function Evaluations() {
     if (activeTab === 'all') {
       loadAllEvaluations()
     }
-  }, [activeTab, allPage])
+  }, [activeTab, allPage, limit])
 
   const loadDue = async () => {
     try {
@@ -113,7 +114,7 @@ export default function Evaluations() {
   const loadAllEvaluations = async () => {
     try {
       setLoading(true)
-      const allResponse = await procurementAPI.getEvaluations({ page: allPage, limit: DEFAULT_PAGE_SIZE })
+      const allResponse = await procurementAPI.getEvaluations({ page: allPage, limit })
       setAllEvaluations(allResponse.data.data || [])
       setAllPagination(parsePagination(allResponse.data.pagination))
     } catch (error: any) {
@@ -314,7 +315,7 @@ export default function Evaluations() {
               </thead>
               <tbody>
                 {allEvaluations.map((evaluation) => (
-                  <tr key={evaluation._id} className="hover:bg-gray-50">
+                  <tr key={evaluation._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                     <td className="py-2 px-3 border-b border-gray-100 font-medium text-gray-900">{supplierName(evaluation)}</td>
                     <td className="py-2 px-3 border-b border-gray-100 capitalize text-gray-600">{String(evaluation.evaluationType || '').replace(/_/g, ' ')}</td>
                     <td className="py-2 px-3 border-b border-gray-100">
@@ -346,6 +347,8 @@ export default function Evaluations() {
             pages={allPagination.pages}
             total={allPagination.total}
             onPageChange={setAllPage}
+            pageSize={limit}
+            onPageSizeChange={(s) => { setLimit(s); setAllPage(1); }}
             itemLabel="evaluations"
           />
         </div>

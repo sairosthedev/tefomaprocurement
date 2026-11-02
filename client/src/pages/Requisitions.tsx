@@ -87,6 +87,7 @@ export default function Requisitions() {
   const [storeRequestedIds, setStoreRequestedIds] = useState<Set<string>>(new Set());
   const [removingItemId, setRemovingItemId] = useState<any>(null);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
   // The create drawer lives in the URL (?new=1), so links from elsewhere can
   // open it and the browser's Back button closes it.
@@ -157,7 +158,7 @@ export default function Requisitions() {
 
   useEffect(() => {
     fetchRequisitions();
-  }, [page, searchTerm, statusFilter, isProcurement, viewFilter]);
+  }, [page, limit, searchTerm, statusFilter, isProcurement, viewFilter]);
 
   const fetchRequisitions = async () => {
     try {
@@ -169,7 +170,7 @@ export default function Requisitions() {
           search: searchTerm,
           status: statusFilter || undefined,
           page,
-          limit: DEFAULT_PAGE_SIZE,
+          limit,
           ...(!isProcurement && isDeptHead ? { view: viewFilter } : {})
         }
       });
@@ -691,6 +692,8 @@ export default function Requisitions() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="requisitions"
           />
           </>

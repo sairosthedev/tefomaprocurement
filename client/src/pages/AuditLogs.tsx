@@ -190,7 +190,7 @@ function ChangeTable({ log }: { log: any }) {
           </thead>
           <tbody>
             {changes.map((c: any, i: number) => (
-              <tr key={`${c.field}-${i}`} className="hover:bg-gray-50">
+              <tr key={`${c.field}-${i}`} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                 <td className="py-2 px-3 border-b border-gray-100 font-medium text-gray-700 align-top">{formatField(c.field)}</td>
                 <td className="py-2 px-3 border-b border-gray-100 text-gray-500 align-top break-words">{formatValue(c.from)}</td>
                 <td className="py-2 px-3 border-b border-gray-100 text-gray-900 align-top break-words font-medium">{formatValue(c.to)}</td>
@@ -234,6 +234,7 @@ export default function AuditLogs() {
   const [endDate, setEndDate] = useState<any>('');
   const [showFilters, setShowFilters] = useState<any>(false);
   const [page, setPage] = useState<any>(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
   const [selectedLog, setSelectedLog] = useState<any>(null);
   const [showModal, setShowModal] = useState<any>(false);
@@ -268,7 +269,7 @@ export default function AuditLogs() {
       const response = await adminAPI.getAuditLogs({
         ...filterParams,
         page,
-        limit: DEFAULT_PAGE_SIZE
+        limit
       });
       if (response.data.success) {
         setLogs(response.data.data || []);
@@ -283,7 +284,7 @@ export default function AuditLogs() {
     } finally {
       setLoading(false);
     }
-  }, [filterParams, page]);
+  }, [filterParams, page, limit]);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -696,6 +697,8 @@ export default function AuditLogs() {
           pages={pagination.pages}
           total={pagination.total}
           onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
           itemLabel="log entries"
         />
       </div>

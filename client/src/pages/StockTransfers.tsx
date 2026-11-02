@@ -60,6 +60,7 @@ export default function StockTransfers() {
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
   const [statusFilter, setStatusFilter] = useState('');
   const [showCreate, setShowCreate] = useState(false);
@@ -73,7 +74,7 @@ export default function StockTransfers() {
 
   useEffect(() => {
     loadTransfers();
-  }, [page, statusFilter]);
+  }, [page, limit, statusFilter]);
 
   useEffect(() => {
     loadSites();
@@ -92,7 +93,7 @@ export default function StockTransfers() {
       setLoading(true);
       const res = await storesAPI.getTransfers({
         page,
-        limit: DEFAULT_PAGE_SIZE,
+        limit,
         status: statusFilter || undefined
       });
       setTransfers(res.data.data || []);
@@ -307,7 +308,9 @@ export default function StockTransfers() {
             ))}
           </div>
         )}
-        <Pagination page={page} pages={pagination.pages} total={pagination.total} onPageChange={setPage} itemLabel="transfers" />
+        <Pagination page={page} pages={pagination.pages} total={pagination.total} onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }} itemLabel="transfers" />
       </div>
 
       <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Create stock transfer" size="xl">

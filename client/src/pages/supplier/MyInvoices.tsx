@@ -17,6 +17,7 @@ export default function MyInvoices() {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
   const [openId, setOpenId] = useState<string | null>(null);
   // The submit drawer lives in the URL (?new=1, with ?po= for the order being
@@ -53,12 +54,12 @@ export default function MyInvoices() {
 
   useEffect(() => {
     fetchInvoices();
-  }, [page]);
+  }, [page, limit]);
 
   const fetchInvoices = async () => {
     try {
       setLoading(true);
-      const res = await supplierAPI.getMyInvoices({ page, limit: DEFAULT_PAGE_SIZE });
+      const res = await supplierAPI.getMyInvoices({ page, limit });
       setInvoices(res.data.data);
       setPagination(parsePagination(res.data.pagination));
     } catch (error: any) {
@@ -105,7 +106,7 @@ export default function MyInvoices() {
               {invoices.map((inv) => (
                 <React.Fragment key={inv._id}>
                   <tr
-                    className="hover:bg-gray-50 cursor-pointer"
+                    className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors cursor-pointer"
                     onClick={() => setOpenId(openId === inv._id ? null : inv._id)}
                   >
                     <td className="py-2 px-3 border-b border-gray-100 font-medium">
@@ -156,6 +157,8 @@ export default function MyInvoices() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="invoices"
           />
         </div>

@@ -46,6 +46,7 @@ export default function MySubmittedQuotations() {
   const [selectedQuotation, setSelectedQuotation] = useState<any>(null);
   const [showViewModal, setShowViewModal] = useState<any>(false);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
@@ -54,7 +55,7 @@ export default function MySubmittedQuotations() {
 
   useEffect(() => {
     fetchQuotations();
-  }, [page, searchTerm, statusFilter]);
+  }, [page, limit, searchTerm, statusFilter]);
 
   const fetchQuotations = async () => {
     try {
@@ -64,7 +65,7 @@ export default function MySubmittedQuotations() {
           status: statusFilter || undefined,
           search: searchTerm || undefined,
           page,
-          limit: DEFAULT_PAGE_SIZE
+          limit
         }
       });
       if (response.data.success) {
@@ -207,7 +208,7 @@ export default function MySubmittedQuotations() {
               </thead>
               <tbody>
                 {quotations.map((quote: any) => (
-                  <tr key={quote._id} className="hover:bg-gray-50">
+                  <tr key={quote._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                     <td className="py-2 px-3 border-b border-gray-100">
                       <span className="font-mono font-medium text-primary">
                         {quote.quotationNumber || `QT-${quote._id.slice(-6).toUpperCase()}`}
@@ -279,6 +280,8 @@ export default function MySubmittedQuotations() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="quotations"
           />
           </>
@@ -443,7 +446,7 @@ export default function MySubmittedQuotations() {
                   </thead>
                   <tbody>
                     {selectedQuotation.items?.map((item: any, index: any) => (
-                      <tr key={index} className="hover:bg-gray-50">
+                      <tr key={index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                         <td className="py-2 px-3 border-b border-gray-100">
                           <p className="font-medium text-gray-900">{item.description}</p>
                           {item.notes && (

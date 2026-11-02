@@ -84,6 +84,7 @@ export default function Inventory() {
   const [parseError, setParseError] = useState<any>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
   const [stats, setStats] = useState({
     totalItems: 0,
@@ -158,7 +159,7 @@ export default function Inventory() {
 
   useEffect(() => {
     fetchInventory();
-  }, [page, searchTerm, categoryFilter, showLowStock]);
+  }, [page, limit, searchTerm, categoryFilter, showLowStock]);
 
   const handleSearchSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -180,7 +181,7 @@ export default function Inventory() {
           category: overrides?.category ?? categoryFilter,
           lowStock: overrides?.lowStock ?? showLowStock,
           page: overrides?.page ?? page,
-          limit: DEFAULT_PAGE_SIZE
+          limit
         }
       });
       if (response.data.success) {
@@ -586,6 +587,8 @@ export default function Inventory() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="items"
           />
           </>
@@ -889,7 +892,7 @@ export default function Inventory() {
                       </thead>
                       <tbody>
                         {importRows.slice(0, 50).map((r: any, i: number) => (
-                          <tr key={i} className="hover:bg-gray-50">
+                          <tr key={i} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                             <td className="py-2 px-3 border-b border-gray-100 text-gray-900">{r.name || r.code}</td>
                             <td className="py-2 px-3 border-b border-gray-100 text-gray-500">{r.category || '—'}</td>
                             <td className="py-2 px-3 border-b border-gray-100 text-gray-500">{r.unit || 'each'}</td>

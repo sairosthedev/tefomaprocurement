@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+﻿import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { KYS_CHECKLIST_ITEMS, computeKysCompletionForTier } from '@fossil/shared'
 import { procurementAPI } from '../services/procurement.service'
@@ -19,6 +19,7 @@ export default function VerificationHub() {
   const [selectedSection, setSelectedSection] = useState('')
   const [verifyingSupplierId, setVerifyingSupplierId] = useState('')
   const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination())
 
   // Progress is measured against the supplier's tier, matching what the server
@@ -65,12 +66,12 @@ export default function VerificationHub() {
 
   useEffect(() => {
     fetchSuppliers()
-  }, [page, search])
+  }, [page, limit, search])
 
   const fetchSuppliers = async () => {
     try {
       setLoading(true)
-      const res = await procurementAPI.getSuppliers({ search, page, limit: DEFAULT_PAGE_SIZE })
+      const res = await procurementAPI.getSuppliers({ search, page, limit })
       setSuppliers(res.data.data || [])
       setPagination(parsePagination(res.data.pagination))
     } catch (err: any) {
@@ -336,6 +337,8 @@ export default function VerificationHub() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="suppliers"
           />
         </div>

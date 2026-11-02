@@ -205,7 +205,7 @@ export default function AwardMatrix() {
             {lines.map((line) => {
               const awardedTo = line.awardedSupplier ? String(line.awardedSupplier) : null;
               return (
-                <tr key={String(line.rfqLineId)} className="hover:bg-gray-50">
+                <tr key={String(line.rfqLineId)} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                   <td className="py-2 px-3 border-b border-gray-100">
                     <p className="font-medium text-gray-900">{line.description}</p>
                     <p className="text-xs text-gray-500">Qty {line.quantity}</p>

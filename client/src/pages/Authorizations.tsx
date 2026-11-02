@@ -125,7 +125,7 @@ export default function Authorizations() {
               </thead>
               <tbody>
                 {items.map((item: any) => (
-                  <tr key={`${item.rfqId}-${item.kind}`} className="hover:bg-gray-50">
+                  <tr key={`${item.rfqId}-${item.kind}`} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                     <td className="py-2 px-3 border-b border-gray-100">
                       <span className="font-mono text-sm font-medium text-primary break-all">{item.rfqNumber}</span>
                       <p className="text-sm text-gray-500 truncate max-w-xs">{item.title}</p>

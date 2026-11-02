@@ -255,7 +255,7 @@ export default function InvoiceDetail() {
             </thead>
             <tbody>
               {invoice.items.map((item: any, i: number) => (
-                <tr key={i} className="hover:bg-gray-50">
+                <tr key={i} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                   <td className="py-2 px-3 border-b border-gray-100">{item.description}</td>
                   <td className="text-right py-2.5 px-4">{item.quantity}</td>
                   <td className="text-right py-2.5 px-4">{formatCurrency(item.unitPrice, currency)}</td>

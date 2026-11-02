@@ -136,6 +136,7 @@ export default function Suppliers() {
   const [dragActive, setDragActive] = useState(false);
   const importFileInput = useRef<HTMLInputElement | null>(null);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
@@ -144,7 +145,7 @@ export default function Suppliers() {
 
   useEffect(() => {
     fetchSuppliers();
-  }, [page, search, statusFilter]);
+  }, [page, limit, search, statusFilter]);
 
   const fetchSuppliers = async () => {
     try {
@@ -153,7 +154,7 @@ export default function Suppliers() {
         search, 
         status: statusFilter,
         page,
-        limit: DEFAULT_PAGE_SIZE
+        limit
       });
       setSuppliers(response.data.data);
       setPagination(parsePagination(response.data.pagination));
@@ -427,7 +428,7 @@ export default function Suppliers() {
                       supplier.status.charAt(0).toUpperCase() + supplier.status.slice(1);
 
                     return (
-                      <tr key={supplier._id} className="hover:bg-gray-50">
+                      <tr key={supplier._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                         <td className="py-2 px-3 border-b border-gray-100">
                           <div className="flex items-center gap-3 min-w-0 max-w-md">
                             <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
@@ -488,6 +489,8 @@ export default function Suppliers() {
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="suppliers"
           />
           </>
@@ -966,7 +969,7 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
                         {importRows.map((row, i) => {
                           const issues = rowIssues(row);
                           return (
-                            <tr key={i} className={issues.length > 0 ? 'bg-amber-50/50' : 'hover:bg-gray-50'}>
+                            <tr key={i} className={issues.length > 0 ? 'bg-amber-50/50' : 'odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors'}>
                               <td className="py-1 px-2 border border-gray-200 text-gray-400">{i + 1}</td>
                               {(['companyName', 'registrationNumber', 'contactPerson', 'email', 'phone', 'categories'] as (keyof SupplierImportRow)[]).map((f) => (
                                 <td key={f} className="py-1 px-1">
@@ -1053,7 +1056,7 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
                       </thead>
                       <tbody>
                         {bulkImportResults.success.map((item: any, idx: any) => (
-                          <tr key={idx} className="hover:bg-gray-50">
+                          <tr key={idx} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                             <td className="py-2 px-3 border-b border-gray-100">{item.companyName}</td>
                             <td className="py-2 px-3 border-b border-gray-100">{item.email}</td>
                           </tr>
@@ -1078,7 +1081,7 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
                       </thead>
                       <tbody>
                         {bulkImportResults.failed.map((item: any, idx: any) => (
-                          <tr key={idx} className="hover:bg-gray-50">
+                          <tr key={idx} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                             <td className="py-2 px-3 border-b border-gray-100">{item.companyName}</td>
                             <td className="py-2 px-3 border-b border-gray-100">{item.email}</td>
                             <td className="py-2 px-3 border-b border-gray-100 text-red-600">{item.reason}</td>

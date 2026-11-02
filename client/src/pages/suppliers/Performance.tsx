@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+﻿import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BarChart3, CalendarClock, CheckCircle2, ClipboardList, Loader2, Trophy, XCircle } from 'lucide-react'
 import { procurementAPI } from '../../services/procurement.service'
@@ -24,17 +24,18 @@ export default function Performance() {
   const [suppliersDue, setSuppliersDue] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination())
 
   useEffect(() => {
     load()
-  }, [page])
+  }, [page, limit])
 
   const load = async () => {
     try {
       setLoading(true)
       const [reportResponse, dueResponse] = await Promise.all([
-        procurementAPI.getSupplierReports({ page, limit: DEFAULT_PAGE_SIZE }),
+        procurementAPI.getSupplierReports({ page, limit }),
         procurementAPI.getEvaluationsDue()
       ])
       setReport(reportResponse.data.data)
@@ -188,6 +189,8 @@ export default function Performance() {
               pages={pagination.pages}
               total={pagination.total}
               onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
               itemLabel="suppliers"
             />
           </div>
