@@ -303,34 +303,34 @@ export default function Evaluations() {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Supplier</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Type</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Score</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Recommendation</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Status</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Date</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Next review</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Supplier</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Type</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Score</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Recommendation</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Date</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Next review</th>
                 </tr>
               </thead>
               <tbody>
                 {allEvaluations.map((evaluation) => (
                   <tr key={evaluation._id} className="hover:bg-gray-50">
-                    <td className="py-2 px-3 border border-gray-200 font-medium text-gray-900">{supplierName(evaluation)}</td>
-                    <td className="py-2 px-3 border border-gray-200 capitalize text-gray-600">{String(evaluation.evaluationType || '').replace(/_/g, ' ')}</td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100 font-medium text-gray-900">{supplierName(evaluation)}</td>
+                    <td className="py-2 px-3 border-b border-gray-100 capitalize text-gray-600">{String(evaluation.evaluationType || '').replace(/_/g, ' ')}</td>
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className="inline-flex items-center gap-1 font-semibold text-gray-900">
                         <Star className="h-3.5 w-3.5 text-amber-500" />
                         {evaluation.overallScore}/5
                       </span>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200 capitalize text-gray-600">{evaluation.recommendation}</td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100 capitalize text-gray-600">{evaluation.recommendation}</td>
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[evaluation.status] || 'bg-gray-100 text-gray-700'}`}>
                         {STATUS_LABELS[evaluation.status] || evaluation.status}
                       </span>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200 text-gray-600">{formatDate(evaluation.createdAt)}</td>
-                    <td className="py-2 px-3 border border-gray-200 text-gray-600">{formatDate(evaluation.nextReviewDue)}</td>
+                    <td className="py-2 px-3 border-b border-gray-100 text-gray-600">{formatDate(evaluation.createdAt)}</td>
+                    <td className="py-2 px-3 border-b border-gray-100 text-gray-600">{formatDate(evaluation.nextReviewDue)}</td>
                   </tr>
                 ))}
               </tbody>

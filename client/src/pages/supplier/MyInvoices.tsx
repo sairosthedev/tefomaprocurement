@@ -95,10 +95,10 @@ export default function MyInvoices() {
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Invoice</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">PO</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Amount</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Status</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Invoice</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">PO</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Amount</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -108,15 +108,15 @@ export default function MyInvoices() {
                     className="hover:bg-gray-50 cursor-pointer"
                     onClick={() => setOpenId(openId === inv._id ? null : inv._id)}
                   >
-                    <td className="py-2 px-3 border border-gray-200 font-medium">
+                    <td className="py-2 px-3 border-b border-gray-100 font-medium">
                       <span className="inline-flex items-center gap-1.5">
                         {openId === inv._id ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
                         {inv.invoiceNumber}
                       </span>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">{inv.purchaseOrder?.poNumber}</td>
-                    <td className="py-2 px-3 border border-gray-200">{formatCurrency(inv.totalAmount, inv.currency || getCurrentSbuCurrency())}</td>
-                    <td className="py-2 px-3 border border-gray-200 capitalize">{inv.status.replace(/_/g, ' ')}</td>
+                    <td className="py-2 px-3 border-b border-gray-100">{inv.purchaseOrder?.poNumber}</td>
+                    <td className="py-2 px-3 border-b border-gray-100">{formatCurrency(inv.totalAmount, inv.currency || getCurrentSbuCurrency())}</td>
+                    <td className="py-2 px-3 border-b border-gray-100 capitalize">{inv.status.replace(/_/g, ' ')}</td>
                   </tr>
                   {openId === inv._id && (
                     <tr>

@@ -404,16 +404,16 @@ export default function Suppliers() {
               <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr>
-                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">
                       Supplier
                     </th>
-                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">
                       Contact
                     </th>
-                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">
                       Vendor status
                     </th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">
+                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">
                       Actions
                     </th>
                   </tr>
@@ -428,7 +428,7 @@ export default function Suppliers() {
 
                     return (
                       <tr key={supplier._id} className="hover:bg-gray-50">
-                        <td className="py-2 px-3 border border-gray-200">
+                        <td className="py-2 px-3 border-b border-gray-100">
                           <div className="flex items-center gap-3 min-w-0 max-w-md">
                             <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
                               <Building2 className="h-5 w-5 text-primary" />
@@ -444,7 +444,7 @@ export default function Suppliers() {
                           </div>
                         </td>
 
-                        <td className="py-2 px-3 border border-gray-200">
+                        <td className="py-2 px-3 border-b border-gray-100">
                           <div className="flex items-center gap-2 text-sm text-gray-600 min-w-0 max-w-xs">
                             <Mail className="h-4 w-4 text-gray-400 shrink-0" />
                             <span className="truncate" title={supplier.user?.email}>
@@ -453,7 +453,7 @@ export default function Suppliers() {
                           </div>
                         </td>
 
-                        <td className="py-2 px-3 border border-gray-200">
+                        <td className="py-2 px-3 border-b border-gray-100">
                           <div className="space-y-1.5">
                             <span
                               className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium capitalize ${statusColors[supplier.status]}`}
@@ -467,7 +467,7 @@ export default function Suppliers() {
                           </div>
                         </td>
 
-                        <td className="py-2 px-3 border border-gray-200 text-right">
+                        <td className="py-2 px-3 border-b border-gray-100 text-right">
                           <button
                             type="button"
                             onClick={() => openSupplierProfile(supplier)}
@@ -949,9 +949,9 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
                     <table className="w-full text-xs border-collapse">
                       <thead className="sticky top-0">
                         <tr>
-                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap w-8">#</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap w-8">#</th>
                           {(['companyName', 'registrationNumber', 'contactPerson', 'email', 'phone', 'categories'] as (keyof SupplierImportRow)[]).map((f) => (
-                            <th key={f} className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">
+                            <th key={f} className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">
                               {f === 'companyName' ? 'Company' :
                                f === 'registrationNumber' ? 'Reg no' :
                                f === 'contactPerson' ? 'Contact' :
@@ -1047,15 +1047,15 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
                     <table className="w-full text-xs border-collapse">
                       <thead>
                         <tr>
-                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Company</th>
-                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Email</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Company</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Email</th>
                         </tr>
                       </thead>
                       <tbody>
                         {bulkImportResults.success.map((item: any, idx: any) => (
                           <tr key={idx} className="hover:bg-gray-50">
-                            <td className="py-2 px-3 border border-gray-200">{item.companyName}</td>
-                            <td className="py-2 px-3 border border-gray-200">{item.email}</td>
+                            <td className="py-2 px-3 border-b border-gray-100">{item.companyName}</td>
+                            <td className="py-2 px-3 border-b border-gray-100">{item.email}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1071,17 +1071,17 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
                     <table className="w-full text-xs border-collapse">
                       <thead>
                         <tr>
-                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Company</th>
-                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Email</th>
-                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Reason</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Company</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Email</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Reason</th>
                         </tr>
                       </thead>
                       <tbody>
                         {bulkImportResults.failed.map((item: any, idx: any) => (
                           <tr key={idx} className="hover:bg-gray-50">
-                            <td className="py-2 px-3 border border-gray-200">{item.companyName}</td>
-                            <td className="py-2 px-3 border border-gray-200">{item.email}</td>
-                            <td className="py-2 px-3 border border-gray-200 text-red-600">{item.reason}</td>
+                            <td className="py-2 px-3 border-b border-gray-100">{item.companyName}</td>
+                            <td className="py-2 px-3 border-b border-gray-100">{item.email}</td>
+                            <td className="py-2 px-3 border-b border-gray-100 text-red-600">{item.reason}</td>
                           </tr>
                         ))}
                       </tbody>

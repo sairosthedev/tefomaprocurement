@@ -438,8 +438,8 @@ export default function StockTransfers() {
                   <table className="w-full text-sm border-collapse">
                     <thead>
                       <tr>
-                        <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Item</th>
-                        <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Quantity</th>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Item</th>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Quantity</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -447,8 +447,8 @@ export default function StockTransfers() {
                         .filter((l) => l.itemId && l.quantity > 0)
                         .map((l, i) => (
                           <tr key={i}>
-                            <td className="py-2 px-3 border border-gray-200">{itemLabel(l.itemId)}</td>
-                            <td className="py-2 px-3 border border-gray-200">{l.quantity}</td>
+                            <td className="py-2 px-3 border-b border-gray-100">{itemLabel(l.itemId)}</td>
+                            <td className="py-2 px-3 border-b border-gray-100">{l.quantity}</td>
                           </tr>
                         ))}
                     </tbody>

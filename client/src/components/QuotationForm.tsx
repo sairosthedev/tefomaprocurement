@@ -1,4 +1,4 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+﻿import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { useToast } from './Toast';
 import api from '../lib/api';
 import { Loader2, AlertTriangle } from 'lucide-react';
@@ -260,18 +260,18 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
                 <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Item</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Qty</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Unit Price *</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Brand</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Total</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Item</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Qty</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Unit Price *</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Brand</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Total</th>
                     </tr>
                   </thead>
                   <tbody>
                     {formData.items.map((item: any, index: any) => (
                       <React.Fragment key={index}>
                       <tr>
-                        <td className="py-2 px-3 border border-gray-200">
+                        <td className="py-2 px-3 border-b border-gray-100">
                           <p className="font-medium text-gray-900">{item.description}</p>
                           {item.specifications && (
                             <p className="text-xs text-gray-500 mt-0.5">{item.specifications}</p>
@@ -282,10 +282,10 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
                             compact
                           />
                         </td>
-                        <td className="py-2 px-3 border border-gray-200 text-gray-600">
+                        <td className="py-2 px-3 border-b border-gray-100 text-gray-600">
                           {item.quantity} {item.unit}
                         </td>
-                        <td className="py-2 px-3 border border-gray-200">
+                        <td className="py-2 px-3 border-b border-gray-100">
                           <input
                             type="number"
                             step="0.01"
@@ -296,7 +296,7 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
                             placeholder="0.00"
                           />
                         </td>
-                        <td className="py-2 px-3 border border-gray-200">
+                        <td className="py-2 px-3 border-b border-gray-100">
                           <input
                             type="text"
                             value={item.brand}
@@ -305,7 +305,7 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
                             placeholder="Brand name"
                           />
                         </td>
-                        <td className="py-2 px-3 border border-gray-200 font-medium text-gray-900">
+                        <td className="py-2 px-3 border-b border-gray-100 font-medium text-gray-900">
                           {formatCurrency(item.quantity * (parseFloat(item.unitPrice) || 0), formData.currency)}
                         </td>
                       </tr>
@@ -366,7 +366,7 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
                       <td colSpan={4} className="py-2.5 px-4 text-right font-semibold text-gray-700">
                         Grand Total:
                       </td>
-                      <td className="py-2 px-3 border border-gray-200 text-lg font-bold text-primary">
+                      <td className="py-2 px-3 border-b border-gray-100 text-lg font-bold text-primary">
                         {formatCurrency(calculateTotal(), formData.currency)}
                       </td>
                     </tr>
@@ -456,16 +456,16 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
               <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr>
-                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Item</th>
-                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Qty</th>
-                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Unit Price</th>
-                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Total</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Item</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Qty</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Unit Price</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {formData.items.map((item: any, index: any) => (
                     <tr key={index} className="hover:bg-gray-50">
-                      <td className="py-2 px-3 border border-gray-200">
+                      <td className="py-2 px-3 border-b border-gray-100">
                         <p className="font-medium text-gray-900">{item.description}</p>
                         {(item.brand || item.isAlternative) && (
                           <p className="text-xs text-gray-500 mt-0.5">
@@ -479,13 +479,13 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
                           </p>
                         )}
                       </td>
-                      <td className="py-2 px-3 border border-gray-200 text-gray-600">
+                      <td className="py-2 px-3 border-b border-gray-100 text-gray-600">
                         {item.quantity} {item.unit}
                       </td>
-                      <td className="py-2 px-3 border border-gray-200 text-gray-600">
+                      <td className="py-2 px-3 border-b border-gray-100 text-gray-600">
                         {formatCurrency(parseFloat(item.unitPrice) || 0, formData.currency)}
                       </td>
-                      <td className="py-2 px-3 border border-gray-200 font-medium text-gray-900">
+                      <td className="py-2 px-3 border-b border-gray-100 font-medium text-gray-900">
                         {formatCurrency(item.quantity * (parseFloat(item.unitPrice) || 0), formData.currency)}
                       </td>
                     </tr>
@@ -496,7 +496,7 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
                     <td colSpan={3} className="py-2.5 px-4 text-right font-semibold text-gray-700">
                       Grand Total:
                     </td>
-                    <td className="py-2 px-3 border border-gray-200 text-lg font-bold text-primary">
+                    <td className="py-2 px-3 border-b border-gray-100 text-lg font-bold text-primary">
                       {formatCurrency(calculateTotal(), formData.currency)}
                     </td>
                   </tr>

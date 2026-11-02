@@ -411,26 +411,26 @@ export default function PurchaseOrderDetail() {
               <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr>
-                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Description</th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Quantity</th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Unit Price</th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Total</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Description</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Quantity</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Unit Price</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {po.items.map((item: any, index: any) => (
                     <tr key={index} className="hover:bg-gray-50">
-                      <td className="py-2 px-3 border border-gray-200">
+                      <td className="py-2 px-3 border-b border-gray-100">
                         <p className="font-medium text-gray-900">{item.description}</p>
                         {item.unit && (
                           <p className="text-xs text-gray-500 mt-1">Unit: {item.unit}</p>
                         )}
                       </td>
-                      <td className="py-2 px-3 border border-gray-200 text-right text-gray-900">{item.quantity}</td>
-                      <td className="py-2 px-3 border border-gray-200 text-right text-gray-900">
+                      <td className="py-2 px-3 border-b border-gray-100 text-right text-gray-900">{item.quantity}</td>
+                      <td className="py-2 px-3 border-b border-gray-100 text-right text-gray-900">
                         {formatCurrency(item.unitPrice || 0, po.currency)}
                       </td>
-                      <td className="py-2 px-3 border border-gray-200 text-right font-medium text-gray-900">
+                      <td className="py-2 px-3 border-b border-gray-100 text-right font-medium text-gray-900">
                         {formatCurrency((item.quantity || 0) * (item.unitPrice || 0), po.currency)}
                       </td>
                     </tr>
@@ -441,7 +441,7 @@ export default function PurchaseOrderDetail() {
                     <td colSpan={3} className="py-2.5 px-4 text-right font-semibold text-gray-900">
                       Total Amount:
                     </td>
-                    <td className="py-2 px-3 border border-gray-200 text-right font-bold text-lg text-gray-900">
+                    <td className="py-2 px-3 border-b border-gray-100 text-right font-bold text-lg text-gray-900">
                       {formatCurrency(po.totalAmount || 0, po.currency)}
                     </td>
                   </tr>

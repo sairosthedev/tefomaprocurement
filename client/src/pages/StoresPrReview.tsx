@@ -124,15 +124,15 @@ export default function StoresPrReview() {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">IR No.</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Title</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Department</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Requested By</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Date</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Lines</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Est. Value</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Stage</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Actions</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">IR No.</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Title</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Department</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Requested By</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Date</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Lines</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Est. Value</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Stage</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -141,23 +141,23 @@ export default function StoresPrReview() {
                   const fullyIssued = allLinesFullyIssued(pr);
                   return (
                     <tr key={pr._id} className="hover:bg-gray-50">
-                      <td className="py-2 px-3 border border-gray-200 font-mono text-xs font-medium whitespace-nowrap">{pr.requisitionNumber}</td>
-                      <td className="py-2 px-3 border border-gray-200">{pr.title}</td>
-                      <td className="py-2 px-3 border border-gray-200">{pr.department?.name || '—'}</td>
-                      <td className="py-2 px-3 border border-gray-200 whitespace-nowrap">
+                      <td className="py-2 px-3 border-b border-gray-100 font-mono text-xs font-medium whitespace-nowrap">{pr.requisitionNumber}</td>
+                      <td className="py-2 px-3 border-b border-gray-100">{pr.title}</td>
+                      <td className="py-2 px-3 border-b border-gray-100">{pr.department?.name || '—'}</td>
+                      <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
                         {pr.requestedBy ? `${pr.requestedBy.firstName} ${pr.requestedBy.lastName}` : '—'}
                       </td>
-                      <td className="py-2 px-3 border border-gray-200 whitespace-nowrap">
+                      <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
                         {new Date(pr.createdAt).toLocaleDateString('en-ZA')}
                       </td>
-                      <td className="py-2 px-3 border border-gray-200 text-center">{pr.items?.length || 0}</td>
-                      <td className="py-2 px-3 border border-gray-200 whitespace-nowrap">
+                      <td className="py-2 px-3 border-b border-gray-100 text-center">{pr.items?.length || 0}</td>
+                      <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
                         {formatCurrency(pr.estimatedTotal, pr.currency || getCurrentSbuCurrency())}
                       </td>
-                      <td className="py-2 px-3 border border-gray-200 whitespace-nowrap">
+                      <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${stage.cls}`}>{stage.label}</span>
                       </td>
-                      <td className="py-2 px-3 border border-gray-200">
+                      <td className="py-2 px-3 border-b border-gray-100">
                         {/* One solid button for the step this row is on: close it out once
                             every line is issued, otherwise send it on to procurement. */}
                         <div className="flex items-center gap-2 whitespace-nowrap">

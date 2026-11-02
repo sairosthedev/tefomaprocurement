@@ -171,18 +171,18 @@ export default function MyPurchaseOrders() {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">PO #</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Items</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Total Value</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Delivery Expected</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Status</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Actions</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">PO #</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Items</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Total Value</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Delivery Expected</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {purchaseOrders.map((po: any) => (
                   <tr key={po._id} className="hover:bg-gray-50">
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className="font-mono font-medium text-primary">
                         {po.poNumber}
                       </span>
@@ -192,25 +192,25 @@ export default function MyPurchaseOrders() {
                           : new Date(po.createdAt).toLocaleDateString('en-ZA')}
                       </p>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className="text-gray-600">{po.items?.length || 0} items</span>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className="font-semibold text-gray-900">
                         {formatCurrency(po.totalAmount, po.currency || getCurrentSbuCurrency())}
                       </span>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200 text-gray-500">
+                    <td className="py-2 px-3 border-b border-gray-100 text-gray-500">
                       {po.expectedDeliveryDate
                         ? new Date(po.expectedDeliveryDate).toLocaleDateString('en-ZA')
                         : '-'}
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[po.status] || statusColors.sent}`}>
                         {po.status?.replace('_', ' ') || 'Received'}
                       </span>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <div className="flex items-center gap-2">
                         <ViewButton
                           onClick={() => { setSelectedPO(po); setShowViewModal(true); }}
@@ -431,21 +431,21 @@ export default function MyPurchaseOrders() {
                 <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Item</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Qty</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Unit Price</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Total</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Item</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Qty</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Unit Price</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Total</th>
                     </tr>
                   </thead>
                   <tbody>
                     {selectedPO.items?.map((item: any, index: any) => (
                       <tr key={index} className="hover:bg-gray-50">
-                        <td className="py-2 px-3 border border-gray-200 font-medium">{item.description}</td>
-                        <td className="py-2 px-3 border border-gray-200">{item.quantity} {item.unit}</td>
-                        <td className="py-2 px-3 border border-gray-200">
+                        <td className="py-2 px-3 border-b border-gray-100 font-medium">{item.description}</td>
+                        <td className="py-2 px-3 border-b border-gray-100">{item.quantity} {item.unit}</td>
+                        <td className="py-2 px-3 border-b border-gray-100">
                           {formatCurrency(item.unitPrice, selectedPO.currency || getCurrentSbuCurrency())}
                         </td>
-                        <td className="py-2 px-3 border border-gray-200 font-medium">
+                        <td className="py-2 px-3 border-b border-gray-100 font-medium">
                           {formatCurrency(item.totalPrice || item.quantity * item.unitPrice, selectedPO.currency || getCurrentSbuCurrency())}
                         </td>
                       </tr>

@@ -165,20 +165,20 @@ export default function MyDeliveries() {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">GRV #</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">PO Number</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Delivery Note</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Delivery Date</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Items</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Type</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Status</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Actions</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">GRV #</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">PO Number</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Delivery Note</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Delivery Date</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Items</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Type</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {deliveries.map((delivery: any) => (
                   <tr key={delivery._id} className="hover:bg-gray-50">
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       {delivery.status === 'pending' ? (
                         <span className="text-yellow-600 italic">Awaiting GRV</span>
                       ) : (
@@ -187,17 +187,17 @@ export default function MyDeliveries() {
                         </span>
                       )}
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className="font-mono text-gray-600">
                         {delivery.purchaseOrder?.poNumber || '-'}
                       </span>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className="text-gray-600">
                         {delivery.deliveryNoteNumber || (delivery.status === 'pending' ? 'Not yet provided' : '-')}
                       </span>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200 text-gray-500">
+                    <td className="py-2 px-3 border-b border-gray-100 text-gray-500">
                       {delivery.status === 'pending' && delivery.expectedDeliveryDate ? (
                         <span>
                           Expected: {new Date(delivery.expectedDeliveryDate).toLocaleDateString('en-ZA')}
@@ -206,10 +206,10 @@ export default function MyDeliveries() {
                         new Date(delivery.deliveryDate).toLocaleDateString('en-ZA')
                       )}
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className="text-gray-600">{delivery.items?.length || 0} items</span>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       {delivery.isPartialDelivery ? (
                         <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
                           Partial
@@ -220,12 +220,12 @@ export default function MyDeliveries() {
                         </span>
                       )}
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[delivery.status] || statusColors.received}`}>
                         {formatStatus(delivery.status)}
                       </span>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <ViewButton
                         onClick={() => { setSelectedDelivery(delivery); setShowViewModal(true); }}
                       />
@@ -367,13 +367,13 @@ export default function MyDeliveries() {
                 <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Description</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Ordered</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Received</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Description</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Ordered</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Received</th>
                       {selectedDelivery.status !== 'pending' && (
                         <>
-                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Rejected</th>
-                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Condition</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Rejected</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Condition</th>
                         </>
                       )}
                     </tr>
@@ -381,9 +381,9 @@ export default function MyDeliveries() {
                   <tbody>
                     {selectedDelivery.items?.map((item: any, index: any) => (
                       <tr key={index} className="hover:bg-gray-50">
-                        <td className="py-2 px-3 border border-gray-200 font-medium">{item.description}</td>
-                        <td className="py-2 px-3 border border-gray-200 text-gray-600">{item.quantityOrdered || '-'}</td>
-                        <td className="py-2 px-3 border border-gray-200 font-medium text-gray-900">
+                        <td className="py-2 px-3 border-b border-gray-100 font-medium">{item.description}</td>
+                        <td className="py-2 px-3 border-b border-gray-100 text-gray-600">{item.quantityOrdered || '-'}</td>
+                        <td className="py-2 px-3 border-b border-gray-100 font-medium text-gray-900">
                           {selectedDelivery.status === 'pending' ? (
                             <span className="text-yellow-600 italic">Pending</span>
                           ) : (
@@ -392,8 +392,8 @@ export default function MyDeliveries() {
                         </td>
                         {selectedDelivery.status !== 'pending' && (
                           <>
-                            <td className="py-2 px-3 border border-gray-200 text-red-600">{item.quantityRejected || 0}</td>
-                            <td className="py-2 px-3 border border-gray-200">
+                            <td className="py-2 px-3 border-b border-gray-100 text-red-600">{item.quantityRejected || 0}</td>
+                            <td className="py-2 px-3 border-b border-gray-100">
                               <span className={`px-2 py-0.5 rounded text-xs ${
                                 item.condition === 'good' ? 'bg-green-100 text-green-700' :
                                 item.condition === 'damaged' ? 'bg-red-100 text-red-700' :

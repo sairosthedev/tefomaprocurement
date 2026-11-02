@@ -193,12 +193,12 @@ export default function AwardMatrix() {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr>
-              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Line</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Line</th>
               {suppliers.map((s) => (
-                <th key={s.supplierId} className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">{s.name}</th>
+                <th key={s.supplierId} className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">{s.name}</th>
               ))}
-              <th className="text-center py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Status</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Actions</th>
+              <th className="text-center py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -206,7 +206,7 @@ export default function AwardMatrix() {
               const awardedTo = line.awardedSupplier ? String(line.awardedSupplier) : null;
               return (
                 <tr key={String(line.rfqLineId)} className="hover:bg-gray-50">
-                  <td className="py-2 px-3 border border-gray-200">
+                  <td className="py-2 px-3 border-b border-gray-100">
                     <p className="font-medium text-gray-900">{line.description}</p>
                     <p className="text-xs text-gray-500">Qty {line.quantity}</p>
                     {line.mixedCurrency ? (

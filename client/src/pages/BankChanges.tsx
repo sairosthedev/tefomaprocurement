@@ -221,17 +221,17 @@ export default function BankChanges() {
                   <table className="w-full text-sm border-collapse">
                     <thead>
                       <tr>
-                        <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Field</th>
-                        <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">From</th>
-                        <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">To</th>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Field</th>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">From</th>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">To</th>
                       </tr>
                     </thead>
                     <tbody>
                       {(request.changes || []).map((change: any, i: number) => (
                         <tr key={i} className="hover:bg-gray-50">
-                          <td className="py-2 px-3 border border-gray-200 font-medium text-gray-800">{change.field}</td>
-                          <td className="py-2 px-3 border border-gray-200 text-gray-500">{change.from || '—'}</td>
-                          <td className="py-2 px-3 border border-gray-200 text-gray-900 font-medium">{change.to || '—'}</td>
+                          <td className="py-2 px-3 border-b border-gray-100 font-medium text-gray-800">{change.field}</td>
+                          <td className="py-2 px-3 border-b border-gray-100 text-gray-500">{change.from || '—'}</td>
+                          <td className="py-2 px-3 border-b border-gray-100 text-gray-900 font-medium">{change.to || '—'}</td>
                         </tr>
                       ))}
                     </tbody>

@@ -198,19 +198,19 @@ export default function SupplierRFQDetail() {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">#</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Description</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Quantity</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Specification</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">#</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Description</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Quantity</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Specification</th>
                 </tr>
               </thead>
               <tbody>
                 {rfq.items?.map((item: any, index: number) => (
                   <tr key={index} className="hover:bg-gray-50">
-                    <td className="py-2 px-3 border border-gray-200">{index + 1}</td>
-                    <td className="py-2 px-3 border border-gray-200 font-medium">{item.description}</td>
-                    <td className="py-2 px-3 border border-gray-200">{item.quantity} {item.unit}</td>
-                    <td className="py-2 px-3 border border-gray-200 text-gray-500">{item.specification || '—'}</td>
+                    <td className="py-2 px-3 border-b border-gray-100">{index + 1}</td>
+                    <td className="py-2 px-3 border-b border-gray-100 font-medium">{item.description}</td>
+                    <td className="py-2 px-3 border-b border-gray-100">{item.quantity} {item.unit}</td>
+                    <td className="py-2 px-3 border-b border-gray-100 text-gray-500">{item.specification || '—'}</td>
                   </tr>
                 ))}
               </tbody>

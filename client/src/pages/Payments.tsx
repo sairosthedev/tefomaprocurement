@@ -69,21 +69,21 @@ export default function Payments() {
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Payment #</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Supplier</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Amount</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Date</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Status</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Payment #</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Supplier</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Amount</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Date</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
               </tr>
             </thead>
             <tbody>
               {payments.map((p) => (
                 <tr key={p._id} className="hover:bg-gray-50">
-                  <td className="py-2 px-3 border border-gray-200 font-medium">{p.paymentNumber}</td>
-                  <td className="py-2 px-3 border border-gray-200">{p.supplier?.companyName}</td>
-                  <td className="py-2 px-3 border border-gray-200">{formatCurrency(p.amount, p.currency || p.invoice?.currency || getCurrentSbuCurrency())}</td>
-                  <td className="py-2 px-3 border border-gray-200">{new Date(p.paymentDate).toLocaleDateString()}</td>
-                  <td className="py-2 px-3 border border-gray-200 capitalize">{p.status}</td>
+                  <td className="py-2 px-3 border-b border-gray-100 font-medium">{p.paymentNumber}</td>
+                  <td className="py-2 px-3 border-b border-gray-100">{p.supplier?.companyName}</td>
+                  <td className="py-2 px-3 border-b border-gray-100">{formatCurrency(p.amount, p.currency || p.invoice?.currency || getCurrentSbuCurrency())}</td>
+                  <td className="py-2 px-3 border-b border-gray-100">{new Date(p.paymentDate).toLocaleDateString()}</td>
+                  <td className="py-2 px-3 border-b border-gray-100 capitalize">{p.status}</td>
                 </tr>
               ))}
             </tbody>

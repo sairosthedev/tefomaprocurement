@@ -147,25 +147,25 @@ export default function Departments() {
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Code</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Name</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Description</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Head</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Members</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Actions</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Code</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Name</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Description</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Head</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Members</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody>
               {departments.map((dept: any) => (
                 <tr key={dept._id} className="hover:bg-gray-50">
-                  <td className="py-2 px-3 border border-gray-200 font-mono text-xs text-gray-500">{dept.code || '—'}</td>
-                  <td className="py-2 px-3 border border-gray-200 font-medium">{dept.name}</td>
-                  <td className="py-2 px-3 border border-gray-200 text-gray-500">{dept.description || '—'}</td>
-                  <td className="py-2 px-3 border border-gray-200">
+                  <td className="py-2 px-3 border-b border-gray-100 font-mono text-xs text-gray-500">{dept.code || '—'}</td>
+                  <td className="py-2 px-3 border-b border-gray-100 font-medium">{dept.name}</td>
+                  <td className="py-2 px-3 border-b border-gray-100 text-gray-500">{dept.description || '—'}</td>
+                  <td className="py-2 px-3 border-b border-gray-100">
                     {dept.head?.firstName ? `${dept.head.firstName} ${dept.head.lastName || ''}` : <span className="text-gray-400 italic">None</span>}
                   </td>
-                  <td className="py-2 px-3 border border-gray-200">{dept.userCount || 0}</td>
-                  <td className="py-2 px-3 border border-gray-200">
+                  <td className="py-2 px-3 border-b border-gray-100">{dept.userCount || 0}</td>
+                  <td className="py-2 px-3 border-b border-gray-100">
                     <div className="flex gap-1">
                       <button
                         onClick={() => handleEdit(dept)}

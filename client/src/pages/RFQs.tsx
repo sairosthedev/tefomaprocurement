@@ -177,20 +177,20 @@ export default function RFQs() {
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">RFQ Number</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Title</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Status</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Deadline</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Suppliers</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Actions</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">RFQ Number</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Title</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Deadline</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Suppliers</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody>
               {rfqs.map((rfq: any) => (
                 <tr key={rfq._id} className="hover:bg-gray-50">
-                  <td className="py-2 px-3 border border-gray-200 font-mono text-sm font-medium">{rfq.rfqNumber}</td>
-                  <td className="py-2 px-3 border border-gray-200">{rfq.title}</td>
-                  <td className="py-2 px-3 border border-gray-200">
+                  <td className="py-2 px-3 border-b border-gray-100 font-mono text-sm font-medium">{rfq.rfqNumber}</td>
+                  <td className="py-2 px-3 border-b border-gray-100">{rfq.title}</td>
+                  <td className="py-2 px-3 border-b border-gray-100">
                     <div className="flex flex-wrap gap-1">
                       <span className={`px-2 py-0.5 rounded text-xs font-medium ${statusColors[rfq.status]}`}>
                         {rfq.status.charAt(0).toUpperCase() + rfq.status.slice(1)}
@@ -205,13 +205,13 @@ export default function RFQs() {
                       })()}
                     </div>
                   </td>
-                  <td className="py-2 px-3 border border-gray-200 whitespace-nowrap">
+                  <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
                     {rfq.submissionDeadline ? new Date(rfq.submissionDeadline).toLocaleDateString('en-ZA') : '—'}
                   </td>
-                  <td className="py-2 px-3 border border-gray-200">
+                  <td className="py-2 px-3 border-b border-gray-100">
                     {rfq.invitedSuppliers?.length || 0} supplier{rfq.invitedSuppliers?.length !== 1 ? 's' : ''}
                   </td>
-                  <td className="py-2 px-3 border border-gray-200">
+                  <td className="py-2 px-3 border-b border-gray-100">
                     <div className="flex gap-1">
                       <button
                         onClick={() => navigate(`/app/rfqs/${rfq._id}`)}

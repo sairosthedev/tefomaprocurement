@@ -196,24 +196,24 @@ export default function MySubmittedQuotations() {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Quotation #</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">RFQ Details</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Total Amount</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Delivery Period</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Submitted Date</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Status</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Actions</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Quotation #</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">RFQ Details</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Total Amount</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Delivery Period</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Submitted Date</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {quotations.map((quote: any) => (
                   <tr key={quote._id} className="hover:bg-gray-50">
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className="font-mono font-medium text-primary">
                         {quote.quotationNumber || `QT-${quote._id.slice(-6).toUpperCase()}`}
                       </span>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <div>
                         <p className="font-medium text-gray-900">{quote.rfq?.title || 'N/A'}</p>
                         <p className="text-xs text-gray-500 font-mono">{quote.rfq?.rfqNumber || 'N/A'}</p>
@@ -224,7 +224,7 @@ export default function MySubmittedQuotations() {
                         )}
                       </div>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <div>
                         <span className="font-semibold text-gray-900">
                           {formatCurrency(quote.totalAmount, quote.currency || getCurrentSbuCurrency())}
@@ -232,13 +232,13 @@ export default function MySubmittedQuotations() {
                         <p className="text-xs text-gray-500 mt-1">{quote.currency || getCurrentSbuCurrency()}</p>
                       </div>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <div className="flex items-center gap-2 text-gray-600">
                         <Package className="h-4 w-4" />
                         <span>{quote.deliveryPeriod || quote.deliveryDays || 'N/A'} days</span>
                       </div>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <div className="flex items-center gap-2 text-gray-600">
                         <Calendar className="h-4 w-4" />
                         <span>{new Date(quote.submittedAt || quote.createdAt).toLocaleDateString('en-ZA')}</span>
@@ -250,7 +250,7 @@ export default function MySubmittedQuotations() {
                         })}
                       </p>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[quote.status] || statusColors.submitted}`}>
                         {statusLabels[quote.status] || quote.status?.replace('_', ' ') || 'Submitted'}
                       </span>
@@ -261,7 +261,7 @@ export default function MySubmittedQuotations() {
                         </div>
                       ) : null}
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <ViewButton
                         onClick={() => {
                           setSelectedQuotation(quote);
@@ -433,30 +433,30 @@ export default function MySubmittedQuotations() {
                 <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Item Description</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Quantity</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Unit</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Unit Price</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Brand</th>
-                      <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Total</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Item Description</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Quantity</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Unit</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Unit Price</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Brand</th>
+                      <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Total</th>
                     </tr>
                   </thead>
                   <tbody>
                     {selectedQuotation.items?.map((item: any, index: any) => (
                       <tr key={index} className="hover:bg-gray-50">
-                        <td className="py-2 px-3 border border-gray-200">
+                        <td className="py-2 px-3 border-b border-gray-100">
                           <p className="font-medium text-gray-900">{item.description}</p>
                           {item.notes && (
                             <p className="text-xs text-gray-500 mt-1">{item.notes}</p>
                           )}
                         </td>
-                        <td className="py-2 px-3 border border-gray-200 text-gray-600">{item.quantity}</td>
-                        <td className="py-2 px-3 border border-gray-200 text-gray-600">{item.unit}</td>
-                        <td className="py-2 px-3 border border-gray-200 font-medium text-gray-900">
+                        <td className="py-2 px-3 border-b border-gray-100 text-gray-600">{item.quantity}</td>
+                        <td className="py-2 px-3 border-b border-gray-100 text-gray-600">{item.unit}</td>
+                        <td className="py-2 px-3 border-b border-gray-100 font-medium text-gray-900">
                           {formatCurrency(item.unitPrice, selectedQuotation.currency || getCurrentSbuCurrency())}
                         </td>
-                        <td className="py-2 px-3 border border-gray-200 text-gray-600">{item.brand || '-'}</td>
-                        <td className="py-2 px-3 border border-gray-200 font-semibold text-gray-900 text-right">
+                        <td className="py-2 px-3 border-b border-gray-100 text-gray-600">{item.brand || '-'}</td>
+                        <td className="py-2 px-3 border-b border-gray-100 font-semibold text-gray-900 text-right">
                           {formatCurrency(item.totalPrice || (item.quantity * item.unitPrice), selectedQuotation.currency || getCurrentSbuCurrency())}
                         </td>
                       </tr>
@@ -467,7 +467,7 @@ export default function MySubmittedQuotations() {
                       <td colSpan={5} className="py-2.5 px-4 text-right font-semibold text-gray-700">
                         Grand Total:
                       </td>
-                      <td className="py-2 px-3 border border-gray-200 text-lg font-bold text-primary text-right">
+                      <td className="py-2 px-3 border-b border-gray-100 text-lg font-bold text-primary text-right">
                         {formatCurrency(selectedQuotation.totalAmount, selectedQuotation.currency || getCurrentSbuCurrency())}
                       </td>
                     </tr>

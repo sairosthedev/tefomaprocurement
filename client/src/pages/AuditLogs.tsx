@@ -183,17 +183,17 @@ function ChangeTable({ log }: { log: any }) {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr>
-              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Field</th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Before</th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">After</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Field</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Before</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">After</th>
             </tr>
           </thead>
           <tbody>
             {changes.map((c: any, i: number) => (
               <tr key={`${c.field}-${i}`} className="hover:bg-gray-50">
-                <td className="py-2 px-3 border border-gray-200 font-medium text-gray-700 align-top">{formatField(c.field)}</td>
-                <td className="py-2 px-3 border border-gray-200 text-gray-500 align-top break-words">{formatValue(c.from)}</td>
-                <td className="py-2 px-3 border border-gray-200 text-gray-900 align-top break-words font-medium">{formatValue(c.to)}</td>
+                <td className="py-2 px-3 border-b border-gray-100 font-medium text-gray-700 align-top">{formatField(c.field)}</td>
+                <td className="py-2 px-3 border-b border-gray-100 text-gray-500 align-top break-words">{formatValue(c.from)}</td>
+                <td className="py-2 px-3 border-b border-gray-100 text-gray-900 align-top break-words font-medium">{formatValue(c.to)}</td>
               </tr>
             ))}
           </tbody>

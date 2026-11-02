@@ -277,14 +277,14 @@ export default function SupplierReportsSection() {
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Supplier</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Status</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">KYS</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Score</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">POs</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Spend</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Evaluations</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Next review</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Supplier</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">KYS</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Score</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">POs</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Spend</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Evaluations</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Next review</th>
               </tr>
             </thead>
             <tbody>
@@ -294,18 +294,18 @@ export default function SupplierReportsSection() {
                   className="hover:bg-gray-50 cursor-pointer"
                   onClick={() => navigate(`/app/suppliers/${row._id}`)}
                 >
-                  <td className="py-2 px-3 border border-gray-200">
+                  <td className="py-2 px-3 border-b border-gray-100">
                     <p className="font-medium text-gray-900">{row.companyName}</p>
                     {row.registrationNumber && (
                       <p className="text-xs text-gray-500 mt-0.5">{row.registrationNumber}</p>
                     )}
                   </td>
-                  <td className="py-2 px-3 border border-gray-200">
+                  <td className="py-2 px-3 border-b border-gray-100">
                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${STATUS_COLORS[row.status] || 'bg-gray-100 text-gray-700'}`}>
                       {row.status}
                     </span>
                   </td>
-                  <td className="py-2 px-3 border border-gray-200">
+                  <td className="py-2 px-3 border-b border-gray-100">
                     {row.kysComplete ? (
                       <span className="text-emerald-600 font-medium">Verified</span>
                     ) : row.kysExempt ? (
@@ -314,11 +314,11 @@ export default function SupplierReportsSection() {
                       <span className="text-gray-500">Pending</span>
                     )}
                   </td>
-                  <td className="py-2 px-3 border border-gray-200 font-medium text-gray-900">{row.overallScore ? `${row.overallScore}/5` : '—'}</td>
-                  <td className="py-2 px-3 border border-gray-200 text-gray-700">{row.poCount}</td>
-                  <td className="py-2 px-3 border border-gray-200 text-gray-700">{formatCurrency(row.poSpend || 0, getCurrentSbuCurrency())}</td>
-                  <td className="py-2 px-3 border border-gray-200 text-gray-700">{row.evaluationCount}</td>
-                  <td className="py-2 px-3 border border-gray-200">
+                  <td className="py-2 px-3 border-b border-gray-100 font-medium text-gray-900">{row.overallScore ? `${row.overallScore}/5` : '—'}</td>
+                  <td className="py-2 px-3 border-b border-gray-100 text-gray-700">{row.poCount}</td>
+                  <td className="py-2 px-3 border-b border-gray-100 text-gray-700">{formatCurrency(row.poSpend || 0, getCurrentSbuCurrency())}</td>
+                  <td className="py-2 px-3 border-b border-gray-100 text-gray-700">{row.evaluationCount}</td>
+                  <td className="py-2 px-3 border-b border-gray-100">
                     {row.reviewOverdue ? (
                       <span className="text-amber-600 font-medium">{formatDate(row.nextEvaluationDue)}</span>
                     ) : (

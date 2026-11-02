@@ -300,13 +300,13 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
               <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr>
-                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">#</th>
-                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Item</th>
-                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Category</th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Qty</th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Est. unit</th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Line total</th>
-                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Actions</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">#</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Item</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Category</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Qty</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Est. unit</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Line total</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -314,20 +314,20 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
                     const lineTotal = (Number(item.estimatedUnitPrice) || 0) * (Number(item.quantity) || 0);
                     return (
                       <tr key={index} className="hover:bg-gray-50">
-                        <td className="py-2 px-3 border border-gray-200 text-gray-500 tabular-nums">{index + 1}</td>
-                        <td className="py-2 px-3 border border-gray-200 text-gray-900">
+                        <td className="py-2 px-3 border-b border-gray-100 text-gray-500 tabular-nums">{index + 1}</td>
+                        <td className="py-2 px-3 border-b border-gray-100 text-gray-900">
                           {item.description}
                           {item.specification && <span className="block text-xs text-gray-500">{item.specification}</span>}
                         </td>
-                        <td className="py-2 px-3 border border-gray-200 text-gray-700">{getCategoryName(item.category)}</td>
-                        <td className="py-2 px-3 border border-gray-200 text-right tabular-nums whitespace-nowrap">{item.quantity} {item.unit}</td>
-                        <td className="py-2 px-3 border border-gray-200 text-right tabular-nums whitespace-nowrap">
+                        <td className="py-2 px-3 border-b border-gray-100 text-gray-700">{getCategoryName(item.category)}</td>
+                        <td className="py-2 px-3 border-b border-gray-100 text-right tabular-nums whitespace-nowrap">{item.quantity} {item.unit}</td>
+                        <td className="py-2 px-3 border-b border-gray-100 text-right tabular-nums whitespace-nowrap">
                           {Number(item.estimatedUnitPrice) ? formatCurrency(Number(item.estimatedUnitPrice), getCurrentSbuCurrency()) : '—'}
                         </td>
-                        <td className="py-2 px-3 border border-gray-200 text-right tabular-nums font-medium whitespace-nowrap">
+                        <td className="py-2 px-3 border-b border-gray-100 text-right tabular-nums font-medium whitespace-nowrap">
                           {lineTotal ? formatCurrency(lineTotal, getCurrentSbuCurrency()) : '—'}
                         </td>
-                        <td className="py-2 px-3 border border-gray-200">
+                        <td className="py-2 px-3 border-b border-gray-100">
                           <div className="flex gap-2">
                             <button
                               type="button"
@@ -399,11 +399,11 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
               <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr>
-                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Item</th>
-                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Category</th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Qty</th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Est. unit</th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Line total</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Item</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Category</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Qty</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Est. unit</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Line total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -413,16 +413,16 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
                       const lineTotal = (Number(item.estimatedUnitPrice) || 0) * (Number(item.quantity) || 0);
                       return (
                         <tr key={index} className="hover:bg-gray-50">
-                          <td className="py-2 px-3 border border-gray-200 text-gray-900">
+                          <td className="py-2 px-3 border-b border-gray-100 text-gray-900">
                             {item.description}
                             {item.specification && <span className="block text-xs text-gray-500">{item.specification}</span>}
                           </td>
-                          <td className="py-2 px-3 border border-gray-200 text-gray-700">{getCategoryName(item.category)}</td>
-                          <td className="py-2 px-3 border border-gray-200 text-right tabular-nums">{item.quantity} {item.unit}</td>
-                          <td className="py-2 px-3 border border-gray-200 text-right tabular-nums">
+                          <td className="py-2 px-3 border-b border-gray-100 text-gray-700">{getCategoryName(item.category)}</td>
+                          <td className="py-2 px-3 border-b border-gray-100 text-right tabular-nums">{item.quantity} {item.unit}</td>
+                          <td className="py-2 px-3 border-b border-gray-100 text-right tabular-nums">
                             {Number(item.estimatedUnitPrice) ? formatCurrency(Number(item.estimatedUnitPrice), getCurrentSbuCurrency()) : '—'}
                           </td>
-                          <td className="py-2 px-3 border border-gray-200 text-right tabular-nums font-medium">
+                          <td className="py-2 px-3 border-b border-gray-100 text-right tabular-nums font-medium">
                             {lineTotal ? formatCurrency(lineTotal, getCurrentSbuCurrency()) : '—'}
                           </td>
                         </tr>

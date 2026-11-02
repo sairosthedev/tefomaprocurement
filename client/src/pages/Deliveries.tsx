@@ -430,20 +430,20 @@ export default function Deliveries() {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">GRV #</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">PO #</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Supplier</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Delivery Note</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Status</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Items</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Date</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Actions</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">GRV #</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">PO #</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Supplier</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Delivery Note</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Items</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Date</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {deliveries.map((delivery: any) => (
                   <tr key={delivery._id} className="hover:bg-gray-50">
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       {delivery.status === 'pending' ? (
                         <span className="text-yellow-600 italic">Awaiting GRV</span>
                       ) : (
@@ -452,35 +452,35 @@ export default function Deliveries() {
                         </span>
                       )}
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className="font-mono text-gray-600">
                         {delivery.purchaseOrder?.poNumber || '-'}
                       </span>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <p className="text-gray-900">{delivery.supplier?.companyName || delivery.purchaseOrder?.supplier?.companyName || '-'}</p>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className="text-gray-600">
                         {delivery.deliveryNoteNumber || (delivery.status === 'pending' ? 'Not yet provided' : '-')}
                       </span>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[delivery.status] || statusColors.received}`}>
                         {formatStatus(delivery.status)}
                       </span>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className="text-gray-600">{delivery.items?.length || 0} items</span>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200 text-gray-500">
+                    <td className="py-2 px-3 border-b border-gray-100 text-gray-500">
                       {delivery.status === 'pending' && delivery.expectedDeliveryDate ? (
                         <span>Expected: {new Date(delivery.expectedDeliveryDate).toLocaleDateString('en-ZA')}</span>
                       ) : (
                         new Date(delivery.deliveryDate || delivery.createdAt).toLocaleDateString('en-ZA')
                       )}
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <div className="flex items-center gap-2">
                         <ViewButton
                           onClick={() => { setSelectedDelivery(delivery); setShowViewModal(true); }}
@@ -662,17 +662,17 @@ export default function Deliveries() {
                     <table className="w-full text-sm border-collapse">
                       <thead>
                         <tr>
-                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Item</th>
-                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Ordered</th>
-                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Received</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Item</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Ordered</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Received</th>
                         </tr>
                       </thead>
                       <tbody>
                         {receiveData.items.map((item: any, index: any) => (
                           <tr key={index} className="hover:bg-gray-50">
-                            <td className="py-2 px-3 border border-gray-200">{item.description}</td>
-                            <td className="py-2 px-3 border border-gray-200">{item.quantity} {item.unit}</td>
-                            <td className="py-2 px-3 border border-gray-200">
+                            <td className="py-2 px-3 border-b border-gray-100">{item.description}</td>
+                            <td className="py-2 px-3 border-b border-gray-100">{item.quantity} {item.unit}</td>
+                            <td className="py-2 px-3 border-b border-gray-100">
                               <input
                                 type="number"
                                 min="0"
@@ -837,8 +837,8 @@ export default function Deliveries() {
                       <tbody>
                         {receiveData.items.map((item: any, index: any) => (
                           <tr key={index}>
-                            <td className="py-2 px-3 border border-gray-200">{item.description}</td>
-                            <td className="py-2 px-3 border border-gray-200">{item.quantity} {item.unit}</td>
+                            <td className="py-2 px-3 border-b border-gray-100">{item.description}</td>
+                            <td className="py-2 px-3 border-b border-gray-100">{item.quantity} {item.unit}</td>
                             <td className={`py-2.5 px-4 font-medium ${item.receivedQuantity > 0 ? 'text-green-700' : 'text-gray-400'}`}>
                               {item.receivedQuantity} {item.unit}
                             </td>
@@ -1037,17 +1037,17 @@ export default function Deliveries() {
                 <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Item</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Ordered</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Received</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Item</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Ordered</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Received</th>
                     </tr>
                   </thead>
                   <tbody>
                     {selectedDelivery.items?.map((item: any, index: any) => (
                       <tr key={index} className="hover:bg-gray-50">
-                        <td className="py-2 px-3 border border-gray-200">{item.description}</td>
-                        <td className="py-2 px-3 border border-gray-200">{item.orderedQuantity} {item.unit}</td>
-                        <td className="py-2 px-3 border border-gray-200 font-medium text-green-600">
+                        <td className="py-2 px-3 border-b border-gray-100">{item.description}</td>
+                        <td className="py-2 px-3 border-b border-gray-100">{item.orderedQuantity} {item.unit}</td>
+                        <td className="py-2 px-3 border-b border-gray-100 font-medium text-green-600">
                           {item.receivedQuantity} {item.unit}
                         </td>
                       </tr>

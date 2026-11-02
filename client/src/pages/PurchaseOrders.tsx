@@ -195,13 +195,13 @@ export default function PurchaseOrders() {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">PO Number</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Supplier</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Total Amount</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Expected Delivery</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Status</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Created</th>
-                  <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Actions</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">PO Number</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Supplier</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Total Amount</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Expected Delivery</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Created</th>
+                  <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -209,25 +209,25 @@ export default function PurchaseOrders() {
                   const StatusIcon = statusIcons[order.status] || Clock;
                   return (
                     <tr key={order._id} className="hover:bg-gray-50">
-                      <td className="py-2 px-3 border border-gray-200">
+                      <td className="py-2 px-3 border-b border-gray-100">
                         <span className="font-medium text-gray-900">{order.poNumber}</span>
                       </td>
-                      <td className="py-2 px-3 border border-gray-200 text-gray-600">
+                      <td className="py-2 px-3 border-b border-gray-100 text-gray-600">
                         {order.supplier?.companyName}
                       </td>
-                      <td className="py-2 px-3 border border-gray-200">
+                      <td className="py-2 px-3 border-b border-gray-100">
                         <div className="flex items-center gap-1 font-semibold text-gray-900">
                           <DollarSign className="h-4 w-4 text-gray-400" />
                           {formatCurrency(order.totalAmount, order.currency || order.quotation?.currency || getCurrentSbuCurrency())}
                         </div>
                       </td>
-                      <td className="py-2 px-3 border border-gray-200 text-gray-600">
+                      <td className="py-2 px-3 border-b border-gray-100 text-gray-600">
                         <div className="flex items-center gap-1">
                           <Calendar className="h-4 w-4 text-gray-400" />
                           {order.expectedDeliveryDate ? new Date(order.expectedDeliveryDate).toLocaleDateString('en-ZA') : '-'}
                         </div>
                       </td>
-                      <td className="py-2 px-3 border border-gray-200">
+                      <td className="py-2 px-3 border-b border-gray-100">
                         {order.status === 'pending_approvals' ? (
                           <div className="flex flex-col gap-1">
                             <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${order.financeApproved ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
@@ -244,10 +244,10 @@ export default function PurchaseOrders() {
                           </span>
                         )}
                       </td>
-                      <td className="py-2 px-3 border border-gray-200 text-gray-500">
+                      <td className="py-2 px-3 border-b border-gray-100 text-gray-500">
                         {new Date(order.createdAt).toLocaleDateString('en-ZA')}
                       </td>
-                      <td className="py-2 px-3 border border-gray-200 text-right">
+                      <td className="py-2 px-3 border-b border-gray-100 text-right">
                         <div className="flex items-center justify-end gap-2">
                           {isProcurement && order.status === 'draft' && (
                             <button

@@ -103,35 +103,35 @@ export default function Invoices() {
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Invoice</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">PO</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Supplier</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Amount</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Status</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Match</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Invoice</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">PO</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Supplier</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Amount</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Match</th>
                 <th className="py-2.5 px-4 bg-gray-50 border-b border-gray-200" />
               </tr>
             </thead>
             <tbody>
               {invoices.map((inv) => (
                 <tr key={inv._id} className="hover:bg-gray-50">
-                  <td className="py-2 px-3 border border-gray-200 font-medium">{inv.invoiceNumber}</td>
-                  <td className="py-2 px-3 border border-gray-200">{inv.purchaseOrder?.poNumber || '—'}</td>
-                  <td className="py-2 px-3 border border-gray-200">{inv.supplier?.companyName || '—'}</td>
-                  <td className="py-2 px-3 border border-gray-200">{formatCurrency(inv.totalAmount, inv.currency || getCurrentSbuCurrency())}</td>
-                  <td className="py-2 px-3 border border-gray-200">
+                  <td className="py-2 px-3 border-b border-gray-100 font-medium">{inv.invoiceNumber}</td>
+                  <td className="py-2 px-3 border-b border-gray-100">{inv.purchaseOrder?.poNumber || '—'}</td>
+                  <td className="py-2 px-3 border-b border-gray-100">{inv.supplier?.companyName || '—'}</td>
+                  <td className="py-2 px-3 border-b border-gray-100">{formatCurrency(inv.totalAmount, inv.currency || getCurrentSbuCurrency())}</td>
+                  <td className="py-2 px-3 border-b border-gray-100">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[inv.status] || 'bg-gray-100'}`}>
                       {formatStatus(inv.status)}
                     </span>
                   </td>
-                  <td className="py-2 px-3 border border-gray-200">
+                  <td className="py-2 px-3 border-b border-gray-100">
                     {inv.matchResult?.matched ? (
                       <CheckCircle className="h-5 w-5 text-green-600" />
                     ) : (
                       <AlertTriangle className="h-5 w-5 text-amber-500" />
                     )}
                   </td>
-                  <td className="py-2 px-3 border border-gray-200">
+                  <td className="py-2 px-3 border-b border-gray-100">
                     <ViewButton onClick={() => navigate(`/app/invoices/${inv._id}`)} />
                   </td>
                 </tr>
