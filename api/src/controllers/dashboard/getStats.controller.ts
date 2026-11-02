@@ -356,10 +356,21 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
             totalRFQs: { value: totalRFQs, label: 'Total RFQs' },
             pendingAcceptance: { value: pendingAcceptance, label: 'Awaiting Acceptance' }
           };
+          attentionItems = [
+            { id: 'pending-acceptance', label: 'Requisitions awaiting acceptance', count: pendingAcceptance, href: '/app/requisitions', severity: 'high' as const },
+            { id: 'pending-quotations', label: 'Quotations awaiting evaluation', count: pendingQuotations, href: '/app/quotations', severity: 'medium' as const },
+            { id: 'open-rfqs', label: 'Open RFQs collecting quotations', count: openRFQs, href: '/app/rfqs', severity: 'low' as const }
+          ].filter((i) => i.count > 0);
           break;
         }
 
         case 'finance': {
+          const pendingFinanceApprovalCount = await PurchaseOrder.countDocuments({
+            status: { $in: PO_FINANCE_PENDING_STATUSES },
+            hodApproved: true,
+            financeApproved: false,
+            isDeleted: false
+          });
           const pendingFinanceValue = await PurchaseOrder.aggregate([
             { $match: { status: { $in: PO_FINANCE_PENDING_STATUSES }, hodApproved: true, financeApproved: false, isDeleted: false } },
             { $group: { _id: null, total: { $sum: '$totalAmount' } } }
@@ -385,18 +396,20 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
             approvedPOs: { value: financeApprovedCount, label: 'Finance Approved' },
             totalPOs: { value: totalPOs, label: 'All Purchase Orders' }
           };
+          attentionItems = [
+            { id: 'pending-finance', label: 'Purchase orders awaiting finance approval', count: pendingFinanceApprovalCount, href: '/app/approvals', severity: 'high' as const }
+          ].filter((i) => i.count > 0);
           break;
         }
 
         case 'coo': {
+          const pendingCOOApprovalCount = await PurchaseOrder.countDocuments(COO_QUEUE_FILTER);
           const pendingCOOValue = await PurchaseOrder.aggregate([
             { $match: COO_QUEUE_FILTER },
             { $group: { _id: null, total: { $sum: '$totalAmount' } } }
           ]);
           const majorPOs = await PurchaseOrder.countDocuments({
             status: 'pending_coo',
-            // "Major" is measured in USD so a rand-denominated SBU is held to
-            // the same bar; POs assessed before FX conversion fall back to totalAmount.
             $or: [
               { totalAmountUsd: { $gte: 50000 } },
               { totalAmountUsd: { $exists: false }, totalAmount: { $gte: 50000 } }
@@ -410,10 +423,15 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
             cooApproved: { value: cooApprovedCount, label: 'COO Approved' },
             totalPOs: { value: totalPOs, label: 'All Purchase Orders' }
           };
+          attentionItems = [
+            { id: 'pending-coo', label: 'Purchase orders awaiting your authorization', count: pendingCOOApprovalCount, href: '/app/approvals', severity: 'high' as const },
+            { id: 'major-pos', label: 'Major POs (≥ USD 50k) pending', count: majorPOs, href: '/app/approvals', severity: 'high' as const }
+          ].filter((i) => i.count > 0);
           break;
         }
 
         case 'stores_officer': {
+          const storesReviewQueue = await PurchaseRequisition.countDocuments({ status: 'stores_review', isDeleted: false });
           const totalInventoryValue = await Inventory.aggregate([
             { $match: { isDeleted: false } },
             { $group: { _id: null, total: { $sum: '$totalValue' } } }
@@ -437,6 +455,11 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
             receivedThisMonth: { value: receivedThisMonth, label: 'Received This Month' },
             pendingDeliveries: { value: pendingDeliveriesForStores, label: 'Pending Deliveries' }
           };
+          attentionItems = [
+            { id: 'stores-queue', label: 'Purchase requisitions to review', count: storesReviewQueue, href: '/app/stores-pr-review', severity: 'high' as const },
+            { id: 'low-stock', label: 'Inventory items below reorder level', count: itemsNeedingReorder, href: '/app/inventory', severity: 'medium' as const },
+            { id: 'pending-deliveries', label: 'Deliveries pending receipt', count: pendingDeliveriesForStores, href: '/app/deliveries', severity: 'low' as const }
+          ].filter((i) => i.count > 0);
           break;
         }
 
@@ -457,12 +480,30 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
             ...deptFilter,
             status: 'pending_hod'
           });
+          // Re-fetch pendingPoApprovals for attentionItems (already fetched in main switch but not in scope here)
+          const deptIdsForAdditional = await resolveUserDepartmentIds(req.user);
+          const deptReqIdsForAdditional = deptIdsForAdditional.length
+            ? await PurchaseRequisition.find({ department: { $in: deptIdsForAdditional }, isDeleted: false }).distinct('_id')
+            : [];
+          const pendingPoApprovalsForHod = deptReqIdsForAdditional.length
+            ? await PurchaseOrder.countDocuments({
+                isDeleted: false,
+                status: { $in: ['pending_dept_hod', 'pending_hod', 'pending_approvals'] },
+                deptHodApproved: false,
+                purchaseRequisition: { $in: deptReqIdsForAdditional }
+              })
+            : 0;
           additionalStats = {
             rejectedRequisitions: { value: rejectedRequisitions, label: 'Rejected' },
             inProgressRequisitions: { value: inProgressRequisitions, label: 'In Progress' },
             draftRequisitions: { value: draftRequisitions, label: 'Drafts' },
             pendingApproval: { value: pendingHodApproval, label: 'Awaiting My Approval' }
           };
+          attentionItems = [
+            { id: 'pending-hod', label: 'Requisitions awaiting your approval', count: pendingHodApproval, href: '/app/approvals', severity: 'high' as const },
+            { id: 'pending-po-hod', label: 'Purchase orders awaiting your approval', count: pendingPoApprovalsForHod, href: '/app/approvals', severity: 'medium' as const },
+            { id: 'rejected-reqs', label: 'Rejected requisitions in your department', count: rejectedRequisitions, href: '/app/requisitions', severity: 'medium' as const }
+          ].filter((i) => i.count > 0);
           break;
         }
 
@@ -477,12 +518,19 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
             ...userFilter,
             status: { $in: ['fulfilled', 'completed'] }
           });
+          const myDraftsCount = await PurchaseRequisition.countDocuments({ ...userFilter, status: 'draft' });
+          const myPendingHodCount = await PurchaseRequisition.countDocuments({ ...userFilter, status: 'pending_hod' });
           additionalStats = {
             rejectedRequisitions: { value: rejected, label: 'Rejected' },
             inProgressRequisitions: { value: inProgress, label: 'In Progress' },
             completedRequisitions: { value: completed, label: 'Completed' },
             openRFQs: { value: openRFQs, label: 'Active RFQs' }
           };
+          attentionItems = [
+            { id: 'rejected-mine', label: 'Your rejected requisitions — need resubmission', count: rejected, href: '/app/requisitions', severity: 'high' as const },
+            { id: 'drafts-mine', label: 'Draft requisitions not yet submitted', count: myDraftsCount, href: '/app/requisitions', severity: 'medium' as const },
+            { id: 'pending-hod-mine', label: 'Awaiting HOD approval', count: myPendingHodCount, href: '/app/requisitions', severity: 'low' as const }
+          ].filter((i) => i.count > 0);
           break;
         }
 
@@ -513,6 +561,9 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
               myPOs: { value: myPOsAdditional, label: 'My Purchase Orders' },
               myRFQs: { value: myRFQsAdditional, label: 'My RFQs' }
             };
+            attentionItems = [
+              { id: 'open-rfqs-supplier', label: 'Open RFQs awaiting your quotation', count: myRFQsAdditional, href: '/app/my-rfqs', severity: 'high' as const }
+            ].filter((i) => i.count > 0);
           } else {
             additionalStats = {
               openRFQs: { value: openRFQs, label: 'Open RFQs' },
