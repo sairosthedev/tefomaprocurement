@@ -4,6 +4,7 @@ import { PurchaseOrder, Quotation, RFQ, PurchaseRequisition, Site } from '../../
 import { createAuditLog } from '../../middleware/index.js';
 import { notifySupplier, notifyUsersByRole } from '../../services/notification.service.js';
 import { resolveSiteId } from '../../lib/siteScope.js';
+import { checkSupplierEligibility } from '../../services/supplierEligibility.service.js';
 
 const createPurchaseOrder = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -47,6 +48,13 @@ const createPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       });
     }
 
+    // A PO commits company money, so the supplier's standing is re-checked here
+    // even though the quotation was already accepted — status can change in between.
+    const eligibility = checkSupplierEligibility(quotation.supplier, 'order');
+    if (!eligibility.eligible) {
+      return res.status(400).json({ success: false, message: eligibility.reason });
+    }
+
     // Check if a PO already exists for this quotation
     const existingPO = await PurchaseOrder.findOne({
       quotation: quotationId,
@@ -71,11 +79,6 @@ const createPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       totalPrice: item.totalPrice,
       quantityReceived: 0
     }));
-
-    // Generate PO number
-    const count = await PurchaseOrder.countDocuments();
-    const year = new Date().getFullYear();
-    const poNumber = `PO-${year}-${String(count + 1).padStart(5, '0')}`;
 
     // Get purchaseRequisition from RFQ - fetch RFQ separately if needed
     let purchaseRequisitionId = null;
@@ -103,8 +106,9 @@ const createPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       }
     }
 
+    // The number comes from the model's counter hook (SBU-prefixed, atomic);
+    // the currency is the one the supplier quoted in.
     const po = await PurchaseOrder.create({
-      poNumber,
       quotation: quotation._id,
       rfq: quotation.rfq?._id || quotation.rfq,
       purchaseRequisition: purchaseRequisitionId,
@@ -114,6 +118,7 @@ const createPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       subtotal: quotation.subtotal,
       vatAmount: quotation.vatAmount,
       totalAmount: quotation.totalAmount,
+      currency: quotation.currency,
       deliverToSite,
       deliveryAddress: resolvedDeliveryAddress,
       expectedDeliveryDate: new Date(expectedDeliveryDate),
@@ -176,6 +181,12 @@ const createPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       relatedUser: req.user!._id,
       metadata: { poNumber: po.poNumber, totalAmount: po.totalAmount, isSupplier: true }
     });
+
+    // The purchase order is NOT emailed here. It is created as a draft, and
+    // Rev 9 clause 6.3.14 concerns sending the supplier an order they can act
+    // on — which only exists once the last required approval lands. Finance or
+    // the COO may still reject it. The send happens in those approval
+    // controllers instead, via emailApprovedPurchaseOrderToSupplier().
 
     // Notify finance and COO for approval
     await notifyUsersByRole(['finance', 'coo'], {

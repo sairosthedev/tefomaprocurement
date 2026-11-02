@@ -104,15 +104,59 @@ export interface ISupplierProfile extends Document {
   kysChecklist: IKysChecklist;
   clientReferrals: IClientReferral[];
   kysComplete: boolean;
+  kysExempt: boolean;
+  kysExemptReason?: string;
+  kysExemptBy?: mongoose.Types.ObjectId | any;
+  kysExemptAt?: Date;
   lastEvaluationAt?: Date;
   nextEvaluationDue?: Date;
   status: 'pending' | 'active' | 'suspended' | 'blacklisted' | 'dormant';
+  /**
+   * Whether the supplier may be transacted with, kept separate from the
+   * lifecycle `status` above. Mature platforms all split these (Oracle:
+   * Prospective vs Spend Authorized; Zycus: Potential vs Operational),
+   * because one field with many writers is how a supplier accidentally
+   * becomes awardable. `prospective` may be invited to source and quote;
+   * only `spend_authorized` may be awarded or issued a PO.
+   */
+  transactability: 'none' | 'prospective' | 'spend_authorized';
+  transactabilityChangedBy?: mongoose.Types.ObjectId | any;
+  transactabilityChangedAt?: Date;
+  /**
+   * Diligence depth band. Required KYS coverage is proportionate to this
+   * rather than uniform: ISO 37001 8.2 triggers due diligence only on
+   * "more than low" risk, and ISO 9001 8.4.2(c) scales control by impact.
+   */
+  tier: 'critical' | 'strategic' | 'tactical' | 'transactional' | 'unclassified';
+  tierReason?: string;
+  tierSetBy?: mongoose.Types.ObjectId | any;
+  tierSetAt?: Date;
+  /** Set when a required compliance document has lapsed (see expiry job). */
+  hasExpiredDocuments: boolean;
+  expiredDocumentTypes?: string[];
   blacklistReason?: string;
   blacklistedBy?: mongoose.Types.ObjectId | any;
   blacklistedAt?: Date;
   approvedBy?: mongoose.Types.ObjectId | any;
   approvedAt?: Date;
   notes?: string;
+  website?: string;
+  incorporationDate?: Date;
+  proposedBusiness?: string;
+  tradeVolume?: string;
+  tradeProducts?: string[];
+  /**
+   * How this supplier was sourced onto the register (6.2.1). 'newspaper' means
+   * they responded to a public newspaper invitation — recorded for audit trail
+   * even though the invitation itself happens outside the system.
+   */
+  onboardingMethod?: 'newspaper' | 'direct_application' | 'referral' | 'existing' | 'other';
+  onboardingMethodNotes?: string;
+  /** Site visit / vetting record (clause 5.5). */
+  siteVisitDate?: Date;
+  siteVisitBy?: string;
+  siteVisitNotes?: string;
+  vettingStatus?: 'not_started' | 'in_progress' | 'passed' | 'failed';
   isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -238,6 +282,13 @@ const SupplierProfileSchema = new Schema<ISupplierProfile>({
   kysChecklist: { type: KysChecklistSchema, default: () => ({}) },
   clientReferrals: [ClientReferralSchema],
   kysComplete: { type: Boolean, default: false },
+  kysExempt: { type: Boolean, default: false },
+  kysExemptReason: String,
+  kysExemptBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  kysExemptAt: Date,
   lastEvaluationAt: Date,
   nextEvaluationDue: Date,
   status: {
@@ -245,6 +296,25 @@ const SupplierProfileSchema = new Schema<ISupplierProfile>({
     enum: ['pending', 'active', 'suspended', 'blacklisted', 'dormant'],
     default: 'pending'
   },
+  transactability: {
+    type: String,
+    enum: ['none', 'prospective', 'spend_authorized'],
+    default: 'none',
+    index: true
+  },
+  transactabilityChangedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  transactabilityChangedAt: Date,
+  tier: {
+    type: String,
+    enum: ['critical', 'strategic', 'tactical', 'transactional', 'unclassified'],
+    default: 'unclassified',
+    index: true
+  },
+  tierReason: String,
+  tierSetBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  tierSetAt: Date,
+  hasExpiredDocuments: { type: Boolean, default: false },
+  expiredDocumentTypes: [{ type: String }],
   blacklistReason: String,
   blacklistedBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -257,6 +327,24 @@ const SupplierProfileSchema = new Schema<ISupplierProfile>({
   },
   approvedAt: Date,
   notes: String,
+  website: String,
+  incorporationDate: Date,
+  proposedBusiness: String,
+  tradeVolume: String,
+  tradeProducts: [{ type: String, trim: true }],
+  onboardingMethod: {
+    type: String,
+    enum: ['newspaper', 'direct_application', 'referral', 'existing', 'other']
+  },
+  onboardingMethodNotes: { type: String, trim: true },
+  siteVisitDate: Date,
+  siteVisitBy: { type: String, trim: true },
+  siteVisitNotes: { type: String, trim: true },
+  vettingStatus: {
+    type: String,
+    enum: ['not_started', 'in_progress', 'passed', 'failed'],
+    default: 'not_started'
+  },
   isDeleted: {
     type: Boolean,
     default: false

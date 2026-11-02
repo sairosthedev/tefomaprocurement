@@ -1,10 +1,17 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { formatCurrency } from '../lib/constants';
+import { getCurrentSbuCurrency } from '../lib/sbu';
+import { COO_POLICY_NOTE } from '../lib/cooApproval';
+import { isProcurementHead } from '@fossil/shared';
+import PageHeader from '../components/PageHeader';
+import EquipmentDetailsView from '../components/EquipmentDetailsView';
+import { WorkflowStepper, NextStepCard, type WorkflowStep, type NextStepAction } from '../components/WorkflowStepper';
+import { FormSteps, FormStepNav } from '../components/FormSteps';
 import { 
-  ArrowLeft, 
   FileText, 
   Calendar, 
   Building2,
@@ -17,9 +24,12 @@ import {
   Phone,
   ShoppingCart,
   Send,
-  Package
+  Package,
+  ShieldCheck,
+  UserCheck,
+  Circle
 } from 'lucide-react';
-import Modal, { ConfirmModal } from '../components/Modal';
+import Modal, { ModalFooter } from '../components/Modal';
 
 const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
@@ -30,18 +40,135 @@ const statusColors: any = {
   expired: 'bg-amber-100 text-amber-700'
 };
 
+/** PRAZ-aligned reasons for waiving the minimum-3-quotation requirement.
+ *  Values must match the RFQ.quotationWaiver.waiverType enum on the API. */
+const WAIVER_TYPES: { value: string; label: string }[] = [
+  { value: 'single_source', label: 'Single/sole source — only one capable supplier' },
+  { value: 'no_quotes', label: 'Insufficient quotations received' },
+  { value: 'service_agreement', label: 'Existing service agreement' },
+  { value: 'approved_contract', label: 'Approved framework / contract' },
+  { value: 'unique_product', label: 'Unique / proprietary product' },
+  { value: 'custom_manufacture', label: 'Custom manufacture / bespoke item' },
+  { value: 'coo_directed', label: 'COO directed procurement' },
+  { value: 'coo_instruction', label: 'COO written instruction' },
+  { value: 'other', label: 'Other (state reason below)' }
+];
+
+/** One row of the acceptance-authorization checklist.
+ *  Defined at module scope so it keeps a stable component identity — declaring it
+ *  inside the page body would remount its children (and drop input focus) on every
+ *  keystroke. */
+function Step({ done, title, children }: any) {
+  return (
+    <div className="flex gap-3">
+      <div className="mt-0.5">
+        {done ? (
+          <CheckCircle className="h-5 w-5 text-green-600" />
+        ) : (
+          <Circle className="h-5 w-5 text-gray-300" />
+        )}
+      </div>
+      <div className="flex-1">
+        <p className={`text-sm font-medium ${done ? 'text-gray-900' : 'text-gray-700'}`}>{title}</p>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+const PO_FORM_STEPS = [
+  { label: 'Delivery', description: 'Where and when' },
+  { label: 'Terms', description: 'Terms and notes' },
+  { label: 'Review', description: 'Check, then create' }
+];
+
+/**
+ * A quotation from receipt to purchase order: the three-quote rule, procurement's
+ * selection, the Head of Procurement's authorization, acceptance, then the PO.
+ */
+function quotationSteps(quotation: any, isProcurement: boolean): WorkflowStep[] {
+  const c = quotation.compliance || {};
+  const accepted = quotation.status === 'accepted';
+  const po = quotation.existingPurchaseOrder;
+  const rfq = quotation.rfq;
+  const raw: Array<{ key: string; label: string; done: boolean; detail?: string; to?: string }> = [
+    {
+      key: 'rfq',
+      label: 'RFQ',
+      done: true,
+      detail: rfq?.rfqNumber,
+      to: isProcurement && rfq?._id ? `/app/rfqs/${rfq._id}` : undefined
+    },
+    {
+      key: 'received',
+      label: 'Received',
+      done: quotation.status !== 'draft',
+      detail: quotation.status === 'revision_requested' ? 'Revision requested' : undefined
+    },
+    {
+      key: 'min',
+      label: 'Three quotes',
+      done: accepted || !!c.minQuotationsMet,
+      detail: c.waived ? 'Waived' : typeof c.quotationCount === 'number' ? `${c.quotationCount} received` : undefined
+    },
+    // With an approved waiver the Head of Procurement may authorize without a selection.
+    { key: 'selected', label: 'Selected', done: accepted || !!c.hodSelected || (!!c.waived && !!c.pmAuthorized) },
+    { key: 'authorized', label: 'Authorized', done: accepted || !!c.pmAuthorized },
+    { key: 'accepted', label: 'Accepted', done: accepted },
+    {
+      key: 'po',
+      label: 'Purchase order',
+      done: !!po,
+      detail: po?.poNumber,
+      to: isProcurement && po?._id ? `/app/purchase-orders/${po._id}` : undefined
+    }
+  ];
+
+  const stopped = ['rejected', 'expired', 'superseded'].includes(quotation.status);
+  const current = raw.findIndex((s) => !s.done);
+  return raw.map((s, i) => ({
+    key: s.key,
+    label: s.label,
+    detail:
+      i === current && stopped
+        ? quotation.status.charAt(0).toUpperCase() + quotation.status.slice(1)
+        : s.detail,
+    to: s.to,
+    state: s.done ? 'done' : i === current ? (stopped ? 'stopped' : 'current') : 'upcoming'
+  }));
+}
+
 export default function QuotationDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  // The COO reaches this page only to approve a waiver; every other control on
+  // it is procurement's, and the quotations list is not theirs to go back to.
+  const isProcurement = user?.role === 'procurement_officer' || isProcurementHead(user);
+  const backTo = isProcurement ? '/app/quotations' : '/app';
+  const backLabel = isProcurement ? 'Back to Quotations' : 'Back to Dashboard';
   const { showToast } = useToast();
   const [loading, setLoading] = useState<any>(true);
   const [quotation, setQuotation] = useState<any>(null);
+  const [sealedInfo, setSealedInfo] = useState<any>(null);
+  const [closingRfq, setClosingRfq] = useState<any>(false);
+  const [hodJustification, setHodJustification] = useState<any>('');
+  const [waiverReason, setWaiverReason] = useState<any>('');
+  const [waiverType, setWaiverType] = useState<string>('');
+  const [approvingWaiver, setApprovingWaiver] = useState<any>(false);
+  const [authorizing, setAuthorizing] = useState<any>(false);
   const [showAcceptModal, setShowAcceptModal] = useState<any>(false);
   const [showRejectModal, setShowRejectModal] = useState<any>(false);
   const [rejectReason, setRejectReason] = useState<any>('');
   const [rejectComments, setRejectComments] = useState<any>('');
+  const [showReviseModal, setShowReviseModal] = useState<any>(false);
+  const [reviseReason, setReviseReason] = useState<any>('');
+  const [reviseTarget, setReviseTarget] = useState<any>('');
   const [processing, setProcessing] = useState<any>(false);
   const [showCreatePOModal, setShowCreatePOModal] = useState<any>(false);
+  const [poStep, setPoStep] = useState(0);
+  const poStepTop = useRef<HTMLDivElement>(null);
+  const complianceRef = useRef<HTMLDivElement>(null);
   const [poFormData, setPOFormData] = useState<any>({
     deliveryAddress: {
       street: '',
@@ -61,15 +188,99 @@ export default function QuotationDetail() {
   const fetchQuotation = async () => {
     try {
       setLoading(true);
+      setSealedInfo(null);
       const response = await procurementAPI.getQuotation(id);
       if (response.data.success) {
         setQuotation(response.data.data);
       }
     } catch (error: any) {
       console.error('Error fetching quotation:', error);
+      if (error.response?.data?.sealed) {
+        setSealedInfo(error.response.data);
+        setQuotation(null);
+        return;
+      }
       showToast(error.response?.data?.message || 'Failed to load quotation details', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCloseRfq = async () => {
+    if (!sealedInfo?.rfqId) return;
+    try {
+      setClosingRfq(true);
+      const res = await procurementAPI.closeRFQ(sealedInfo.rfqId);
+      showToast(res.data.message || 'RFQ closed — bids are now visible', 'success');
+      await fetchQuotation();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to close RFQ', 'error');
+    } finally {
+      setClosingRfq(false);
+    }
+  };
+
+  const handleHodSelect = async () => {
+    if (!hodJustification.trim()) {
+      showToast('A selection justification is required', 'error');
+      return;
+    }
+    try {
+      setAuthorizing(true);
+      await procurementAPI.selectQuotation(quotation.rfq._id, {
+        quotationId: quotation._id,
+        justification: hodJustification.trim()
+      });
+      showToast('Quotation selected. Waiting for the Head of Procurement to authorize.', 'success');
+      setHodJustification('');
+      fetchQuotation();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to select quotation', 'error');
+    } finally {
+      setAuthorizing(false);
+    }
+  };
+
+  const handleApproveWaiver = async () => {
+    if (!waiverType) {
+      showToast('Please select a waiver type', 'error');
+      return;
+    }
+    if (!waiverReason.trim()) {
+      showToast('A waiver reason is required', 'error');
+      return;
+    }
+    if (!quotation?.rfq?._id) return;
+
+    try {
+      setApprovingWaiver(true);
+      await procurementAPI.approveQuotationWaiver(quotation.rfq._id, {
+        reason: waiverReason.trim(),
+        waiverType
+      });
+      showToast('Quotation waiver approved', 'success');
+      setWaiverReason('');
+      setWaiverType('');
+      fetchQuotation();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to approve waiver', 'error');
+    } finally {
+      setApprovingWaiver(false);
+    }
+  };
+
+  const handlePmAuthorize = async () => {
+    try {
+      setAuthorizing(true);
+      await procurementAPI.authorizeQuotation(quotation.rfq._id, {
+        quotationId: quotation._id
+      });
+      showToast('Quotation authorized. Ready for acceptance.', 'success');
+      fetchQuotation();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to authorize quotation', 'error');
+    } finally {
+      setAuthorizing(false);
     }
   };
 
@@ -111,14 +322,70 @@ export default function QuotationDetail() {
     }
   };
 
+  const handleRequestRevision = async () => {
+    if (!reviseReason.trim()) {
+      showToast('Please provide a reason for the revision request', 'error');
+      return;
+    }
+    try {
+      setProcessing(true);
+      await procurementAPI.requestQuotationRevision(id, {
+        reason: reviseReason,
+        targetNote: reviseTarget
+      });
+      showToast('Price revision requested — supplier notified', 'success');
+      setShowReviseModal(false);
+      setReviseReason('');
+      setReviseTarget('');
+      fetchQuotation();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to request revision', 'error');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // Prefilled from the quotation and its site, so the order needs little typing.
+  const openCreatePO = () => {
+    const deliveryDate = quotation.deliveryPeriod
+      ? new Date(Date.now() + quotation.deliveryPeriod * 24 * 60 * 60 * 1000)
+          .toISOString().split('T')[0]
+      : '';
+    const site = quotation.site || quotation.rfq?.site;
+    setPOFormData({
+      deliveryAddress: {
+        street: site?.address?.street || site?.address || '',
+        city: site?.address?.city || site?.city || '',
+        province: site?.address?.province || site?.province || '',
+        postalCode: site?.address?.postalCode || site?.postalCode || '',
+      },
+      expectedDeliveryDate: deliveryDate,
+      termsAndConditions: quotation.paymentTerms || '',
+      notes: quotation.notes || '',
+    });
+    setPoStep(0);
+    setShowCreatePOModal(true);
+  };
+
+  const goToPoStep = (next: number) => {
+    setPoStep(next);
+    poStepTop.current?.scrollIntoView({ block: 'start' });
+  };
+
   const handleCreatePO = async () => {
     try {
       setProcessing(true);
-      await procurementAPI.createPurchaseOrder({
+      const created = await procurementAPI.createPurchaseOrder({
         quotationId: id,
         ...poFormData
       });
-      showToast('Purchase Order created successfully', 'success');
+      showToast('Purchase Order created — submit it for approval', 'success');
+      const poId = created.data?.data?._id;
+      if (poId) {
+        // The new order's own page is where it is submitted for approval.
+        navigate(`/app/purchase-orders/${poId}`);
+        return;
+      }
       setShowCreatePOModal(false);
       setPOFormData({
         deliveryAddress: {
@@ -149,6 +416,54 @@ export default function QuotationDetail() {
     );
   }
 
+  if (sealedInfo) {
+    return (
+      <div className="p-8 max-w-2xl">
+        <PageHeader
+          backTo={backTo}
+          backLabel={backLabel}
+          title="Bid is sealed"
+        />
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-8 text-center">
+          <Clock className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+          <p className="text-sm text-amber-800 mb-2">
+            {sealedInfo.message}
+          </p>
+          {sealedInfo.rfqNumber && (
+            <p className="text-sm text-gray-600 mb-6">
+              RFQ: <span className="font-mono font-medium">{sealedInfo.rfqNumber}</span>
+              {sealedInfo.submissionDeadline && (
+                <> · Deadline: {new Date(sealedInfo.submissionDeadline).toLocaleString('en-ZA')}</>
+              )}
+            </p>
+          )}
+          {isProcurement && (
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                type="button"
+                onClick={handleCloseRfq}
+                disabled={closingRfq}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 disabled:opacity-50"
+              >
+                {closingRfq ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                Close RFQ &amp; Reveal Bids
+              </button>
+              {sealedInfo.rfqId && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/app/rfqs/${sealedInfo.rfqId}`)}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 border border-amber-300 text-amber-800 rounded-xl font-medium hover:bg-amber-100"
+                >
+                  View RFQ
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (!quotation) {
     return (
       <div className="p-8">
@@ -160,87 +475,282 @@ export default function QuotationDetail() {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      {/* Header with Back Button */}
-      <div className="flex items-center gap-4 mb-6">
-        <button
-          onClick={() => navigate('/app/quotations')}
-          className="flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Quotations
-        </button>
-      </div>
-
-      {/* Hero Section with Green Background and SVG */}
-      <div className="bg-gradient-to-br from-green-50 via-green-100/50 to-green-50 rounded-2xl p-8 border border-green-200 relative overflow-hidden mb-6">
-        {/* Decorative SVG/Pattern */}
-        <div className="absolute top-0 right-0 w-64 h-64 opacity-10">
-          <svg viewBox="0 0 200 200" className="w-full h-full text-green-600">
-            <path d="M40,120 Q100,80 160,120 T280,120" stroke="currentColor" strokeWidth="2" fill="none" />
-            <path d="M40,140 Q100,100 160,140 T280,140" stroke="currentColor" strokeWidth="2" fill="none" />
-            <circle cx="100" cy="130" r="20" fill="currentColor" opacity="0.2" />
-            <circle cx="150" cy="110" r="15" fill="currentColor" opacity="0.15" />
-          </svg>
-        </div>
-        
-        <div className="relative z-10">
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-3 bg-white/80 rounded-xl shadow-sm">
-                  <FileText className="h-8 w-8 text-green-600" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900">Quotation</h1>
-                  <p className="text-sm text-gray-600 mt-1 font-mono">#{quotation.quotationNumber}</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[quotation.status]}`}>
-                {quotation.status?.replace(/_/g, ' ').replace(/\b\w/g, (l: any) => l.toUpperCase())}
+    <div className="p-8">
+      <PageHeader
+        backTo={backTo}
+        backLabel={backLabel}
+        title="Quotation"
+        subtitle={`#${quotation.quotationNumber}`}
+        actions={
+          <>
+            <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[quotation.status]}`}>
+              {quotation.status?.replace(/_/g, ' ').replace(/\b\w/g, (l: any) => l.toUpperCase())}
+            </span>
+            {isProcurement && (quotation.status === 'submitted' || quotation.status === 'under_review') && (
+              <>
+                <button
+                  onClick={() => setShowAcceptModal(true)}
+                  disabled={!quotation.compliance?.fullyAuthorized}
+                  title={
+                    quotation.compliance?.fullyAuthorized
+                      ? 'Accept this quotation'
+                      : 'Complete the selection and Head of Procurement authorization first'
+                  }
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-4 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  Accept
+                </button>
+                <button
+                  onClick={() => setShowReviseModal(true)}
+                  title="Ask the supplier to submit a revised (lower) price"
+                  className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+                >
+                  <DollarSign className="h-4 w-4" />
+                  Request Revision
+                </button>
+                <button
+                  onClick={() => setShowRejectModal(true)}
+                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+                >
+                  <XCircle className="h-4 w-4" />
+                  Reject
+                </button>
+              </>
+            )}
+            {quotation.status === 'revision_requested' && (
+              <span className="flex items-center gap-2 bg-amber-50 text-amber-700 border border-amber-200 font-medium py-2 px-4 rounded-xl text-sm">
+                <DollarSign className="h-4 w-4" />
+                Awaiting supplier's revised price
               </span>
-          {quotation.status === 'submitted' && (
-            <>
+            )}
+            {isProcurement && quotation.status === 'accepted' && !quotation.existingPurchaseOrder && (
               <button
-                onClick={() => setShowAcceptModal(true)}
-                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+                onClick={openCreatePO}
+                className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium px-3 py-2 text-sm rounded-lg transition-colors"
               >
-                <CheckCircle className="h-4 w-4" />
-                Accept
+                <ShoppingCart className="h-4 w-4" />
+                Create Purchase Order
               </button>
-              <button
-                onClick={() => setShowRejectModal(true)}
-                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+            )}
+            {isProcurement && quotation.existingPurchaseOrder && (
+              <a
+                href={`/app/purchase-orders/${quotation.existingPurchaseOrder._id}`}
+                className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium px-3 py-2 text-sm rounded-lg transition-colors"
               >
-                <XCircle className="h-4 w-4" />
-                Reject
-              </button>
-            </>
-          )}
-          {quotation.status === 'accepted' && !quotation.existingPurchaseOrder && (
-            <button
-              onClick={() => setShowCreatePOModal(true)}
-              className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
-            >
-              <ShoppingCart className="h-4 w-4" />
-              Create Purchase Order
-            </button>
-          )}
-          {quotation.existingPurchaseOrder && (
-            <a
-              href={`/app/purchase-orders/${quotation.existingPurchaseOrder._id}`}
-              className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
-            >
-              <ShoppingCart className="h-4 w-4" />
-              View Purchase Order
-            </a>
-          )}
+                <ShoppingCart className="h-4 w-4" />
+                View Purchase Order
+              </a>
+            )}
+          </>
+        }
+      />
+
+      <WorkflowStepper steps={quotationSteps(quotation, isProcurement)} />
+      {(() => {
+        const c = quotation.compliance || {};
+        const procurementHead = isProcurementHead(user);
+        const po = quotation.existingPurchaseOrder;
+        const toPanel: NextStepAction = {
+          label: 'Go to authorization',
+          onClick: () => complianceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        };
+        let next: { title: string; description?: string; waiting?: boolean; done?: boolean; action?: NextStepAction } | null = null;
+
+        if (['rejected', 'expired', 'superseded'].includes(quotation.status)) {
+          next = null;
+        } else if (quotation.status === 'revision_requested') {
+          next = { title: 'The supplier to submit a revised price', waiting: true };
+        } else if (po) {
+          next = {
+            title: `Purchase order ${po.poNumber} is raised`,
+            done: true,
+            description: `Status: ${String(po.status).replace(/_/g, ' ')}. Its approval and delivery continue on the order.`,
+            action: isProcurement ? { label: 'Open purchase order', to: `/app/purchase-orders/${po._id}` } : undefined
+          };
+        } else if (quotation.status === 'accepted') {
+          next = isProcurement
+            ? { title: 'Raise the purchase order', description: 'Delivery details are filled in from the quotation.', action: { label: 'Create purchase order', onClick: openCreatePO } }
+            : { title: 'Procurement to raise the purchase order', waiting: true };
+        } else if (!c.minQuotationsMet) {
+          next = procurementHead || user?.role === 'coo'
+            ? { title: 'Approve a waiver of the three-quote rule', description: `Only ${c.quotationCount ?? 0} quotation(s) were received.`, action: toPanel }
+            : { title: 'A waiver from the Head of Procurement or COO', description: `Only ${c.quotationCount ?? 0} quotation(s) were received; three are required.`, waiting: true };
+        } else if (!c.hodSelected && !c.waived) {
+          next = isProcurement
+            ? { title: 'Select this quotation with a justification', description: 'Only if it is the best value; compare it on the RFQ first.', action: toPanel }
+            : { title: 'Procurement to select the winning quotation', waiting: true };
+        } else if (!c.pmAuthorized) {
+          next = procurementHead
+            ? { title: 'Authorize the selected quotation', action: toPanel }
+            : { title: 'Head of Procurement authorization', waiting: true };
+        } else if (c.fullyAuthorized) {
+          next = isProcurement
+            ? { title: 'Accept this quotation', description: 'Fully authorized. Accepting lets you raise the purchase order.', action: { label: 'Accept quotation', onClick: () => setShowAcceptModal(true) } }
+            : { title: 'Procurement to accept the quotation', waiting: true };
+        }
+
+        return next ? (
+          <NextStepCard title={next.title} description={next.description} waiting={next.waiting} done={next.done} action={next.action} />
+        ) : null;
+      })()}
+
+      {/* Acceptance compliance workflow */}
+      {quotation.compliance && quotation.status !== 'accepted' && quotation.status !== 'rejected' && (
+        (() => {
+          const c = quotation.compliance;
+          const role = user?.role;
+          const procurementHead = isProcurementHead(user);
+          // Procurement selects the winner; the Head of Procurement authorizes it,
+          // so the officer who chose is never the one who signs it off.
+          const canSelect = role === 'procurement_officer' || procurementHead;
+          const canPmAuthorize = procurementHead;
+          const canApproveWaiver = procurementHead || role === 'coo';
+          const reqDeptName = c.requestingDepartment?.name;
+          const missingSteps: string[] = [];
+          if (!c.minQuotationsMet) missingSteps.push('at least 3 quotations (or a waiver)');
+          if (!c.hodSelected) missingSteps.push('procurement selection with justification');
+          if (!c.pmAuthorized) missingSteps.push('Head of Procurement authorization');
+          return (
+            <div ref={complianceRef} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6 scroll-mt-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-primary" />
+                Acceptance Authorization
+              </h2>
+              <p className="text-xs text-gray-500 mb-3">
+                Complete every step below before Accept is enabled.
+              </p>
+              {!c.fullyAuthorized && missingSteps.length > 0 && (
+                <div className="mb-5 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+                  <span className="font-medium">Accept is blocked until: </span>
+                  {missingSteps.join(' → ')}
+                </div>
+              )}
+
+              <div className="space-y-5">
+                <Step
+                  done={c.minQuotationsMet}
+                  title={`Minimum 3 competitive quotations${c.waived ? ' (waived)' : ''}`}
+                >
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {c.quotationCount} quotation{c.quotationCount === 1 ? '' : 's'} on this RFQ
+                    {!c.minQuotationsMet && ' — need at least 3 or an approved waiver'}
+                  </p>
+                  {!c.minQuotationsMet && !c.waived && canApproveWaiver && (
+                    <div className="mt-2 space-y-2">
+                      <select
+                        value={waiverType}
+                        onChange={(e: any) => setWaiverType(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      >
+                        <option value="">Select waiver type…</option>
+                        {WAIVER_TYPES.map((w) => (
+                          <option key={w.value} value={w.value}>{w.label}</option>
+                        ))}
+                      </select>
+                      <textarea
+                        value={waiverReason}
+                        onChange={(e: any) => setWaiverReason(e.target.value)}
+                        rows={2}
+                        placeholder="Justification for waiving the 3-quotation requirement..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApproveWaiver}
+                        disabled={approvingWaiver || !waiverType || !waiverReason.trim()}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50"
+                      >
+                        {approvingWaiver ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                        Approve waiver
+                      </button>
+                    </div>
+                  )}
+                </Step>
+
+                <Step
+                  done={c.hodSelected}
+                  title={
+                    reqDeptName
+                      ? `Procurement selection — for ${reqDeptName}`
+                      : 'Procurement selection with justification'
+                  }
+                >
+                  {c.hodSelected ? (
+                    <p className="text-xs text-gray-500 mt-0.5">Justification: {c.hodJustification}</p>
+                  ) : canSelect ? (
+                    <div className="mt-2 space-y-2">
+                      <textarea
+                        value={hodJustification}
+                        onChange={(e: any) => setHodJustification(e.target.value)}
+                        rows={2}
+                        placeholder="Justification for selecting this quotation (required)"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleHodSelect}
+                        disabled={authorizing || !c.minQuotationsMet}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        {authorizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCheck className="h-4 w-4" />}
+                        Select this quotation
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-amber-600 mt-0.5">
+                      Waiting for procurement to select this quotation with a justification.
+                    </p>
+                  )}
+                </Step>
+
+                <Step done={c.pmAuthorized} title="Head of Procurement authorization">
+                  {c.pmAuthorized ? (
+                    <p className="text-xs text-gray-500 mt-0.5">Authorized.</p>
+                  ) : canPmAuthorize ? (
+                    <div className="mt-2 space-y-2">
+                      {/* With an approved waiver, a selection is not required and
+                          the PM may authorize directly. */}
+                      {c.waived ? (
+                        <p className="text-xs text-gray-500">
+                          Waiver approved — you can authorize directly without a selection.
+                        </p>
+                      ) : !c.hodSelected ? (
+                        <p className="text-xs text-amber-600">
+                          Select this quotation (step 2) before you can authorize it.
+                        </p>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={handlePmAuthorize}
+                        disabled={authorizing || (!c.hodSelected && !c.waived)}
+                        title={
+                          !c.hodSelected && !c.waived
+                            ? 'Select this quotation first'
+                            : 'Authorize as Head of Procurement'
+                        }
+                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        {authorizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                        Authorize as Head of Procurement
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-amber-600 mt-0.5">Waiting for the Head of Procurement to authorize.</p>
+                  )}
+                </Step>
+              </div>
+
+              {c.fullyAuthorized && (
+                <div className="mt-5 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700 flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4" />
+                  Fully authorized — you can now accept this quotation.
+                </div>
+              )}
             </div>
-          </div>
-        </div>
-      </div>
+          );
+        })()
+      )}
 
       {/* Details */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
@@ -250,7 +760,7 @@ export default function QuotationDetail() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <label className="text-sm text-gray-500">Quotation Number</label>
-              <p className="text-sm font-medium text-gray-900 mt-1 font-mono">{quotation.quotationNumber}</p>
+              <p className="text-sm font-medium text-gray-900 mt-1 font-mono break-all">{quotation.quotationNumber}</p>
             </div>
             <div>
               <label className="text-sm text-gray-500">Status</label>
@@ -261,12 +771,12 @@ export default function QuotationDetail() {
             <div>
               <label className="text-sm text-gray-500">Total Amount</label>
               <p className="text-sm font-medium text-gray-900 mt-1">
-                {formatCurrency(quotation.totalAmount || 0)}
+                {formatCurrency(quotation.totalAmount || 0, quotation.currency || getCurrentSbuCurrency())}
               </p>
             </div>
             <div>
               <label className="text-sm text-gray-500">Currency</label>
-              <p className="text-sm font-medium text-gray-900 mt-1">{quotation.currency || 'ZAR'}</p>
+              <p className="text-sm font-medium text-gray-900 mt-1">{quotation.currency || getCurrentSbuCurrency()}</p>
             </div>
           </div>
         </div>
@@ -328,43 +838,61 @@ export default function QuotationDetail() {
           <div className="border-t pt-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Quoted Items</h3>
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full text-sm border-collapse">
                 <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Description</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-700">Quantity</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-700">Unit</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-700">Unit Price</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-700">Total</th>
+                  <tr>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Description</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Quantity</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Unit</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Unit Price</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {quotation.items.map((item: any, index: any) => (
-                    <tr key={index} className="border-b border-gray-100">
-                      <td className="py-3 px-4">
+                    <tr key={index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                      <td className="py-2 px-3 border-b border-gray-100">
                         <p className="font-medium text-gray-900">{item.description}</p>
                         {item.specifications && (
                           <p className="text-xs text-gray-500 mt-1">{item.specifications}</p>
                         )}
+                        {item.isAlternative && (
+                          <div className="mt-1.5 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                            <p className="text-xs font-medium text-amber-800">
+                              Alternative offered — not the exact part requested
+                            </p>
+                            {item.alternativeDescription && (
+                              <p className="text-xs text-amber-700 mt-0.5">
+                                {item.alternativeDescription}
+                              </p>
+                            )}
+                            {item.alternativePartNumber && (
+                              <p className="text-xs text-amber-700">
+                                Part number: {item.alternativePartNumber}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        <EquipmentDetailsView attachments={item.attachments} compact />
                       </td>
-                      <td className="py-3 px-4 text-right text-sm text-gray-900">{item.quantity}</td>
-                      <td className="py-3 px-4 text-right text-sm text-gray-900">{item.unit}</td>
-                      <td className="py-3 px-4 text-right text-sm text-gray-900">
-                        {formatCurrency(item.unitPrice || 0)}
+                      <td className="py-2 px-3 border-b border-gray-100 text-right text-gray-900">{item.quantity}</td>
+                      <td className="py-2 px-3 border-b border-gray-100 text-right text-gray-900">{item.unit}</td>
+                      <td className="py-2 px-3 border-b border-gray-100 text-right text-gray-900">
+                        {formatCurrency(item.unitPrice || 0, quotation.currency || getCurrentSbuCurrency())}
                       </td>
-                      <td className="py-3 px-4 text-right text-sm font-medium text-gray-900">
-                        {formatCurrency((item.quantity || 0) * (item.unitPrice || 0))}
+                      <td className="py-2 px-3 border-b border-gray-100 text-right font-medium text-gray-900">
+                        {formatCurrency((item.quantity || 0) * (item.unitPrice || 0), quotation.currency || getCurrentSbuCurrency())}
                       </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="bg-gray-50">
-                    <td colSpan={4} className="py-3 px-4 text-right font-semibold text-gray-900">
+                    <td colSpan={4} className="py-2.5 px-4 text-right font-semibold text-gray-900">
                       Total Amount:
                     </td>
-                    <td className="py-3 px-4 text-right font-bold text-lg text-gray-900">
-                      {formatCurrency(quotation.totalAmount || 0)}
+                    <td className="py-2 px-3 border-b border-gray-100 text-right font-bold text-lg text-gray-900">
+                      {formatCurrency(quotation.totalAmount || 0, quotation.currency || getCurrentSbuCurrency())}
                     </td>
                   </tr>
                 </tfoot>
@@ -407,7 +935,7 @@ export default function QuotationDetail() {
         title="Accept Quotation"
       >
         <p className="text-gray-700 mb-6">Are you sure you want to accept this quotation?</p>
-        <div className="flex justify-end gap-3">
+        <ModalFooter>
           <button
             onClick={() => setShowAcceptModal(false)}
             className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
@@ -426,7 +954,7 @@ export default function QuotationDetail() {
             )}
             Accept Quotation
           </button>
-        </div>
+        </ModalFooter>
       </Modal>
 
       {/* Reject Modal */}
@@ -463,7 +991,7 @@ export default function QuotationDetail() {
             />
           </div>
         </div>
-        <div className="flex justify-end gap-3 mt-6">
+        <ModalFooter>
           <button
             onClick={() => {
               setShowRejectModal(false);
@@ -486,7 +1014,69 @@ export default function QuotationDetail() {
             )}
             Reject Quotation
           </button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Request Revision Modal */}
+      <Modal
+        isOpen={showReviseModal}
+        onClose={() => {
+          setShowReviseModal(false);
+          setReviseReason('');
+          setReviseTarget('');
+        }}
+        title="Request Price Revision"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            The supplier will be notified to resubmit a revised quotation. Their current
+            quotation is set aside until they respond; the new price supersedes it.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Reason for revision *
+            </label>
+            <input
+              type="text"
+              value={reviseReason}
+              onChange={(e: any) => setReviseReason(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              placeholder="e.g. Price above budget — request improved pricing"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Target / guidance (optional)
+            </label>
+            <textarea
+              value={reviseTarget}
+              onChange={(e: any) => setReviseTarget(e.target.value)}
+              rows={2}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              placeholder={`e.g. Target unit price ${quotation?.currency || getCurrentSbuCurrency()} 550, or a lower total`}
+            />
+          </div>
         </div>
+        <ModalFooter>
+          <button
+            onClick={() => {
+              setShowReviseModal(false);
+              setReviseReason('');
+              setReviseTarget('');
+            }}
+            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleRequestRevision}
+            disabled={processing || !reviseReason.trim()}
+            className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 flex items-center gap-2"
+          >
+            {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <DollarSign className="h-4 w-4" />}
+            Request Revision
+          </button>
+        </ModalFooter>
       </Modal>
 
       {/* Create PO Modal */}
@@ -494,106 +1084,170 @@ export default function QuotationDetail() {
         isOpen={showCreatePOModal}
         onClose={() => setShowCreatePOModal(false)}
         title="Create Purchase Order"
+        size="lg"
       >
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Delivery Street</label>
-              <input
-                type="text"
-                value={poFormData.deliveryAddress.street}
-                onChange={(e: any) => setPOFormData({
-                  ...poFormData,
-                  deliveryAddress: { ...poFormData.deliveryAddress, street: e.target.value }
-                })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              />
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            // Enter on an earlier step moves on rather than creating the order.
+            if (poStep < PO_FORM_STEPS.length - 1) goToPoStep(poStep + 1);
+            else handleCreatePO();
+          }}
+        >
+          <div ref={poStepTop} className="scroll-mt-4" />
+          <FormSteps steps={PO_FORM_STEPS} current={poStep} onSelect={goToPoStep} />
+
+          {poStep === 0 && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Delivery Street</label>
+                  <input
+                    type="text"
+                    value={poFormData.deliveryAddress.street}
+                    onChange={(e: any) => setPOFormData({
+                      ...poFormData,
+                      deliveryAddress: { ...poFormData.deliveryAddress, street: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+                  <input
+                    type="text"
+                    value={poFormData.deliveryAddress.city}
+                    onChange={(e: any) => setPOFormData({
+                      ...poFormData,
+                      deliveryAddress: { ...poFormData.deliveryAddress, city: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Province</label>
+                  <input
+                    type="text"
+                    value={poFormData.deliveryAddress.province}
+                    onChange={(e: any) => setPOFormData({
+                      ...poFormData,
+                      deliveryAddress: { ...poFormData.deliveryAddress, province: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Postal Code</label>
+                  <input
+                    type="text"
+                    value={poFormData.deliveryAddress.postalCode}
+                    onChange={(e: any) => setPOFormData({
+                      ...poFormData,
+                      deliveryAddress: { ...poFormData.deliveryAddress, postalCode: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Expected Delivery Date</label>
+                <input
+                  type="date"
+                  value={poFormData.expectedDeliveryDate}
+                  onChange={(e: any) => setPOFormData({ ...poFormData, expectedDeliveryDate: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
-              <input
-                type="text"
-                value={poFormData.deliveryAddress.city}
-                onChange={(e: any) => setPOFormData({
-                  ...poFormData,
-                  deliveryAddress: { ...poFormData.deliveryAddress, city: e.target.value }
-                })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              />
+          )}
+
+          {poStep === 1 && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Terms & Conditions</label>
+                <textarea
+                  value={poFormData.termsAndConditions}
+                  onChange={(e: any) => setPOFormData({ ...poFormData, termsAndConditions: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+                <textarea
+                  value={poFormData.notes}
+                  onChange={(e: any) => setPOFormData({ ...poFormData, notes: e.target.value })}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Province</label>
-              <input
-                type="text"
-                value={poFormData.deliveryAddress.province}
-                onChange={(e: any) => setPOFormData({
-                  ...poFormData,
-                  deliveryAddress: { ...poFormData.deliveryAddress, province: e.target.value }
-                })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              />
+          )}
+
+          {poStep === 2 && (
+            <div className="space-y-4">
+              {/* Read-only summary from the quotation — no re-entry needed */}
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Supplier</p>
+                  <p className="font-medium text-gray-900">{quotation?.supplier?.companyName || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Total Amount</p>
+                  <p className="font-medium text-gray-900">{formatCurrency(quotation?.totalAmount || 0, quotation?.currency || getCurrentSbuCurrency())}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Payment Terms</p>
+                  <p className="font-medium text-gray-900">{quotation?.paymentTerms || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Delivery Period</p>
+                  <p className="font-medium text-gray-900">{quotation?.deliveryPeriod ? `${quotation.deliveryPeriod} days` : '—'}</p>
+                </div>
+                <p className="col-span-2 text-xs text-gray-500">{COO_POLICY_NOTE}</p>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-xl p-4 grid grid-cols-2 gap-3 text-sm">
+                <div className="col-span-2">
+                  <p className="text-xs text-gray-500 mb-0.5">Deliver to</p>
+                  <p className="font-medium text-gray-900">
+                    {[
+                      poFormData.deliveryAddress.street,
+                      poFormData.deliveryAddress.city,
+                      poFormData.deliveryAddress.province,
+                      poFormData.deliveryAddress.postalCode
+                    ].filter(Boolean).join(', ') || '—'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Expected delivery</p>
+                  <p className="font-medium text-gray-900">
+                    {poFormData.expectedDeliveryDate
+                      ? new Date(poFormData.expectedDeliveryDate).toLocaleDateString()
+                      : '—'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Notes</p>
+                  <p className="font-medium text-gray-900 whitespace-pre-line">{poFormData.notes || '—'}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-xs text-gray-500 mb-0.5">Terms &amp; Conditions</p>
+                  <p className="font-medium text-gray-900 whitespace-pre-line">{poFormData.termsAndConditions || '—'}</p>
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Postal Code</label>
-              <input
-                type="text"
-                value={poFormData.deliveryAddress.postalCode}
-                onChange={(e: any) => setPOFormData({
-                  ...poFormData,
-                  deliveryAddress: { ...poFormData.deliveryAddress, postalCode: e.target.value }
-                })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Expected Delivery Date</label>
-            <input
-              type="date"
-              value={poFormData.expectedDeliveryDate}
-              onChange={(e: any) => setPOFormData({ ...poFormData, expectedDeliveryDate: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Terms & Conditions</label>
-            <textarea
-              value={poFormData.termsAndConditions}
-              onChange={(e: any) => setPOFormData({ ...poFormData, termsAndConditions: e.target.value })}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-            <textarea
-              value={poFormData.notes}
-              onChange={(e: any) => setPOFormData({ ...poFormData, notes: e.target.value })}
-              rows={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-            />
-          </div>
-        </div>
-        <div className="flex justify-end gap-3 mt-6">
-          <button
-            onClick={() => setShowCreatePOModal(false)}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleCreatePO}
-            disabled={processing}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 flex items-center gap-2"
-          >
-            {processing ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <ShoppingCart className="h-4 w-4" />
-            )}
-            Create Purchase Order
-          </button>
-        </div>
+          )}
+
+          <FormStepNav
+            current={poStep}
+            total={PO_FORM_STEPS.length}
+            onBack={() => goToPoStep(poStep - 1)}
+            onNext={() => goToPoStep(poStep + 1)}
+            onCancel={() => setShowCreatePOModal(false)}
+            finishLabel="Create Purchase Order"
+            submitting={processing}
+          />
+        </form>
       </Modal>
     </div>
   );

@@ -1,16 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+﻿import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
-import Tabs from '../components/Tabs';
-import Modal from '../components/Modal';
+import { useAuth } from '../context/AuthContext';
+import { isProcurementHead } from '@fossil/shared';
+import FilterSelect from '../components/FilterSelect';
+import PageHeader from '../components/PageHeader';
+import Modal, { ModalFooter } from '../components/Modal';
+import { FormSteps, FormStepNav } from '../components/FormSteps';
 import { CategoryMultiSelect } from '../components/CategorySelect';
 import { getCategoryName } from '../lib/constants';
 import { 
   Search, 
-  Filter, 
   Plus, 
-  MoreVertical, 
   CheckCircle, 
   XCircle, 
   Clock,
@@ -22,77 +24,140 @@ import {
   Eye,
   EyeOff,
   Upload,
-  FileText
+  FileText,
+  FileSpreadsheet,
+  AlertTriangle,
+  ShieldCheck
 } from 'lucide-react';
+import Pagination from '../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
+import {
+  parseSupplierFile,
+  parsePastedText,
+  rowIssues,
+  type SupplierImportRow
+} from '../lib/supplierImport';
 
 const statusColors: any = {
   pending: 'bg-amber-100 text-amber-700',
   active: 'bg-green-100 text-green-700',
   suspended: 'bg-gray-100 text-gray-700',
-  blacklisted: 'bg-red-100 text-red-700'
+  blacklisted: 'bg-red-100 text-red-700',
+  dormant: 'bg-gray-100 text-gray-700'
 };
 
 const statusIcons: any = {
   pending: Clock,
   active: CheckCircle,
   suspended: XCircle,
-  blacklisted: XCircle
+  blacklisted: XCircle,
+  dormant: Clock
 };
+
+const ADD_SUPPLIER_STEPS = [
+  { label: 'Company & login', description: 'Who they are, and their sign-in' },
+  { label: 'Business', description: 'Contact, tax and categories' },
+  { label: 'Banking', description: 'First bank account' },
+  { label: 'Review', description: 'Check, then create' }
+];
+
+const EMPTY_SUPPLIER_FORM = {
+  companyName: '',
+  tradingAs: '',
+  registrationNumber: '',
+  taxNumber: '',
+  vatNumber: '',
+  firstName: '',
+  lastName: '',
+  email: '',
+  password: 'password',
+  phone: '',
+  physicalAddress: '',
+  city: '',
+  province: '',
+  postalCode: '',
+  categories: [] as string[],
+  bankName: '',
+  bankAccountName: '',
+  bankAccountNumber: '',
+  bankBranchCode: ''
+};
+
+function needsKysAttention(supplier: any): boolean {
+  return supplier.status === 'pending' || (!supplier.kysComplete && !supplier.kysExempt);
+}
+
+function supplierProfilePath(supplier: any): string {
+  const id = supplier._id;
+  return needsKysAttention(supplier)
+    ? `/app/suppliers/${id}?tab=documents`
+    : `/app/suppliers/${id}`;
+}
+
+function kysStatus(supplier: any): { label: string; className: string } {
+  if (supplier.kysExempt) {
+    return { label: 'Exempt', className: 'bg-slate-100 text-slate-600 ring-slate-200/80' };
+  }
+  if (supplier.kysComplete) {
+    return { label: 'Verified', className: 'bg-emerald-50 text-emerald-700 ring-emerald-600/10' };
+  }
+  return { label: 'Pending', className: 'bg-amber-50 text-amber-800 ring-amber-600/10' };
+}
 
 export default function Suppliers() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { showToast } = useToast();
+  const { user } = useAuth();
+  // The COO and admins read the supplier base; only procurement maintains it.
+  const canManage = user?.role === 'procurement_officer' || isProcurementHead(user);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [loading, setLoading] = useState<any>(true);
   const [search, setSearch] = useState<any>('');
-  const [statusFilter, setStatusFilter] = useState<any>('');
+  const [statusFilter, setStatusFilter] = useState<any>(() => {
+    const fromUrl = searchParams.get('status');
+    if (fromUrl) return fromUrl;
+    if (searchParams.get('kys') === 'pending') return 'pending';
+    return '';
+  });
   const [showAddModal, setShowAddModal] = useState<any>(false);
   const [submitting, setSubmitting] = useState<any>(false);
-  const [formData, setFormData] = useState<any>({
-    companyName: '',
-    tradingAs: '',
-    registrationNumber: '',
-    taxNumber: '',
-    vatNumber: '',
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: 'password',
-    phone: '',
-    physicalAddress: '',
-    city: '',
-    province: '',
-    postalCode: '',
-    categories: [] as string[],
-    bankName: '',
-    bankAccountName: '',
-    bankAccountNumber: '',
-    bankBranchCode: ''
-  });
+  const [formData, setFormData] = useState<any>(EMPTY_SUPPLIER_FORM);
   const [showPassword, setShowPassword] = useState<any>(false);
-  const [showOptionalFields, setShowOptionalFields] = useState<any>(false);
+  const [addStep, setAddStep] = useState(0);
   const [showBulkImportModal, setShowBulkImportModal] = useState<any>(false);
   const [bulkImportData, setBulkImportData] = useState<any>('');
   const [bulkImportResults, setBulkImportResults] = useState<any>(null);
   const [importing, setImporting] = useState<any>(false);
-  const [showViewModal, setShowViewModal] = useState<any>(false);
-  const [selectedSupplier, setSelectedSupplier] = useState<any>(null);
-  const [actionLoading, setActionLoading] = useState<any>(false);
-  const [pendingAction, setPendingAction] = useState<any>(null);
-  const [actionReason, setActionReason] = useState<any>('');
+  // Parsed rows are held for review and correction before anything is written.
+  const [importRows, setImportRows] = useState<SupplierImportRow[]>([]);
+  const [importWarning, setImportWarning] = useState<string>('');
+  const [importFileName, setImportFileName] = useState<string>('');
+  const [dragActive, setDragActive] = useState(false);
+  const importFileInput = useRef<HTMLInputElement | null>(null);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
+  const [pagination, setPagination] = useState(emptyPagination());
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter]);
 
   useEffect(() => {
     fetchSuppliers();
-  }, [search, statusFilter]);
+  }, [page, limit, search, statusFilter]);
 
   const fetchSuppliers = async () => {
     try {
       setLoading(true);
       const response = await procurementAPI.getSuppliers({ 
         search, 
-        status: statusFilter 
+        status: statusFilter,
+        page,
+        limit
       });
       setSuppliers(response.data.data);
+      setPagination(parsePagination(response.data.pagination));
     } catch (error: any) {
       console.error('Error fetching suppliers:', error);
     } finally {
@@ -100,92 +165,13 @@ export default function Suppliers() {
     }
   };
 
-  const openViewModal = (supplier: any) => {
-    setSelectedSupplier(supplier);
-    setPendingAction(null);
-    setActionReason('');
-    setShowViewModal(true);
+  const openSupplierProfile = (supplier: any) => {
+    navigate(supplierProfilePath(supplier));
   };
 
-  const closeViewModal = () => {
-    if (actionLoading) return;
-    setShowViewModal(false);
-    setSelectedSupplier(null);
-    setPendingAction(null);
-    setActionReason('');
-  };
-
-  const refreshSelected = (updated: any) => {
-    setSelectedSupplier(updated);
-    setSuppliers((prev: any[]) =>
-      prev.map((s: any) => (s._id === updated._id ? { ...s, ...updated } : s))
-    );
-  };
-
-  const runApprove = async () => {
-    if (!selectedSupplier) return;
-    try {
-      setActionLoading(true);
-      const res = await procurementAPI.approveSupplier(selectedSupplier._id);
-      showToast('Supplier approved', 'success');
-      refreshSelected(res.data.data);
-      setPendingAction(null);
-      setActionReason('');
-    } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to approve supplier', 'error');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const runSetStatus = async (status: string) => {
-    if (!selectedSupplier) return;
-    try {
-      setActionLoading(true);
-      const res = await procurementAPI.setSupplierStatus(selectedSupplier._id, {
-        status,
-        reason: actionReason || undefined
-      });
-      showToast(res.data.message || 'Supplier status updated', 'success');
-      refreshSelected(res.data.data);
-      setPendingAction(null);
-      setActionReason('');
-    } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to update supplier', 'error');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const runBlacklist = async () => {
-    if (!selectedSupplier) return;
-    if (!actionReason.trim()) {
-      showToast('A reason is required to blacklist a supplier', 'error');
-      return;
-    }
-    try {
-      setActionLoading(true);
-      const res = await procurementAPI.blacklistSupplier(selectedSupplier._id, {
-        reason: actionReason
-      });
-      showToast('Supplier blacklisted', 'success');
-      refreshSelected(res.data.data);
-      setPendingAction(null);
-      setActionReason('');
-    } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to blacklist supplier', 'error');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const confirmPendingAction = () => {
-    if (pendingAction === 'suspend') return runSetStatus('suspended');
-    if (pendingAction === 'reactivate') return runSetStatus('active');
-    if (pendingAction === 'dormant') return runSetStatus('dormant');
-    if (pendingAction === 'blacklist') return runBlacklist();
-    if (pendingAction === 'approve') return runApprove();
-  };
+  // Supplier detail, approval, status changes and blacklisting all live on the
+  // SupplierDetails page (/app/suppliers/:id). This list navigates there rather
+  // than duplicating those controls in a modal.
 
   const handleInputChange = (e: any) => {
     const { name, value } = e.target;
@@ -195,17 +181,43 @@ export default function Suppliers() {
     }));
   };
 
-  const handleSubmit = async (e: any) => {
-    e.preventDefault();
-    
-    // Validate required fields
+  const closeAddModal = () => {
+    if (submitting) return;
+    setShowAddModal(false);
+    setFormData(EMPTY_SUPPLIER_FORM);
+    setShowPassword(false);
+    setAddStep(0);
+  };
+
+  /** The first step holds every required field; the others are optional. */
+  const companyStepValid = () => {
     if (!formData.companyName || !formData.email || !formData.firstName || !formData.lastName || !formData.registrationNumber) {
       showToast('Company name, email, first name, last name, and registration number are required', 'error');
+      return false;
+    }
+    if (!formData.password || formData.password.length < 6) {
+      showToast('Password must be at least 6 characters', 'error');
+      return false;
+    }
+    return true;
+  };
+
+  const nextAddStep = () => {
+    if (addStep === 0 && !companyStepValid()) return;
+    setAddStep((s: number) => Math.min(ADD_SUPPLIER_STEPS.length - 1, s + 1));
+  };
+
+  const handleSubmit = async (e: any) => {
+    e.preventDefault();
+
+    // Enter in a field on an earlier step moves on rather than creating.
+    if (addStep < ADD_SUPPLIER_STEPS.length - 1) {
+      nextAddStep();
       return;
     }
 
-    if (!formData.password || formData.password.length < 6) {
-      showToast('Password must be at least 6 characters', 'error');
+    if (!companyStepValid()) {
+      setAddStep(0);
       return;
     }
 
@@ -221,30 +233,17 @@ export default function Suppliers() {
       });
 
       if (response.data.success) {
-        showToast('Supplier created successfully', 'success');
+        showToast('Supplier created — complete KYS to activate them', 'success');
         setShowAddModal(false);
-        setFormData({
-          companyName: '',
-          tradingAs: '',
-          registrationNumber: '',
-          taxNumber: '',
-          vatNumber: '',
-          firstName: '',
-          lastName: '',
-          email: '',
-          password: 'password',
-          phone: '',
-          physicalAddress: '',
-          city: '',
-          province: '',
-          postalCode: '',
-          categories: [] as string[],
-          bankName: '',
-          bankAccountName: '',
-          bankAccountNumber: '',
-          bankBranchCode: ''
-        });
+        setFormData(EMPTY_SUPPLIER_FORM);
         setShowPassword(false);
+        setAddStep(0);
+        const newId = response.data.data?.id;
+        if (newId) {
+          // KYS is the new supplier's next step.
+          navigate(`/app/suppliers/${newId}?tab=documents`);
+          return;
+        }
         fetchSuppliers();
       }
     } catch (error: any) {
@@ -258,68 +257,60 @@ export default function Suppliers() {
     }
   };
 
+  /** Load rows from a file the user picked or dropped. */
+  const handleImportFile = async (file?: File | null) => {
+    if (!file) return;
+    setImportWarning('');
+    setImportFileName(file.name);
+    try {
+      const { rows, warning } = await parseSupplierFile(file);
+      setImportRows(rows);
+      if (warning) setImportWarning(warning);
+      if (rows.length === 0 && !warning) {
+        setImportWarning('No supplier rows found in this file. Check that the first row contains column headers.');
+      }
+    } catch (error: any) {
+      setImportRows([]);
+      setImportWarning('Could not read this file. Try saving it as .csv or .xlsx.');
+    }
+  };
+
+  /** Load rows from the paste box. */
+  const handleImportPaste = () => {
+    setImportWarning('');
+    setImportFileName('');
+    const rows = parsePastedText(bulkImportData);
+    if (rows.length === 0) {
+      showToast('No supplier rows found. Paste JSON, or CSV with a header row.', 'error');
+      return;
+    }
+    setImportRows(rows);
+  };
+
+  const updateImportCell = (index: number, field: keyof SupplierImportRow, value: string) => {
+    setImportRows((prev: SupplierImportRow[]) =>
+      prev.map((r, i) => (i === index ? { ...r, [field]: value } : r))
+    );
+  };
+
+  const resetImport = () => {
+    setImportRows([]);
+    setImportWarning('');
+    setImportFileName('');
+    setBulkImportData('');
+    setBulkImportResults(null);
+  };
+
   const handleBulkImport = async () => {
-    if (!bulkImportData.trim()) {
-      showToast('Please provide supplier data', 'error');
+    if (importRows.length === 0) {
+      showToast('Load a file or paste data first', 'error');
       return;
     }
 
     try {
       setImporting(true);
-      let suppliers: any[] = [];
+      const response = await procurementAPI.bulkImportSuppliers({ suppliers: importRows });
 
-      // Try to parse as JSON first
-      try {
-        const parsed = JSON.parse(bulkImportData);
-        suppliers = Array.isArray(parsed) ? parsed : [parsed];
-      } catch (e: any) {
-        // If not JSON, try to parse as CSV-like format
-        const lines = bulkImportData.trim().split('\n');
-        if (lines.length < 2) {
-          showToast('Invalid data format. Please provide JSON array or CSV with headers', 'error');
-          return;
-        }
-        
-        const headers = lines[0].split(',').map((h: any) => h.trim().toLowerCase().replace(/\s+/g, ''));
-        
-        for (let i = 1; i < lines.length; i++) {
-          if (!lines[i].trim()) continue;
-          const values = lines[i].split(',').map((v: any) => v.trim());
-          const supplier: any = {};
-          headers.forEach((header: any, index: any) => {
-            supplier[header] = values[index] || '';
-          });
-          
-          // Map CSV headers to API fields
-          suppliers.push({
-            companyName: supplier.companyname || supplier.company || '',
-            tradingAs: supplier.tradingas || supplier.trading || '',
-            registrationNumber: supplier.registrationnumber || supplier.regnumber || '',
-            taxNumber: supplier.taxnumber || supplier.tax || '',
-            vatNumber: supplier.vatnumber || supplier.vat || '',
-            contactPerson: supplier.contactperson || supplier.contact || supplier.name || '',
-            email: supplier.email || '',
-            phone: supplier.phone || '',
-            physicalAddress: supplier.address || supplier.physicaladdress || '',
-            city: supplier.city || '',
-            province: supplier.province || '',
-            postalCode: supplier.postalcode || supplier.postcode || '',
-            categories: supplier.categories || supplier.category || '',
-            bankName: supplier.bankname || supplier.bank || '',
-            bankAccountName: supplier.accountname || supplier.bankaccountname || '',
-            bankAccountNumber: supplier.accountnumber || supplier.bankaccountnumber || '',
-            bankBranchCode: supplier.branchcode || supplier.branch || ''
-          });
-        }
-      }
-
-      if (suppliers.length === 0) {
-        showToast('No valid supplier data found', 'error');
-        return;
-      }
-
-      const response = await procurementAPI.bulkImportSuppliers({ suppliers });
-      
       if (response.data.success) {
         setBulkImportResults(response.data.data);
         showToast(`Imported ${response.data.data.success.length} suppliers successfully`, 'success');
@@ -338,66 +329,66 @@ export default function Suppliers() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Suppliers</h1>
-          <p className="text-gray-500 mt-1">Manage and view all registered suppliers</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => setShowBulkImportModal(true)}
-            className="flex items-center gap-2 border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2.5 px-4 rounded-xl transition-colors"
-          >
-            <Upload className="h-5 w-5" />
-            Bulk Import
-          </button>
-          <button 
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
-          >
-            <Plus className="h-5 w-5" />
-            Add Supplier
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Suppliers"
+        subtitle="Manage and view all registered suppliers"
+        bottomSpacing="mb-4"
+      />
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
-        <div className="flex flex-col gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search suppliers..."
-              value={search}
-              onChange={(e: any) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-            />
-          </div>
-          <div className="flex items-center gap-4">
-            <Tabs
-              tabs={[
-                { value: '', label: 'All', icon: Users },
-                { value: 'pending', label: 'Pending', icon: Clock },
-                { value: 'active', label: 'Active', icon: CheckCircle },
-                { value: 'suspended', label: 'Suspended', icon: XCircle },
-                { value: 'blacklisted', label: 'Blacklisted', icon: XCircle }
+      <div className="mb-4">
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+          {canManage && (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(true)}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors whitespace-nowrap shrink-0"
+              >
+                <Plus className="h-4 w-4" />
+                Add Supplier
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowBulkImportModal(true)}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors whitespace-nowrap shrink-0"
+              >
+                <Upload className="h-4 w-4" />
+                Bulk Import
+              </button>
+            </>
+          )}
+          {/* Pushed to the right edge, with or without the button beside it. */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 md:ml-auto">
+            <div className="relative w-full sm:w-52">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search suppliers..."
+                value={search}
+                onChange={(e: any) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              />
+            </div>
+            <FilterSelect
+              size="sm"
+              label="Status"
+              options={[
+                { value: '', label: 'All' },
+                { value: 'pending', label: 'Pending' },
+                { value: 'active', label: 'Active' },
+                { value: 'suspended', label: 'Suspended' },
+                { value: 'blacklisted', label: 'Blacklisted' }
               ]}
-              activeTab={statusFilter}
-              onTabChange={setStatusFilter}
-              variant="pills"
+              value={statusFilter}
+              onChange={setStatusFilter}
             />
-            <button className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">
-              <Filter className="h-4 w-4" />
-              More Filters
-            </button>
           </div>
         </div>
       </div>
 
       {/* Suppliers List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -409,145 +400,114 @@ export default function Suppliers() {
             <p className="text-gray-500 mt-1">Get started by adding your first supplier</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
-                <tr>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Company
-                  </th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Contact
-                  </th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Categories
-                  </th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Registered
-                  </th>
-                  <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {suppliers.map((supplier: any) => {
-                  const StatusIcon = statusIcons[supplier.status];
-                  return (
-                    <tr key={supplier._id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center">
-                            <Building2 className="h-5 w-5 text-primary" />
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">
+                      Supplier
+                    </th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">
+                      Contact
+                    </th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">
+                      Vendor status
+                    </th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {suppliers.map((supplier: any) => {
+                    const StatusIcon = statusIcons[supplier.status] || Clock;
+                    const kys = kysStatus(supplier);
+                    const kysPending = needsKysAttention(supplier);
+                    const statusLabel =
+                      supplier.status.charAt(0).toUpperCase() + supplier.status.slice(1);
+
+                    return (
+                      <tr key={supplier._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                        <td className="py-2 px-3 border-b border-gray-100">
+                          <div className="flex items-center gap-3 min-w-0 max-w-md">
+                            <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+                              <Building2 className="h-5 w-5 text-primary" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-medium text-gray-900 truncate" title={supplier.companyName}>
+                                {supplier.companyName}
+                              </p>
+                              <p className="text-sm text-gray-500 truncate" title={supplier.registrationNumber}>
+                                {supplier.registrationNumber || 'No registration no.'}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium text-gray-900">{supplier.companyName}</p>
-                            <p className="text-sm text-gray-500">{supplier.registrationNumber}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Mail className="h-4 w-4" />
-                            {supplier.user?.email}
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Phone className="h-4 w-4" />
-                            {supplier.user?.phone || '-'}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-wrap gap-1">
-                          {supplier.categories?.slice(0, 2).map((cat: any, idx: any) => (
-                            <span key={idx} className="px-2 py-1 bg-gray-100 rounded-lg text-xs text-gray-600" title={cat}>
-                              {getCategoryName(cat)}
+                        </td>
+
+                        <td className="py-2 px-3 border-b border-gray-100">
+                          <div className="flex items-center gap-2 text-sm text-gray-600 min-w-0 max-w-xs">
+                            <Mail className="h-4 w-4 text-gray-400 shrink-0" />
+                            <span className="truncate" title={supplier.user?.email}>
+                              {supplier.user?.email || '—'}
                             </span>
-                          ))}
-                          {supplier.categories?.length > 2 && (
-                            <span className="px-2 py-1 bg-gray-100 rounded-lg text-xs text-gray-600">
-                              +{supplier.categories.length - 2}
+                          </div>
+                        </td>
+
+                        <td className="py-2 px-3 border-b border-gray-100">
+                          <div className="space-y-1.5">
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium capitalize ${statusColors[supplier.status]}`}
+                            >
+                              <StatusIcon className="h-3.5 w-3.5 shrink-0" />
+                              {statusLabel}
                             </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${statusColors[supplier.status]}`}>
-                          <StatusIcon className="h-3.5 w-3.5" />
-                          {supplier.status.charAt(0).toUpperCase() + supplier.status.slice(1)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {new Date(supplier.createdAt).toLocaleDateString('en-ZA')}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                            <p className="text-xs text-gray-500">
+                              KYS · <span className="font-medium text-gray-700">{kys.label}</span>
+                            </p>
+                          </div>
+                        </td>
+
+                        <td className="py-2 px-3 border-b border-gray-100 text-right">
                           <button
                             type="button"
-                            onClick={() => openViewModal(supplier)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-primary rounded-lg hover:bg-primary/90"
+                            onClick={() => openSupplierProfile(supplier)}
+                            className="px-2 py-1 text-xs border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors"
                           >
-                            <Eye className="h-3.5 w-3.5" />
                             View
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => navigate(`/app/suppliers/${supplier._id}/kys`)}
-                            className="px-3 py-1.5 text-xs font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/5"
-                          >
-                            KYS
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+            itemLabel="suppliers"
+          />
+          </>
         )}
       </div>
 
       {/* Add Supplier Modal */}
       <Modal
         isOpen={showAddModal}
-        onClose={() => {
-          if (!submitting) {
-            setShowAddModal(false);
-            setFormData({
-              companyName: '',
-              tradingAs: '',
-              registrationNumber: '',
-              taxNumber: '',
-              vatNumber: '',
-              firstName: '',
-              lastName: '',
-              email: '',
-              password: 'password',
-              phone: '',
-              physicalAddress: '',
-              city: '',
-              province: '',
-              postalCode: '',
-              categories: [] as string[],
-              bankName: '',
-              bankAccountName: '',
-              bankAccountNumber: '',
-              bankBranchCode: ''
-            });
-            setShowPassword(false);
-            setShowOptionalFields(false);
-          }
-        }}
+        onClose={closeAddModal}
         title="Add New Supplier"
-        size="md"
+        size="xl"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Essential Fields - Always Visible */}
+          <FormSteps steps={ADD_SUPPLIER_STEPS} current={addStep} onSelect={setAddStep} />
+
+          {addStep === 0 && (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -559,7 +519,6 @@ export default function Suppliers() {
                   name="companyName"
                   value={formData.companyName}
                   onChange={handleInputChange}
-                  required
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                 />
               </div>
@@ -572,7 +531,6 @@ export default function Suppliers() {
                   name="registrationNumber"
                   value={formData.registrationNumber}
                   onChange={handleInputChange}
-                  required
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                 />
               </div>
@@ -588,7 +546,6 @@ export default function Suppliers() {
                   name="firstName"
                   value={formData.firstName}
                   onChange={handleInputChange}
-                  required
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                 />
               </div>
@@ -601,7 +558,6 @@ export default function Suppliers() {
                   name="lastName"
                   value={formData.lastName}
                   onChange={handleInputChange}
-                  required
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                 />
               </div>
@@ -616,7 +572,6 @@ export default function Suppliers() {
                 name="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                required
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
               />
             </div>
@@ -631,8 +586,6 @@ export default function Suppliers() {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  required
-                  minLength={6}
                   className="w-full px-3 py-2 pr-10 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                 />
                 <button
@@ -646,20 +599,11 @@ export default function Suppliers() {
               <p className="text-xs text-gray-500 mt-0.5">Default: "password"</p>
             </div>
           </div>
+          )}
 
-          {/* Optional Fields - Collapsible */}
-          <div className="border-t border-gray-200 pt-3">
-            <button
-              type="button"
-              onClick={() => setShowOptionalFields(!showOptionalFields)}
-              className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 w-full"
-            >
-              <span>{showOptionalFields ? '−' : '+'}</span>
-              <span>Additional Information {showOptionalFields ? '(Hide)' : '(Show)'}</span>
-            </button>
-
-            {showOptionalFields && (
-              <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2">
+          {addStep === 1 && (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500">All optional. They can be completed later on the supplier's profile.</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Trading As</label>
@@ -757,7 +701,12 @@ export default function Suppliers() {
                     />
                   </div>
                 </div>
+              </div>
+          )}
 
+          {addStep === 2 && (
+                <div className="space-y-3">
+                <p className="text-xs text-gray-500">Optional. Bank details entered here are the supplier's first account; later changes go through bank-change approval.</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Bank Name</label>
@@ -800,35 +749,76 @@ export default function Suppliers() {
                     />
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
+                </div>
+          )}
 
-          {/* Form Actions */}
-          <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
-            <button
-              type="button"
-              onClick={() => setShowAddModal(false)}
-              disabled={submitting}
-              className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="px-4 py-2 bg-primary hover:bg-primary-dark text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                'Create Supplier'
-              )}
-            </button>
-          </div>
+          {addStep === 3 && (
+            <div className="space-y-3 text-sm">
+              {[
+                {
+                  title: 'Company & login',
+                  step: 0,
+                  rows: [
+                    ['Company', formData.companyName],
+                    ['Registration no.', formData.registrationNumber],
+                    ['Contact', `${formData.firstName} ${formData.lastName}`.trim()],
+                    ['Email', formData.email]
+                  ]
+                },
+                {
+                  title: 'Business details',
+                  step: 1,
+                  rows: [
+                    ['Trading as', formData.tradingAs],
+                    ['Phone', formData.phone],
+                    ['Tax / VAT', [formData.taxNumber, formData.vatNumber].filter(Boolean).join(' / ')],
+                    ['Categories', (formData.categories || []).map((c: string) => getCategoryName(c)).join(', ')],
+                    ['Address', [formData.physicalAddress, formData.city, formData.province, formData.postalCode].filter(Boolean).join(', ')]
+                  ]
+                },
+                {
+                  title: 'Banking',
+                  step: 2,
+                  rows: [
+                    ['Bank', formData.bankName],
+                    ['Account name', formData.bankAccountName],
+                    ['Account number', formData.bankAccountNumber],
+                    ['Branch code', formData.bankBranchCode]
+                  ]
+                }
+              ].map((section) => (
+                <div key={section.title} className="rounded-xl border border-gray-100 p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{section.title}</p>
+                    <button type="button" onClick={() => setAddStep(section.step)} className="text-xs font-medium text-primary hover:underline">
+                      Edit
+                    </button>
+                  </div>
+                  <dl className="grid grid-cols-3 gap-x-3 gap-y-1">
+                    {section.rows.map(([label, value]) => (
+                      <React.Fragment key={label}>
+                        <dt className="text-gray-500">{label}</dt>
+                        <dd className="col-span-2 text-gray-900 break-words">{value || '—'}</dd>
+                      </React.Fragment>
+                    ))}
+                  </dl>
+                </div>
+              ))}
+              <p className="text-xs text-gray-500">
+                The supplier is created as pending. Its profile opens next, to complete KYS before activation.
+              </p>
+            </div>
+          )}
+
+          <FormStepNav
+            current={addStep}
+            total={ADD_SUPPLIER_STEPS.length}
+            onBack={() => setAddStep((s: number) => Math.max(0, s - 1))}
+            onNext={nextAddStep}
+            onCancel={closeAddModal}
+            finishLabel={submitting ? 'Creating...' : 'Create Supplier'}
+            submitting={submitting}
+          />
         </form>
       </Modal>
 
@@ -838,58 +828,179 @@ export default function Suppliers() {
         onClose={() => {
           if (!importing) {
             setShowBulkImportModal(false);
-            setBulkImportData('');
-            setBulkImportResults(null);
+            resetImport();
           }
         }}
         title="Bulk Import Suppliers"
-        size="lg"
+        size="xl"
       >
         <div className="space-y-4">
           {!bulkImportResults ? (
             <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Supplier Data (JSON or CSV format)
-                </label>
-                <textarea
-                  value={bulkImportData}
-                  onChange={(e: any) => setBulkImportData(e.target.value)}
-                  placeholder={`JSON Format:
-[
-  {
-    "companyName": "Company ABC",
-    "registrationNumber": "REG123",
-    "contactPerson": "John Doe",
-    "email": "john@company.com",
-    "phone": "1234567890"
-  }
-]
-
-Or CSV Format (first line headers):
-companyName,registrationNumber,contactPerson,email,phone
-Company ABC,REG123,John Doe,john@company.com,1234567890`}
-                  rows={12}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none font-mono"
-                />
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <div className="flex items-start gap-2">
-                  <FileText className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <div className="text-xs text-blue-800">
-                    <p className="font-medium mb-1">Required fields: companyName, registrationNumber, contactPerson, email</p>
-                    <p>Optional fields: tradingAs, taxNumber, vatNumber, phone, physicalAddress, city, province, postalCode, categories, bankName, bankAccountName, bankAccountNumber, bankBranchCode</p>
+              {importRows.length === 0 ? (
+                <>
+                  {/* Upload from the computer */}
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+                    onDragLeave={() => setDragActive(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setDragActive(false);
+                      handleImportFile(e.dataTransfer.files?.[0]);
+                    }}
+                    className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${
+                      dragActive ? 'border-primary bg-primary/5' : 'border-gray-300 bg-gray-50'
+                    }`}
+                  >
+                    <FileSpreadsheet className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm font-medium text-gray-700">
+                      Drop a file here, or
+                      <button
+                        type="button"
+                        onClick={() => importFileInput.current?.click()}
+                        className="text-primary hover:underline ml-1"
+                      >
+                        browse your computer
+                      </button>
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Excel (.xlsx, .xls), CSV, JSON, or a legacy database dump (.sql)
+                    </p>
+                    <input
+                      ref={importFileInput}
+                      type="file"
+                      accept=".csv,.xlsx,.xls,.json,.sql,.dump,.pdf"
+                      className="hidden"
+                      onChange={(e) => handleImportFile(e.target.files?.[0])}
+                    />
                   </div>
-                </div>
-              </div>
+
+                  {importWarning && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                      <p className="text-xs text-amber-800">{importWarning}</p>
+                    </div>
+                  )}
+
+                  {/* Or paste */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Or paste data (JSON, or CSV with a header row)
+                    </label>
+                    <textarea
+                      value={bulkImportData}
+                      onChange={(e: any) => setBulkImportData(e.target.value)}
+                      placeholder={`companyName,registrationNumber,contactPerson,email,phone,categories
+Company ABC,REG123,John Doe,john@company.com,0771234567,"MAINT-LV,IND-TOOLS"
+
+Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
+                      rows={6}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleImportPaste}
+                      disabled={!bulkImportData.trim()}
+                      className="mt-2 px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      Preview pasted data
+                    </button>
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="flex items-start gap-2">
+                      <FileText className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <div className="text-xs text-blue-800">
+                        <p className="font-medium mb-1">Required: companyName, registrationNumber, contactPerson, email, phone</p>
+                        <p>Column names are matched flexibly — "Supplier Name", "reg no" and "mobile" are all understood.</p>
+                        <p className="mt-1">Categories accept canonical codes; older free-text values (e.g. "VEHICLE REPAIRS AND SPARES") are translated automatically where recognised. Imported suppliers start as <span className="font-medium">pending</span> and still need KYS before they can be awarded.</p>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Review grid — nothing is written until this is confirmed */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-sm text-gray-700">
+                      <span className="font-medium">{importRows.length}</span> row(s) ready
+                      {importFileName && <span className="text-gray-500"> from {importFileName}</span>}
+                      {(() => {
+                        const bad = importRows.filter((r) => rowIssues(r).length > 0).length;
+                        return bad > 0 ? (
+                          <span className="text-amber-700"> · {bad} need attention</span>
+                        ) : null;
+                      })()}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={resetImport}
+                      className="text-xs text-gray-600 hover:text-gray-900 underline"
+                    >
+                      Choose a different file
+                    </button>
+                  </div>
+
+                  {importWarning && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                      <p className="text-xs text-amber-800">{importWarning}</p>
+                    </div>
+                  )}
+
+                  <div className="overflow-auto max-h-[45vh]">
+                    <table className="w-full text-xs border-collapse">
+                      <thead className="sticky top-0">
+                        <tr>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap w-8">#</th>
+                          {(['companyName', 'registrationNumber', 'contactPerson', 'email', 'phone', 'categories'] as (keyof SupplierImportRow)[]).map((f) => (
+                            <th key={f} className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">
+                              {f === 'companyName' ? 'Company' :
+                               f === 'registrationNumber' ? 'Reg no' :
+                               f === 'contactPerson' ? 'Contact' :
+                               f === 'categories' ? 'Categories' :
+                               f.charAt(0).toUpperCase() + f.slice(1)}
+                              <span className="text-red-500 ml-0.5">{f === 'categories' ? '' : '*'}</span>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importRows.map((row, i) => {
+                          const issues = rowIssues(row);
+                          return (
+                            <tr key={i} className={issues.length > 0 ? 'bg-amber-50/50' : 'odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors'}>
+                              <td className="py-1 px-2 border border-gray-200 text-gray-400">{i + 1}</td>
+                              {(['companyName', 'registrationNumber', 'contactPerson', 'email', 'phone', 'categories'] as (keyof SupplierImportRow)[]).map((f) => (
+                                <td key={f} className="py-1 px-1">
+                                  <input
+                                    value={row[f]}
+                                    onChange={(e) => updateImportCell(i, f, e.target.value)}
+                                    className={`w-full px-1.5 py-1 rounded border text-xs focus:outline-none focus:ring-1 focus:ring-primary ${
+                                      issues.includes(f as any) ? 'border-amber-400 bg-amber-50' : 'border-transparent hover:border-gray-200'
+                                    }`}
+                                  />
+                                </td>
+                              ))}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <p className="text-xs text-gray-500">
+                    Highlighted cells are missing a required value — those rows will be rejected. Edit them here, or import and fix the rest afterwards.
+                  </p>
+                </>
+              )}
 
               <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => {
                     setShowBulkImportModal(false);
-                    setBulkImportData('');
+                    resetImport();
                   }}
                   disabled={importing}
                   className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
@@ -899,7 +1010,7 @@ Company ABC,REG123,John Doe,john@company.com,1234567890`}
                 <button
                   type="button"
                   onClick={handleBulkImport}
-                  disabled={importing || !bulkImportData.trim()}
+                  disabled={importing || importRows.length === 0}
                   className="px-4 py-2 bg-primary hover:bg-primary-dark text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
                 >
                   {importing ? (
@@ -910,7 +1021,7 @@ Company ABC,REG123,John Doe,john@company.com,1234567890`}
                   ) : (
                     <>
                       <Upload className="h-4 w-4" />
-                      Import Suppliers
+                      Import {importRows.length > 0 ? `${importRows.length} Supplier(s)` : 'Suppliers'}
                     </>
                   )}
                 </button>
@@ -935,19 +1046,19 @@ Company ABC,REG123,John Doe,john@company.com,1234567890`}
               {bulkImportResults.success.length > 0 && (
                 <div>
                   <h4 className="text-sm font-semibold text-gray-900 mb-2">Successfully Imported:</h4>
-                  <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-lg">
-                    <table className="w-full text-xs">
-                      <thead className="bg-gray-50">
+                  <div className="max-h-40 overflow-y-auto">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
                         <tr>
-                          <th className="px-3 py-2 text-left">Company</th>
-                          <th className="px-3 py-2 text-left">Email</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Company</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Email</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
+                      <tbody>
                         {bulkImportResults.success.map((item: any, idx: any) => (
-                          <tr key={idx}>
-                            <td className="px-3 py-2">{item.companyName}</td>
-                            <td className="px-3 py-2">{item.email}</td>
+                          <tr key={idx} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                            <td className="py-2 px-3 border-b border-gray-100">{item.companyName}</td>
+                            <td className="py-2 px-3 border-b border-gray-100">{item.email}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -959,21 +1070,21 @@ Company ABC,REG123,John Doe,john@company.com,1234567890`}
               {bulkImportResults.failed.length > 0 && (
                 <div>
                   <h4 className="text-sm font-semibold text-red-900 mb-2">Failed:</h4>
-                  <div className="max-h-40 overflow-y-auto border border-red-200 rounded-lg">
-                    <table className="w-full text-xs">
-                      <thead className="bg-red-50">
+                  <div className="max-h-40 overflow-y-auto">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
                         <tr>
-                          <th className="px-3 py-2 text-left">Company</th>
-                          <th className="px-3 py-2 text-left">Email</th>
-                          <th className="px-3 py-2 text-left">Reason</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Company</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Email</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Reason</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-red-100">
+                      <tbody>
                         {bulkImportResults.failed.map((item: any, idx: any) => (
-                          <tr key={idx}>
-                            <td className="px-3 py-2">{item.companyName}</td>
-                            <td className="px-3 py-2">{item.email}</td>
-                            <td className="px-3 py-2 text-red-600">{item.reason}</td>
+                          <tr key={idx} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                            <td className="py-2 px-3 border-b border-gray-100">{item.companyName}</td>
+                            <td className="py-2 px-3 border-b border-gray-100">{item.email}</td>
+                            <td className="py-2 px-3 border-b border-gray-100 text-red-600">{item.reason}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -982,7 +1093,7 @@ Company ABC,REG123,John Doe,john@company.com,1234567890`}
                 </div>
               )}
 
-              <div className="flex justify-end pt-3 border-t border-gray-100">
+              <ModalFooter>
                 <button
                   type="button"
                   onClick={() => {
@@ -994,236 +1105,12 @@ Company ABC,REG123,John Doe,john@company.com,1234567890`}
                 >
                   Close
                 </button>
-              </div>
+              </ModalFooter>
             </div>
           )}
         </div>
       </Modal>
 
-      {/* Supplier Detail / Actions Modal */}
-      <Modal
-        isOpen={showViewModal}
-        onClose={closeViewModal}
-        title="Supplier Details"
-        size="xl"
-      >
-        {selectedSupplier && (() => {
-          const s = selectedSupplier;
-          const StatusIcon = statusIcons[s.status] || Clock;
-          const checklist = s.kysChecklist || {};
-          const checklistKeys = Object.keys(checklist).filter(
-            (k: string) => typeof checklist[k] === 'boolean'
-          );
-          const ticked = checklistKeys.filter((k: string) => checklist[k]).length;
-          const docCount = Array.isArray(s.complianceDocuments) ? s.complianceDocuments.length : 0;
-          return (
-            <div className="space-y-5">
-              {/* Header */}
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 bg-primary/10 rounded-xl flex items-center justify-center">
-                    <Building2 className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-semibold text-gray-900">{s.companyName}</p>
-                    {s.tradingAs && <p className="text-sm text-gray-500">Trading as {s.tradingAs}</p>}
-                  </div>
-                </div>
-                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${statusColors[s.status]}`}>
-                  <StatusIcon className="h-3.5 w-3.5" />
-                  {s.status.charAt(0).toUpperCase() + s.status.slice(1)}
-                </span>
-              </div>
-
-              {/* Details grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Registration No.</p>
-                  <p className="text-gray-900">{s.registrationNumber || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Tax / VAT</p>
-                  <p className="text-gray-900">{s.taxNumber || '-'}{s.vatNumber ? ` / ${s.vatNumber}` : ''}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Contact</p>
-                  <p className="text-gray-900 flex items-center gap-2"><Mail className="h-4 w-4 text-gray-400" />{s.user?.email || '-'}</p>
-                  <p className="text-gray-900 flex items-center gap-2 mt-1"><Phone className="h-4 w-4 text-gray-400" />{s.user?.phone || s.phone || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Address</p>
-                  <p className="text-gray-900">
-                    {[s.physicalAddress, s.city, s.province, s.postalCode].filter(Boolean).join(', ') || '-'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Bank</p>
-                  <p className="text-gray-900">
-                    {s.bankingDetails?.bankName || s.bankName || '-'}
-                    {(s.bankingDetails?.accountNumber || s.bankAccountNumber) ? ` · ${s.bankingDetails?.accountNumber || s.bankAccountNumber}` : ''}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Registered</p>
-                  <p className="text-gray-900">{new Date(s.createdAt).toLocaleDateString('en-ZA')}</p>
-                </div>
-              </div>
-
-              {/* Categories */}
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Categories</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {s.categories?.length ? (
-                    s.categories.map((cat: any, idx: any) => (
-                      <span key={idx} className="px-2 py-1 bg-gray-100 rounded-lg text-xs text-gray-600" title={cat}>
-                        {getCategoryName(cat)}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-sm text-gray-400">No categories</span>
-                  )}
-                </div>
-              </div>
-
-              {/* KYS summary */}
-              <div className="flex items-center justify-between gap-4 p-4 bg-gray-50 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <FileText className="h-5 w-5 text-primary" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      KYS {s.kysComplete ? 'Verified' : 'Incomplete'}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {ticked}/{checklistKeys.length} checklist items · {docCount} document{docCount === 1 ? '' : 's'}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => navigate(`/app/suppliers/${s._id}/kys`)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/5"
-                >
-                  <Eye className="h-3.5 w-3.5" />
-                  View KYS
-                </button>
-              </div>
-
-              {s.status === 'blacklisted' && s.blacklistReason && (
-                <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">
-                  <span className="font-medium">Blacklist reason: </span>{s.blacklistReason}
-                </div>
-              )}
-
-              {/* Reason input when an action needs confirmation */}
-              {pendingAction && (
-                <div className="p-4 border border-gray-200 rounded-xl space-y-3">
-                  <p className="text-sm font-medium text-gray-900">
-                    {pendingAction === 'suspend' && 'Suspend this supplier?'}
-                    {pendingAction === 'reactivate' && 'Reactivate this supplier?'}
-                    {pendingAction === 'dormant' && 'Mark this supplier as dormant?'}
-                    {pendingAction === 'blacklist' && 'Blacklist this supplier?'}
-                    {pendingAction === 'approve' && 'Approve and activate this supplier?'}
-                  </p>
-                  {(pendingAction === 'suspend' || pendingAction === 'blacklist') && (
-                    <textarea
-                      value={actionReason}
-                      onChange={(e: any) => setActionReason(e.target.value)}
-                      rows={3}
-                      placeholder={pendingAction === 'blacklist' ? 'Reason for blacklisting (required)' : 'Reason for suspension (required)'}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                    />
-                  )}
-                  <div className="flex justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => { setPendingAction(null); setActionReason(''); }}
-                      disabled={actionLoading}
-                      className="px-3 py-1.5 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={confirmPendingAction}
-                      disabled={actionLoading}
-                      className={`inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium text-white rounded-lg disabled:opacity-50 ${
-                        pendingAction === 'blacklist' ? 'bg-red-600 hover:bg-red-700' : 'bg-primary hover:bg-primary/90'
-                      }`}
-                    >
-                      {actionLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                      Confirm
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Action buttons */}
-              {!pendingAction && (
-                <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
-                  {s.status === 'pending' && (
-                    <button
-                      type="button"
-                      onClick={() => setPendingAction('approve')}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90"
-                    >
-                      <CheckCircle className="h-4 w-4" />
-                      Approve & Activate
-                    </button>
-                  )}
-                  {s.status === 'active' && (
-                    <button
-                      type="button"
-                      onClick={() => setPendingAction('suspend')}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50"
-                    >
-                      <XCircle className="h-4 w-4" />
-                      Suspend
-                    </button>
-                  )}
-                  {(s.status === 'suspended' || s.status === 'dormant') && (
-                    <button
-                      type="button"
-                      onClick={() => setPendingAction('reactivate')}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-green-700 border border-green-300 rounded-lg hover:bg-green-50"
-                    >
-                      <CheckCircle className="h-4 w-4" />
-                      Reactivate
-                    </button>
-                  )}
-                  {s.status === 'active' && (
-                    <button
-                      type="button"
-                      onClick={() => setPendingAction('dormant')}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
-                    >
-                      <Clock className="h-4 w-4" />
-                      Mark Dormant
-                    </button>
-                  )}
-                  {s.status !== 'blacklisted' && (
-                    <button
-                      type="button"
-                      onClick={() => setPendingAction('blacklist')}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-red-700 border border-red-300 rounded-lg hover:bg-red-50"
-                    >
-                      <XCircle className="h-4 w-4" />
-                      Blacklist
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/app/suppliers/${s._id}/kys`)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 ml-auto"
-                  >
-                    <FileText className="h-4 w-4" />
-                    Manage KYS
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        })()}
-      </Modal>
     </div>
   );
 }

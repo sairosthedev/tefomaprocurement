@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tefoma Procurement — Full-System E2E Handover Test Pack</title>
+<style>
+  @page { size: A4; margin: 16mm 14mm 16mm 14mm; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", Calibri, Arial, sans-serif;
+    font-size: 10.5pt; line-height: 1.45; color: #1e293b;
+  }
+  h1, h2, h3, h4 { color: #0f2e4c; line-height: 1.25; page-break-after: avoid; }
+  h2 {
+    font-size: 15pt; margin: 26px 0 10px;
+    border-bottom: 2.5px solid #0f2e4c; padding-bottom: 5px;
+  }
+  h2 .num { color: #b45309; margin-right: 8px; }
+  h3 { font-size: 12pt; margin: 18px 0 6px; }
+  h4 { font-size: 10.5pt; margin: 14px 0 4px; text-transform: uppercase; letter-spacing: .04em; color: #334155; }
+  p { margin: 6px 0; }
+  ul, ol { margin: 6px 0 6px 4px; padding-left: 18px; }
+  li { margin: 3px 0; }
+  code {
+    font-family: Consolas, "Courier New", monospace; font-size: 9.5pt;
+    background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 3px; padding: 0 3px;
+  }
+  a { color: #0f2e4c; text-decoration: none; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 8px 0 12px; font-size: 9.5pt;
+    page-break-inside: auto;
+  }
+  tr { page-break-inside: avoid; }
+  th {
+    background: #0f2e4c; color: #fff; text-align: left; padding: 5px 7px;
+    font-size: 9pt; text-transform: uppercase; letter-spacing: .03em;
+  }
+  td { border: 1px solid #cbd5e1; padding: 4px 7px; vertical-align: top; }
+  tbody tr:nth-child(even) td { background: #f8fafc; }
+  thead { display: table-header-group; }
+
+  /* ---------- cover ---------- */
+  .cover { page-break-after: always; padding-top: 80px; }
+  .cover .brand {
+    font-size: 13pt; letter-spacing: .25em; text-transform: uppercase; color: #b45309; font-weight: 600;
+  }
+  .cover h1 { font-size: 27pt; margin: 12px 0 6px; color: #0f2e4c; }
+  .cover .subtitle { font-size: 13pt; color: #475569; margin-bottom: 38px; }
+  .cover .rule { height: 4px; background: linear-gradient(90deg, #0f2e4c 60%, #b45309); width: 220px; margin: 18px 0 26px; }
+  .cover table { width: auto; min-width: 78%; font-size: 10.5pt; }
+  .cover td { padding: 6px 12px; }
+  .cover td:first-child { font-weight: 600; color: #0f2e4c; white-space: nowrap; background: #f1f5f9; }
+  .cover .footer-note { margin-top: 50px; font-size: 9.5pt; color: #64748b; }
+
+  /* ---------- components ---------- */
+  .callout {
+    border-left: 4px solid #b45309; background: #fffbeb; padding: 8px 12px; margin: 10px 0;
+    page-break-inside: avoid;
+  }
+  .callout.blue { border-left-color: #0f2e4c; background: #eff6ff; }
+  .callout.red  { border-left-color: #b91c1c; background: #fef2f2; }
+  .callout .t { font-weight: 700; color: #92400e; text-transform: uppercase; font-size: 8.5pt; letter-spacing: .05em; }
+  .callout.blue .t { color: #0f2e4c; }
+  .callout.red .t  { color: #b91c1c; }
+  .expect {
+    background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px; padding: 7px 11px; margin: 8px 0;
+    page-break-inside: avoid;
+  }
+  .expect .t { font-weight: 700; color: #166534; font-size: 9pt; text-transform: uppercase; letter-spacing: .04em; }
+  .role {
+    display: inline-block; background: #0f2e4c; color: #fff; font-size: 8.5pt; font-weight: 600;
+    padding: 2px 9px; border-radius: 10px; letter-spacing: .03em;
+  }
+  .p1 { display: inline-block; background: #b91c1c; color: #fff; font-size: 8pt; font-weight: 700;
+        padding: 1px 7px; border-radius: 9px; letter-spacing: .03em; }
+  .p2 { display: inline-block; background: #b45309; color: #fff; font-size: 8pt; font-weight: 700;
+        padding: 1px 7px; border-radius: 9px; letter-spacing: .03em; }
+  .phase-meta { color: #64748b; font-size: 9.5pt; font-style: italic; margin: -4px 0 10px; }
+  .pagebreak { page-break-before: always; }
+  .sig-line { border-bottom: 1px solid #334155; display: inline-block; min-width: 190px; }
+  .toc td { border: none; border-bottom: 1px dotted #cbd5e1; padding: 4px 4px; }
+  .toc tr:nth-child(even) td { background: none; }
+  .small { font-size: 9pt; color: #475569; }
+  .id-cell { font-weight: 700; color: #0f2e4c; white-space: nowrap; }
+  .box { border: 1px solid #cbd5e1; border-radius: 3px; display: inline-block;
+         width: 11px; height: 11px; vertical-align: -1px; }
+  .fillrow td { height: 20px; }
+</style>
+</head>
+<body>
+
+<!-- ============================ COVER ============================ -->
+<div class="cover">
+  <div class="brand">Tefoma Procurement</div>
+  <h1>Full-System End-to-End<br>Handover Test Pack</h1>
+  <div class="subtitle">Validate all critical workflows and controls before client handover</div>
+  <div class="rule"></div>
+  <table>
+    <tr><td>Prepared for</td><td>Kudzai — <code>kudzai@fossilzim.co.zw</code></td></tr>
+    <tr><td>Role</td><td>System Administrator / UAT Owner</td></tr>
+    <tr><td>System</td><td>Tefoma Procurement (FossilProcure platform)</td></tr>
+    <tr><td>Staff&nbsp;/&nbsp;admin login</td><td><code>https://tefomaprocurement.vercel.app/login</code></td></tr>
+    <tr><td>Supplier login</td><td><code>https://tefomaprocurement.vercel.app/supplier/login</code></td></tr>
+    <tr><td>Supplier registration</td><td><code>https://tefomaprocurement.vercel.app/register</code></td></tr>
+    <tr><td>Document date</td><td>29 July 2026</td></tr>
+    <tr><td>Version</td><td>1.0</td></tr>
+    <tr><td>First full run</td><td>2 – 4 hours</td></tr>
+    <tr><td>Retest after fixes</td><td>60 – 120 minutes</td></tr>
+  </table>
+  <p class="footer-note">
+    Confidential — internal testing document. This pack is executed across <strong>every role in the
+    system</strong>: end user, department head, stores, procurement, finance, COO, suppliers and admin.
+    The outcome is a <strong>GO / NO-GO</strong> decision for client handover, backed by the completed
+    checklist in Section&nbsp;6 and the defect log in Section&nbsp;7.
+  </p>
+</div>
+
+<!-- ============================ TOC ============================ -->
+<h2><span class="num">§</span>Contents</h2>
+<table class="toc">
+  <tr><td>1</td><td>Test objective</td></tr>
+  <tr><td>2</td><td>Scope: what must be tested</td></tr>
+  <tr><td>3</td><td>Test environment and prerequisites</td></tr>
+  <tr><td>4</td><td>Test users and accounts</td></tr>
+  <tr><td>5</td><td>Execution plan (full system) — Phases A to D</td></tr>
+  <tr><td>6</td><td>Detailed pass / fail checklist</td></tr>
+  <tr><td>7</td><td>Defect logging template</td></tr>
+  <tr><td>8</td><td>Handover sign-off template</td></tr>
+  <tr><td>9</td><td>Evidence package to attach</td></tr>
+</table>
+
+<!-- ============================ 1 ============================ -->
+<h2><span class="num">1</span>Test objective</h2>
+<p>Run a complete business-process and role-based test of the full FossilProcure system to confirm:</p>
+<ul>
+  <li>All core procurement and stores workflows work end-to-end.</li>
+  <li>Role permissions are correctly enforced.</li>
+  <li>Supplier onboarding, RFQ, quotation, PO, delivery, invoice, and payment workflows complete without blockers.</li>
+  <li>Audit and notification trails are complete and reviewable.</li>
+  <li>The platform is ready for client handover.</li>
+</ul>
+
+<div class="callout red">
+  <span class="t">Go / No-Go rule</span>
+  <p style="margin-bottom:0">Handover can proceed <strong>only if all Priority&nbsp;1 tests pass</strong> and
+  <strong>no unresolved Critical or High defects remain</strong>.</p>
+</div>
+
+<!-- ============================ 2 ============================ -->
+<h2><span class="num">2</span>Scope: what must be tested</h2>
+
+<h3><span class="p1">Priority 1</span> &nbsp;Must pass</h3>
+<ul>
+  <li>Authentication and OTP login for all roles.</li>
+  <li>Admin setup: departments, sites, users, supplier activation readiness.</li>
+  <li>End-user requisition through to HOD approval.</li>
+  <li>Stores issue / forward and inventory impact.</li>
+  <li>Procurement RFQ creation and supplier invitation.</li>
+  <li>Supplier quotation submission.</li>
+  <li>Quote evaluation, selection, and PO creation.</li>
+  <li>PO approval chain (HOD → Finance → COO when threshold is met).</li>
+  <li>Supplier PO acknowledgement.</li>
+  <li>Delivery receipt (GRV) and accept into stock.</li>
+  <li>Invoice submission, finance approval, and payment recording.</li>
+  <li>Notifications and audit-log trace completeness.</li>
+</ul>
+
+<h3><span class="p2">Priority 2</span> &nbsp;Strongly recommended</h3>
+<ul>
+  <li>Supplier KYS document workflow and verification-status behaviour.</li>
+  <li>Supplier evaluations and analytics visibility.</li>
+  <li>Store requisitions and stock transfers between sites.</li>
+  <li>Budget page visibility and finance-role access checks.</li>
+  <li>Reports visibility by role.</li>
+  <li>Reject / cancel / waiver branches (negative and exception paths).</li>
+</ul>
+
+<!-- ============================ 3 ============================ -->
+<h2><span class="num">3</span>Test environment and prerequisites</h2>
+<table>
+  <tr><th style="width:32%">Item</th><th>Detail</th></tr>
+  <tr><td>Environment URL</td><td><code>https://tefomaprocurement.vercel.app</code> — or the active UAT/live URL provided by the project owner.</td></tr>
+  <tr><td>Staff / admin login</td><td><code>https://tefomaprocurement.vercel.app/login</code></td></tr>
+  <tr><td>Supplier login</td><td><code>https://tefomaprocurement.vercel.app/supplier/login</code></td></tr>
+  <tr><td>Supplier self-registration</td><td><code>https://tefomaprocurement.vercel.app/register</code></td></tr>
+  <tr><td>Browser</td><td>Latest Chrome or Edge.</td></tr>
+  <tr><td>Mailboxes</td><td>Valid, accessible mailbox for OTP delivery for <em>every</em> test account.</td></tr>
+  <tr><td>Connectivity</td><td>Stable internet connection throughout the run.</td></tr>
+  <tr><td>Tester setup</td><td>One tester can execute the whole pack by switching roles (log out / log in), or use separate browser profiles to hold several roles at once.</td></tr>
+</table>
+
+<h4>Estimated duration</h4>
+<ul>
+  <li><strong>First complete run:</strong> 2 to 4 hours.</li>
+  <li><strong>Retest after fixes:</strong> 60 to 120 minutes.</li>
+</ul>
+
+<!-- ============================ 4 ============================ -->
+<h2><span class="num">4</span>Test users and accounts</h2>
+
+<h3>4.1 &nbsp;Primary admin account</h3>
+<p>Admin under test: <code>kudzai@fossilzim.co.zw</code></p>
+
+<h3>4.2 &nbsp;Supporting role accounts</h3>
+<p>Use the production / UAT role accounts supplied by the project owner. If running against locally
+seeded data, the default password for seeded users is <code>Admin@123</code>.</p>
+
+<h4>Minimum roles required</h4>
+<table>
+  <tr><th style="width:34%">Role</th><th>Used for</th></tr>
+  <tr><td><span class="role">End user</span></td><td>Raising the requisition that drives the end-to-end flow.</td></tr>
+  <tr><td><span class="role">Department head</span></td><td>Requisition approval / rejection, first PO approval.</td></tr>
+  <tr><td><span class="role">Stores officer</span></td><td>Issue from stock, forward to procurement, GRV, transfers.</td></tr>
+  <tr><td><span class="role">Procurement officer</span></td><td>RFQ, quote evaluation, award, PO creation.</td></tr>
+  <tr><td><span class="role">Finance</span></td><td>PO approval, invoice approval, payment recording, budgets.</td></tr>
+  <tr><td><span class="role">COO</span></td><td>High-value PO approval threshold branch.</td></tr>
+  <tr><td><span class="role">Supplier</span></td><td>Ideally <strong>3 active suppliers</strong> so the competitive RFQ scenario can be tested properly.</td></tr>
+</table>
+
+<div class="callout blue">
+  <span class="t">Before you start</span>
+  <p style="margin-bottom:0">Confirm you can receive OTP email for every account above. A missing mailbox
+  is the single most common cause of a blocked run.</p>
+</div>
+
+<!-- ============================ 5 ============================ -->
+<div class="pagebreak"></div>
+<h2><span class="num">5</span>Execution plan (full system)</h2>
+
+<!-- Phase A -->
+<h3>Phase A &nbsp;— &nbsp;Access and security checks</h3>
+<p class="phase-meta">Estimated 15 – 20 minutes &nbsp;·&nbsp; Roles: admin, end user, supplier, finance</p>
+<ol>
+  <li>Sign in as admin (<code>kudzai@fossilzim.co.zw</code>) and verify the OTP flow.</li>
+  <li>Confirm the staff login page and the supplier login page are both reachable.</li>
+  <li>Confirm the password-reset flow opens and accepts a valid email.</li>
+  <li>Verify role-separation basics:
+    <ul>
+      <li>End user cannot access admin pages.</li>
+      <li>Supplier cannot access staff pages.</li>
+      <li>Finance cannot access admin-only maintenance pages unless intended.</li>
+    </ul>
+  </li>
+</ol>
+<div class="expect"><span class="t">Expected outcome</span><br>
+All logins work; no obvious permission leakage.</div>
+
+<!-- Phase B -->
+<h3>Phase B &nbsp;— &nbsp;Admin baseline setup checks</h3>
+<p class="phase-meta">Estimated 20 – 30 minutes &nbsp;·&nbsp; Role: admin</p>
+<ol>
+  <li><strong>Admin → Departments:</strong> create or update at least one test department.</li>
+  <li><strong>Admin → Sites:</strong> verify Head Office exists and add a second site for transfer testing.</li>
+  <li><strong>Admin → Staff Team:</strong> verify each required role account exists and is active.</li>
+  <li><strong>Admin → Suppliers:</strong> verify at least 3 suppliers are active for RFQ competition tests.</li>
+  <li><strong>Admin → Audit Logs:</strong> verify the admin actions above are recorded.</li>
+</ol>
+<div class="expect"><span class="t">Expected outcome</span><br>
+Master data is complete and auditable.</div>
+
+<!-- Phase C -->
+<h3 style="page-break-before: auto">Phase C &nbsp;— &nbsp;Core end-to-end business flow</h3>
+<p class="phase-meta">Estimated 75 – 120 minutes &nbsp;·&nbsp; Roles: all &nbsp;·&nbsp; Execute one requisition all the way to payment</p>
+<ol>
+  <li><span class="role">End user</span> creates a requisition with:
+    <ul>
+      <li>one stock-catalog line,</li>
+      <li>one manual / free-text line,</li>
+      <li>realistic quantity and category values.</li>
+    </ul>
+  </li>
+  <li><span class="role">Department head</span> approves the requisition — and separately <strong>rejects a throwaway requisition with a reason</strong>.</li>
+  <li><span class="role">Stores</span> reviews the requisition:
+    <ul>
+      <li>issue the in-stock line(s),</li>
+      <li>forward the non-stock line(s) to procurement.</li>
+    </ul>
+  </li>
+  <li><span class="role">Procurement</span> creates an RFQ from the forwarded items and invites suppliers.</li>
+  <li><span class="role">Supplier</span> submits quotation(s).</li>
+  <li><span class="role">Procurement</span> reviews quotations and selects the winner.
+    <ul><li>If fewer than 3 quotes are received, complete the <strong>waiver path with a reason</strong>.</li></ul>
+  </li>
+  <li><span class="role">Procurement</span> creates the PO and submits it for approval.</li>
+  <li><span class="role">HOD</span> approves the PO.</li>
+  <li><span class="role">Finance</span> approves the PO.</li>
+  <li><strong>COO approval branch:</strong>
+    <ul>
+      <li>test one PO <strong>below</strong> threshold (COO not required),</li>
+      <li>test one PO <strong>at or above</strong> threshold (COO required).</li>
+    </ul>
+  </li>
+  <li><span class="role">Supplier</span> acknowledges the PO.</li>
+  <li><span class="role">Stores</span> receives goods (GRV) and accepts them into stock.</li>
+  <li><span class="role">Supplier</span> submits an invoice linked to the PO.</li>
+  <li><span class="role">Finance</span> approves the invoice and records payment.</li>
+  <li><span class="role">Admin</span> validates the complete audit and notification trail for the transaction.</li>
+</ol>
+<div class="expect"><span class="t">Expected outcome</span><br>
+The end-to-end lifecycle completes with correct status transitions at every step.</div>
+
+<!-- Phase D -->
+<h3>Phase D &nbsp;— &nbsp;Extended module checks</h3>
+<p class="phase-meta">Estimated 30 – 60 minutes &nbsp;·&nbsp; Roles: admin, procurement, stores, finance, supplier</p>
+<ol>
+  <li><strong>Supplier KYS flow:</strong> upload documents · verify checklist progress · confirm activate / verify behaviour.</li>
+  <li><strong>Supplier evaluation flow:</strong> create an evaluation score · verify the score appears in analytics / performance.</li>
+  <li><strong>Stores extras:</strong> test a store requisition · test a stock transfer between two sites.</li>
+  <li><strong>Finance extras:</strong> verify invoice state transitions · verify payments-ledger entry visibility.</li>
+  <li><strong>Reports and dashboards:</strong> verify each role sees the correct report scope.</li>
+</ol>
+<div class="expect"><span class="t">Expected outcome</span><br>
+Non-core but business-critical modules are stable and role-correct.</div>
+
+<!-- ============================ 6 ============================ -->
+<div class="pagebreak"></div>
+<h2><span class="num">6</span>Detailed pass / fail checklist</h2>
+<p class="small">Mark each row as <strong>PASS</strong>, <strong>FAIL</strong> or <strong>BLOCKED</strong>.
+Attach evidence for every FAIL and BLOCKED row.</p>
+
+<h4>Phase A — Access and security</h4>
+<table>
+  <thead><tr>
+    <th style="width:7%">ID</th><th style="width:39%">Test item</th><th style="width:8%">Pri</th>
+    <th style="width:12%">Result</th><th style="width:18%">Evidence</th><th>Notes</th>
+  </tr></thead>
+  <tbody>
+    <tr class="fillrow"><td class="id-cell">A1</td><td>Admin OTP login works for <code>kudzai@fossilzim.co.zw</code></td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">A2</td><td>Staff login page available</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">A3</td><td>Supplier login page available</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">A4</td><td>Password reset initiation works</td><td><span class="p2">P2</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">A5</td><td>Role permission boundaries enforced</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+  </tbody>
+</table>
+
+<h4>Phase B — Admin baseline setup</h4>
+<table>
+  <thead><tr>
+    <th style="width:7%">ID</th><th style="width:39%">Test item</th><th style="width:8%">Pri</th>
+    <th style="width:12%">Result</th><th style="width:18%">Evidence</th><th>Notes</th>
+  </tr></thead>
+  <tbody>
+    <tr class="fillrow"><td class="id-cell">B1</td><td>Departments can be created / updated</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">B2</td><td>Sites can be created / updated</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">B3</td><td>Required staff users exist and are active</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">B4</td><td>At least 3 active suppliers available</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">B5</td><td>Admin actions appear in Audit Logs</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+  </tbody>
+</table>
+
+<h4>Phase C — Core end-to-end business flow</h4>
+<table>
+  <thead><tr>
+    <th style="width:7%">ID</th><th style="width:39%">Test item</th><th style="width:8%">Pri</th>
+    <th style="width:12%">Result</th><th style="width:18%">Evidence</th><th>Notes</th>
+  </tr></thead>
+  <tbody>
+    <tr class="fillrow"><td class="id-cell">C1</td><td>End-user requisition creation succeeds</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">C2</td><td>HOD requisition approval succeeds</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">C3</td><td>HOD rejection with reason succeeds</td><td><span class="p2">P2</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">C4</td><td>Stores issue from stock updates inventory</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">C5</td><td>Stores forwarding to procurement works</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">C6</td><td>RFQ creation and publication works</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">C7</td><td>Suppliers receive and can open RFQ</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">C8</td><td>Supplier quotation submission works</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">C9</td><td>Procurement quote selection works</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">C10</td><td>Waiver path works when quotes &lt; 3</td><td><span class="p2">P2</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">C11</td><td>PO creation from winning quotation works</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">C12</td><td>HOD PO approval works</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">C13</td><td>Finance PO approval works</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">C14</td><td>COO threshold logic behaves correctly</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">C15</td><td>Supplier PO acknowledgement works</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">C16</td><td>Delivery (GRV) creation works</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">C17</td><td>Accept into stock updates inventory</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">C18</td><td>Supplier invoice submission works</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">C19</td><td>Finance invoice approval works</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">C20</td><td>Payment recording works</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">C21</td><td>Notifications visible to expected roles</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">C22</td><td>Complete audit trail exists end-to-end</td><td><span class="p1">P1</span></td><td></td><td></td><td></td></tr>
+  </tbody>
+</table>
+
+<h4>Phase D — Extended modules</h4>
+<table>
+  <thead><tr>
+    <th style="width:7%">ID</th><th style="width:39%">Test item</th><th style="width:8%">Pri</th>
+    <th style="width:12%">Result</th><th style="width:18%">Evidence</th><th>Notes</th>
+  </tr></thead>
+  <tbody>
+    <tr class="fillrow"><td class="id-cell">D1</td><td>Supplier KYS upload and verification flow works</td><td><span class="p2">P2</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">D2</td><td>Supplier evaluations save and display in analytics</td><td><span class="p2">P2</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">D3</td><td>Store requisition flow works</td><td><span class="p2">P2</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">D4</td><td>Stock transfer between sites works</td><td><span class="p2">P2</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">D5</td><td>Budgets page behaves correctly for finance / admin</td><td><span class="p2">P2</span></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td class="id-cell">D6</td><td>Reports access is role-appropriate</td><td><span class="p2">P2</span></td><td></td><td></td><td></td></tr>
+  </tbody>
+</table>
+
+<!-- ============================ 7 ============================ -->
+<div class="pagebreak"></div>
+<h2><span class="num">7</span>Defect logging template</h2>
+<p>Use one defect record per issue.</p>
+<table>
+  <thead><tr><th style="width:26%">Field</th><th>Value to capture</th></tr></thead>
+  <tbody>
+    <tr><td>Defect ID</td><td>e.g. <code>FP-UAT-001</code></td></tr>
+    <tr><td>Severity</td><td>Critical / High / Medium / Low</td></tr>
+    <tr><td>Role used</td><td>Admin / End user / Stores / Procurement / Finance / COO / Supplier</td></tr>
+    <tr><td>Test step ID</td><td>e.g. <code>C14</code></td></tr>
+    <tr><td>Expected result</td><td>What should happen</td></tr>
+    <tr><td>Actual result</td><td>What happened</td></tr>
+    <tr><td>Repro steps</td><td>Numbered steps to reproduce</td></tr>
+    <tr><td>Evidence</td><td>Screenshot / video / log reference</td></tr>
+    <tr><td>Status</td><td>Open / Fixed / Retest Pass / Retest Fail</td></tr>
+  </tbody>
+</table>
+
+<h4>Severity guide</h4>
+<table>
+  <thead><tr><th style="width:18%">Severity</th><th>Definition</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Critical</strong></td><td>Blocks end-to-end completion, or is a security / compliance risk.</td></tr>
+    <tr><td><strong>High</strong></td><td>Major function broken with no practical workaround.</td></tr>
+    <tr><td><strong>Medium</strong></td><td>Function works partially; a workaround exists.</td></tr>
+    <tr><td><strong>Low</strong></td><td>Cosmetic or minor usability issue.</td></tr>
+  </tbody>
+</table>
+
+<h4>Blank defect log</h4>
+<table>
+  <thead><tr>
+    <th style="width:13%">Defect ID</th><th style="width:11%">Severity</th><th style="width:10%">Step ID</th>
+    <th style="width:12%">Role</th><th>Summary (expected vs actual)</th><th style="width:14%">Status</th>
+  </tr></thead>
+  <tbody>
+    <tr class="fillrow"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr class="fillrow"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+  </tbody>
+</table>
+
+<!-- ============================ 8 ============================ -->
+<div class="pagebreak"></div>
+<h2><span class="num">8</span>Handover sign-off template</h2>
+<table>
+  <tr><td style="width:32%; font-weight:600; background:#f1f5f9; color:#0f2e4c">Test owner</td>
+      <td>Kudzai — <code>kudzai@fossilzim.co.zw</code></td></tr>
+  <tr><td style="font-weight:600; background:#f1f5f9; color:#0f2e4c">Execution date</td><td>&nbsp;</td></tr>
+  <tr><td style="font-weight:600; background:#f1f5f9; color:#0f2e4c">Environment tested</td><td>&nbsp;</td></tr>
+</table>
+
+<h4>Summary</h4>
+<table>
+  <thead><tr><th style="width:60%">Metric</th><th>Count</th></tr></thead>
+  <tbody>
+    <tr class="fillrow"><td>Total test cases executed</td><td></td></tr>
+    <tr class="fillrow"><td>Passed</td><td></td></tr>
+    <tr class="fillrow"><td>Failed</td><td></td></tr>
+    <tr class="fillrow"><td>Blocked</td><td></td></tr>
+    <tr class="fillrow"><td>Critical defects open</td><td></td></tr>
+    <tr class="fillrow"><td>High defects open</td><td></td></tr>
+  </tbody>
+</table>
+
+<h4>Final decision (tick one)</h4>
+<p style="font-size:11.5pt; line-height:2">
+  <span class="box"></span>&nbsp; <strong>GO</strong> for client handover<br>
+  <span class="box"></span>&nbsp; <strong>NO-GO</strong> — fixes required before handover
+</p>
+
+<h4>Comments</h4>
+<table>
+  <tbody>
+    <tr><td style="height:26px"></td></tr>
+    <tr><td style="height:26px"></td></tr>
+    <tr><td style="height:26px"></td></tr>
+    <tr><td style="height:26px"></td></tr>
+  </tbody>
+</table>
+
+<p style="margin-top:34px; line-height:2.6">
+  Name: <span class="sig-line"></span> &nbsp;&nbsp;
+  Signature: <span class="sig-line"></span> &nbsp;&nbsp;
+  Date: <span class="sig-line" style="min-width:130px"></span>
+</p>
+
+<!-- ============================ 9 ============================ -->
+<h2><span class="num">9</span>Evidence package to attach</h2>
+<p>Before final sign-off, attach:</p>
+<ol>
+  <li>Completed checklist (Section&nbsp;6).</li>
+  <li>Defect log (Section&nbsp;7 format).</li>
+  <li>Screenshots / videos for all failed or blocked tests.</li>
+  <li>Export or screenshot samples of audit logs and notifications.</li>
+  <li>Final summary page with the GO / NO-GO decision.</li>
+</ol>
+
+<div style="page-break-inside: avoid">
+  <div class="callout">
+    <span class="t">Reminder</span>
+    <p style="margin-bottom:0">Handover proceeds only when every Priority&nbsp;1 row reads PASS and no
+    Critical or High defect is left open. If either condition fails, record <strong>NO-GO</strong> and
+    list the blocking defect IDs in the Comments box above.</p>
+  </div>
+
+  <p class="small" style="margin-top:20px; border-top:1px solid #cbd5e1; padding-top:8px; margin-bottom:0">
+    Tefoma Procurement — Full-System E2E Handover Test Pack · Version 1.0 · 29 July 2026 ·
+    Environment: <code>https://tefomaprocurement.vercel.app</code> · Confidential
+  </p>
+</div>
+
+</body>
+</html>

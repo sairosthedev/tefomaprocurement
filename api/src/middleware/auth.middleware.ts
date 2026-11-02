@@ -1,10 +1,15 @@
 import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
+import { isProcurementHead } from '@fossil/shared';
 import { User } from '../models/index.js';
+import { getJwtSecret } from '../config/secrets.js';
+import { getSbu } from '../tenancy/sbuContext.js';
 
 interface DecodedToken {
   id: string;
   role: string;
+  /** SBU the token was issued for. Absent on tokens minted before multi-entity. */
+  sbu?: string;
 }
 
 // Protect routes - verify JWT token
@@ -27,12 +32,22 @@ export const protect = async (
       });
     }
 
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET || 'your-secret-key'
-    ) as DecodedToken;
+    const decoded = jwt.verify(token, getJwtSecret()) as DecodedToken;
 
-    const user = await User.findById(decoded.id).select('-password');
+    // A session belongs to the business unit it was opened against. Without
+    // this, a token issued on one SBU's domain would read another SBU's data
+    // simply by being presented there.
+    const currentSbu = getSbu();
+    if (decoded.sbu && currentSbu && decoded.sbu !== currentSbu.code) {
+      return res.status(401).json({
+        success: false,
+        message: 'This session belongs to a different business unit. Please sign in again.'
+      });
+    }
+
+    const user = await User.findById(decoded.id)
+      .select('-password')
+      .populate('department', 'name code');
 
     if (!user) {
       return res.status(401).json({
@@ -70,3 +85,36 @@ export const authorize =
     }
     next();
   };
+
+/**
+ * Authorize procurement actions. Allows procurement officers and admins, plus
+ * the head of the Procurement department (a department_head whose department is
+ * Procurement) — per procurement policy. The procurement head therefore gains
+ * procurement_officer-level access, including quotation authorization.
+ */
+export const authorizeProcurement: RequestHandler = (req, res, next) => {
+  const role = req.user?.role;
+  if (role === 'procurement_officer' || role === 'admin' || isProcurementHead(req.user)) {
+    return next();
+  }
+  return res.status(403).json({
+    success: false,
+    message: `Role '${role}' is not authorized to access this route`
+  });
+};
+
+/**
+ * Admins run the system (users, departments, sites, configuration), not the
+ * procurement process. On routers they share with a business role they may
+ * read, but every state-changing request is refused, so no approval, award or
+ * stock movement can be signed by the system account.
+ */
+export const adminReadOnly: RequestHandler = (req, res, next) => {
+  if (req.user?.role === 'admin' && req.method !== 'GET' && req.method !== 'HEAD') {
+    return res.status(403).json({
+      success: false,
+      message: 'Administrators have read-only access to business records'
+    });
+  }
+  next();
+};

@@ -39,7 +39,16 @@ const ItemSchema = new Schema<IItem>({
   unit: {
     type: String,
     required: [true, 'Unit of measure is required'],
-    enum: ['each', 'kg', 'litre', 'meter', 'box', 'pack', 'set', 'roll', 'sheet', 'pair'],
+    // Construction units were missing, so a contractor's catalogue could not
+    // hold cement by the bag or aggregate by the cubic metre — the shared
+    // UNITS_OF_MEASUREMENT list already offered both, and saving one failed
+    // validation here. Added rather than replaced: every existing value stays
+    // valid. (The shared list is title-case and this one lower-case; they
+    // should be reconciled, but not by invalidating stored data.)
+    enum: [
+      'each', 'kg', 'litre', 'meter', 'box', 'pack', 'set', 'roll', 'sheet', 'pair',
+      'bag', 'cubic metre', 'square metre', 'tonne', 'drum', 'carton'
+    ],
     default: 'each'
   },
   reorderLevel: {

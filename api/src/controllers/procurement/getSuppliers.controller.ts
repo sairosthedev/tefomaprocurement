@@ -1,14 +1,21 @@
 import type { Request, Response } from 'express';
 
 import { SupplierProfile } from '../../models/index.js';
+import { maskBankNumbers } from '../../lib/bankMasking.js';
 
 const getSuppliers = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { status, search, category, categories, page = 1, limit = 20 } = req.query as Record<string, any>;
+    const { status, search, category, categories, kys, page = 1, limit = 20 } = req.query as Record<string, any>;
     
     const query: any = { isDeleted: false };
     
     if (status) query.status = status;
+    if (kys === 'pending') {
+      query.kysComplete = false;
+      query.kysExempt = { $ne: true };
+    } else if (kys === 'verified') {
+      query.kysComplete = true;
+    }
     // `category` matches a single code; `categories` matches any of several codes
     // (comma-separated string or array) — used to find suppliers for an RFQ's items.
     if (categories) {
@@ -27,25 +34,30 @@ const getSuppliers = async (req: Request, res: Response): Promise<any> => {
       ];
     }
 
-    const skip = (page - 1) * limit;
-    
+    // Parse once: these arrive as query strings, and the arithmetic below
+    // previously relied on string coercion to work by accident.
+    const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
+    const limitNum = Math.min(1000, Math.max(1, parseInt(String(limit), 10) || 20));
+    const skip = (pageNum - 1) * limitNum;
+
     const [suppliers, total] = await Promise.all([
       SupplierProfile.find(query)
         .populate('user', 'email firstName lastName phone')
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(parseInt(limit)),
+        .limit(limitNum),
       SupplierProfile.countDocuments(query)
     ]);
 
     res.status(200).json({
       success: true,
-      data: suppliers,
+      // A list never needs full account numbers; the detail view does.
+      data: maskBankNumbers(suppliers),
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: pageNum,
+        limit: limitNum,
         total,
-        pages: Math.ceil(total / limit)
+        pages: Math.ceil(total / limitNum)
       }
     });
   } catch (error: any) {

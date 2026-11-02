@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../components/Toast';
 import api from '../../lib/api';
@@ -8,6 +8,10 @@ import {
 } from 'lucide-react';
 import ViewButton from '../../components/ViewButton';
 import Modal from '../../components/Modal';
+import PageHeader from '../../components/PageHeader';
+import Pagination from '../../components/Pagination';
+import { SubmitQuotationDrawer } from '../../components/QuotationForm';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
 
 const statusColors: any = {
   open: 'bg-green-100 text-green-700',
@@ -116,17 +120,29 @@ export default function MyRFQs() {
   const [selectedRFQ, setSelectedRFQ] = useState<any>(null);
   const [showViewModal, setShowViewModal] = useState<any>(false);
   const [showConfetti, setShowConfetti] = useState<any>(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
+  const [pagination, setPagination] = useState(emptyPagination());
+  // The RFQ open in the quotation drawer, priced from its row without leaving the list.
+  const [quoting, setQuoting] = useState<any>(null);
 
   useEffect(() => {
     fetchMyRFQs();
-  }, []);
+  }, [page, limit]);
+
+  const handleQuoted = () => {
+    setQuoting(null);
+    // The quoted RFQ now shows as submitted.
+    fetchMyRFQs();
+  };
 
   const fetchMyRFQs = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/supplier/rfqs');
+      const response = await api.get('/supplier/rfqs', { params: { page, limit } });
       if (response.data.success) {
         setRFQs(response.data.data || []);
+        setPagination(parsePagination(response.data.pagination));
       }
     } catch (error: any) {
       console.error('Failed to fetch RFQs:', error);
@@ -153,11 +169,10 @@ export default function MyRFQs() {
   return (
     <div className="p-8">
       <Confetti show={showConfetti} />
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">My RFQs</h1>
-        <p className="text-gray-500 mt-1">View and respond to Request for Quotations</p>
-      </div>
+      <PageHeader
+        title="My RFQs"
+        subtitle="View and respond to Request for Quotations"
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -222,7 +237,7 @@ export default function MyRFQs() {
       </div>
 
       {/* RFQs List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -234,41 +249,42 @@ export default function MyRFQs() {
             <p className="text-sm text-gray-400 mt-1">You'll be notified when new RFQs are published</p>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
+            <table className="w-full text-sm border-collapse">
+              <thead>
                 <tr>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">RFQ #</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Title</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Items</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Closing</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Status</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Actions</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">RFQ #</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Title</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Items</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Closing</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {rfqs.map((rfq: any) => {
                   const remaining = getRemainingTime(rfq.submissionDeadline);
                   const canSubmit = rfq.status === 'open' && !rfq.hasSubmitted && remaining.text !== 'Closed';
-                  
+
                   return (
-                    <tr key={rfq._id} className="hover:bg-gray-50">
-                      <td className="py-4 px-6">
-                        <span className="font-mono text-sm font-medium text-primary">
+                    <tr key={rfq._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                      <td className="py-2 px-3 border-b border-gray-100">
+                        <span className="font-mono font-medium text-primary">
                           {rfq.rfqNumber || `RFQ-${rfq._id.slice(-6).toUpperCase()}`}
                         </span>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-2 px-3 border-b border-gray-100">
                         <p className="font-medium text-gray-900">{rfq.title}</p>
-                        <p className="text-sm text-gray-500 truncate max-w-xs">{rfq.description}</p>
+                        <p className="text-xs text-gray-500 truncate max-w-xs">{rfq.description}</p>
                       </td>
-                      <td className="py-4 px-6">
-                        <span className="text-sm text-gray-600">{rfq.items?.length || 0} items</span>
+                      <td className="py-2 px-3 border-b border-gray-100">
+                        <span className="text-gray-600">{rfq.items?.length || 0} items</span>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-2 px-3 border-b border-gray-100">
                         <div className="flex items-center gap-2">
                           <Clock className={`h-4 w-4 ${remaining.urgent ? 'text-red-500' : 'text-gray-400'}`} />
-                          <span className={`text-sm ${remaining.urgent ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
+                          <span className={`${remaining.urgent ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
                             {remaining.text}
                           </span>
                         </div>
@@ -276,7 +292,7 @@ export default function MyRFQs() {
                           {new Date(rfq.submissionDeadline).toLocaleDateString('en-ZA')}
                         </p>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-2 px-3 border-b border-gray-100">
                         {rfq.quotationStatus === 'accepted' ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
                             <PartyPopper className="h-3.5 w-3.5" />
@@ -292,22 +308,14 @@ export default function MyRFQs() {
                           </span>
                         )}
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-2 px-3 border-b border-gray-100">
                         <div className="flex items-center gap-2">
                           <ViewButton
-                            onClick={() => { 
-                              setSelectedRFQ(rfq);
-                              setShowViewModal(true);
-                              // Show confetti if quotation is accepted
-                              if (rfq.quotationStatus === 'accepted') {
-                                setShowConfetti(true);
-                                setTimeout(() => setShowConfetti(false), 3000);
-                              }
-                            }}
+                            onClick={() => navigate(`/app/my-rfqs/${rfq._id}`)}
                           />
                           {canSubmit && (
                             <button
-                              onClick={() => navigate(`/app/submit-quotation?rfq=${rfq._id}`)}
+                              onClick={() => setQuoting(rfq)}
                               className="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
                             >
                               Submit Quote
@@ -321,6 +329,16 @@ export default function MyRFQs() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+            itemLabel="RFQs"
+          />
+          </>
         )}
       </div>
 
@@ -329,7 +347,7 @@ export default function MyRFQs() {
         isOpen={showViewModal}
         onClose={() => setShowViewModal(false)}
         title="RFQ Details"
-        size="lg"
+        size="xl"
       >
         {selectedRFQ && (
           <div className="space-y-6">
@@ -370,23 +388,23 @@ export default function MyRFQs() {
 
             <div>
               <label className="text-sm text-gray-500 mb-2 block">Items Required</label>
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
                     <tr>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">#</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Description</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Quantity</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Specification</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">#</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Description</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Quantity</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Specification</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody>
                     {selectedRFQ.items?.map((item: any, index: any) => (
-                      <tr key={index}>
-                        <td className="py-3 px-4 text-sm">{index + 1}</td>
-                        <td className="py-3 px-4 text-sm font-medium">{item.description}</td>
-                        <td className="py-3 px-4 text-sm">{item.quantity} {item.unit}</td>
-                        <td className="py-3 px-4 text-sm text-gray-500">{item.specification || '-'}</td>
+                      <tr key={index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                        <td className="py-2 px-3 border-b border-gray-100">{index + 1}</td>
+                        <td className="py-2 px-3 border-b border-gray-100 font-medium">{item.description}</td>
+                        <td className="py-2 px-3 border-b border-gray-100">{item.quantity} {item.unit}</td>
+                        <td className="py-2 px-3 border-b border-gray-100 text-gray-500">{item.specification || '-'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -403,6 +421,14 @@ export default function MyRFQs() {
           </div>
         )}
       </Modal>
+
+      <SubmitQuotationDrawer
+        isOpen={!!quoting}
+        rfqId={quoting?._id}
+        rfq={quoting}
+        onClose={() => setQuoting(null)}
+        onSaved={handleQuoted}
+      />
     </div>
   );
 }

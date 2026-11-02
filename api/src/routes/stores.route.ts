@@ -1,13 +1,31 @@
 import express from 'express';
 import controllers from '../controllers/index.js';
-import { protect, authorize } from '../middleware/index.js';
+import { protect, authorize, adminReadOnly } from '../middleware/index.js';
 
 const { stores } = controllers;
 const router = express.Router();
 
-// All routes require stores_officer role
 router.use(protect);
+
+// Printable GRV — stores raise it, but procurement/finance need it for the 3-way match
+router.get(
+  '/deliveries/:id/print',
+  authorize('stores_officer', 'admin', 'procurement_officer', 'finance'),
+  stores.printGrv
+);
+
+// Printable stores issue note - the counterpart to the GRV. Department heads
+// need it to evidence what their department collected.
+router.get(
+  '/requisitions/:id/issue-note',
+  authorize('stores_officer', 'admin', 'department_head'),
+  stores.printStoreIssueNote
+);
+
+// All remaining routes require stores_officer role. Admins may read them, but
+// receiving, issuing and moving stock are the stores officer's to sign for.
 router.use(authorize('stores_officer', 'admin'));
+router.use(adminReadOnly);
 
 // Deliveries / GRV
 router.post('/deliveries', stores.receiveGoods);
@@ -17,12 +35,18 @@ router.put('/deliveries/:id/accept', stores.acceptDelivery);
 
 // Inventory
 router.get('/inventory', stores.getInventory);
+router.post('/inventory', stores.addInventoryItem);
+router.post('/inventory/bulk', stores.bulkImportInventory);
 
 // Stock Movements
 router.get('/movements', stores.getMovements);
 
-// Purchase requisitions — stores gate (FC-HQ-P-07 §6.3.1–6.3.2)
+// Purchase requisitions — stores gate
 router.get('/purchase-requisitions/pending', stores.getPendingPurchaseRequisitions);
+// Already reviewed by stores, with where each has got to since (RFQ, POs).
+router.get('/purchase-requisitions/reviewed', stores.getReviewedPurchaseRequisitions);
+router.put('/purchase-requisitions/:id/auto-process', stores.autoProcessRequisition);
+router.put('/purchase-requisitions/:id/issue-line', stores.issuePurchaseRequisitionLine);
 router.put('/purchase-requisitions/:id/fulfill', stores.fulfillRequisitionFromStock);
 router.put('/purchase-requisitions/:id/forward', stores.forwardRequisitionToProcurement);
 
@@ -33,6 +57,7 @@ router.put('/requisitions/:id/reject', stores.rejectStoreRequisition);
 router.put('/requisitions/:id/issue', stores.issueStock);
 
 // Stock transfers (HQ ↔ sites)
+router.get('/sites', stores.getTransferSites);
 router.post('/transfers', stores.createStockTransfer);
 router.get('/transfers', stores.getStockTransfers);
 router.put('/transfers/:id/approve', stores.approveStockTransfer);

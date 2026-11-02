@@ -1,6 +1,11 @@
-import express, { type Express, type Request, type Response } from 'express';
+import express, { type Express, type Request, type Response, type NextFunction } from 'express';
 import cors from 'cors';
 
+import connectToDatabase from './config/db.js';
+import { corsOptions, applyCorsHeaders } from './config/cors.js';
+import { sbuContextMiddleware } from './middleware/sbuContext.middleware.js';
+import sbuDirectoryRoutes from './routes/sbuDirectory.route.js';
+import { getAppEnv } from './config/env.js';
 import routes from './routes/index.js';
 import { notFoundHandler, errorHandler } from './middleware/index.js';
 
@@ -13,23 +18,51 @@ export function createApp(): Express {
 
   app.disable('x-powered-by');
 
-  app.use(
-    cors({
-      origin: true,
-      credentials: true
-    })
-  );
+  app.use(cors(corsOptions));
+  app.options('*', cors(corsOptions));
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
   app.get('/health', (_req: Request, res: Response) => {
+    // `environment` makes it possible to confirm which deployment answered —
+    // the staging and production URLs are otherwise indistinguishable.
     res.json({
       status: 'ok',
+      environment: getAppEnv(),
       uptime: process.uptime(),
       timestamp: new Date().toISOString()
     });
   });
 
+  // On Vercel (serverless), connect to MongoDB before API routes. /health stays
+  // available without a DB connection so deploy health checks still pass.
+  if (process.env.VERCEL) {
+    app.use('/api', async (req: Request, res: Response, next: NextFunction) => {
+      if (req.method === 'OPTIONS') {
+        next();
+        return;
+      }
+
+      try {
+        await connectToDatabase();
+        next();
+      } catch {
+        applyCorsHeaders(req.headers.origin, res);
+        res.status(503).json({
+          success: false,
+          message: 'Database connection failed'
+        });
+      }
+    });
+  }
+
+  // The business-unit directory is served before the context middleware: it is
+  // what the login page reads to offer a choice, so there is no SBU yet.
+  app.use('/api/sbus', sbuDirectoryRoutes);
+
+  // Everything else under /api runs inside one SBU's context. /health stays
+  // outside it so deploy health checks work before any SBU exists.
+  app.use('/api', sbuContextMiddleware());
   app.use('/api', routes);
 
   app.use(notFoundHandler);

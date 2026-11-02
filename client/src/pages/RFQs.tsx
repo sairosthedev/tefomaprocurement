@@ -1,21 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+﻿import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
-import Tabs from '../components/Tabs';
-import { 
-  Search, 
-  Plus, 
-  MoreVertical, 
+import { useToast } from '../components/Toast';
+import FilterSelect from '../components/FilterSelect';
+import PageHeader from '../components/PageHeader';
+import {
+  Plus,
   FileSearch,
-  Calendar,
-  Users,
   Loader2,
   Send,
   Clock,
-  CheckCircle,
-  XCircle
+  Search
 } from 'lucide-react';
-import ViewButton from '../components/ViewButton';
+import Pagination from '../components/Pagination';
+import { CreateRFQDrawer } from '../components/RFQForm';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
+
+function sourcingDeadlineBadge(createdAt: string): { label: string; cls: string } | null {
+  const ms = Date.now() - new Date(createdAt).getTime();
+  const twoDays = 2 * 24 * 3600000;
+  const remaining = twoDays - ms;
+  if (remaining < 0) {
+    const daysOver = Math.ceil(-remaining / 86400000);
+    return { label: `${daysOver}d overdue (§ 2-day sourcing)`, cls: 'bg-red-100 text-red-700' };
+  }
+  const hrsLeft = Math.ceil(remaining / 3600000);
+  if (hrsLeft <= 24) {
+    return { label: `${hrsLeft}h left to source`, cls: 'bg-amber-100 text-amber-700' };
+  }
+  return null;
+}
 
 const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
@@ -28,25 +42,72 @@ const statusColors: any = {
 
 export default function RFQs() {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [rfqs, setRFQs] = useState<any[]>([]);
   const [loading, setLoading] = useState<any>(true);
   const [search, setSearch] = useState<any>('');
   const [statusFilter, setStatusFilter] = useState<any>('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
+  const [pagination, setPagination] = useState(emptyPagination());
+  // The create drawer lives in the URL (?new=1, with ?requisition= when it is
+  // raised from one), so links from elsewhere can open it and Back closes it.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const createOpen = searchParams.get('new') === '1';
+  const createFromRequisition = searchParams.get('requisition');
+
+  const openCreate = () => {
+    setSearchParams((params) => {
+      params.set('new', '1');
+      return params;
+    });
+  };
+
+  const closeCreate = () => {
+    setSearchParams(
+      (params) => {
+        params.delete('new');
+        params.delete('requisition');
+        return params;
+      },
+      { replace: true }
+    );
+  };
+
+  // Straight to the new RFQ, where its next steps are. Replacing the ?new=1
+  // entry means Back from there returns to the list, not to an empty form.
+  const handleCreated = (rfqId?: string) => {
+    if (rfqId) {
+      navigate(`/app/rfqs/${rfqId}`, { replace: true });
+      return;
+    }
+    closeCreate();
+    // Newest first, so the new RFQ is on page one.
+    if (page !== 1) setPage(1);
+    else fetchRFQs();
+  };
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter]);
 
   useEffect(() => {
     fetchRFQs();
-  }, [search, statusFilter]);
+  }, [page, limit, search, statusFilter]);
 
   const fetchRFQs = async () => {
     try {
       setLoading(true);
       const response = await procurementAPI.getRFQs({ 
         search, 
-        status: statusFilter 
+        status: statusFilter,
+        page,
+        limit
       });
       setRFQs(response.data.data);
+      setPagination(parsePagination(response.data.pagination));
     } catch (error: any) {
-      console.error('Error fetching RFQs:', error);
+      showToast(error.response?.data?.message || 'Failed to load RFQs', 'error');
     } finally {
       setLoading(false);
     }
@@ -54,47 +115,50 @@ export default function RFQs() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">RFQs (Enquiries)</h1>
-          <p className="text-gray-500 mt-1">Manage requests for quotations</p>
-        </div>
-        <button 
-          onClick={() => navigate('/app/rfqs/create')}
-          className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
-        >
-          <Plus className="h-5 w-5" />
-          Create RFQ
-        </button>
-      </div>
+      <PageHeader
+        title="RFQs (Enquiries)"
+        subtitle="Manage requests for quotations"
+        bottomSpacing="mb-4"
+      />
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
-        <div className="flex flex-col gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search RFQs..."
-              value={search}
-              onChange={(e: any) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+      <div className="mb-4">
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+          <button
+            type="button"
+            onClick={openCreate}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors whitespace-nowrap shrink-0"
+          >
+            <Plus className="h-4 w-4" />
+            Create RFQ
+          </button>
+          {/* Pushed to the right edge, with or without the button beside it. */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 md:ml-auto">
+            <div className="relative w-full sm:w-52">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search RFQs..."
+                value={search}
+                onChange={(e: any) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              />
+            </div>
+            <FilterSelect
+              size="sm"
+              label="Status"
+              options={[
+                { value: '', label: 'All' },
+                { value: 'draft', label: 'Draft' },
+                { value: 'open', label: 'Open' },
+                { value: 'closed', label: 'Closed' },
+                { value: 'evaluating', label: 'Evaluating' },
+                { value: 'awarded', label: 'Awarded' }
+              ]}
+              value={statusFilter}
+              onChange={setStatusFilter}
             />
           </div>
-          <Tabs
-            tabs={[
-              { value: '', label: 'All', icon: FileSearch },
-              { value: 'draft', label: 'Draft', icon: Clock },
-              { value: 'open', label: 'Open', icon: FileSearch },
-              { value: 'closed', label: 'Closed', icon: XCircle },
-              { value: 'evaluating', label: 'Evaluating', icon: Clock },
-              { value: 'awarded', label: 'Awarded', icon: CheckCircle }
-            ]}
-            activeTab={statusFilter}
-            onTabChange={setStatusFilter}
-            variant="pills"
-          />
         </div>
       </div>
 
@@ -104,85 +168,89 @@ export default function RFQs() {
           <Loader2 className="h-8 w-8 text-primary animate-spin" />
         </div>
       ) : rfqs.length === 0 ? (
-        <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-gray-100">
-          <FileSearch className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">No RFQs found</h3>
-          <p className="text-gray-500 mt-1">Create your first RFQ to get started</p>
+        <div className="text-center py-12 text-gray-500">
+          <FileSearch className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+          <p>No RFQs found. Create your first RFQ to get started.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {rfqs.map((rfq: any) => (
-            <div 
-              key={rfq._id}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${statusColors[rfq.status]}`}>
-                    {rfq.status.charAt(0).toUpperCase() + rfq.status.slice(1)}
-                  </span>
-                  <h3 className="font-semibold text-gray-900 mt-3">{rfq.rfqNumber}</h3>
-                </div>
-                <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                  <MoreVertical className="h-5 w-5 text-gray-400" />
-                </button>
-              </div>
-              
-              <p className="text-gray-700 font-medium line-clamp-2 mb-4">{rfq.title}</p>
-              
-              <div className="space-y-2 text-sm text-gray-500">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  <span>Deadline: {new Date(rfq.submissionDeadline).toLocaleDateString('en-ZA')}</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Users className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-gray-700 mb-1">
-                      {rfq.invitedSuppliers?.length || 0} supplier{rfq.invitedSuppliers?.length !== 1 ? 's' : ''} invited
-                    </div>
-                    {rfq.invitedSuppliers && rfq.invitedSuppliers.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-1">
-                        {rfq.invitedSuppliers.slice(0, 3).map((invited: any, idx: any) => {
-                          const supplierName = invited.supplier?.companyName || 
-                                             (typeof invited.supplier === 'string' ? 'Loading...' : 'Unknown Supplier');
-                          return (
-                            <span 
-                              key={invited.supplier?._id || invited.supplier || idx} 
-                              className="inline-block px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-md truncate max-w-[120px]"
-                              title={supplierName}
-                            >
-                              {supplierName}
-                            </span>
-                          );
-                        })}
-                        {rfq.invitedSuppliers.length > 3 && (
-                          <span className="inline-block px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded-md font-medium">
-                            +{rfq.invitedSuppliers.length - 3} more
+        <>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">RFQ Number</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Title</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Deadline</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Suppliers</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rfqs.map((rfq: any) => (
+                <tr key={rfq._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                  <td className="py-2 px-3 border-b border-gray-100 font-mono text-sm font-medium">{rfq.rfqNumber}</td>
+                  <td className="py-2 px-3 border-b border-gray-100">{rfq.title}</td>
+                  <td className="py-2 px-3 border-b border-gray-100">
+                    <div className="flex flex-wrap gap-1">
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${statusColors[rfq.status]}`}>
+                        {rfq.status.charAt(0).toUpperCase() + rfq.status.slice(1)}
+                      </span>
+                      {rfq.status === 'open' && (() => {
+                        const badge = sourcingDeadlineBadge(rfq.createdAt);
+                        return badge ? (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${badge.cls}`}>
+                            <Clock className="h-3 w-3" />{badge.label}
                           </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-2 mt-6 pt-4 border-t border-gray-100">
-                <ViewButton
-                  onClick={() => navigate(`/app/rfqs/${rfq._id}`)}
-                  className="flex-1 justify-center"
-                />
-                {rfq.status === 'draft' && (
-                  <button className="flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg transition-colors">
-                    <Send className="h-4 w-4" />
-                    Publish
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
+                        ) : null;
+                      })()}
+                    </div>
+                  </td>
+                  <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
+                    {rfq.submissionDeadline ? new Date(rfq.submissionDeadline).toLocaleDateString('en-ZA') : '—'}
+                  </td>
+                  <td className="py-2 px-3 border-b border-gray-100">
+                    {rfq.invitedSuppliers?.length || 0} supplier{rfq.invitedSuppliers?.length !== 1 ? 's' : ''}
+                  </td>
+                  <td className="py-2 px-3 border-b border-gray-100">
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => navigate(`/app/rfqs/${rfq._id}`)}
+                        className="px-2 py-1 text-xs border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors"
+                      >
+                        View
+                      </button>
+                      {rfq.status === 'draft' && (
+                        <button className="px-2 py-1 text-xs border border-primary text-primary rounded hover:bg-primary/5 flex items-center gap-1">
+                          <Send className="h-3 w-3" />
+                          Publish
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+        <Pagination
+          page={page}
+          pages={pagination.pages}
+          total={pagination.total}
+          onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+          itemLabel="RFQs"
+        />
+        </>
       )}
+
+      <CreateRFQDrawer
+        isOpen={createOpen}
+        requisitionId={createFromRequisition}
+        onClose={closeCreate}
+        onSaved={handleCreated}
+      />
     </div>
   );
 }

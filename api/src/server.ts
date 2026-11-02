@@ -1,21 +1,34 @@
-import 'dotenv/config';
+// MUST be first: populates process.env before any other module reads it.
+// ES modules hoist imports, so this import runs before the ones below.
+import './config/loadEnv.js';
 
 import { createApp } from './app.js';
 import connectDB from './config/db.js';
+import { getAppEnv } from './config/env.js';
+import { validateEnvironment } from './config/validate.js';
 import { logger } from './lib/logger.js';
+import { startAlertScheduler, stopAlertScheduler } from './jobs/scheduler.js';
 
 const PORT = process.env.PORT || 3001;
 
 async function bootstrap(): Promise<void> {
+  // Fail fast on a misconfigured environment rather than at the first login.
+  validateEnvironment();
+
+  const appEnv = getAppEnv();
+  logger.info(`Starting API in ${appEnv} mode`);
+
   await connectDB();
 
   const app = createApp();
   const server = app.listen(PORT, () => {
-    logger.info(`API server running on http://localhost:${PORT}`);
+    logger.info(`API server running on http://localhost:${PORT} (${appEnv})`);
+    startAlertScheduler();
   });
 
   const shutdown = (signal: string): void => {
     logger.info(`Received ${signal}, shutting down gracefully...`);
+    stopAlertScheduler();
     server.close((err?: Error) => {
       if (err) {
         logger.error('Error closing server', err);

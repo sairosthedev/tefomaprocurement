@@ -27,4 +27,20 @@ router.get('/sites', admin.getSites);
 router.put('/sites/:id', admin.updateSite);
 router.delete('/sites/:id', admin.deleteSite);
 
+// Audit logs
+router.get('/audit-logs', admin.getAuditLogs);
+router.get('/audit-logs/stats', admin.getAuditLogStats);
+
+// Auditor's evidence pack for a period (?from=YYYY-MM-DD&to=YYYY-MM-DD).
+// See docs/AUDIT_EVIDENCE_PACK.md for what each section shows.
+router.get('/evidence-pack', admin.getEvidencePack);
+
+// This business unit's currency, COO limit and document branding (read-only;
+// set with npm run sbu:settings / fx:set).
+router.get('/sbu-settings', admin.getSbuSettings);
+
+// Danger zone — wipe all transactional records for a clean testing slate.
+// Keeps users, supplier profiles, departments and sites. Requires a confirm phrase.
+router.post('/reset-transactions', admin.resetTransactions);
+
 export default router;

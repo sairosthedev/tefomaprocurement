@@ -17,7 +17,9 @@ const getDeliveries = async (req: Request, res: Response): Promise<any> => {
       Delivery.find(query)
         .populate('purchaseOrder', 'poNumber')
         .populate('supplier', 'companyName')
-        .populate('receivedBy', 'firstName lastName')
+        .populate('receivedBy', 'firstName lastName role')
+        .populate('inspectedBy', 'firstName lastName role')
+        .populate('receivedAtSite', 'name code')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit)),

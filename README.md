@@ -1,6 +1,8 @@
-# FosssilProcure
+# Tefoma Procurement
 
-MERN-stack monorepo for the FosssilProcure procurement system.
+MERN-stack monorepo for **Tefoma Construction** — procurement, stores, supplier KYS, RFQ/PO workflows, and finance integration.
+
+**Repository:** [github.com/sairosthedev/tefomaprocurement](https://github.com/sairosthedev/tefomaprocurement)
 
 - **api/** — Express 4 + Mongoose, layered architecture (routes → controllers → services → models)
 - **client/** — React 18 + Vite + Tailwind, services-based data layer
@@ -9,7 +11,7 @@ MERN-stack monorepo for the FosssilProcure procurement system.
 ## Repository layout
 
 ```
-fosssilProcure/
+tefomaprocurement/
 ├── api/                        # Express API
 │   └── src/
 │       ├── app.js              # Pure factory that builds the Express app
@@ -36,7 +38,7 @@ fosssilProcure/
 │       └── lib/                # Front-end utilities + constants re-exports
 │
 ├── packages/
-│   └── shared/                 # @fosssil/shared — cross-package constants
+│   └── shared/                 # @fossil/shared — cross-package constants
 │       └── src/constants/      # roles, currencies, statuses, regions, catalog
 │
 ├── scripts/                    # Root-level ops scripts (ngrok, etc.)
@@ -58,18 +60,18 @@ fosssilProcure/
 
 - **Services layer** — `client/src/services/` contains the axios instance (`http.js`) plus one file per domain (`auth.service.js`, `procurement.service.js`, ...). Pages import from `@/services` rather than touching axios directly.
 - **`client/src/lib/api.js`** is now a thin re-export shim kept for backward compatibility with existing pages.
-- **Env-driven API URL** — `import.meta.env.VITE_API_URL` (see [client/.env.example](client/.env.example)). Falls back to the deployed URL only when unset.
+- **Env-driven API URL** — set `VITE_API_URL` in Vercel (see [client/.env.example](client/.env.example)). Local dev defaults to `http://localhost:3001/api`.
 
 ### Shared package
 
-- **`@fosssil/shared`** (in `packages/shared/`) exports domain enums and constants (roles, statuses, currencies, Zimbabwe provinces/banks, units, supplier categories) as **plain CommonJS** so both Node (api) and Vite (client) can consume the exact same source of truth.
+- **`@fossil/shared`** (in `packages/shared/`) exports domain enums and constants (roles, statuses, currencies, Zimbabwe provinces/banks, units, supplier categories) as **plain CommonJS** so both Node (api) and Vite (client) can consume the exact same source of truth.
 
 ```js
 // api
-const { USER_ROLES, RFQ_STATUS } = require('@fosssil/shared');
+const { USER_ROLES, RFQ_STATUS } = require('@fossil/shared');
 
 // client
-import { USER_ROLES, RFQ_STATUS, formatCurrency } from '@fosssil/shared';
+import { USER_ROLES, RFQ_STATUS, formatCurrency } from '@fossil/shared';
 ```
 
 ## Quick start
@@ -102,6 +104,10 @@ npm run dev
 ```bash
 npm run seed
 ```
+
+### Tester guide
+
+If you are onboarding people to test the system, start with [TESTING_GUIDE.md](TESTING_GUIDE.md).
 
 ## Available scripts (root)
 

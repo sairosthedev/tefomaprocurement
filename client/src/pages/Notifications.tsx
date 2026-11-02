@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/Toast';
+import { useAuth } from '../context/AuthContext';
 import { notificationsAPI } from '../lib/api';
+import { getNotificationPath } from '../lib/notificationRoutes';
 import { 
   Bell, 
   CheckCircle, 
@@ -15,8 +18,9 @@ import {
   Truck,
   Send
 } from 'lucide-react';
-
-// Map notification types to icons and colors
+import PageHeader from '../components/PageHeader';
+import Pagination from '../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 const getNotificationIcon = (type: any) => {
   const icons: any = {
     login_successful: CheckCircle,
@@ -106,20 +110,26 @@ const formatTimeAgo = (date: any) => {
 
 export default function Notifications() {
   const { showToast } = useToast();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState<any>(true);
   const [markingAll, setMarkingAll] = useState<any>(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
+  const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
     fetchNotifications();
-  }, []);
+  }, [page, limit]);
 
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const response = await notificationsAPI.getNotifications({ limit: 100 });
+      const response = await notificationsAPI.getNotifications({ page, limit });
       if (response.data.success) {
         setNotifications(response.data.data || []);
+        setPagination(parsePagination(response.data.pagination));
       }
     } catch (error: any) {
       console.error('Failed to fetch notifications:', error);
@@ -158,35 +168,37 @@ export default function Notifications() {
     if (!notification.read) {
       await handleMarkAsRead(notification._id);
     }
-    // TODO: Navigate to the related entity based on entity type and ID
+    const path = getNotificationPath(notification, user?.role);
+    if (path) {
+      navigate(path);
+    }
   };
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
-          <p className="text-gray-500 mt-1">Stay updated with system activities</p>
-        </div>
-        {notifications.filter((n: any) => !n.read).length > 0 && (
-          <button 
-            onClick={handleMarkAllAsRead}
-            disabled={markingAll}
-            className="flex items-center gap-2 text-sm font-medium text-primary hover:text-primary-dark transition-colors disabled:opacity-50"
-          >
-            {markingAll ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Check className="h-4 w-4" />
-            )}
-            Mark all as read
-          </button>
-        )}
-      </div>
+      <PageHeader
+        title="Notifications"
+        subtitle="Stay updated with system activities"
+        actions={
+          notifications.filter((n: any) => !n.read).length > 0 ? (
+            <button
+              onClick={handleMarkAllAsRead}
+              disabled={markingAll}
+              className="flex items-center gap-2 text-sm font-medium text-primary hover:text-primary-dark transition-colors disabled:opacity-50"
+            >
+              {markingAll ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4" />
+              )}
+              Mark all as read
+            </button>
+          ) : undefined
+        }
+      />
 
       {/* Notifications List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="overflow-x-auto">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -235,6 +247,15 @@ export default function Notifications() {
             })}
           </div>
         )}
+        <Pagination
+          page={page}
+          pages={pagination.pages}
+          total={pagination.total}
+          onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+          itemLabel="notifications"
+        />
       </div>
     </div>
   );

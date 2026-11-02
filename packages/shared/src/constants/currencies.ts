@@ -7,7 +7,8 @@ export interface Currency {
 export const CURRENCIES: readonly Currency[] = Object.freeze([
   { code: 'USD', symbol: '$', name: 'US Dollar' },
   { code: 'ZWG', symbol: 'ZWG', name: 'Zimbabwean Gold' },
-  { code: 'ZAR', symbol: 'R', name: 'South African Rand' }
+  { code: 'ZAR', symbol: 'R', name: 'South African Rand' },
+  { code: 'SZL', symbol: 'E', name: 'Swazi Lilangeni' }
 ]);
 
 export const DEFAULT_CURRENCY = 'USD';
@@ -21,18 +22,19 @@ export function formatCurrency(
   currency: string = DEFAULT_CURRENCY
 ): string {
   const value = Number.isFinite(amount) ? amount : 0;
+  const code = (currency || DEFAULT_CURRENCY).toUpperCase();
 
-  if (currency === 'ZWG') {
+  if (code === 'ZWG') {
     return `ZWG ${new Intl.NumberFormat('en-ZW', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(value)}`;
   }
 
-  if (currency === 'ZAR') {
+  if (code === 'ZAR' || code === 'SZL') {
     return new Intl.NumberFormat('en-ZA', {
       style: 'currency',
-      currency: 'ZAR'
+      currency: code
     }).format(value);
   }
 

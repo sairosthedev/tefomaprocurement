@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { adminAPI } from '../lib/api';
-import { Modal } from '../components/Modal';
+import { Modal, ModalFooter } from '../components/Modal';
 import { useToast } from '../components/Toast';
-import Tabs from '../components/Tabs';
+import FilterSelect from '../components/FilterSelect';
+import PageHeader from '../components/PageHeader';
 import { 
-  Search, 
+  Search,
   Plus,
   UserCircle,
   Mail,
@@ -12,12 +13,12 @@ import {
   Loader2,
   CheckCircle,
   XCircle,
-  Edit,
-  Trash2,
   Eye,
   EyeOff,
   Users as UsersIcon
 } from 'lucide-react';
+import Pagination from '../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 const roleColors: any = {
   admin: 'bg-purple-100 text-purple-700',
@@ -74,17 +75,25 @@ export default function Users() {
     phone: '',
     status: 'active'
   });
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
+  const [pagination, setPagination] = useState(emptyPagination());
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, roleFilter]);
 
   useEffect(() => {
     fetchUsers();
     fetchDepartments();
-  }, [search, roleFilter]);
+  }, [page, limit, search, roleFilter]);
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await adminAPI.getUsers({ search, role: roleFilter });
+      const response = await adminAPI.getUsers({ search, role: roleFilter, page, limit });
       setUsers(response.data.data || []);
+      setPagination(parsePagination(response.data.pagination));
     } catch (error: any) {
       addToast('Failed to fetch users', 'error');
     } finally {
@@ -213,52 +222,54 @@ export default function Users() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Staff Team</h1>
-          <p className="text-gray-500 mt-1">Manage system users and their roles</p>
-        </div>
-        <button 
-          onClick={() => handleOpenModal()}
-          className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
-        >
-          <Plus className="h-5 w-5" />
-          Add User
-        </button>
-      </div>
+      <PageHeader
+        title="Staff Team"
+        subtitle="Manage system users and their roles"
+        bottomSpacing="mb-4"
+      />
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
-        <div className="flex flex-col gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search users..."
-              value={search}
-              onChange={(e: any) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+      <div className="mb-4">
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+          <button
+            type="button"
+            onClick={() => handleOpenModal()}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors whitespace-nowrap shrink-0"
+          >
+            <Plus className="h-4 w-4" />
+            Add User
+          </button>
+          {/* Pushed to the right edge, with or without the button beside it. */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 md:ml-auto">
+            <div className="relative w-full sm:w-52">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search users..."
+                value={search}
+                onChange={(e: any) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              />
+            </div>
+            <FilterSelect
+              size="sm"
+              label="Role"
+              options={[
+                { value: '', label: 'All' },
+                ...roleOptions.map((role: any) => ({
+                  value: role.value,
+                  label: role.label
+                }))
+              ]}
+              value={roleFilter}
+              onChange={setRoleFilter}
             />
           </div>
-          <Tabs
-            tabs={[
-              { value: '', label: 'All Roles', icon: UsersIcon },
-              ...roleOptions.map((role: any) => ({
-                value: role.value,
-                label: role.label,
-                icon: Shield
-              }))
-            ]}
-            activeTab={roleFilter}
-            onTabChange={setRoleFilter}
-            variant="pills"
-          />
         </div>
       </div>
 
       {/* Users Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -270,22 +281,23 @@ export default function Users() {
             <p className="text-gray-500 mt-1">Add your first user to get started</p>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
+            <table className="w-full text-sm border-collapse">
+              <thead>
                 <tr>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">User</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Department</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">User</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Email</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Role</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Department</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+                  <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {users.map((user: any) => (
-                  <tr key={user._id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
+                  <tr key={user._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">
                           <span className="text-sm font-semibold text-primary">
@@ -294,26 +306,26 @@ export default function Users() {
                         </div>
                         <div>
                           <p className="font-medium text-gray-900">{user.firstName} {user.lastName}</p>
-                          <p className="text-sm text-gray-500">{user.phone || 'No phone'}</p>
+                          <p className="text-xs text-gray-500">{user.phone || 'No phone'}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <td className="py-2 px-3 border-b border-gray-100">
+                      <div className="flex items-center gap-2 text-gray-600">
                         <Mail className="h-4 w-4 text-gray-400" />
                         {user.email}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${(roleColors as Record<string, string>)[user.role] || ''}`}>
                         <Shield className="h-3.5 w-3.5" />
                         {(roleNames as Record<string, string>)[user.role] || user.role}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
+                    <td className="py-2 px-3 border-b border-gray-100 text-gray-600">
                       {user.department?.name || '-'}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       {user.status === 'active' ? (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
                           <CheckCircle className="h-3.5 w-3.5" />
@@ -326,21 +338,19 @@ export default function Users() {
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="py-2 px-3 border-b border-gray-100 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button 
+                        <button
                           onClick={() => handleOpenModal(user)}
-                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                          title="Edit"
+                          className="px-2 py-1 text-xs border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors"
                         >
-                          <Edit className="h-4 w-4 text-gray-500" />
+                          Edit
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleDelete(user)}
-                          className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete"
+                          className="px-2 py-1 text-xs border border-red-200 rounded hover:bg-red-50 text-red-600"
                         >
-                          <Trash2 className="h-4 w-4 text-red-500" />
+                          Delete
                         </button>
                       </div>
                     </td>
@@ -349,6 +359,16 @@ export default function Users() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+            itemLabel="users"
+          />
+          </>
         )}
       </div>
 
@@ -357,7 +377,7 @@ export default function Users() {
         isOpen={showModal}
         onClose={() => { setShowModal(false); resetForm(); setEditingUser(null); }}
         title={editingUser ? 'Edit User' : 'Add New User'}
-        size="md"
+        size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -490,7 +510,7 @@ export default function Users() {
             </div>
           </div>
 
-          <div className="flex gap-3 pt-4">
+          <ModalFooter>
             <button
               type="button"
               onClick={() => { setShowModal(false); resetForm(); setEditingUser(null); }}
@@ -505,7 +525,7 @@ export default function Users() {
             >
               {saving ? 'Saving...' : editingUser ? 'Update User' : 'Create User'}
             </button>
-          </div>
+          </ModalFooter>
         </form>
       </Modal>
     </div>

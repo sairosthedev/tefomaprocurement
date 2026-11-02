@@ -1,16 +1,37 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import api from '../lib/api';
+import PageHeader from '../components/PageHeader';
 import { 
   CheckCircle, XCircle, Eye, Loader2, Clock, 
   DollarSign, FileText, AlertTriangle, Package, ShoppingCart
 } from 'lucide-react';
-import Modal from '../components/Modal';
+import Modal, { ModalFooter } from '../components/Modal';
+import { WorkflowStepper } from '../components/WorkflowStepper';
+import { purchaseOrderSteps } from '../lib/purchaseOrderSteps';
 import { formatCurrency } from '../lib/constants';
+import { getCurrentSbuCurrency } from '../lib/sbu';
+import Pagination from '../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
+
+/** High-value flag compares the USD equivalent, so it means the same in every SBU. */
+const HIGH_VALUE_USD = 10000;
+const isHighValue = (po: any) => (po?.totalAmountUsd ?? po?.totalAmount ?? 0) >= HIGH_VALUE_USD;
+
+function approvalAge(updatedAt: string): { label: string; state: 'ok' | 'warning' | 'overdue' } {
+  const ms = Date.now() - new Date(updatedAt).getTime();
+  const mins = Math.floor(ms / 60000);
+  const hrs = Math.floor(mins / 60);
+  const label = hrs > 0 ? `${hrs}h ${mins % 60}m` : `${mins}m`;
+  const state = ms > 3600000 ? 'overdue' : ms > 2700000 ? 'warning' : 'ok';
+  return { label, state };
+}
 
 const statusColors: any = {
   pending_hod: 'bg-purple-100 text-purple-700',
+  pending_dept_hod: 'bg-purple-100 text-purple-700',
+  pending_proc_hod: 'bg-fuchsia-100 text-fuchsia-700',
   pending_finance: 'bg-amber-100 text-amber-700',
   pending_coo: 'bg-indigo-100 text-indigo-700',
   pending_approvals: 'bg-blue-100 text-blue-700',
@@ -19,7 +40,9 @@ const statusColors: any = {
 };
 
 const statusLabels: any = {
-  pending_hod: 'Awaiting HOD',
+  pending_hod: 'Awaiting Dept HOD',
+  pending_dept_hod: 'Awaiting Dept HOD',
+  pending_proc_hod: 'Awaiting Procurement HOD',
   pending_finance: 'Awaiting Finance',
   pending_coo: 'Awaiting COO',
   pending_approvals: 'Pending Approvals',
@@ -36,10 +59,13 @@ export default function Approvals() {
   const [showModal, setShowModal] = useState<any>(false);
   const [actionLoading, setActionLoading] = useState<any>(false);
   const [comment, setComment] = useState<any>('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
+  const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
     fetchPendingApprovals();
-  }, []);
+  }, [page, limit, user?.role]);
 
   const fetchPendingApprovals = async () => {
     try {
@@ -56,16 +82,17 @@ export default function Approvals() {
         case 'coo':
           endpoint = '/coo/pending-approvals';
           break;
-        case 'admin':
-          endpoint = '/finance/pending-approvals';
-          break;
         default:
-          endpoint = '/finance/pending-approvals';
+          // Only the three approving roles have a queue here.
+          setPendingItems([]);
+          setPagination(emptyPagination());
+          return;
       }
       
-      const response = await api.get(endpoint);
+      const response = await api.get(endpoint, { params: { page, limit } });
       if (response.data.success) {
         setPendingItems(response.data.data || []);
+        setPagination(parsePagination(response.data.pagination));
       }
     } catch (error: any) {
       console.error('Failed to fetch approvals:', error);
@@ -82,10 +109,14 @@ export default function Approvals() {
       
       switch (user?.role) {
         case 'department_head':
-          endpoint = `/department/purchase-orders/${selectedItem._id}/approve`;
+          // Second HOD step (Procurement HOD) uses a distinct endpoint; the
+          // requesting-department HOD step uses the standard approve endpoint.
+          endpoint =
+            selectedItem.status === 'pending_proc_hod'
+              ? `/department/purchase-orders/${selectedItem._id}/proc-approve`
+              : `/department/purchase-orders/${selectedItem._id}/approve`;
           break;
         case 'finance':
-        case 'admin':
           endpoint = `/finance/purchase-orders/${selectedItem._id}/approve`;
           break;
         case 'coo':
@@ -94,7 +125,7 @@ export default function Approvals() {
         default:
           return;
       }
-      
+
       await api.put(endpoint, { comments: comment });
       showToast('Purchase Order approved successfully', 'success');
       setShowModal(false);
@@ -118,8 +149,10 @@ export default function Approvals() {
       let endpoint = '';
       
       switch (user?.role) {
+        case 'department_head':
+          endpoint = `/department/purchase-orders/${selectedItem._id}/reject`;
+          break;
         case 'finance':
-        case 'admin':
           endpoint = `/finance/purchase-orders/${selectedItem._id}/reject`;
           break;
         case 'coo':
@@ -157,11 +190,11 @@ export default function Approvals() {
   const getDescription = () => {
     switch (user?.role) {
       case 'department_head':
-        return 'Approve purchase orders before Finance review (FC-HQ-P-07 §6.3.12)';
+        return 'Approve purchase orders before Finance review';
       case 'finance':
         return 'Review and approve purchase orders for payment authorization';
       case 'coo':
-        return 'Authorize purchase orders above USD 5,000';
+        return 'Authorize purchase orders at or above the COO limit (USD equivalent)';
       default:
         return 'Review pending purchase orders';
     }
@@ -169,11 +202,7 @@ export default function Approvals() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">{getTitle()}</h1>
-        <p className="text-gray-500 mt-1">{getDescription()}</p>
-      </div>
+      <PageHeader title={getTitle()} subtitle={getDescription()} />
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -196,7 +225,7 @@ export default function Approvals() {
             <div>
               <p className="text-sm text-blue-600 font-medium">Total Value</p>
               <p className="text-2xl font-bold text-blue-700">
-                {formatCurrency(pendingItems.reduce((sum: any, item: any) => sum + (item.totalAmount || 0), 0))}
+                {formatCurrency(pendingItems.reduce((sum: any, item: any) => sum + (item.totalAmount || 0), 0), getCurrentSbuCurrency())}
               </p>
             </div>
           </div>
@@ -207,9 +236,9 @@ export default function Approvals() {
               <AlertTriangle className="h-6 w-6 text-red-600" />
             </div>
             <div>
-              <p className="text-sm text-red-600 font-medium">High Value (≥$10,000)</p>
+              <p className="text-sm text-red-600 font-medium">High Value (≥ USD 10,000 equiv.)</p>
               <p className="text-2xl font-bold text-red-700">
-                {pendingItems.filter((item: any) => (item.totalAmount || 0) >= 10000).length}
+                {pendingItems.filter((item: any) => isHighValue(item)).length}
               </p>
             </div>
           </div>
@@ -217,7 +246,7 @@ export default function Approvals() {
       </div>
 
       {/* Approvals List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -229,45 +258,46 @@ export default function Approvals() {
             <p className="text-sm text-gray-400 mt-1">All purchase orders are processed</p>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
+            <table className="w-full text-sm border-collapse">
+              <thead>
                 <tr>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">PO Number</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Supplier</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Items</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Value</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Status</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Created</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Actions</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">PO Number</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Supplier</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Items</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Value</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Created</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {pendingItems.map((item: any) => (
-                  <tr key={item._id} className={`hover:bg-gray-50 ${(item.totalAmount || 0) >= 10000 ? 'bg-red-50/30' : ''}`}>
-                    <td className="py-4 px-6">
-                      <span className="font-mono text-sm font-medium text-primary">
+                  <tr key={item._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                    <td className="py-2 px-3 border-b border-gray-100">
+                      <span className="font-mono text-sm font-medium text-primary break-all">
                         {item.poNumber || `PO-${item._id.slice(-6).toUpperCase()}`}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <p className="font-medium text-gray-900">
                         {item.supplier?.companyName || 'Unknown Supplier'}
                       </p>
                       <p className="text-sm text-gray-500">{item.supplier?.contactEmail}</p>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className="text-sm text-gray-600">{item.items?.length || 0} items</span>
                     </td>
-                    <td className="py-4 px-6">
-                      <span className={`font-semibold ${(item.totalAmount || 0) >= 10000 ? 'text-red-600' : 'text-gray-900'}`}>
-                        {formatCurrency(item.totalAmount || 0)}
+                    <td className="py-2 px-3 border-b border-gray-100">
+                      <span className={`font-semibold ${isHighValue(item) ? 'text-red-600' : 'text-gray-900'}`}>
+                        {formatCurrency(item.totalAmount || 0, item.currency)}
                       </span>
-                      {(item.totalAmount || 0) >= 10000 && (
+                      {isHighValue(item) && (
                         <span className="ml-2 text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">High Value</span>
                       )}
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       {item.status === 'pending_approvals' ? (
                         <div className="flex flex-col gap-1">
                           <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${item.financeApproved ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
@@ -283,13 +313,23 @@ export default function Approvals() {
                         </span>
                       )}
                     </td>
-                    <td className="py-4 px-6 text-sm text-gray-500">
-                      {new Date(item.createdAt).toLocaleDateString('en-ZA')}
+                    <td className="py-2 px-3 border-b border-gray-100 text-sm text-gray-500">
+                      <div>{new Date(item.createdAt).toLocaleDateString('en-ZA')}</div>
+                      {(() => {
+                        const { label, state } = approvalAge(item.updatedAt || item.createdAt);
+                        const cls = state === 'overdue' ? 'bg-red-100 text-red-700' : state === 'warning' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600';
+                        return (
+                          <span className={`mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>
+                            <Clock className="h-3 w-3" />
+                            {label}{state !== 'ok' ? ' — overdue (§ 1hr SLA)' : ''}
+                          </span>
+                        );
+                      })()}
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <button
                         onClick={() => { setSelectedItem(item); setShowModal(true); }}
-                        className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                        className="px-2 py-1 text-xs border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors"
                       >
                         Review
                       </button>
@@ -299,6 +339,16 @@ export default function Approvals() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+            itemLabel="approvals"
+          />
+          </>
         )}
       </div>
 
@@ -307,10 +357,12 @@ export default function Approvals() {
         isOpen={showModal}
         onClose={() => { setShowModal(false); setComment(''); }}
         title="Review Purchase Order"
-        size="lg"
+        size="xl"
       >
         {selectedItem && (
           <div className="space-y-6">
+            <WorkflowStepper compact steps={purchaseOrderSteps(selectedItem)} />
+
             {/* PO Details */}
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -329,8 +381,8 @@ export default function Approvals() {
               </div>
               <div>
                 <label className="text-sm text-gray-500">Total Value</label>
-                <p className={`text-xl font-bold ${(selectedItem.totalAmount || 0) >= 10000 ? 'text-red-600' : 'text-gray-900'}`}>
-                  {formatCurrency(selectedItem.totalAmount || 0)}
+                <p className={`text-xl font-bold ${isHighValue(selectedItem) ? 'text-red-600' : 'text-gray-900'}`}>
+                  {formatCurrency(selectedItem.totalAmount || 0, selectedItem.currency)}
                 </p>
               </div>
               <div>
@@ -393,14 +445,14 @@ export default function Approvals() {
             )}
 
             {/* High Value Warning */}
-            {(selectedItem.totalAmount || 0) >= 10000 && (
+            {isHighValue(selectedItem) && (
               <div className="bg-red-50 rounded-xl p-4 border border-red-100">
                 <div className="flex items-center gap-2 text-red-700">
                   <AlertTriangle className="h-5 w-5" />
                   <span className="font-medium">High Value Purchase Order</span>
                 </div>
                 <p className="text-sm text-red-600 mt-1">
-                  This PO exceeds $10,000. Please review carefully before approval.
+                  This PO exceeds USD 10,000 equivalent. Please review carefully before approval.
                 </p>
               </div>
             )}
@@ -408,40 +460,40 @@ export default function Approvals() {
             {/* Items */}
             <div>
               <label className="text-sm text-gray-500 mb-2 block">Line Items</label>
-              <div className="border border-gray-200 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 sticky top-0">
+              <div className="overflow-x-auto max-h-48 overflow-y-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead className="sticky top-0">
                     <tr>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Description</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Qty</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Unit Price</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Total</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Description</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Qty</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Unit Price</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Total</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody>
                     {selectedItem.items?.map((item: any, index: any) => (
-                      <tr key={index}>
-                        <td className="py-3 px-4 text-sm">{item.description}</td>
-                        <td className="py-3 px-4 text-sm">{item.quantity} {item.unit}</td>
-                        <td className="py-3 px-4 text-sm">{formatCurrency(item.unitPrice || 0)}</td>
-                        <td className="py-3 px-4 text-sm font-medium">{formatCurrency(item.totalPrice || 0)}</td>
+                      <tr key={index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                        <td className="py-2 px-3 border-b border-gray-100">{item.description}</td>
+                        <td className="py-2 px-3 border-b border-gray-100">{item.quantity} {item.unit}</td>
+                        <td className="py-2 px-3 border-b border-gray-100">{formatCurrency(item.unitPrice || 0, selectedItem.currency)}</td>
+                        <td className="py-2 px-3 border-b border-gray-100 font-medium">{formatCurrency(item.totalPrice || 0, selectedItem.currency)}</td>
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot className="bg-gray-50">
+                  <tfoot className="bg-gray-50 border-t border-gray-200">
                     <tr>
-                      <td colSpan={3} className="py-3 px-4 text-sm font-medium text-right">Subtotal:</td>
-                      <td className="py-3 px-4 text-sm font-medium">{formatCurrency(selectedItem.subtotal || 0)}</td>
+                      <td colSpan={3} className="py-2 px-3 text-sm font-medium text-right border border-gray-200">Subtotal:</td>
+                      <td className="py-2 px-3 text-sm font-medium border border-gray-200">{formatCurrency(selectedItem.subtotal || 0, selectedItem.currency)}</td>
                     </tr>
                     {selectedItem.vatAmount > 0 && (
                       <tr>
-                        <td colSpan={3} className="py-3 px-4 text-sm font-medium text-right">VAT:</td>
-                        <td className="py-3 px-4 text-sm font-medium">{formatCurrency(selectedItem.vatAmount || 0)}</td>
+                        <td colSpan={3} className="py-2 px-3 text-sm font-medium text-right border border-gray-200">VAT:</td>
+                        <td className="py-2 px-3 text-sm font-medium border border-gray-200">{formatCurrency(selectedItem.vatAmount || 0, selectedItem.currency)}</td>
                       </tr>
                     )}
                     <tr className="border-t border-gray-200">
-                      <td colSpan={3} className="py-3 px-4 text-sm font-bold text-right">Total:</td>
-                      <td className="py-3 px-4 text-sm font-bold">{formatCurrency(selectedItem.totalAmount || 0)}</td>
+                      <td colSpan={3} className="py-2 px-3 text-sm font-bold text-right border border-gray-200">Total:</td>
+                      <td className="py-2 px-3 text-sm font-bold border border-gray-200">{formatCurrency(selectedItem.totalAmount || 0, selectedItem.currency)}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -486,7 +538,7 @@ export default function Approvals() {
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+            <ModalFooter>
               <button
                 onClick={() => { setShowModal(false); setComment(''); }}
                 className="px-4 py-2.5 text-gray-700 font-medium hover:bg-gray-100 rounded-xl transition-colors"
@@ -510,7 +562,7 @@ export default function Approvals() {
                 {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                 Approve
               </button>
-            </div>
+            </ModalFooter>
           </div>
         )}
       </Modal>

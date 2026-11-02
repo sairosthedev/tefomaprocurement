@@ -1,0 +1,72 @@
+import jwt, { type SignOptions } from 'jsonwebtoken';
+import type { Request } from 'express';
+import { User, SupplierProfile } from '../models/index.js';
+import { createAuditLog } from '../middleware/index.js';
+import { createNotification } from './notification.service.js';
+import { getJwtSecret, getJwtExpiry } from '../config/secrets.js';
+import { requireSbu } from '../tenancy/sbuContext.js';
+
+export async function finalizeUserLogin(user: any, req: Request) {
+  user.lastLogin = new Date();
+  await user.save({ validateBeforeSave: false });
+
+  // The token is bound to the SBU it was issued for, so a session opened
+  // against one business unit cannot be replayed against another.
+  const token = jwt.sign(
+    { id: user._id, role: user.role, sbu: requireSbu().code },
+    getJwtSecret(),
+    { expiresIn: getJwtExpiry() } as SignOptions
+  );
+
+  await user.populate('department', 'name code');
+
+  let supplierProfile = null;
+  if (user.role === 'supplier') {
+    supplierProfile = await SupplierProfile.findOne({ user: user._id });
+  }
+
+  await createAuditLog({
+    action: 'login',
+    entity: 'User',
+    entityId: user._id,
+    user,
+    entityLabel: user.email,
+    description: `${user.role} signed in successfully (OTP verified)`,
+    newData: { role: user.role, lastLogin: user.lastLogin },
+    req
+  });
+
+  await createNotification({
+    recipient: user._id,
+    type: 'login_successful',
+    title: 'Successful Login',
+    message: `You have successfully logged into your account. ${req.ip ? `IP Address: ${req.ip}` : ''}`,
+    entity: 'User',
+    entityId: user._id,
+    relatedUser: user._id,
+    metadata: {
+      ipAddress: req.ip || req.connection?.remoteAddress,
+      userAgent: req.headers?.['user-agent'],
+      timestamp: new Date()
+    }
+  });
+
+  return {
+    token,
+    sbu: requireSbu().code,
+    user: {
+      id: user._id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      fullName: user.fullName,
+      role: user.role,
+      department: user.department,
+      supplierProfile: supplierProfile?._id
+    }
+  };
+}
+
+export async function findActiveUserByEmail(email: string) {
+  return User.findOne({ email, isDeleted: false }).select('+password');
+}

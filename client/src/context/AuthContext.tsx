@@ -1,26 +1,58 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authAPI } from '../lib/api';
+import {
+  readStoredSession,
+  persistSession,
+  clearSession,
+  hasStoredSession
+} from '../lib/session';
+import { logOtpToBrowserConsole } from '../lib/otpDebug';
+import { rememberSbuCurrency } from '../lib/sbu';
+import http from '../services/http';
 
 const AuthContext = createContext<any>(null);
 
 export function AuthProvider({ children }: any) {
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState<any>(true);
+  const [user, setUser] = useState<any>(() => readStoredSession().user);
+  // With a stored user the app renders straight away and /auth/me refreshes
+  // it in the background; an invalid token still clears the session there.
+  const [loading, setLoading] = useState<any>(() => !readStoredSession().user);
+
+  const hydrateFromStorage = useCallback(() => {
+    const { user: storedUser } = readStoredSession();
+    if (storedUser) {
+      setUser(storedUser);
+    }
+  }, []);
 
   useEffect(() => {
+    // Refresh the cached base currency of the signed-in business unit, so
+    // sessions started before it was cached still show the right currency.
+    http
+      .get('/sbus')
+      .then((response) => rememberSbuCurrency(response.data?.data || [], response.data?.current))
+      .catch(() => {
+        /* the cached or fallback currency stays in use */
+      });
+
     const initAuth = async () => {
-      const token = localStorage.getItem('token');
-      const storedUser = localStorage.getItem('user');
-      
-      if (token && storedUser) {
+      const { token, user: storedUser } = readStoredSession();
+
+      if (storedUser) {
+        setUser(storedUser);
+      }
+
+      if (token) {
         try {
           const response = await authAPI.getMe();
           setUser(response.data.user);
-        } catch (error: any) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
+          persistSession(token, response.data.user);
+        } catch {
+          clearSession();
+          setUser(null);
         }
       }
+
       setLoading(false);
     };
 
@@ -29,24 +61,53 @@ export function AuthProvider({ children }: any) {
 
   const login = async (email: any, password: any) => {
     const response = await authAPI.login({ email, password });
-    const { token, user } = response.data;
-    
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-    setUser(user);
-    
-    return user;
+    if (response.data.requiresOtp) {
+      if (response.data.debugOtp) {
+        logOtpToBrowserConsole(response.data.email || email, response.data.debugOtp);
+      }
+      return {
+        requiresOtp: true,
+        email: response.data.email,
+        message: response.data.message,
+        debugOtp: response.data.debugOtp
+      };
+    }
+
+    const { token, user: sessionUser } = response.data;
+    if (!token || !sessionUser) {
+      throw new Error('Invalid login response');
+    }
+
+    persistSession(token, sessionUser);
+    setUser(sessionUser);
+    return { requiresOtp: false, user: sessionUser };
+  };
+
+  const verifyOtp = async (email: any, otp: any) => {
+    const response = await authAPI.verifyOtp({ email, otp });
+    const { token, user: sessionUser } = response.data;
+
+    if (!token || !sessionUser) {
+      throw new Error('Invalid verification response');
+    }
+
+    persistSession(token, sessionUser);
+    setUser(sessionUser);
+    hydrateFromStorage();
+    return sessionUser;
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    clearSession();
     setUser(null);
   };
 
   const updateUser = (updatedData: any) => {
     const newUser: any = { ...user, ...updatedData };
-    localStorage.setItem('user', JSON.stringify(newUser));
+    const { token } = readStoredSession();
+    if (token) {
+      persistSession(token, newUser);
+    }
     setUser(newUser);
   };
 
@@ -54,9 +115,10 @@ export function AuthProvider({ children }: any) {
     user,
     loading,
     login,
+    verifyOtp,
     logout,
     updateUser,
-    isAuthenticated: !!user
+    isAuthenticated: hasStoredSession()
   };
 
   return (

@@ -1,4 +1,5 @@
 import mongoose, { Schema, type Document } from 'mongoose';
+import { nextSequence, sbuNumberPrefix } from '../services/numbering.service.js';
 
 export interface IStoreTransaction extends Document {
   transactionNumber: string;
@@ -12,7 +13,7 @@ export interface IStoreTransaction extends Document {
   unitCost?: number;
   totalValue?: number;
   reference?: {
-    type?: 'grv' | 'store_requisition' | 'adjustment' | 'transfer' | 'stock_transfer';
+    type?: 'grv' | 'store_requisition' | 'purchase_requisition' | 'adjustment' | 'transfer' | 'stock_transfer';
     document?: mongoose.Types.ObjectId | any;
   };
   department?: mongoose.Types.ObjectId | any;
@@ -67,7 +68,7 @@ const StoreTransactionSchema = new Schema<IStoreTransaction>({
   reference: {
     type: {
       type: String,
-      enum: ['grv', 'store_requisition', 'adjustment', 'transfer', 'stock_transfer']
+      enum: ['grv', 'store_requisition', 'purchase_requisition', 'adjustment', 'transfer', 'stock_transfer']
     },
     document: {
       type: mongoose.Schema.Types.ObjectId,
@@ -93,15 +94,14 @@ const StoreTransactionSchema = new Schema<IStoreTransaction>({
   timestamps: true
 });
 
-// Generate transaction number before saving
-StoreTransactionSchema.pre('save', async function(next) {
-  if (this.isNew) {
-    const count = await (this.constructor as any).countDocuments();
+// Generate transaction number before validation (required field must be set pre-validate)
+StoreTransactionSchema.pre('validate', async function() {
+  if (this.isNew && !this.transactionNumber) {
     const year = new Date().getFullYear();
     const typePrefix = this.type.substring(0, 3).toUpperCase();
-    this.transactionNumber = `ST-${typePrefix}-${year}-${String(count + 1).padStart(6, '0')}`;
+    const seq = await nextSequence(this, 'storeTransaction', year);
+    this.transactionNumber = `${sbuNumberPrefix()}ST-${typePrefix}-${year}-${String(seq).padStart(6, '0')}`;
   }
-  next();
 });
 
 export default mongoose.model<IStoreTransaction>('StoreTransaction', StoreTransactionSchema);

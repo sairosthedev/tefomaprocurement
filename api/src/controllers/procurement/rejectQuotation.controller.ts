@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 
 import { Quotation, RFQ } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { notifySupplier } from '../../services/notification.service.js';
 
 const rejectQuotation = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -30,6 +31,7 @@ const rejectQuotation = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
+    const previousStatus = quotation.status;
     quotation.status = 'rejected';
     await quotation.save();
 
@@ -56,10 +58,27 @@ const rejectQuotation = async (req: Request, res: Response): Promise<any> => {
       entityId: quotation._id,
       user: req.user,
       description: `Rejected quotation ${quotation.quotationNumber}`,
-      previousData: { status: quotation.status },
+      previousData: { status: previousStatus },
       newData: { status: 'rejected', reason, comments },
       req
     });
+
+    if (quotation.supplier) {
+      const rfqDoc = quotation.rfq as any;
+      await notifySupplier(quotation.supplier, {
+        type: 'quotation_rejected',
+        title: 'Quotation not selected',
+        message: `Your quotation ${quotation.quotationNumber}${rfqDoc?.rfqNumber ? ` for RFQ ${rfqDoc.rfqNumber}` : ''} was not selected.${reason ? ` Reason: ${reason}` : ''}`,
+        entity: 'Quotation',
+        entityId: quotation._id,
+        relatedUser: req.user!._id,
+        metadata: {
+          rfqNumber: rfqDoc?.rfqNumber,
+          quotationNumber: quotation.quotationNumber,
+          reason
+        }
+      });
+    }
 
     res.status(200).json({
       success: true,

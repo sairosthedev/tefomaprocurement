@@ -23,6 +23,7 @@ const rejectInvoice = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
+    const previousStatus = invoice.status;
     invoice.status = 'rejected';
     invoice.rejectedBy = req.user!._id;
     invoice.rejectedAt = new Date();
@@ -36,7 +37,10 @@ const rejectInvoice = async (req: Request, res: Response): Promise<any> => {
       entity: 'Invoice',
       entityId: invoice._id,
       user: req.user,
+      entityLabel: invoice.invoiceNumber,
       description: `Rejected invoice ${invoice.invoiceNumber}: ${reason}`,
+      previousData: { status: previousStatus },
+      newData: { status: 'rejected' },
       req
     });
 

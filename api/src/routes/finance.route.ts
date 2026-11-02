@@ -5,9 +5,9 @@ import { protect, authorize } from '../middleware/index.js';
 const { finance } = controllers;
 const router = express.Router();
 
-// All routes require finance role
+// Finance only. Admins run the system, not approvals or payments.
 router.use(protect);
-router.use(authorize('finance', 'admin'));
+router.use(authorize('finance'));
 
 // Approvals
 router.get('/pending-approvals', finance.getPendingApprovals);
@@ -15,6 +15,7 @@ router.get('/purchase-orders', finance.getPurchaseOrders);
 router.get('/purchase-orders/:id', finance.getPurchaseOrderById);
 router.put('/purchase-orders/:id/approve', finance.approvePurchaseOrder);
 router.put('/purchase-orders/:id/reject', finance.rejectPurchaseOrder);
+router.put('/purchase-orders/:id/cancel', finance.cancelPurchaseOrder);
 
 // Accounts payable
 router.get('/invoices', finance.getInvoices);
@@ -23,5 +24,9 @@ router.put('/invoices/:id/approve', finance.approveInvoice);
 router.put('/invoices/:id/reject', finance.rejectInvoice);
 router.get('/payments', finance.getPayments);
 router.post('/payments', finance.createPayment);
+
+// Budgets
+router.get('/budgets', finance.getBudgets);
+router.put('/budgets', finance.upsertDepartmentBudget);
 
 export default router;

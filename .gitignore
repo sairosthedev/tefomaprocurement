@@ -35,3 +35,21 @@ coverage/
 *.tgz
 .cache/
 
+# Legacy database dumps (contain PII — never commit)
+*.dump
+droplet_backup.sql
+
+.vercel
+.env*
+
+# Credential / handover documents — must never be committed. These contain live
+# account passwords; keep them in a password manager, not in version control.
+ACCESS_AND_CREDENTIALS.md
+REPORTS/pdf/04-Access-and-Credentials.pdf
+# Glob form too, so a new handout cannot be committed by having a new name.
+*CREDENTIALS*
+*Credentials*
+*credentials*
+
+# The tester handout carries live sign-ins for production business units.
+SOURCELINE-TEST-GUIDE.*

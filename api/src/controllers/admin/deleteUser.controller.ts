@@ -24,6 +24,7 @@ const deleteUser = async (req: Request, res: Response): Promise<any> => {
       entity: 'User',
       entityId: user._id,
       user: req.user,
+      entityLabel: user.email,
       description: `Admin deleted user: ${user.email}`,
       previousData: { email: user.email, status: 'active' },
       req

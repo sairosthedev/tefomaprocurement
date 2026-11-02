@@ -79,7 +79,7 @@ const SupplierEvaluationSchema = new Schema<ISupplierEvaluation>({
   status: {
     type: String,
     enum: ['draft', 'pending_hod', 'pending_procurement_manager', 'pending_sec', 'approved', 'rejected'],
-    default: 'pending_hod'
+    default: 'approved'
   },
   isDeleted: { type: Boolean, default: false }
 }, { timestamps: true });
@@ -96,9 +96,12 @@ SupplierEvaluationSchema.pre('save', function (next) {
     ? Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10
     : 0;
 
+  // Fallback only. Callers that know the supplier's tier set nextReviewDue
+  // from it (see getNextReviewDate); this covers documents created without one,
+  // and uses the tightest cycle so nothing silently gets a long leash.
   if (this.isNew && !this.nextReviewDue) {
     const due = new Date();
-    due.setMonth(due.getMonth() + 3); // §5.7 quarterly review
+    due.setMonth(due.getMonth() + 3);
     this.nextReviewDue = due;
   }
   next();

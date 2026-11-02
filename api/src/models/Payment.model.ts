@@ -1,13 +1,34 @@
 import mongoose, { Schema, type Document } from 'mongoose';
+import { SUPPORTED_CURRENCY_CODES } from '@fossil/shared';
+import { currentBaseCurrency } from '../tenancy/sbuContext.js';
+import { nextNumber } from '../services/numbering.service.js';
 
 export interface IPayment extends Document {
   paymentNumber: string;
   supplier: mongoose.Types.ObjectId;
   invoices: mongoose.Types.ObjectId[];
   amount: number;
+  /** The currency of the invoices settled; a payment never mixes currencies. */
+  currency: string;
   paymentDate: Date;
   paymentMethod: 'bank_transfer' | 'cheque' | 'eft' | 'cash' | 'other';
   reference?: string;
+  /**
+   * The banking details as they stood when this payment was raised.
+   *
+   * Without this the system could not say which account a historical payment
+   * was directed to — supplier bank details were mutable in place, so the
+   * only record was a diff of audit blobs by timestamp. Snapshotting here
+   * makes each payment self-describing and is what lets a "change, pay,
+   * change back" pattern be detected after the fact.
+   */
+  paidToBankDetails?: {
+    bankName?: string;
+    accountName?: string;
+    accountNumber?: string;
+    branchCode?: string;
+    accountType?: string;
+  };
   status: 'draft' | 'completed' | 'cancelled';
   notes?: string;
   createdBy: mongoose.Types.ObjectId;
@@ -30,6 +51,12 @@ const PaymentSchema = new Schema<IPayment>({
     ref: 'Invoice'
   }],
   amount: { type: Number, required: true, min: 0 },
+  currency: {
+    type: String,
+    enum: [...SUPPORTED_CURRENCY_CODES],
+    required: true,
+    default: currentBaseCurrency
+  },
   paymentDate: { type: Date, required: true },
   paymentMethod: {
     type: String,
@@ -37,6 +64,13 @@ const PaymentSchema = new Schema<IPayment>({
     default: 'bank_transfer'
   },
   reference: String,
+  paidToBankDetails: {
+    bankName: String,
+    accountName: String,
+    accountNumber: String,
+    branchCode: String,
+    accountType: String
+  },
   status: {
     type: String,
     enum: ['draft', 'completed', 'cancelled'],
@@ -53,13 +87,13 @@ const PaymentSchema = new Schema<IPayment>({
   isDeleted: { type: Boolean, default: false }
 }, { timestamps: true });
 
-PaymentSchema.pre('save', async function (next) {
+// Numbering runs on `pre('validate')`, not `pre('save')`: Mongoose validates
+// before user save hooks, so a required number field assigned in `pre('save')`
+// fails validation and the hook never runs at all.
+PaymentSchema.pre('validate', async function () {
   if (this.isNew && !this.paymentNumber) {
-    const count = await (this.constructor as typeof mongoose.Model).countDocuments();
-    const year = new Date().getFullYear();
-    this.paymentNumber = `PAY-${year}-${String(count + 1).padStart(5, '0')}`;
+    this.paymentNumber = await nextNumber(this, { type: 'payment', prefix: 'PAY' });
   }
-  next();
 });
 
 export default mongoose.model<IPayment>('Payment', PaymentSchema);

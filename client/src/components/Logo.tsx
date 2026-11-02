@@ -1,89 +1,96 @@
-import React from 'react';
+const LOGO_IMAGE = '/procureline-logo.png';
+const MARK_IMAGE = '/sourceline-mark.png';
+const PRODUCT_NAME = 'Procureline';
 
-const Logo = ({ 
+const Logo = ({
   variant = 'default', // 'default', 'compact', 'icon'
   className = '',
-  showText = true 
+  showText = true
 }: any) => {
-  // Logo image paths
-  const logoImage = '/fossilLogo.png';
-  const logoIcon = '/fossilLogo.png'; // Use same logo for icon variant
-  
+  const Fallback = ({ size = 'text-xl' }: { size?: string }) => (
+    <div className="flex items-center gap-2">
+      <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
+        <span className={`${size} font-bold text-primary`}>P</span>
+      </div>
+      {showText && (
+        <div className="text-xl font-bold text-primary">
+          Procure<span className="text-brand-blue">line</span>
+        </div>
+      )}
+    </div>
+  );
+
   if (variant === 'icon') {
-    // Just the logo icon
     return (
       <div className={`flex items-center justify-center ${className}`}>
-        <img 
-          src={logoIcon || logoImage} 
-          alt="Fossil Contracting Logo" 
-          className="h-10 w-auto object-contain"
-          onError={(e: any) => {
-            // Fallback if image doesn't exist
-            e.target.style.display = 'none';
-            const fallback = e.target.nextSibling;
-            if (fallback) {
-              fallback.style.display = 'block';
-            }
-          }}
-        />
-        <div style={{ display: 'none' }} className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center">
-          <span className="text-lg font-bold text-primary">FC</span>
+        <div className="bg-white rounded-lg p-1.5 inline-flex max-w-full">
+          <img
+            src={MARK_IMAGE}
+            alt={PRODUCT_NAME}
+            className="h-10 w-auto max-w-full object-contain"
+            onError={(e: any) => {
+              e.target.style.display = 'none';
+              const fallback = e.target.nextSibling;
+              if (fallback) fallback.style.display = 'flex';
+            }}
+          />
+          <div style={{ display: 'none' }} className="h-10 w-10 bg-primary/10 rounded-lg items-center justify-center">
+            <span className="text-lg font-bold text-primary">P</span>
+          </div>
         </div>
       </div>
     );
   }
 
   if (variant === 'compact') {
-    // Compact version for sidebar
+    // Sidebar version — the sidebar is navy and so is the "Procure" wordmark,
+    // so seat the logo on a white card for contrast.
     return (
-      <div className={`flex items-center gap-3 ${className}`}>
-        <img 
-          src={logoImage} 
-          alt="Fossil Contracting" 
-          className="h-14 w-auto object-contain flex-shrink-0"
-          onError={(e: any) => {
-            e.target.style.display = 'none';
-            const fallback = e.target.nextSibling;
-            if (fallback) {
-              fallback.style.display = 'flex';
-            }
-          }}
-        />
-        {showText && (
-          <div className="flex flex-col">
-            <span className="text-base font-bold text-white leading-tight">FossilProcure</span>
-            <span className="text-xs text-gray-300 leading-tight">fossilapps</span>
+      <div className={`w-full ${className}`}>
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="px-4 py-3 flex items-center justify-center">
+            <img
+              src={LOGO_IMAGE}
+              alt={PRODUCT_NAME}
+              className="h-14 w-auto object-contain"
+              onError={(e: any) => {
+                e.target.style.display = 'none';
+                const fallback = e.target.nextSibling;
+                if (fallback) fallback.style.display = 'flex';
+              }}
+            />
+            <div style={{ display: 'none' }} className="items-center">
+              <span className="text-lg font-bold text-primary">
+                Procure<span className="text-brand-blue">line</span>
+              </span>
+            </div>
           </div>
+          <div className="brand-accent-bar h-1 w-full" />
+        </div>
+        {showText && (
+          <p className="text-[11px] font-medium uppercase tracking-wider text-gray-300 text-center mt-2">
+            Procurement System
+          </p>
         )}
       </div>
     );
   }
 
-  // Default full logo
+  // Default full logo (light backgrounds: login, register, unauthorized)
   return (
     <div className={`flex items-center justify-center ${className}`}>
-      <img 
-        src={logoImage} 
-        alt="Fossil Contracting Logo" 
-        className="h-16 w-auto object-contain max-w-full"
+      <img
+        src={LOGO_IMAGE}
+        alt={`${PRODUCT_NAME} Procurement System`}
+        className="h-24 w-auto object-contain max-w-full"
         onError={(e: any) => {
           e.target.style.display = 'none';
           const fallback = e.target.nextSibling;
-          if (fallback) {
-            fallback.style.display = 'flex';
-          }
+          if (fallback) fallback.style.display = 'flex';
         }}
       />
-      {/* Fallback if image doesn't exist */}
-      <div style={{ display: 'none' }} className="flex items-center gap-2">
-        <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
-          <span className="text-xl font-bold text-primary">FC</span>
-        </div>
-        {showText && (
-          <div>
-            <div className="text-xl font-bold text-gray-900">FOSSIL CONTRACTING</div>
-          </div>
-        )}
+      <div style={{ display: 'none' }}>
+        <Fallback />
       </div>
     </div>
   );

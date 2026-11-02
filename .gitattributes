@@ -1,0 +1,12 @@
+# Keep git's line-ending conversion away from files that are not text.
+# Without this, committing a PDF on Windows warns that LF will become CRLF and
+# the file is corrupted on the next checkout — the bytes are not line endings.
+*.pdf   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.woff  binary
+*.woff2 binary
+*.zip   binary

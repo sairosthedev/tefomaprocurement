@@ -1,8 +1,7 @@
 import type { Request, Response } from 'express';
-import jwt, { type SignOptions } from 'jsonwebtoken';
-import { User, SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
-import { createNotification } from '../../services/notification.service.js';
+import { findActiveUserByEmail } from '../../services/authLogin.service.js';
+import { createLoginOtp, shouldExposeOtpInResponse } from '../../services/otp.service.js';
 
 const login = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -15,14 +14,14 @@ const login = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    // Find user and include password for comparison
-    const user = await User.findOne({ email, isDeleted: false }).select('+password');
+    const user = await findActiveUserByEmail(email);
 
     if (!user) {
       await createAuditLog({
         action: 'login_failed',
         entity: 'User',
-        description: `Failed login attempt for email: ${email}`,
+        entityLabel: email,
+        description: `Failed login attempt — no account for ${email}`,
         req
       });
 
@@ -32,7 +31,6 @@ const login = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    // Check password
     const isMatch = await user.comparePassword(password);
 
     if (!isMatch) {
@@ -41,7 +39,8 @@ const login = async (req: Request, res: Response): Promise<any> => {
         entity: 'User',
         entityId: user._id,
         user,
-        description: `Failed login attempt - incorrect password`,
+        entityLabel: user.email,
+        description: `Failed login attempt — incorrect password for ${user.email}`,
         req
       });
 
@@ -51,7 +50,6 @@ const login = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    // Check if user is active
     if (user.status !== 'active') {
       return res.status(401).json({
         success: false,
@@ -59,61 +57,14 @@ const login = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    // Update last login
-    user.lastLogin = new Date();
-    await user.save({ validateBeforeSave: false });
-
-    // Generate token
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: process.env.JWT_EXPIRE || '7d' } as SignOptions
-    );
-
-    // Get supplier profile if user is a supplier
-    let supplierProfile = null;
-    if (user.role === 'supplier') {
-      supplierProfile = await SupplierProfile.findOne({ user: user._id });
-    }
-
-    await createAuditLog({
-      action: 'login',
-      entity: 'User',
-      entityId: user._id,
-      user,
-      description: `User logged in successfully`,
-      req
-    });
-
-    // Create login notification for security tracking
-    await createNotification({
-      recipient: user._id,
-      type: 'login_successful',
-      title: 'Successful Login',
-      message: `You have successfully logged into your account. ${req.ip ? `IP Address: ${req.ip}` : ''}`,
-      entity: 'User',
-      entityId: user._id,
-      relatedUser: user._id,
-      metadata: {
-        ipAddress: req.ip || req.connection?.remoteAddress,
-        userAgent: req.headers?.['user-agent'],
-        timestamp: new Date()
-      }
-    });
+    const otpCode = await createLoginOtp(user);
 
     res.status(200).json({
       success: true,
-      token,
-      user: {
-        id: user._id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        fullName: user.fullName,
-        role: user.role,
-        department: user.department,
-        supplierProfile: supplierProfile?._id
-      }
+      requiresOtp: true,
+      email: user.email,
+      message: 'A verification code has been sent to your email',
+      ...(shouldExposeOtpInResponse() ? { debugOtp: otpCode } : {})
     });
   } catch (error) {
     console.error('Login error:', error);

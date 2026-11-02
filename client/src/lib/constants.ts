@@ -3,6 +3,7 @@ import {
   DEFAULT_CURRENCY,
   formatCurrency,
   PROVINCES,
+  COUNTRIES,
   BANKS,
   ACCOUNT_TYPES,
   SUPPLIER_CATEGORIES,
@@ -16,13 +17,14 @@ import {
   UNITS_OF_MEASUREMENT,
   UNIT_OPTIONS,
   USER_ROLE_OPTIONS
-} from '@fosssil/shared';
+} from '@fossil/shared';
 
 export {
   CURRENCIES,
   DEFAULT_CURRENCY,
   formatCurrency,
   PROVINCES,
+  COUNTRIES,
   BANKS,
   ACCOUNT_TYPES,
   SUPPLIER_CATEGORIES,

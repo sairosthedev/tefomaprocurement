@@ -1,7 +1,7 @@
 {
-  "name": "fosssil-procure",
+  "name": "tefoma-procurement",
   "version": "1.0.0",
-  "description": "MERN stack monorepo for FosssilProcure",
+  "description": "MERN stack monorepo for Tefoma Procurement (Tefoma Construction)",
   "private": true,
   "workspaces": [
     "apps/*",
@@ -10,26 +10,54 @@
     "client"
   ],
   "scripts": {
-    "dev": "npm run build -w @fosssil/shared && concurrently -n api,client -c blue,magenta \"npm run dev -w api\" \"npm run dev -w client\"",
-    "dev:api": "npm run build -w @fosssil/shared && npm run dev -w api",
-    "dev:client": "npm run build -w @fosssil/shared && npm run dev -w client",
-    "build": "npm run build -w @fosssil/shared && npm run build -w api && npm run build -w client",
-    "build:shared": "npm run build -w @fosssil/shared",
+    "dev": "npm run build -w @fossil/shared && concurrently -n api,client -c blue,magenta \"npm run dev -w api\" \"npm run dev -w client\"",
+    "dev:api": "npm run build -w @fossil/shared && npm run dev -w api",
+    "dev:client": "npm run build -w @fossil/shared && npm run dev -w client",
+    "dev:staging": "npm run build -w @fossil/shared && concurrently -n api,client -c blue,magenta \"npm run dev:staging -w api\" \"npm run dev:staging -w client\"",
+    "build": "npm run build -w @fossil/shared && npm run build -w api && npm run build -w client",
+    "build:staging": "npm run build -w @fossil/shared && npm run build -w api && npm run build:staging -w client",
+    "build:shared": "npm run build -w @fossil/shared",
     "start": "npm run start -w api",
-    "seed": "npm run seed -w api",
+    "start:staging": "npm run start:staging -w api",
+    "seed": "npm run seed -w api --",
+    "seed:all": "npm run seed:all -w api --",
     "migrate:sites": "npm run migrate:sites -w api",
-    "typecheck": "npm run typecheck -w @fosssil/shared && npm run typecheck -w api && npm run typecheck -w client",
+    "typecheck": "npm run typecheck -w @fossil/shared && npm run typecheck -w api && npm run typecheck -w client",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
     "install:all": "npm install",
-    "ngrok": "powershell -ExecutionPolicy Bypass -File ./scripts/start-ngrok.ps1"
+    "ngrok": "powershell -ExecutionPolicy Bypass -File ./scripts/start-ngrok.ps1",
+    "deploy:client:staging": "vercel link --yes --project tefomaprocurement-staging --scope macdonald-sairos-projects && vercel --prod",
+    "deploy:api:staging": "vercel link --yes --project tefomaprocurement-api-staging --scope macdonald-sairos-projects && vercel --prod",
+    "deploy:staging": "npm run deploy:api:staging && npm run deploy:client:staging",
+    "deploy:client": "vercel link --yes --project tefomaprocurement --scope macdonald-sairos-projects && vercel --prod",
+    "deploy:api": "vercel link --yes --project tefomaprocurement-api --scope macdonald-sairos-projects && vercel --prod",
+    "deploy:production": "npm run deploy:api && npm run deploy:client",
+    "seed:sbu-registry": "npm run seed:sbu-registry -w api --",
+    "check:isolation": "npm run check:isolation -w api",
+    "seed:counters": "npm run seed:counters -w api --",
+    "check:numbering": "npm run check:numbering -w api --",
+    "bootstrap:sbus": "npm run bootstrap:sbus -w api --",
+    "sbu:capacity": "npm run sbu:capacity -w api --",
+    "e2e:local": "npm run e2e:local -w api --",
+    "sbu:domains": "npm run sbu:domains -w api --",
+    "migrate:sbu-reset": "npm run migrate:sbu-reset -w api --",
+    "seed:demo": "npm run seed:demo -w api --",
+    "seed:demo-workflow": "npm run seed:demo-workflow -w api --",
+    "seed:demo:prod": "npm run seed:demo:prod -w api --",
+    "seed:sbu-registry:prod": "npm run seed:sbu-registry:prod -w api --",
+    "bootstrap:sbus:prod": "npm run bootstrap:sbus:prod -w api --",
+    "sbu:domains:prod": "npm run sbu:domains:prod -w api --",
+    "seed:counters:prod": "npm run seed:counters:prod -w api --",
+    "migrate:sbu-reset:prod": "npm run migrate:sbu-reset:prod -w api --"
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.3",
     "concurrently": "^8.2.2",
+    "cross-env": "^10.1.0",
     "prettier": "^3.3.3"
   },
   "engines": {
     "node": ">=18.0.0"
   }
 }
-

@@ -2,7 +2,9 @@ import type { Request, Response } from 'express';
 
 import { Quotation, RFQ, SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { currentBaseCurrency } from '../../tenancy/sbuContext.js';
 import { notifyUsersByRole } from '../../services/notification.service.js';
+import { sanitiseAttachments } from '../../services/lineAttachments.service.js';
 
 const submitQuotation = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -39,18 +41,32 @@ const submitQuotation = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    if (rfq.status !== 'open') {
-      return res.status(400).json({
-        success: false,
-        message: 'RFQ is not open for submissions'
-      });
-    }
+    // A prior quotation for this RFQ+supplier blocks resubmission UNLESS it is a
+    // revision that procurement asked for — then the new quote supersedes it.
+    const existingQuotation = await Quotation.findOne({
+      rfq: rfqId,
+      supplier: profile._id,
+      isDeleted: false,
+      status: { $nin: ['superseded'] }
+    });
+    const isRevision = existingQuotation?.status === 'revision_requested';
 
-    if (new Date() > new Date(rfq.submissionDeadline)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Submission deadline has passed'
-      });
+    // A revision resubmission is allowed after close/deadline (procurement
+    // explicitly re-opened it). A fresh submission still requires an open RFQ
+    // within the deadline.
+    if (!isRevision) {
+      if (rfq.status !== 'open') {
+        return res.status(400).json({
+          success: false,
+          message: 'RFQ is not open for submissions'
+        });
+      }
+      if (new Date() > new Date(rfq.submissionDeadline)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Submission deadline has passed'
+        });
+      }
     }
 
     // Check if supplier was invited
@@ -64,22 +80,46 @@ const submitQuotation = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    // Check if already submitted
-    const existingQuotation = await Quotation.findOne({
-      rfq: rfqId,
-      supplier: profile._id,
-      isDeleted: false
-    });
-    if (existingQuotation) {
+    if (existingQuotation && !isRevision) {
       return res.status(400).json({
         success: false,
         message: 'You have already submitted a quotation for this RFQ'
       });
     }
 
+    // Bind each quote line to the RFQ line it answers, so lines can be compared
+    // and awarded independently. Fall back to a description match when the client
+    // did not send rfqLineId (legacy quote forms).
+    const normalize = (s: string) => (s || '').toLowerCase().trim();
+    const boundItems: any[] = [];
+    for (const item of items) {
+      let rfqLineId = item.rfqLineId;
+      if (!rfqLineId) {
+        const match = rfq.items.find(
+          (rl: any) => normalize(rl.description) === normalize(item.description)
+        );
+        rfqLineId = match?._id;
+      }
+
+      // A supplier may offer an equivalent part — validate any data plate they attach.
+      const attachments = sanitiseAttachments(item.attachments, req.user!._id);
+      if (!attachments.ok) {
+        return res.status(400).json({ success: false, message: attachments.message });
+      }
+
+      boundItems.push({
+        ...item,
+        rfqLineId,
+        isAlternative: Boolean(item.isAlternative),
+        alternativeDescription: item.alternativeDescription?.trim() || undefined,
+        alternativePartNumber: item.alternativePartNumber?.trim() || undefined,
+        attachments: attachments.value
+      });
+    }
+
     // Calculate totals
-    const subtotal = items.reduce((sum: any, item: any) => sum + item.totalPrice, 0);
-    const vatAmount = items.some((item: any) => !item.vatIncluded) ? subtotal * 0.15 : 0;
+    const subtotal = boundItems.reduce((sum: any, item: any) => sum + item.totalPrice, 0);
+    const vatAmount = boundItems.some((item: any) => !item.vatIncluded) ? subtotal * 0.15 : 0;
     const totalAmount = subtotal + vatAmount;
 
     // Generate quotation number
@@ -94,21 +134,30 @@ const submitQuotation = async (req: Request, res: Response): Promise<any> => {
       site: rfq.site,
       supplier: profile._id,
       submittedBy: req.user!._id,
-      items,
+      items: boundItems,
       subtotal,
       vatAmount,
       totalAmount,
       validityPeriod: validityDays,
       deliveryPeriod,
       paymentTerms,
-      currency: currency || 'USD',
+      currency: currency || currentBaseCurrency(),
       notes,
       status: 'submitted',
       isLocked: true,
       lockedAt: new Date(),
       submittedAt: new Date(),
-      validUntil: new Date(Date.now() + validityDays * 24 * 60 * 60 * 1000)
+      validUntil: new Date(Date.now() + validityDays * 24 * 60 * 60 * 1000),
+      revisionOf: isRevision ? existingQuotation!._id : undefined,
+      revisionRound: isRevision ? (existingQuotation!.revisionRound || 0) + 1 : 0
     });
+
+    // Archive the superseded quotation and link it forward.
+    if (isRevision && existingQuotation) {
+      existingQuotation.status = 'superseded';
+      existingQuotation.supersededBy = quotation._id;
+      await existingQuotation.save();
+    }
 
     // Update RFQ invitation status
     await RFQ.updateOne(

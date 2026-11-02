@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useToast } from '../components/Toast';
 import api, { adminAPI } from '../lib/api';
-import { Building2, Plus, Edit, Trash2, Users, Loader2 } from 'lucide-react';
-import Modal from '../components/Modal';
+import { Building2, Plus, Loader2 } from 'lucide-react';
+import Modal, { ModalFooter } from '../components/Modal';
+import PageHeader from '../components/PageHeader';
+import Pagination from '../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 export default function Departments() {
   const { showToast } = useToast();
@@ -16,20 +19,25 @@ export default function Departments() {
     name: '',
     code: '',
     description: '',
-    head: ''
+    head: '',
+    deputyHead: ''
   });
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
+  const [pagination, setPagination] = useState(emptyPagination());
 
   useEffect(() => {
     fetchDepartments();
     fetchDepartmentHeads();
-  }, []);
+  }, [page, limit]);
 
   const fetchDepartments = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/admin/departments');
+      const response = await api.get('/admin/departments', { params: { page, limit } });
       if (response.data.success) {
         setDepartments(response.data.data || []);
+        setPagination(parsePagination(response.data.pagination));
       }
     } catch (error: any) {
       console.error('Failed to fetch departments:', error);
@@ -68,7 +76,7 @@ export default function Departments() {
 
       setShowModal(false);
       setEditingDepartment(null);
-      setFormData({ name: '', code: '', description: '', head: '' });
+      setFormData({ name: '', code: '', description: '', head: '', deputyHead: '' });
       fetchDepartments();
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to save department', 'error');
@@ -81,7 +89,8 @@ export default function Departments() {
       name: dept.name,
       code: dept.code || '',
       description: dept.description || '',
-      head: dept.head?._id || ''
+      head: dept.head?._id || '',
+      deputyHead: dept.deputyHead?._id || ''
     });
     setShowModal(true);
   };
@@ -100,17 +109,19 @@ export default function Departments() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Departments</h1>
-          <p className="text-gray-500 mt-1">Manage organization departments</p>
-        </div>
+      <PageHeader
+        title="Departments"
+        subtitle="Manage organization departments"
+        bottomSpacing="mb-4"
+      />
+
+      <div className="mb-4 flex items-center gap-3">
         <button
-          onClick={() => { setEditingDepartment(null); setFormData({ name: '', code: '', description: '', head: '' }); setShowModal(true); }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors"
+          type="button"
+          onClick={() => { setEditingDepartment(null); setFormData({ name: '', code: '', description: '', head: '', deputyHead: '' }); setShowModal(true); }}
+          className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors whitespace-nowrap shrink-0"
         >
-          <Plus className="h-5 w-5" />
+          <Plus className="h-4 w-4" />
           Add Department
         </button>
       </div>
@@ -132,57 +143,60 @@ export default function Departments() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {departments.map((dept: any) => (
-            <div key={dept._id} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-primary/10 rounded-xl">
-                    <Building2 className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{dept.name}</h3>
-                    {dept.code && (
-                      <span className="text-xs font-mono text-gray-400">{dept.code}</span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => handleEdit(dept)}
-                    className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(dept._id)}
-                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-
-              {dept.description && (
-                <p className="text-sm text-gray-500 mt-4 line-clamp-2">{dept.description}</p>
-              )}
-
-              <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <Users className="h-4 w-4" />
-                  <span>{dept.userCount || 0} member{dept.userCount !== 1 ? 's' : ''}</span>
-                </div>
-                {dept.head && dept.head.firstName ? (
-                  <span className="text-sm text-gray-500">
-                    Head: {dept.head.firstName} {dept.head.lastName || ''}
-                  </span>
-                ) : (
-                  <span className="text-sm text-gray-400 italic">No head assigned</span>
-                )}
-              </div>
-            </div>
-          ))}
+        <>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Code</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Name</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Description</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Head</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Members</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {departments.map((dept: any) => (
+                <tr key={dept._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                  <td className="py-2 px-3 border-b border-gray-100 font-mono text-xs text-gray-500">{dept.code || '—'}</td>
+                  <td className="py-2 px-3 border-b border-gray-100 font-medium">{dept.name}</td>
+                  <td className="py-2 px-3 border-b border-gray-100 text-gray-500">{dept.description || '—'}</td>
+                  <td className="py-2 px-3 border-b border-gray-100">
+                    {dept.head?.firstName ? `${dept.head.firstName} ${dept.head.lastName || ''}` : <span className="text-gray-400 italic">None</span>}
+                  </td>
+                  <td className="py-2 px-3 border-b border-gray-100">{dept.userCount || 0}</td>
+                  <td className="py-2 px-3 border-b border-gray-100">
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => handleEdit(dept)}
+                        className="px-2 py-1 text-xs border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(dept._id)}
+                        className="px-2 py-1 text-xs border border-red-300 rounded hover:bg-red-50 text-red-600"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+        <Pagination
+          page={page}
+          pages={pagination.pages}
+          total={pagination.total}
+          onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+          itemLabel="departments"
+        />
+        </>
       )}
 
       {/* Add/Edit Modal */}
@@ -253,7 +267,32 @@ export default function Departments() {
             )}
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Deputy HOD
+            </label>
+            {loadingHeads ? (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading department heads...
+              </div>
+            ) : (
+              <select
+                value={formData.deputyHead}
+                onChange={(e: any) => setFormData({ ...formData, deputyHead: e.target.value })}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white"
+              >
+                <option value="">Select a deputy HOD (optional)</option>
+                {departmentHeads.map((user: any) => (
+                  <option key={user._id} value={user._id}>
+                    {user.firstName} {user.lastName} {user.email ? `(${user.email})` : ''}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <ModalFooter>
             <button
               onClick={() => { setShowModal(false); setEditingDepartment(null); }}
               className="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 rounded-xl"
@@ -266,7 +305,7 @@ export default function Departments() {
             >
               {editingDepartment ? 'Update' : 'Create'}
             </button>
-          </div>
+          </ModalFooter>
         </div>
       </Modal>
     </div>

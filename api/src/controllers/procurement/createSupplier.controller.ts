@@ -1,10 +1,10 @@
 import type { Request, Response } from 'express';
 
-import { isValidCategoryCode } from '@fosssil/shared';
+import { isValidCategoryCode } from '@fossil/shared';
 import { User, SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { createNotification } from '../../services/notification.service.js';
-import { sendEmailNotification } from '../../services/email.service.js';
+import { getProductName } from '../../lib/branding.js';
 
 const createSupplier = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -93,8 +93,11 @@ const createSupplier = async (req: Request, res: Response): Promise<any> => {
       }
     }
 
-    // Use provided password or default to "password"
-    const userPassword = password || 'password';
+    // Never fall back to a shared, guessable password: generate a random
+    // one-time credential instead. It is returned once so the officer can pass
+    // it on, and the supplier is told to log in and complete KYS.
+    const userPassword =
+      password || `${Math.random().toString(36).slice(-10)}A1!`;
 
     // Validate password length
     if (userPassword.length < 6) {
@@ -139,7 +142,7 @@ const createSupplier = async (req: Request, res: Response): Promise<any> => {
         accountNumber: bankAccountNumber,
         branchCode: bankBranchCode
       },
-      // FC-HQ-P-07 §6.2.3 — supplier stays pending until KYS documents are
+      // Supplier stays pending until KYS documents are
       // collected and verified; only then can they be activated/invited.
       status: 'pending'
     });
@@ -158,7 +161,7 @@ const createSupplier = async (req: Request, res: Response): Promise<any> => {
     await createNotification({
       recipient: user._id,
       type: 'supplier_added',
-      title: 'Welcome to FosssilProcure',
+      title: `Welcome to ${getProductName()}`,
       message: `Your supplier account for ${companyName} has been created. Please log in and upload your KYS compliance documents so your account can be verified and activated.`,
       entity: 'SupplierProfile',
       entityId: supplierProfile._id,

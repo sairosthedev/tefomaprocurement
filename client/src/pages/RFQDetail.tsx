@@ -1,19 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
-import { 
-  ArrowLeft, 
-  FileText, 
-  Calendar, 
-  Users, 
+import { useAuth } from '../context/AuthContext';
+import { isProcurementHead } from '@fossil/shared';
+import PageHeader from '../components/PageHeader';
+import { WorkflowStepper, NextStepCard, type WorkflowStep, type NextStepAction } from '../components/WorkflowStepper';
+import EquipmentDetailsView from '../components/EquipmentDetailsView';
+import RfqRankingPanel from '../components/RfqRankingPanel';
+import {
+  Calendar,
+  Users,
   Send,
   Loader2,
-  Clock,
   CheckCircle,
   XCircle,
-  Package,
-  DollarSign
+  Split
 } from 'lucide-react';
 
 const statusColors: any = {
@@ -25,11 +27,85 @@ const statusColors: any = {
   cancelled: 'bg-red-100 text-red-700'
 };
 
+/** Where an RFQ's award stands, for the whole-quotation and the split (per-line) paths. */
+function awardProgress(rfq: any) {
+  const lines: any[] = rfq.lineAwards || [];
+  // Opening the award matrix seeds a pending line per item, so lines alone do
+  // not make a split award: one must be flagged or actually awarded.
+  const split = !!rfq.splitAward || lines.some((l) => l.status && l.status !== 'pending');
+  if (split) {
+    const awarded = lines.filter((l) => l.status === 'awarded');
+    return {
+      split,
+      selectedId: null as string | null,
+      selected: awarded.length > 0,
+      authorized: awarded.length > 0 && awarded.every((l) => l.pmAuthorization?.by),
+      done: awarded.length > 0 && awarded.every((l) => l.poGenerated),
+      detail: lines.length ? `${awarded.length}/${lines.length} lines` : undefined
+    };
+  }
+  const selectedId = rfq.hodSelection?.quotation || rfq.pmAuthorization?.quotation || null;
+  return {
+    split,
+    selectedId: selectedId ? String(selectedId._id || selectedId) : null,
+    selected: !!selectedId,
+    authorized: !!rfq.pmAuthorization?.quotation,
+    // acceptQuotation moves the RFQ to 'awarded'.
+    done: rfq.status === 'awarded',
+    detail: undefined as string | undefined
+  };
+}
+
+/** Requisition, published, quotes in, winner selected, authorized, awarded. */
+function rfqSteps(rfq: any): WorkflowStep[] {
+  const a = awardProgress(rfq);
+  const closed = ['closed', 'evaluating', 'awarded'].includes(rfq.status) || !!rfq.closedAt;
+  const pr = rfq.purchaseRequisition;
+  const raw: Array<{ key: string; label: string; done: boolean; detail?: string; to?: string }> = [
+    {
+      key: 'pr',
+      label: 'Requisition',
+      done: true,
+      detail: pr?.requisitionNumber,
+      to: pr?._id ? `/app/requisitions/${pr._id}` : undefined
+    },
+    { key: 'published', label: 'Published', done: rfq.status !== 'draft' && (rfq.status !== 'cancelled' || !!rfq.publishedAt) },
+    {
+      key: 'quotes',
+      label: 'Quotes in',
+      done: closed,
+      detail: typeof rfq.bidCount === 'number' ? `${rfq.bidCount} received` : undefined
+    },
+    { key: 'selected', label: 'Winner selected', done: a.selected, detail: a.detail },
+    {
+      key: 'authorized',
+      label: 'Authorized',
+      done: a.authorized,
+      to: a.selectedId ? `/app/quotations/${a.selectedId}` : a.split && a.selected ? `/app/rfqs/${rfq._id}/award` : undefined
+    },
+    { key: 'awarded', label: a.split ? 'POs generated' : 'Awarded', done: a.done }
+  ];
+
+  const stopped = rfq.status === 'cancelled';
+  const current = raw.findIndex((s) => !s.done);
+  return raw.map((s, i) => ({
+    key: s.key,
+    label: s.label,
+    detail: i === current && stopped ? 'Cancelled' : s.detail,
+    to: s.to,
+    state: s.done ? 'done' : i === current ? (stopped ? 'stopped' : 'current') : 'upcoming'
+  }));
+}
+
 export default function RFQDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { user } = useAuth();
+  const procurementHead = isProcurementHead(user);
+  const rankingRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState<any>(true);
+  const [closing, setClosing] = useState<any>(false);
   const [rfq, setRfq] = useState<any>(null);
 
   useEffect(() => {
@@ -52,6 +128,12 @@ export default function RFQDetail() {
   };
 
   const handlePublish = async () => {
+    const enteredItems = (rfq?.items || []).filter((item: any) => item.description?.trim());
+    if (enteredItems.length === 0) {
+      showToast('RFQ must have at least one item before it can be sent to suppliers', 'error');
+      return;
+    }
+
     try {
       await procurementAPI.publishRFQ(id);
       showToast('RFQ published successfully', 'success');
@@ -60,6 +142,26 @@ export default function RFQDetail() {
       showToast(error.response?.data?.message || 'Failed to publish RFQ', 'error');
     }
   };
+
+  const handleClose = async () => {
+    if (!window.confirm('Close this RFQ and reveal submitted bids for evaluation? Suppliers will no longer be able to submit.')) {
+      return;
+    }
+    try {
+      setClosing(true);
+      const res = await procurementAPI.closeRFQ(id);
+      showToast(res.data.message || 'RFQ closed — bids are now visible', 'success');
+      fetchRFQ();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to close RFQ', 'error');
+    } finally {
+      setClosing(false);
+    }
+  };
+
+  const bidsAreSealed = rfq?.status === 'open' && (
+    !rfq?.submissionDeadline || new Date(rfq.submissionDeadline) > new Date()
+  );
 
   if (loading) {
     return (
@@ -82,82 +184,115 @@ export default function RFQDetail() {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      {/* Header with Back Button */}
-      <div className="flex items-center gap-4 mb-6">
-        <button
-          onClick={() => navigate('/app/rfqs')}
-          className="flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to RFQs
-        </button>
-      </div>
+    <div className="p-8">
+      <PageHeader
+        backTo="/app/rfqs"
+        backLabel="Back to RFQs"
+        title={rfq.title}
+        subtitle={`#${rfq.rfqNumber}`}
+        actions={
+          <>
+            <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[rfq.status]}`}>
+              {rfq.status?.charAt(0).toUpperCase() + rfq.status?.slice(1)}
+            </span>
+            {rfq.status === 'draft' && (
+              <button
+                onClick={handlePublish}
+                disabled={(rfq.items || []).filter((item: any) => item.description?.trim()).length === 0}
+                className="px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors flex items-center gap-2 disabled:opacity-50"
+                title={
+                  (rfq.items || []).filter((item: any) => item.description?.trim()).length === 0
+                    ? 'Add at least one item before publishing'
+                    : undefined
+                }
+              >
+                <Send className="h-4 w-4" />
+                Publish RFQ
+              </button>
+            )}
+            {rfq.status === 'open' && (
+              <button
+                onClick={handleClose}
+                disabled={closing}
+                className="px-4 py-2.5 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {closing ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                Close RFQ & Reveal Bids
+              </button>
+            )}
+            {['closed', 'evaluating', 'awarded'].includes(rfq.status) && (
+              <button
+                onClick={() => navigate(`/app/rfqs/${rfq._id}/award`)}
+                className="px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors flex items-center gap-2"
+                title="Award each line to the best supplier (split across suppliers)"
+              >
+                <Split className="h-4 w-4" />
+                Split Award
+              </button>
+            )}
+          </>
+        }
+      />
 
-      {/* Hero Section with Green Background and SVG */}
-      <div className="bg-gradient-to-br from-green-50 via-green-100/50 to-green-50 rounded-2xl p-8 border border-green-200 relative overflow-hidden mb-6">
-        {/* Decorative SVG/Pattern */}
-        <div className="absolute top-0 right-0 w-80 h-80 opacity-10">
-          <svg viewBox="0 0 300 300" className="w-full h-full text-green-600">
-            <circle cx="150" cy="150" r="80" fill="currentColor" opacity="0.1" />
-            <circle cx="100" cy="100" r="40" fill="currentColor" opacity="0.15" />
-            <circle cx="200" cy="200" r="50" fill="currentColor" opacity="0.1" />
-            <path d="M50,150 Q150,50 250,150 T450,150" stroke="currentColor" strokeWidth="3" fill="none" opacity="0.2" />
-            <path d="M50,200 Q150,100 250,200 T450,200" stroke="currentColor" strokeWidth="2" fill="none" opacity="0.15" />
-          </svg>
-        </div>
-        
-        <div className="relative z-10">
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <div className="p-4 bg-white/90 rounded-2xl shadow-sm">
-                <FileText className="h-10 w-10 text-green-600" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-1">{rfq.title}</h1>
-                <p className="text-sm text-gray-600 font-mono">#{rfq.rfqNumber}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[rfq.status]}`}>
-                {rfq.status?.charAt(0).toUpperCase() + rfq.status?.slice(1)}
-              </span>
-              {rfq.status === 'draft' && (
-                <button
-                  onClick={handlePublish}
-                  className="px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors flex items-center gap-2"
-                >
-                  <Send className="h-4 w-4" />
-                  Publish RFQ
-                </button>
-              )}
-            </div>
-          </div>
+      <WorkflowStepper steps={rfqSteps(rfq)} />
+      {(() => {
+        const a = awardProgress(rfq);
+        const award = `/app/rfqs/${rfq._id}/award`;
+        const bids = rfq.bidCount ?? 0;
+        let next: { title: string; description?: string; waiting?: boolean; done?: boolean; action?: NextStepAction } | null = null;
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white/90 rounded-xl p-4 backdrop-blur-sm">
-              <p className="text-xs text-gray-600 mb-1">Items</p>
-              <p className="text-2xl font-bold text-gray-900">{rfq.items?.length || 0}</p>
-            </div>
-            <div className="bg-white/90 rounded-xl p-4 backdrop-blur-sm">
-              <p className="text-xs text-gray-600 mb-1">Suppliers</p>
-              <p className="text-2xl font-bold text-gray-900">{rfq.invitedSuppliers?.length || 0}</p>
-            </div>
-            <div className="bg-white/90 rounded-xl p-4 backdrop-blur-sm">
-              <p className="text-xs text-gray-600 mb-1">Status</p>
-              <p className="text-sm font-semibold text-gray-900 capitalize">{rfq.status}</p>
-            </div>
-            <div className="bg-white/90 rounded-xl p-4 backdrop-blur-sm">
-              <p className="text-xs text-gray-600 mb-1">Deadline</p>
-              <p className="text-sm font-semibold text-gray-900 flex items-center gap-1">
-                <Calendar className="h-4 w-4" />
-                {new Date(rfq.submissionDeadline).toLocaleDateString('en-ZA')}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+        if (rfq.status === 'cancelled') {
+          next = null;
+        } else if (rfq.status === 'draft') {
+          next = {
+            title: 'Publish the RFQ',
+            description: 'Invited suppliers can quote once it is published.',
+            action: { label: 'Publish RFQ', onClick: handlePublish }
+          };
+        } else if (rfq.status === 'open') {
+          next = bidsAreSealed
+            ? {
+                title: 'Suppliers are quoting',
+                description: `Bids stay sealed until ${new Date(rfq.submissionDeadline).toLocaleString()}. ${bids} received so far. You can close early once every invited supplier has responded.`,
+                waiting: true,
+                action: { label: closing ? 'Closing...' : 'Close RFQ & reveal bids', onClick: handleClose, disabled: closing }
+              }
+            : {
+                title: 'Close the RFQ to evaluate the bids',
+                description: `The deadline has passed. ${bids} bid(s) received.`,
+                action: { label: closing ? 'Closing...' : 'Close RFQ & reveal bids', onClick: handleClose, disabled: closing }
+              };
+        } else if (rfq.status === 'closed' && bids === 0) {
+          next = { title: 'No quotations were received', description: 'Invite more suppliers on a new RFQ, or cancel this one.' };
+        } else if (!a.selected) {
+          next = a.split
+            ? { title: 'Award each line to a supplier', action: { label: 'Open award matrix', to: award } }
+            : {
+                title: 'Compare the quotes and select the winner',
+                description: 'Open the best-ranked quotation and select it with a justification, or split the award by line.',
+                action: { label: 'Compare quotes', onClick: () => rankingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
+              };
+        } else if (!a.authorized) {
+          const to = a.split ? award : `/app/quotations/${a.selectedId}`;
+          next = procurementHead
+            ? { title: 'Authorize the selected award', action: { label: 'Review award', to } }
+            : { title: 'Head of Procurement authorization', waiting: true, action: { label: 'View selection', to } };
+        } else if (!a.done) {
+          next = a.split
+            ? { title: 'Generate the purchase orders', description: 'One per supplier, for the authorized lines.', action: { label: 'Open award matrix', to: award } }
+            : { title: 'Accept the quotation and raise the purchase order', action: { label: 'Open winning quotation', to: `/app/quotations/${a.selectedId}` } };
+        } else {
+          next = a.split
+            ? { title: 'Purchase orders generated', done: true, action: { label: 'View purchase orders', to: '/app/purchase-orders' } }
+            : a.selectedId
+            ? { title: 'Award accepted', done: true, description: 'The purchase order is raised and followed from the winning quotation.', action: { label: 'Open winning quotation', to: `/app/quotations/${a.selectedId}` } }
+            : null;
+        }
+
+        return next ? (
+          <NextStepCard title={next.title} description={next.description} waiting={next.waiting} done={next.done} action={next.action} />
+        ) : null;
+      })()}
 
       {/* Details */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
@@ -212,6 +347,10 @@ export default function RFQDetail() {
                       {item.specifications && (
                         <p className="text-sm text-gray-600 mt-1">{item.specifications}</p>
                       )}
+                      <EquipmentDetailsView
+                        equipment={item.equipment}
+                        attachments={item.attachments}
+                      />
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium text-gray-900">
@@ -222,6 +361,28 @@ export default function RFQDetail() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {bidsAreSealed && (
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+            <p className="font-medium">Bids are sealed</p>
+            <p className="mt-1 text-amber-700">
+              Supplier quotations stay hidden until the submission deadline passes or you close this RFQ.
+              Use <strong>Close RFQ &amp; Reveal Bids</strong> above once all invited suppliers have responded.
+            </p>
+          </div>
+        )}
+
+        {/* Ranked responses. Above the invitation list on purpose: once bids are
+            in, how they compare matters more than who was asked. */}
+        {!bidsAreSealed && ['closed', 'evaluating', 'awarded'].includes(rfq.status) && (
+          <div ref={rankingRef} className="scroll-mt-6">
+            <RfqRankingPanel
+              rfqId={rfq._id}
+              refreshKey={rfq.status}
+              onViewQuotation={(quotationId) => navigate(`/app/quotations/${quotationId}`)}
+            />
           </div>
         )}
 
@@ -245,14 +406,30 @@ export default function RFQDetail() {
                         Submitted
                       </span>
                     )}
+                    {/* Why this supplier is on the list. Auto-invited names carry
+                        the match that put them here, so the list can be defended. */}
+                    {invitation.invitationReason && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {invitation.autoInvited && (
+                          <span className="inline-block px-1.5 py-0.5 mr-1.5 rounded bg-blue-50 text-blue-700 font-medium">
+                            {invitation.basis === 'related_category_topup' ? 'Auto · related' : 'Auto · category'}
+                          </span>
+                        )}
+                        {invitation.invitationReason}
+                      </p>
+                    )}
                   </div>
-                  {invitation.quotation && (
-                    <a
-                      href={`/app/quotations/${invitation.quotation._id}`}
+                  {invitation.quotation && !bidsAreSealed && (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/app/quotations/${invitation.quotation._id}`)}
                       className="text-sm text-primary hover:underline"
                     >
                       View Quotation
-                    </a>
+                    </button>
+                  )}
+                  {invitation.quotation && bidsAreSealed && (
+                    <span className="text-xs text-amber-600 font-medium">Bid sealed</span>
                   )}
                 </div>
               ))}

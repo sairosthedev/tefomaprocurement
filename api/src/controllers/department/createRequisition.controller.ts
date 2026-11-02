@@ -6,11 +6,14 @@ import {
   checkItemAvailability,
   suggestAction
 } from '../../services/inventoryAvailability.service.js';
+import { hasEnteredLineItems } from '../../lib/lineItems.js';
+import { sanitiseEquipment, sanitiseAttachments } from '../../services/lineAttachments.service.js';
 
 const createRequisition = async (req: Request, res: Response): Promise<any> => {
   try {
     const {
       title,
+      workOrder,
       description, // Used as justification
       urgency, // Maps to priority
       items,
@@ -21,11 +24,18 @@ const createRequisition = async (req: Request, res: Response): Promise<any> => {
       status
     } = req.body;
 
-    // Validate required fields
-    if (!title && !items?.length) {
+    if (!title?.trim()) {
       return res.status(400).json({
         success: false,
-        message: 'Title and at least one item are required'
+        message: 'Title is required'
+      });
+    }
+
+    const isSubmitting = status === 'pending';
+    if (isSubmitting && !hasEnteredLineItems(items)) {
+      return res.status(400).json({
+        success: false,
+        message: 'At least one item is required before submitting'
       });
     }
 
@@ -36,6 +46,7 @@ const createRequisition = async (req: Request, res: Response): Promise<any> => {
     for (const item of items || []) {
       const line: any = {
         item: item.item || item.itemId,
+        package: item.package,
         description: item.description,
         category: item.category,
         specification: item.specification || item.specifications,
@@ -46,6 +57,15 @@ const createRequisition = async (req: Request, res: Response): Promise<any> => {
           ? item.estimatedUnitPrice * item.quantity
           : 0
       };
+
+      // Optional machine identification + data-plate photos
+      line.equipment = sanitiseEquipment(item.equipment);
+
+      const attachments = sanitiseAttachments(item.attachments, req.user!._id);
+      if (!attachments.ok) {
+        return res.status(400).json({ success: false, message: attachments.message });
+      }
+      line.attachments = attachments.value;
 
       if (line.item) {
         const { atSite, elsewhere, total } = await checkItemAvailability(line.item, siteId);
@@ -76,6 +96,7 @@ const createRequisition = async (req: Request, res: Response): Promise<any> => {
     const requisition = await PurchaseRequisition.create({
       requisitionNumber,
       title: title || 'Untitled Requisition',
+      workOrder: workOrder?.trim() || undefined,
       site: siteId,
       department: req.user!.department || null,
       requestedBy: req.user!._id,

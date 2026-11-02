@@ -2,6 +2,10 @@ import http from './http';
 
 export const storesAPI: any = {
   receiveGoods: (data: any) => http.post('/stores/deliveries', data),
+  acceptDelivery: (id: any, data: any) => http.put(`/stores/deliveries/${id}/accept`, data),
+  printGrv: (id: any) => http.get(`/stores/deliveries/${id}/print`, { responseType: 'blob' }),
+  // Stores issue note: the document a collector signs for goods leaving.
+  printIssueNote: (id: any) => http.get(`/stores/requisitions/${id}/issue-note`, { responseType: 'blob' }),
   getDeliveries: (params?: any) => http.get('/stores/deliveries', { params }),
   getInventory: (params?: any) => http.get('/stores/inventory', { params }),
   getStoreRequisitions: (params?: any) => http.get('/stores/requisitions', { params }),
@@ -13,7 +17,12 @@ export const storesAPI: any = {
   approveTransfer: (id: any) => http.put(`/stores/transfers/${id}/approve`),
   shipTransfer: (id: any, data: any) => http.put(`/stores/transfers/${id}/ship`, data),
   receiveTransfer: (id: any, data: any) => http.put(`/stores/transfers/${id}/receive`, data),
-  getPendingPurchaseRequisitions: () => http.get('/stores/purchase-requisitions/pending'),
+  getTransferSites: () => http.get('/stores/sites'),
+  getPendingPurchaseRequisitions: (params?: any) => http.get('/stores/purchase-requisitions/pending', { params }),
+  getReviewedPurchaseRequisitions: (params?: any) => http.get('/stores/purchase-requisitions/reviewed', { params }),
+  autoProcessPurchaseRequisition: (id: any) => http.put(`/stores/purchase-requisitions/${id}/auto-process`),
+  issuePurchaseRequisitionLine: (id: any, data: any) =>
+    http.put(`/stores/purchase-requisitions/${id}/issue-line`, data),
   fulfillPurchaseRequisition: (id: any, data?: any) => http.put(`/stores/purchase-requisitions/${id}/fulfill`, data),
   forwardPurchaseRequisition: (id: any, data?: any) => http.put(`/stores/purchase-requisitions/${id}/forward`, data)
 };

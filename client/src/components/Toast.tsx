@@ -24,7 +24,7 @@ export function ToastProvider({ children }: any) {
   return (
     <ToastContext.Provider value={{ addToast, showToast }}>
       {children}
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 space-y-2 max-w-md w-full mx-4">
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[80] space-y-2 max-w-md w-full mx-4">
         {toasts.map((toast: any) => (
           <Toast key={toast.id} {...toast} onClose={() => removeToast(toast.id)} />
         ))}

@@ -13,7 +13,7 @@ router.use(authorize('supplier'));
 router.get('/profile', supplier.getMyProfile);
 router.put('/profile', supplier.updateProfile);
 
-// KYS compliance documents (self-service upload — FC-HQ-P-07 §6.2.3)
+// KYS compliance documents (self-service upload)
 router.post('/kys/documents', supplier.uploadKysDocument);
 router.delete('/kys/documents/:docId', supplier.deleteKysDocument);
 

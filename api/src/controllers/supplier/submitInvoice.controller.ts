@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { Invoice, PurchaseOrder, SupplierProfile } from '../../models/index.js';
-import { performThreeWayMatch } from '../../services/threeWayMatch.service.js';
+import { collectGrvEvidence, performThreeWayMatch } from '../../services/threeWayMatch.service.js';
 import { syncPurchaseOrderFinancials } from '../../services/purchaseOrderFinancials.service.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole } from '../../services/notification.service.js';
@@ -53,7 +53,8 @@ const submitInvoice = async (req: Request, res: Response): Promise<any> => {
       poItemIndex: item.poItemIndex ?? index
     }));
 
-    const matchResult = performThreeWayMatch(po, invoiceItems);
+    const evidence = await collectGrvEvidence(po);
+    const matchResult = performThreeWayMatch(po, invoiceItems, evidence, Number(vatAmount) || 0);
     const status = matchResult.matched ? 'submitted' : 'variance';
 
     const invoice = await Invoice.create({
@@ -62,6 +63,7 @@ const submitInvoice = async (req: Request, res: Response): Promise<any> => {
       supplier: profile._id,
       submittedBy: req.user!._id,
       items: invoiceItems,
+      currency: po.currency,
       vatAmount: Number(vatAmount) || 0,
       invoiceDate: new Date(invoiceDate),
       dueDate: dueDate ? new Date(dueDate) : undefined,

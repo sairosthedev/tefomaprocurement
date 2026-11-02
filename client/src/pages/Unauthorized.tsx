@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Link } from 'react-router-dom';
 import { ShieldX, ArrowLeft } from 'lucide-react';
 import Logo from '../components/Logo';
@@ -19,7 +19,7 @@ export default function Unauthorized() {
         </p>
         <Link
           to="/app"
-          className="inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+          className="inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium px-3 py-2 text-sm rounded-lg transition-colors"
         >
           <ArrowLeft className="h-5 w-5" />
           Back to Dashboard

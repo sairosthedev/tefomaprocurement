@@ -2,7 +2,9 @@ import type { Request, Response } from 'express';
 
 import { Quotation, RFQ } from '../../models/index.js';
 import { quotationFullyAuthorized, meetsMinimumQuotations } from '../../services/quotationCompliance.service.js';
+import { checkSupplierIdEligibility } from '../../services/supplierEligibility.service.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { notifySupplier } from '../../services/notification.service.js';
 
 const acceptQuotation = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -40,8 +42,15 @@ const acceptQuotation = async (req: Request, res: Response): Promise<any> => {
     if (!quotationFullyAuthorized(rfq, String(quotation._id))) {
       return res.status(400).json({
         success: false,
-        message: 'HOD selection with justification and Procurement Manager authorization required before acceptance (FC-HQ-P-07 §5.1.2, §6.3.4)'
+        message: 'A justified selection and Procurement Manager authorization are required before acceptance'
       });
+    }
+
+    // Re-check the supplier at the moment of award: they may have been
+    // suspended or blacklisted since this RFQ was issued.
+    const eligibility = await checkSupplierIdEligibility(quotation.supplier, 'award');
+    if (!eligibility.eligible) {
+      return res.status(400).json({ success: false, message: eligibility.reason });
     }
 
     const previousStatus = quotation.status;
@@ -62,6 +71,18 @@ const acceptQuotation = async (req: Request, res: Response): Promise<any> => {
       newData: { status: 'accepted', comments },
       req
     });
+
+    if (quotation.supplier) {
+      await notifySupplier(quotation.supplier, {
+        type: 'quotation_accepted',
+        title: 'Quotation accepted',
+        message: `Your quotation ${quotation.quotationNumber} for RFQ ${rfq.rfqNumber} has been accepted.`,
+        entity: 'Quotation',
+        entityId: quotation._id,
+        relatedUser: req.user!._id,
+        metadata: { rfqNumber: rfq.rfqNumber, quotationNumber: quotation.quotationNumber }
+      });
+    }
 
     res.status(200).json({
       success: true,

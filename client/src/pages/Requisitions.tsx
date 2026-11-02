@@ -1,16 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+﻿import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import api, { departmentAPI } from '../lib/api';
-import Tabs from '../components/Tabs';
-import { 
-  Plus, Search, Filter, Edit, Trash2, Send, 
-  Clock, CheckCircle, XCircle, Package, Loader2, AlertCircle,
-  Check, X, FileText, ShoppingCart, Truck
-} from 'lucide-react';
+import FilterSelect from '../components/FilterSelect';
+import PageHeader from '../components/PageHeader';
+import { Plus, Search, Send, Package, Loader2, Truck } from 'lucide-react';
 import ViewButton from '../components/ViewButton';
-import Modal from '../components/Modal';
+import Modal, { ModalFooter } from '../components/Modal';
+import Drawer from '../components/Drawer';
+import RequisitionForm, { type RequisitionFormHandle } from '../components/RequisitionForm';
+import { CreateRFQDrawer } from '../components/RFQForm';
+import Pagination from '../components/Pagination';
+import { formatCurrency } from '../lib/constants';
+import { getCurrentSbuCurrency } from '../lib/sbu';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
+import { isProcurementHead } from '@fossil/shared';
 
 const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
@@ -49,6 +54,18 @@ const priorityColors: any = {
   urgent: 'bg-red-100 text-red-600'
 };
 
+// Purchase order statuses the label chains below don't name, in words rather
+// than the raw status code.
+const poStatusText = (status: string) =>
+  ({
+    pending_hod: 'Pending HOD',
+    pending_dept_hod: 'Pending Department Head',
+    pending_proc_hod: 'Pending Head of Procurement',
+    partially_received: 'Partly Received',
+    completed: 'Completed',
+    cancelled: 'Cancelled'
+  } as Record<string, string>)[status] || status;
+
 export default function Requisitions() {
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -58,19 +75,90 @@ export default function Requisitions() {
   const [searchTerm, setSearchTerm] = useState<any>('');
   const [statusFilter, setStatusFilter] = useState<any>('');
   const [selectedRequisition, setSelectedRequisition] = useState<any>(null);
-  const [showViewModal, setShowViewModal] = useState<any>(false);
   const [showActionModal, setShowActionModal] = useState<any>(false);
   const [actionType, setActionType] = useState<any>(''); // 'accept' or 'reject'
   const [actionComment, setActionComment] = useState<any>('');
+  // Set when the server refuses an approval for want of budget; holds the
+  // figures to show the approver so the decision is an informed one.
+  const [budgetWarning, setBudgetWarning] = useState<any>(null);
+  const [budgetOverrideReason, setBudgetOverrideReason] = useState<string>('');
   const [actionLoading, setActionLoading] = useState<any>(false);
   const [submittingId, setSubmittingId] = useState<any>(null);
+  const [storeRequestedIds, setStoreRequestedIds] = useState<Set<string>>(new Set());
+  const [removingItemId, setRemovingItemId] = useState<any>(null);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
+  const [pagination, setPagination] = useState(emptyPagination());
+  // The create drawer lives in the URL (?new=1), so links from elsewhere can
+  // open it and the browser's Back button closes it.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const createFormRef = useRef<RequisitionFormHandle>(null);
+  // The accepted requisition the RFQ drawer is open on, if any.
+  const [rfqFor, setRfqFor] = useState<string | null>(null);
+  const [viewFilter, setViewFilter] = useState<'all' | 'mine' | 'team'>('all');
 
-  const isProcurement = user?.role === 'procurement_officer' || user?.role === 'admin';
-  const isDeptHead = user?.role === 'department_head' || user?.role === 'admin';
+  // The Head of Procurement works the procurement list. It also carries their
+  // own department's requisitions at every stage (the API adds them), and on
+  // those they keep the department head's actions: edit/submit drafts and the
+  // pending_hod approval.
+  const procHead = isProcurementHead(user);
+  const isProcurement = user?.role === 'procurement_officer' || procHead;
+  const isDeptHead = user?.role === 'department_head';
+  const userId = String(user?._id || user?.id || '');
+  // Only the requester submits a draft; the API refuses anyone else.
+  const isOwner = (req: any) => !!userId && String(req?.requestedBy?._id || req?.requestedBy || '') === userId;
+  // The department list sends a count; the procurement list still sends items.
+  const itemCountOf = (req: any): number => req?.itemCount ?? req?.items?.length ?? 0;
+  const ownDeptId = String(user?.department?._id || user?.department || '');
+  const isOwnDept = (req: any) =>
+    procHead && !!ownDeptId && String(req?.department?._id || req?.department || '') === ownDeptId;
+  // Department-side actions: everyone outside procurement, plus the Head of
+  // Procurement on their own department's requisitions.
+  const actsAsDepartment = (req: any) => !isProcurement || isOwnDept(req);
+  const canCreate = !isProcurement || procHead;
+  // A department head's list mixes their own requisitions with their team's,
+  // so say whose each one is.
+  const showRequester = isProcurement || isDeptHead;
+  const createOpen = canCreate && searchParams.get('new') === '1';
+
+  const openCreate = () => {
+    setSearchParams((params) => {
+      params.set('new', '1');
+      return params;
+    });
+  };
+
+  const closeCreate = () => {
+    setSearchParams(
+      (params) => {
+        params.delete('new');
+        return params;
+      },
+      { replace: true }
+    );
+  };
+
+  const handleCreated = () => {
+    closeCreate();
+    // Newest first, so the new requisition is on page one.
+    if (page !== 1) setPage(1);
+    else fetchRequisitions();
+  };
+
+  // Straight to the new RFQ, where its next steps are.
+  const handleRfqCreated = (rfqId?: string) => {
+    setRfqFor(null);
+    if (rfqId) navigate(`/app/rfqs/${rfqId}`);
+    else fetchRequisitions();
+  };
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, statusFilter, viewFilter]);
 
   useEffect(() => {
     fetchRequisitions();
-  }, [searchTerm, statusFilter, isProcurement]);
+  }, [page, limit, searchTerm, statusFilter, isProcurement, viewFilter]);
 
   const fetchRequisitions = async () => {
     try {
@@ -78,10 +166,17 @@ export default function Requisitions() {
       // Use different endpoint based on role
       const endpoint = isProcurement ? '/procurement/requisitions' : '/department/requisitions';
       const response = await api.get(endpoint, {
-        params: { search: searchTerm, status: statusFilter || undefined }
+        params: {
+          search: searchTerm,
+          status: statusFilter || undefined,
+          page,
+          limit,
+          ...(!isProcurement && isDeptHead ? { view: viewFilter } : {})
+        }
       });
       if (response.data.success) {
         setRequisitions(response.data.data || []);
+        setPagination(parsePagination(response.data.pagination));
       }
     } catch (error: any) {
       console.error('Failed to fetch requisitions:', error);
@@ -91,7 +186,12 @@ export default function Requisitions() {
     }
   };
 
-  const handleSubmit = async (id: any) => {
+  const handleSubmit = async (id: any, requisition?: any) => {
+    if (itemCountOf(requisition) === 0) {
+      showToast('At least one item is required before submitting', 'error');
+      return;
+    }
+
     try {
       setSubmittingId(id);
       await api.put(`/department/requisitions/${id}/submit`);
@@ -111,8 +211,15 @@ export default function Requisitions() {
     }
 
     try {
+      // The list leaves out PO line items, so load them from the requisition.
+      let poItems = requisition.purchaseOrder.items;
+      if (!poItems) {
+        const detail = await api.get(`/department/requisitions/${requisition._id}`);
+        poItems = detail.data?.data?.purchaseOrder?.items || [];
+      }
+
       // Create a store requisition for the items that HAVE been delivered/received
-      const items = requisition.purchaseOrder.items.map((poItem: any) => ({
+      const items = poItems.map((poItem: any) => ({
         description: poItem.description,
         quantity: poItem.quantityReceived || 0,
         unit: poItem.unit || 'Each'
@@ -130,6 +237,7 @@ export default function Requisitions() {
       });
 
       showToast('Store requisition created successfully', 'success');
+      setStoreRequestedIds((prev) => new Set(prev).add(requisition._id));
       fetchRequisitions();
     } catch (error: any) {
       console.error('Error creating store requisition:', error);
@@ -154,20 +262,37 @@ export default function Requisitions() {
         reject: `/procurement/requisitions/${selectedRequisition._id}/reject`
       };
       const endpoint = endpointMap[actionType];
-      await api.put(endpoint, { 
+      await api.put(endpoint, {
         comments: actionComment,
-        reason: actionComment 
+        reason: actionComment,
+        // Empty unless the approver has confirmed an over-budget approval in
+        // the prompt below; the server refuses without it.
+        budgetOverrideReason: budgetOverrideReason.trim() || undefined
       });
       showToast(
         actionType === 'approve' ? 'Requisition approved and sent to stores'
-          : actionType === 'accept' ? 'Requisition accepted'
+          : actionType === 'accept' ? 'Requisition accepted — now create its RFQ'
           : 'Requisition rejected',
         'success'
       );
       setShowActionModal(false);
+      if (actionType === 'accept') {
+        // Accepting is only ever followed by sourcing, so the RFQ form opens
+        // next with the requisition already chosen.
+        setRfqFor(selectedRequisition._id);
+      }
       setActionComment('');
+      setBudgetOverrideReason('');
+      setBudgetWarning(null);
       fetchRequisitions();
     } catch (error: any) {
+      // The server refuses an over-budget approval until a reason is given.
+      // Show what the overrun is and ask for one, rather than a bare error.
+      if (error.response?.status === 409 && error.response?.data?.requiresBudgetOverride) {
+        setBudgetWarning(error.response.data.budgetCheck || null);
+        showToast('This requisition is over budget. A reason is required to approve it.', 'error');
+        return;
+      }
       showToast(error.response?.data?.message || `Failed to ${actionType}`, 'error');
     } finally {
       setActionLoading(false);
@@ -178,63 +303,86 @@ export default function Requisitions() {
     setSelectedRequisition(req);
     setActionType(type);
     setActionComment('');
+    setBudgetOverrideReason('');
+    // Show the position recorded at submission straight away, so an over-budget
+    // request is visible before the approver clicks rather than after.
+    setBudgetWarning(
+      type === 'approve' && req?.budgetCheck?.exceedsBudget ? req.budgetCheck : null
+    );
     setShowActionModal(true);
   };
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            {isProcurement ? 'Purchase Requisitions' : 'My Requisitions'}
-          </h1>
-          <p className="text-gray-500 mt-1">
-            {isProcurement 
-              ? 'Accept or reject requisitions from departments' 
-              : 'Track your purchase requests'}
-          </p>
-        </div>
-        {!isProcurement && (
-          <button
-            onClick={() => navigate('/app/requisitions/create')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors"
-          >
-            <Plus className="h-5 w-5" />
-            New Requisition
-          </button>
-        )}
-      </div>
+      <PageHeader
+        title={isProcurement ? 'Purchase Requisitions' : isDeptHead ? 'Department Requisitions' : 'My Requisitions'}
+        subtitle={
+          isProcurement
+            ? 'Accept or reject requisitions from departments'
+            : isDeptHead
+              ? 'Requisitions you raised, and the ones your team raised for your approval'
+              : 'Track your purchase requests'
+        }
+        bottomSpacing="mb-4"
+      />
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
-        <div className="flex flex-col gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search requisitions..."
-              value={searchTerm}
-              onChange={(e: any) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+      <div className="mb-4">
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+          {canCreate && (
+            <button
+              onClick={openCreate}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors whitespace-nowrap shrink-0"
+            >
+              <Plus className="h-4 w-4" />
+              New Requisition
+            </button>
+          )}
+          {/* Pushed to the right edge, with or without the button beside it. */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 md:ml-auto">
+            <div className="relative w-full sm:w-52">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search requisitions..."
+                value={searchTerm}
+                onChange={(e: any) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              />
+            </div>
+            {/* HOD view: their own requisitions, their team's, or both */}
+            {isDeptHead && !isProcurement && (
+              <FilterSelect
+                label="Show"
+                size="sm"
+                options={[
+                  { value: '', label: 'All' },
+                  { value: 'mine', label: 'Raised by me' },
+                  { value: 'team', label: 'Raised by my team' }
+                ]}
+                value={viewFilter === 'all' ? '' : viewFilter}
+                onChange={(v) => setViewFilter((v || 'all') as 'all' | 'mine' | 'team')}
+              />
+            )}
+            <FilterSelect
+              label="Status"
+              size="sm"
+              options={[
+                { value: '', label: 'All' },
+                ...(!isProcurement || procHead ? [{ value: 'draft', label: 'Draft' }] : []),
+                ...(procHead ? [{ value: 'pending_hod', label: 'Pending HOD Approval' }] : []),
+                { value: 'pending_acceptance', label: 'Pending Acceptance' },
+                { value: 'accepted', label: 'Accepted' },
+                { value: 'rejected', label: 'Rejected' },
+                { value: 'sourcing', label: 'Sourcing' },
+                { value: 'quoted', label: 'Quoted' },
+                { value: 'ordered', label: 'Ordered' },
+                { value: 'completed', label: 'Completed' }
+              ]}
+              value={statusFilter}
+              onChange={setStatusFilter}
             />
           </div>
-          <Tabs
-            tabs={[
-              { value: '', label: 'All', icon: FileText },
-              ...(!isProcurement ? [{ value: 'draft', label: 'Draft', icon: Clock }] : []),
-              { value: 'pending_acceptance', label: 'Pending Acceptance', icon: Clock },
-              { value: 'accepted', label: 'Accepted', icon: CheckCircle },
-              { value: 'rejected', label: 'Rejected', icon: XCircle },
-              { value: 'sourcing', label: 'Sourcing', icon: Search },
-              { value: 'quoted', label: 'Quoted', icon: FileText },
-              { value: 'ordered', label: 'Ordered', icon: ShoppingCart },
-              { value: 'completed', label: 'Completed', icon: CheckCircle }
-            ]}
-            activeTab={statusFilter}
-            onTabChange={setStatusFilter}
-            variant="pills"
-          />
         </div>
       </div>
 
@@ -269,7 +417,7 @@ export default function Requisitions() {
       )}
 
       {/* Requisitions List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -282,7 +430,7 @@ export default function Requisitions() {
             </p>
             {!isProcurement && (
               <button
-                onClick={() => navigate('/app/requisitions/create')}
+                onClick={openCreate}
                 className="mt-4 text-primary font-medium hover:underline"
               >
                 Create your first requisition
@@ -290,54 +438,58 @@ export default function Requisitions() {
             )}
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
+            <table className="w-full text-sm border-collapse">
+              <thead>
                 <tr>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">REQ #</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Title</th>
-                  {isProcurement && (
-                    <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Requested By</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">REQ #</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Title</th>
+                  {showRequester && (
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Requested By</th>
                   )}
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Items</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Priority</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Status</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">PO Status</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Date</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Actions</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Items</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Priority</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">PO Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Date</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {requisitions.map((req: any) => (
-                  <tr key={req._id} className="hover:bg-gray-50">
-                    <td className="py-4 px-6">
+                  <tr key={req._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                    <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
                       <span className="font-mono text-sm font-medium text-primary">
                         {req.requisitionNumber || `REQ-${req._id.slice(-6).toUpperCase()}`}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
-                      <p className="font-medium text-gray-900">{req.title || 'Untitled'}</p>
-                      <p className="text-sm text-gray-500 truncate max-w-xs">
-                        {req.justification || req.description || 'No description'}
+                    <td className="py-2 px-3 border-b border-gray-100">
+                      <p className="font-medium text-gray-900 truncate max-w-[14rem]" title={req.title || 'Untitled'}>
+                        {req.title || 'Untitled'}
                       </p>
                     </td>
-                    {isProcurement && (
-                      <td className="py-4 px-6">
-                        <p className="text-sm text-gray-900">
-                          {req.requestedBy?.firstName} {req.requestedBy?.lastName}
-                        </p>
-                        <p className="text-xs text-gray-500">{req.department?.name || 'No dept'}</p>
+                    {showRequester && (
+                      <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
+                        {isOwner(req) ? (
+                          <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">You</span>
+                        ) : (
+                          <p className="text-sm text-gray-900">
+                            {req.requestedBy?.firstName} {req.requestedBy?.lastName}
+                          </p>
+                        )}
+                        {isProcurement && <p className="text-xs text-gray-500">{req.department?.name || 'No dept'}</p>}
                       </td>
                     )}
-                    <td className="py-4 px-6">
-                      <span className="text-sm text-gray-600">{req.items?.length || 0} items</span>
+                    <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
+                      <span className="text-gray-600">{itemCountOf(req)} {itemCountOf(req) === 1 ? 'item' : 'items'}</span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${priorityColors[req.priority] || priorityColors.medium}`}>
                         {req.priority || 'Medium'}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
                       {/* Show computed status: if PO exists, show 'ordered', if delivered to stores, show appropriate status */}
                       {(() => {
                         let displayStatus = req.status;
@@ -353,10 +505,10 @@ export default function Requisitions() {
                         );
                       })()}
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       {req.purchaseOrder ? (
                         <div className="flex flex-col gap-1">
-                          <div className="font-mono text-sm font-semibold text-primary">
+                          <div className="font-mono text-sm font-semibold text-primary whitespace-nowrap">
                             {req.purchaseOrder.poNumber}
                           </div>
                           {req.purchaseOrder.supplier?.companyName && (
@@ -394,7 +546,7 @@ export default function Requisitions() {
                                req.purchaseOrder.status === 'issued' ? 'Issued' :
                                req.purchaseOrder.status === 'rejected' ? 'Rejected' :
                                req.purchaseOrder.status === 'draft' ? 'Draft' :
-                               req.purchaseOrder.status}
+                               poStatusText(req.purchaseOrder.status)}
                             </span>
                           )}
                         </div>
@@ -430,30 +582,29 @@ export default function Requisitions() {
                         <span className="text-xs text-gray-400">-</span>
                       )}
                     </td>
-                    <td className="py-4 px-6 text-sm text-gray-500">
+                    <td className="py-2 px-3 border-b border-gray-100 text-gray-500">
                       {new Date(req.createdAt).toLocaleDateString('en-ZA')}
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <div className="flex items-center gap-2">
                         <ViewButton
+                          size="xs"
+                          showIcon={false}
                           onClick={() => navigate(`/app/requisitions/${req._id}`)}
                         />
-                        
+
                         {/* Department Head Actions */}
-                        {!isProcurement && req.status === 'draft' && (
+                        {actsAsDepartment(req) && isOwner(req) && req.status === 'draft' && (
                           <>
                             <button
-                              onClick={() => navigate(`/app/requisitions/edit/${req._id}`)}
-                              className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                              title="Edit"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => handleSubmit(req._id)}
-                              disabled={submittingId === req._id}
+                              onClick={() => handleSubmit(req._id, req)}
+                              disabled={submittingId === req._id || itemCountOf(req) === 0}
                               className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                              title="Submit for Acceptance"
+                              title={
+                                itemCountOf(req) === 0
+                                  ? 'Add at least one item before submitting'
+                                  : 'Submit for Acceptance'
+                              }
                             >
                               {submittingId === req._id ? (
                                 <>
@@ -470,22 +621,20 @@ export default function Requisitions() {
                           </>
                         )}
 
-                        {/* HOD Approval Gate (FC-HQ-P-07 §6.3.2) */}
-                        {isDeptHead && !isProcurement && req.status === 'pending_hod' && (
+                        {/* HOD Approval Gate */}
+                        {isDeptHead && actsAsDepartment(req) && req.status === 'pending_hod' && (
                           <>
                             <button
                               onClick={() => openActionModal(req, 'approve')}
-                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                              title="Approve & send to stores"
+                              className="px-2 py-1 text-xs border border-green-600 rounded bg-green-600 hover:bg-green-700 hover:border-green-700 text-white transition-colors"
                             >
-                              <Check className="h-4 w-4" />
+                              Approve
                             </button>
                             <button
                               onClick={() => openActionModal(req, 'hod_reject')}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Reject"
+                              className="px-2 py-1 text-xs border border-red-600 rounded bg-red-600 hover:bg-red-700 hover:border-red-700 text-white transition-colors"
                             >
-                              <X className="h-4 w-4" />
+                              Reject
                             </button>
                           </>
                         )}
@@ -495,43 +644,38 @@ export default function Requisitions() {
                           <>
                             <button
                               onClick={() => openActionModal(req, 'accept')}
-                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                              title="Accept"
+                              className="px-2 py-1 text-xs border border-green-600 rounded bg-green-600 hover:bg-green-700 hover:border-green-700 text-white transition-colors"
                             >
-                              <Check className="h-4 w-4" />
+                              Accept
                             </button>
                             <button
                               onClick={() => openActionModal(req, 'reject')}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Reject"
+                              className="px-2 py-1 text-xs border border-red-600 rounded bg-red-600 hover:bg-red-700 hover:border-red-700 text-white transition-colors"
                             >
-                              <X className="h-4 w-4" />
+                              Reject
                             </button>
                           </>
                         )}
 
                         {isProcurement && req.status === 'accepted' && (
                           <button
-                            onClick={() => navigate(`/app/rfqs/create?requisition=${req._id}`)}
+                            onClick={() => setRfqFor(req._id)}
                             className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
                           >
                             Create RFQ
                           </button>
                         )}
 
-                        {/* Request from Stores Button - Show when items are delivered to stores but not yet collected */}
-                        {!isProcurement && req.itemsDeliveredToStores && !req.itemsCollected && (
+                        {isDeptHead && actsAsDepartment(req) && req.itemsDeliveredToStores && !req.itemsCollected && !storeRequestedIds.has(req._id) && (
                           <button
                             onClick={() => handleRequestFromStores(req)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
-                            title="Request items from stores"
+                            className="px-2 py-1 text-xs border border-primary rounded bg-primary hover:bg-primary-dark text-white transition-colors whitespace-nowrap"
                           >
-                            <Truck className="h-3.5 w-3.5" />
-                            Request from Stores
+                            Req. from Stores
                           </button>
                         )}
                         {/* Collected Badge - Show when items have been collected */}
-                        {!isProcurement && req.itemsCollected && (
+                        {actsAsDepartment(req) && req.itemsCollected && (
                           <span className="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-lg">
                             ✓ Collected
                           </span>
@@ -543,356 +687,18 @@ export default function Requisitions() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+            itemLabel="requisitions"
+          />
+          </>
         )}
       </div>
-
-      {/* View Modal */}
-      <Modal
-        isOpen={showViewModal}
-        onClose={() => setShowViewModal(false)}
-        title="Requisition Details"
-        size="lg"
-      >
-        {selectedRequisition && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-gray-500">Requisition Number</label>
-                <p className="font-mono font-medium text-primary">
-                  {selectedRequisition.requisitionNumber || `REQ-${selectedRequisition._id.slice(-6).toUpperCase()}`}
-                </p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-500">Status</label>
-                <p>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[selectedRequisition.status]}`}>
-                    {statusLabels[selectedRequisition.status] || selectedRequisition.status}
-                  </span>
-                </p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-500">Priority</label>
-                <p>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${priorityColors[selectedRequisition.priority] || priorityColors.medium}`}>
-                    {selectedRequisition.priority || 'Medium'}
-                  </span>
-                </p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-500">Requested By</label>
-                <p className="text-gray-900">
-                  {selectedRequisition.requestedBy?.firstName} {selectedRequisition.requestedBy?.lastName}
-                </p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-500">Department</label>
-                <p className="text-gray-900">{selectedRequisition.department?.name || 'N/A'}</p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-500">Created</label>
-                <p className="text-gray-900">{new Date(selectedRequisition.createdAt).toLocaleDateString('en-ZA')}</p>
-              </div>
-            </div>
-
-            {/* Purchase Order Status */}
-            {selectedRequisition.purchaseOrder && (
-              <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-                <div className="flex items-center gap-2 mb-3">
-                  <ShoppingCart className="h-5 w-5 text-blue-600" />
-                  <h3 className="font-semibold text-blue-900">Purchase Order Status</h3>
-                </div>
-                <div className="grid grid-cols-2 gap-4 mb-3">
-                  <div>
-                    <label className="text-sm text-gray-600">PO Number</label>
-                    <p className="font-mono font-medium text-primary text-lg">
-                      {selectedRequisition.purchaseOrder.poNumber}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm text-gray-600">PO Status</label>
-                    <p>
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                        selectedRequisition.purchaseOrder.status === 'pending_approvals' ? 'bg-blue-100 text-blue-700' :
-                        selectedRequisition.purchaseOrder.status === 'approved' ? 'bg-green-100 text-green-700' :
-                        selectedRequisition.purchaseOrder.status === 'issued' ? 'bg-blue-100 text-blue-700' :
-                        selectedRequisition.purchaseOrder.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                        'bg-amber-100 text-amber-700'
-                      }`}>
-                        {selectedRequisition.purchaseOrder.status === 'pending_approvals' ? '⏳ Pending Approvals' :
-                         selectedRequisition.purchaseOrder.status === 'pending_finance' ? 'Pending Finance' :
-                         selectedRequisition.purchaseOrder.status === 'pending_coo' ? 'Pending COO' :
-                         selectedRequisition.purchaseOrder.status === 'approved' ? 'Approved' :
-                         selectedRequisition.purchaseOrder.status === 'issued' ? 'Issued' :
-                         selectedRequisition.purchaseOrder.status === 'rejected' ? 'Rejected' :
-                         selectedRequisition.purchaseOrder.status}
-                      </span>
-                    </p>
-                  </div>
-                </div>
-                {selectedRequisition.purchaseOrder.status === 'pending_approvals' && (
-                  <div className="bg-white rounded-lg p-3 border border-blue-100">
-                    <p className="text-sm font-medium text-gray-700 mb-2">Approval Progress:</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className={`rounded-lg p-2.5 ${selectedRequisition.purchaseOrder.financeApproved ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium text-gray-700">Finance</span>
-                          {selectedRequisition.purchaseOrder.financeApproved ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <Clock className="h-4 w-4 text-amber-600" />
-                          )}
-                        </div>
-                        <p className={`text-xs ${selectedRequisition.purchaseOrder.financeApproved ? 'text-green-700' : 'text-amber-700'}`}>
-                          {selectedRequisition.purchaseOrder.financeApproved ? 'Approved' : 'Pending Approval'}
-                        </p>
-                        {selectedRequisition.purchaseOrder.financeApprovedAt && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            {new Date(selectedRequisition.purchaseOrder.financeApprovedAt).toLocaleDateString('en-ZA')}
-                          </p>
-                        )}
-                      </div>
-                      <div className={`rounded-lg p-2.5 ${selectedRequisition.purchaseOrder.cooApproved ? 'bg-green-50 border border-green-200' : 'bg-purple-50 border border-purple-200'}`}>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium text-gray-700">COO</span>
-                          {selectedRequisition.purchaseOrder.cooApproved ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <Clock className="h-4 w-4 text-purple-600" />
-                          )}
-                        </div>
-                        <p className={`text-xs ${selectedRequisition.purchaseOrder.cooApproved ? 'text-green-700' : 'text-purple-700'}`}>
-                          {selectedRequisition.purchaseOrder.cooApproved ? 'Approved' : 'Pending Approval'}
-                        </p>
-                        {selectedRequisition.purchaseOrder.cooApprovedAt && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            {new Date(selectedRequisition.purchaseOrder.cooApprovedAt).toLocaleDateString('en-ZA')}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    {!selectedRequisition.purchaseOrder.financeApproved || !selectedRequisition.purchaseOrder.cooApproved ? (
-                      <p className="text-xs text-amber-700 mt-3 italic">
-                        ⏳ Purchase Order is awaiting approval from {!selectedRequisition.purchaseOrder.financeApproved && !selectedRequisition.purchaseOrder.cooApproved ? 'Finance and COO' : !selectedRequisition.purchaseOrder.financeApproved ? 'Finance' : 'COO'}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-green-700 mt-3 font-medium">
-                        ✓ All approvals complete. Purchase Order is ready to be issued.
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Delivered to Stores Status */}
-            {selectedRequisition.itemsDeliveredToStores && (
-              <div className="bg-green-50 rounded-xl p-4 border border-green-200">
-                <div className="flex items-center gap-2 mb-3">
-                  <Truck className="h-5 w-5 text-green-600" />
-                  <h3 className="font-semibold text-green-900">Items Available in Stores</h3>
-                </div>
-                {selectedRequisition.itemsCollected ? (
-                  <div className="flex items-center gap-2">
-                    <span className="px-3 py-2 bg-emerald-100 text-emerald-700 font-medium rounded-lg">
-                      ✓ Items Collected
-                    </span>
-                    <p className="text-sm text-green-800">
-                      {isProcurement 
-                        ? `Items have been collected by ${selectedRequisition.department?.name || 'the department'}.`
-                        : 'Your items have been collected from stores.'}
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-sm text-green-800 mb-3">
-                      {isProcurement
-                        ? `Ordered items have been received and are now available in stores for ${selectedRequisition.department?.name || 'the requesting department'}.`
-                        : 'Your ordered items have been received and are now available in stores. You can request them using the button below.'}
-                    </p>
-                    {!isProcurement && (
-                      <button
-                        onClick={() => {
-                          handleRequestFromStores(selectedRequisition);
-                          setShowViewModal(false);
-                        }}
-                        className="flex items-center gap-2 px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark"
-                      >
-                        <Truck className="h-4 w-4" />
-                        Request from Stores
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* Purchase Order Status */}
-            {selectedRequisition.purchaseOrder && (
-              <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-                <div className="flex items-center gap-2 mb-3">
-                  <ShoppingCart className="h-5 w-5 text-blue-600" />
-                  <h3 className="font-semibold text-blue-900">Purchase Order Status</h3>
-                </div>
-                <div className="grid grid-cols-2 gap-4 mb-3">
-                  <div>
-                    <label className="text-sm text-gray-600">PO Number</label>
-                    <p className="font-mono font-medium text-primary text-lg">
-                      {selectedRequisition.purchaseOrder.poNumber}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm text-gray-600">PO Status</label>
-                    <p>
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                        selectedRequisition.purchaseOrder.status === 'pending_approvals' ? 'bg-blue-100 text-blue-700' :
-                        selectedRequisition.purchaseOrder.status === 'approved' ? 'bg-green-100 text-green-700' :
-                        selectedRequisition.purchaseOrder.status === 'issued' ? 'bg-blue-100 text-blue-700' :
-                        selectedRequisition.purchaseOrder.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                        'bg-amber-100 text-amber-700'
-                      }`}>
-                        {selectedRequisition.purchaseOrder.status === 'pending_approvals' ? '⏳ Pending Approvals' :
-                         selectedRequisition.purchaseOrder.status === 'pending_finance' ? 'Pending Finance' :
-                         selectedRequisition.purchaseOrder.status === 'pending_coo' ? 'Pending COO' :
-                         selectedRequisition.purchaseOrder.status === 'approved' ? 'Approved' :
-                         selectedRequisition.purchaseOrder.status === 'issued' ? 'Issued' :
-                         selectedRequisition.purchaseOrder.status === 'rejected' ? 'Rejected' :
-                         selectedRequisition.purchaseOrder.status}
-                      </span>
-                    </p>
-                  </div>
-                </div>
-                {selectedRequisition.purchaseOrder.status === 'pending_approvals' && (
-                  <div className="bg-white rounded-lg p-3 border border-blue-100">
-                    <p className="text-sm font-medium text-gray-700 mb-2">Approval Progress:</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className={`rounded-lg p-2.5 ${selectedRequisition.purchaseOrder.financeApproved ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium text-gray-700">Finance</span>
-                          {selectedRequisition.purchaseOrder.financeApproved ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <Clock className="h-4 w-4 text-amber-600" />
-                          )}
-                        </div>
-                        <p className={`text-xs ${selectedRequisition.purchaseOrder.financeApproved ? 'text-green-700' : 'text-amber-700'}`}>
-                          {selectedRequisition.purchaseOrder.financeApproved ? 'Approved' : 'Pending Approval'}
-                        </p>
-                        {selectedRequisition.purchaseOrder.financeApprovedAt && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            {new Date(selectedRequisition.purchaseOrder.financeApprovedAt).toLocaleDateString('en-ZA')}
-                          </p>
-                        )}
-                      </div>
-                      <div className={`rounded-lg p-2.5 ${selectedRequisition.purchaseOrder.cooApproved ? 'bg-green-50 border border-green-200' : 'bg-purple-50 border border-purple-200'}`}>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium text-gray-700">COO</span>
-                          {selectedRequisition.purchaseOrder.cooApproved ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <Clock className="h-4 w-4 text-purple-600" />
-                          )}
-                        </div>
-                        <p className={`text-xs ${selectedRequisition.purchaseOrder.cooApproved ? 'text-green-700' : 'text-purple-700'}`}>
-                          {selectedRequisition.purchaseOrder.cooApproved ? 'Approved' : 'Pending Approval'}
-                        </p>
-                        {selectedRequisition.purchaseOrder.cooApprovedAt && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            {new Date(selectedRequisition.purchaseOrder.cooApprovedAt).toLocaleDateString('en-ZA')}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    {!selectedRequisition.purchaseOrder.financeApproved || !selectedRequisition.purchaseOrder.cooApproved ? (
-                      <p className="text-xs text-amber-700 mt-3 italic">
-                        ⏳ Purchase Order is awaiting approval from {!selectedRequisition.purchaseOrder.financeApproved && !selectedRequisition.purchaseOrder.cooApproved ? 'Finance and COO' : !selectedRequisition.purchaseOrder.financeApproved ? 'Finance' : 'COO'}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-green-700 mt-3 font-medium">
-                        ✓ All approvals complete. Purchase Order is ready to be issued.
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div>
-              <label className="text-sm text-gray-500">Justification</label>
-              <p className="text-gray-900">{selectedRequisition.justification || selectedRequisition.description || 'No justification provided'}</p>
-            </div>
-
-            <div>
-              <label className="text-sm text-gray-500 mb-2 block">Items</label>
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Item</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Quantity</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Specification</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {selectedRequisition.items?.map((item: any, index: any) => (
-                      <tr key={index}>
-                        <td className="py-3 px-4 text-sm">{item.description || item.name}</td>
-                        <td className="py-3 px-4 text-sm">{item.quantity} {item.unit}</td>
-                        <td className="py-3 px-4 text-sm text-gray-500">{item.specification || item.specifications || '-'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {selectedRequisition.statusHistory?.length > 0 && (
-              <div>
-                <label className="text-sm text-gray-500 mb-2 block">Status History</label>
-                <div className="space-y-2">
-                  {selectedRequisition.statusHistory.map((history: any, index: any) => (
-                    <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                      {history.action === 'accepted' ? (
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                      ) : history.action === 'rejected' ? (
-                        <XCircle className="h-5 w-5 text-red-500" />
-                      ) : (
-                        <Clock className="h-5 w-5 text-amber-500" />
-                      )}
-                      <div className="flex-1">
-                        <p className="text-sm font-medium capitalize">{history.action}</p>
-                        <p className="text-xs text-gray-500">
-                          {history.comments}
-                        </p>
-                      </div>
-                      <p className="text-xs text-gray-400">
-                        {new Date(history.timestamp).toLocaleString('en-ZA')}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Accept/Reject buttons in modal for Procurement */}
-            {isProcurement && selectedRequisition.status === 'pending_acceptance' && (
-              <div className="flex gap-3 pt-4 border-t">
-                <button
-                  onClick={() => { setShowViewModal(false); openActionModal(selectedRequisition, 'accept'); }}
-                  className="flex-1 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark"
-                >
-                  Accept Requisition
-                </button>
-                <button
-                  onClick={() => { setShowViewModal(false); openActionModal(selectedRequisition, 'reject'); }}
-                  className="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700"
-                >
-                  Reject Requisition
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </Modal>
 
       {/* Accept/Reject Action Modal */}
       <Modal
@@ -910,10 +716,54 @@ export default function Requisitions() {
               {actionType === 'approve'
                 ? 'You are about to approve this requisition. It will be forwarded to Stores for an availability check.'
                 : actionType === 'accept'
-                ? 'You are about to accept this requisition. It will be available for RFQ creation.'
+                ? 'You are about to accept this requisition. The RFQ form opens next, with this requisition already selected.'
                 : 'You are about to reject this requisition. The requester will be notified.'}
             </p>
           </div>
+
+          {/* Budget position. Shown before the approver acts, with the figures
+              that make the overrun concrete rather than just a warning word. */}
+          {budgetWarning && (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+              <p className="text-sm font-semibold text-red-800">
+                Over budget — {budgetWarning.departmentName || 'this department'} FY{budgetWarning.fiscalYear}
+              </p>
+              <dl className="mt-3 space-y-1 text-sm text-red-900">
+                <div className="flex justify-between gap-4">
+                  <dt className="text-red-700">Available before this request</dt>
+                  <dd className="tabular-nums font-medium">
+                    {formatCurrency(Number(budgetWarning.availableBefore || 0), budgetWarning.currency || getCurrentSbuCurrency())}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-red-700">This request</dt>
+                  <dd className="tabular-nums font-medium">
+                    {formatCurrency(Number(budgetWarning.requestAmount || 0), budgetWarning.currency || getCurrentSbuCurrency())}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-4 border-t border-red-200 pt-1">
+                  <dt className="text-red-700">Would be over by</dt>
+                  <dd className="tabular-nums font-bold">
+                    {formatCurrency(Math.abs(Number(budgetWarning.availableAfter || 0)), budgetWarning.currency || getCurrentSbuCurrency())}
+                  </dd>
+                </div>
+              </dl>
+
+              <label className="mt-4 block text-sm font-medium text-red-800">
+                Reason for approving over budget <span className="text-red-600">(required)</span>
+              </label>
+              <textarea
+                value={budgetOverrideReason}
+                onChange={(e: any) => setBudgetOverrideReason(e.target.value)}
+                rows={2}
+                className="mt-1 w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:ring-2 focus:ring-red-200 focus:border-red-400 bg-white"
+                placeholder="e.g. Emergency plant breakdown, approved verbally by COO"
+              />
+              <p className="mt-2 text-xs text-red-700">
+                This is recorded against the requisition and Finance is notified.
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -928,7 +778,7 @@ export default function Requisitions() {
             />
           </div>
 
-          <div className="flex gap-3">
+          <ModalFooter>
             <button
               onClick={() => setShowActionModal(false)}
               className="flex-1 py-2.5 border border-gray-200 rounded-xl font-medium hover:bg-gray-50"
@@ -937,15 +787,19 @@ export default function Requisitions() {
             </button>
             <button
               onClick={handleAction}
-              disabled={actionLoading}
+              disabled={actionLoading || (!!budgetWarning && !budgetOverrideReason.trim())}
               className={`flex-1 py-2.5 text-white rounded-xl font-medium ${
-                actionType === 'approve' || actionType === 'accept'
-                  ? 'bg-primary hover:bg-primary-dark' 
+                budgetWarning
+                  ? 'bg-red-600 hover:bg-red-700'
+                  : actionType === 'approve' || actionType === 'accept'
+                  ? 'bg-primary hover:bg-primary-dark'
                   : 'bg-red-600 hover:bg-red-700'
-              } disabled:opacity-50`}
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {actionLoading ? (
                 <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+              ) : budgetWarning ? (
+                'Approve over budget'
               ) : actionType === 'approve' ? (
                 'Approve'
               ) : actionType === 'accept' ? (
@@ -954,9 +808,25 @@ export default function Requisitions() {
                 'Reject'
               )}
             </button>
-          </div>
+          </ModalFooter>
         </div>
       </Modal>
+
+      <Drawer
+        isOpen={createOpen}
+        // The form decides: it offers to save a draft before anything is lost.
+        onClose={() => createFormRef.current?.requestClose()}
+        title="New Requisition"
+      >
+        <RequisitionForm ref={createFormRef} onCancel={closeCreate} onSaved={handleCreated} />
+      </Drawer>
+
+      <CreateRFQDrawer
+        isOpen={!!rfqFor}
+        requisitionId={rfqFor}
+        onClose={() => setRfqFor(null)}
+        onSaved={handleRfqCreated}
+      />
     </div>
   );
 }

@@ -45,6 +45,7 @@ const updateUser = async (req: Request, res: Response): Promise<any> => {
       entity: 'User',
       entityId: user._id,
       user: req.user,
+      entityLabel: user.email,
       description: `Admin updated user: ${user.email}`,
       previousData,
       newData: { firstName, lastName, role, department, phone, status },

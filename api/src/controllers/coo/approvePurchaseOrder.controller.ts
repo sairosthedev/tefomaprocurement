@@ -2,6 +2,8 @@ import type { Request, Response } from 'express';
 import { PurchaseOrder } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole, notifySupplier } from '../../services/notification.service.js';
+import { emailApprovedPurchaseOrderToSupplier } from '../../services/purchaseOrderDocument.service.js';
+import { describeCooAssessment } from '../../services/poApprovalFlow.service.js';
 
 const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -16,7 +18,7 @@ const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> =
     if (!po.requiresCooApproval) {
       return res.status(400).json({
         success: false,
-        message: 'COO authorization not required for this purchase order (below USD 5,000 threshold)'
+        message: `COO authorization not required for this purchase order (${describeCooAssessment(po)})`
       });
     }
 
@@ -42,12 +44,13 @@ const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> =
     po.cooApproved = true;
     po.cooApprovedBy = req.user!._id;
     po.cooApprovedAt = new Date();
+    const previousStatus = po.status;
     po.status = 'approved';
     po.approvalHistory.push({
       action: 'coo_approved',
       by: req.user!._id,
       role: 'coo',
-      comments: comments || 'Authorized by COO (FC-HQ-P-07 §6.3.11)'
+      comments: comments || 'Authorized by COO'
     });
 
     await po.save();
@@ -57,10 +60,16 @@ const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> =
       entity: 'PurchaseOrder',
       entityId: po._id,
       user: req.user,
+      entityLabel: po.poNumber,
       description: `COO authorized PO: ${po.poNumber}`,
       newData: { status: 'approved', cooApproved: true },
+      previousData: { status: previousStatus },
       req
     });
+
+    // COO authorization is the last approval for orders above the threshold, so
+    // the supplier gets the order document here (Rev 9 clause 6.3.14).
+    await emailApprovedPurchaseOrderToSupplier(po._id, req.user, req);
 
     await notifyUsersByRole('procurement_officer', {
       type: 'po_coo_approved',

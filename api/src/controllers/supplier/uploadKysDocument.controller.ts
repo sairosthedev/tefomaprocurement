@@ -19,7 +19,7 @@ const uploadKysDocument = async (req: Request, res: Response): Promise<any> => {
     await supplier.save();
 
     await createAuditLog({
-      action: 'update',
+      action: 'upload',
       entity: 'SupplierProfile',
       entityId: supplier._id,
       user: req.user,
@@ -30,7 +30,7 @@ const uploadKysDocument = async (req: Request, res: Response): Promise<any> => {
 
     // Let procurement know there is a document to review
     await notifyUsersByRole('procurement_officer', {
-      type: 'supplier_added',
+      type: 'supplier_document_expiring',
       title: 'KYS document uploaded',
       message: `${supplier.companyName} uploaded a KYS document for review.`,
       entity: 'SupplierProfile',

@@ -1,4 +1,5 @@
 import mongoose, { Schema, type Document } from 'mongoose';
+import { nextNumber } from '../services/numbering.service.js';
 
 export interface IDeliveryItem {
   poItem?: mongoose.Types.ObjectId | any;
@@ -17,6 +18,23 @@ export interface IDeliveryAttachment {
   uploadedAt: Date;
 }
 
+/** Person who physically delivered the goods — supplier's driver/rep, not a system user. */
+export interface IDeliveredBy {
+  name?: string;
+  idNumber?: string;
+  company?: string;
+  vehicleRegistration?: string;
+  contactNumber?: string;
+  signedAt?: Date;
+}
+
+/** Names of functional witnesses present when goods were received (6.8.5). */
+export interface IGrvWitnesses {
+  mt?: string;       // Maintenance/Transport representative
+  security?: string; // Security officer
+  sheq?: string;     // SHEQ (Safety, Health, Environment & Quality) officer
+}
+
 export interface IDelivery extends Document {
   grvNumber?: string;
   purchaseOrder: mongoose.Types.ObjectId | any;
@@ -26,12 +44,37 @@ export interface IDelivery extends Document {
   expectedDeliveryDate?: Date;
   receivedAtSite?: mongoose.Types.ObjectId | any;
   receivedBy?: mongoose.Types.ObjectId | any;
+  receivedAt?: Date;
+  deliveredBy?: IDeliveredBy;
   items: IDeliveryItem[];
   isPartialDelivery: boolean;
   isFinalDelivery: boolean;
   status: 'pending' | 'received' | 'inspected' | 'accepted' | 'partially_accepted' | 'rejected';
   inspectedBy?: mongoose.Types.ObjectId | any;
   inspectedAt?: Date;
+  /**
+   * The department representative who performed the quality check.
+   *
+   * Rev 9 clause 6.6.2 assigns quality checks to department representatives,
+   * not the receiving clerk, and they are typically not system users — so the
+   * name is recorded as text rather than as a User reference. Left empty when
+   * nobody attended, so the GRV prints a blank block to be signed by hand
+   * rather than asserting an inspection that did not happen.
+   */
+  inspectedByName?: string;
+  inspectedByDepartment?: string;
+  /** Functional witnesses present at goods receipt per clause 6.8.5. */
+  witnesses?: IGrvWitnesses;
+  /** True when any received item is classified as hazardous (MSDS required, 6.6.3). */
+  hasHazardousMaterials?: boolean;
+  /** MSDS document reference number or file path when hasHazardousMaterials is true. */
+  msdsReference?: string;
+  /**
+   * Deadline by which rejected/faulty goods must be returned to the supplier
+   * (deliveryDate + 5 working days, clauses 6.6.7–6.6.9). Set automatically
+   * when any item arrives in damaged or defective condition.
+   */
+  returnDeadline?: Date;
   notes?: string;
   attachments: IDeliveryAttachment[];
   isDeleted: boolean;
@@ -98,6 +141,15 @@ const DeliverySchema = new Schema<IDelivery>({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
+  receivedAt: Date,
+  deliveredBy: {
+    name: { type: String, trim: true },
+    idNumber: { type: String, trim: true },
+    company: { type: String, trim: true },
+    vehicleRegistration: { type: String, trim: true },
+    contactNumber: { type: String, trim: true },
+    signedAt: Date
+  },
   items: [DeliveryItemSchema],
   isPartialDelivery: {
     type: Boolean,
@@ -117,6 +169,16 @@ const DeliverySchema = new Schema<IDelivery>({
     ref: 'User'
   },
   inspectedAt: Date,
+  inspectedByName: { type: String, trim: true },
+  inspectedByDepartment: { type: String, trim: true },
+  witnesses: {
+    mt: { type: String, trim: true },
+    security: { type: String, trim: true },
+    sheq: { type: String, trim: true }
+  },
+  hasHazardousMaterials: { type: Boolean, default: false },
+  msdsReference: { type: String, trim: true },
+  returnDeadline: { type: Date },
   notes: String,
   attachments: [{
     fileName: String,
@@ -139,19 +201,19 @@ DeliverySchema.pre('save', async function(next) {
     return next();
   }
 
-  // Generate GRV when status is not pending
-  const status = this.status as string;
-  if (this.isNew && status !== 'pending') {
-    const count = await (this.constructor as any).countDocuments({ status: { $ne: 'pending' } });
-    const year = new Date().getFullYear();
-    this.grvNumber = `GRV-${year}-${String(count + 1).padStart(5, '0')}`;
-  } else if (this.isModified('status') && status !== 'pending' && !this.grvNumber) {
-    // When status changes from pending to received, generate GRV
-    const count = await (this.constructor as any).countDocuments({ status: { $ne: 'pending' } });
-    const year = new Date().getFullYear();
-    this.grvNumber = `GRV-${year}-${String(count + 1).padStart(5, '0')}`;
-  }
   next();
+});
+
+// Numbering runs on `pre('validate')`, not `pre('save')`: Mongoose validates
+// before user save hooks, so a required number field assigned in `pre('save')`
+// fails validation and the hook never runs at all.
+DeliverySchema.pre('validate', async function () {
+  // A GRV number is issued once the delivery stops being pending, whether it
+  // arrives that way or is moved there later.
+  const status = this.status as string;
+  if (status !== 'pending' && !this.grvNumber) {
+    this.grvNumber = await nextNumber(this, { type: 'delivery', prefix: 'GRV' });
+  }
 });
 
 export default mongoose.model<IDelivery>('Delivery', DeliverySchema);

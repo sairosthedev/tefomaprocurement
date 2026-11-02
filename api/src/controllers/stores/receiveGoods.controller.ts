@@ -7,13 +7,41 @@ import { resolveSiteId, findOrCreateInventory } from '../../lib/siteScope.js';
 
 const receiveGoods = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { 
-      purchaseOrderId, 
-      deliveryNoteNumber, 
-      deliveryDate, 
-      items, 
-      notes 
+    const {
+      purchaseOrderId,
+      deliveryNoteNumber,
+      deliveryDate,
+      items,
+      notes,
+      deliveredBy,
+      inspectedByName,
+      inspectedByDepartment,
+      witnesses,
+      hasHazardousMaterials,
+      msdsReference
     } = req.body;
+
+    // Rev 9 clause 6.6.2: quality checks are performed by a department
+    // representative, who is usually not a system user — hence a name rather
+    // than a User reference. Left undefined when nobody attended, so the GRV
+    // prints an empty block to sign by hand instead of asserting an inspection
+    // that never took place.
+    const inspectorName = inspectedByName ? String(inspectedByName).trim() : undefined;
+    const inspectorDepartment = inspectedByDepartment ? String(inspectedByDepartment).trim() : undefined;
+
+    // Person who physically handed over the goods (supplier's driver/rep)
+    const deliveredByRecord = deliveredBy?.name
+      ? {
+          name: String(deliveredBy.name).trim(),
+          idNumber: deliveredBy.idNumber ? String(deliveredBy.idNumber).trim() : undefined,
+          company: deliveredBy.company ? String(deliveredBy.company).trim() : undefined,
+          vehicleRegistration: deliveredBy.vehicleRegistration
+            ? String(deliveredBy.vehicleRegistration).trim()
+            : undefined,
+          contactNumber: deliveredBy.contactNumber ? String(deliveredBy.contactNumber).trim() : undefined,
+          signedAt: new Date()
+        }
+      : undefined;
 
     const po = await PurchaseOrder.findById(purchaseOrderId);
     if (!po || po.isDeleted) {
@@ -53,12 +81,33 @@ const receiveGoods = async (req: Request, res: Response): Promise<any> => {
       po.deliverToSite ||
       (await resolveSiteId(req.user, req.body.receivedAtSiteId));
 
+    // 5-day return deadline (6.6.7–6.6.9): set when any item arrives damaged/defective.
+    const hasFaultyItems = items.some((i: any) => i.condition && i.condition !== 'good');
+    const returnDeadline = hasFaultyItems
+      ? new Date(new Date(deliveryDate).getTime() + 5 * 24 * 60 * 60 * 1000)
+      : undefined;
+
+    const witnessRecord = witnesses && (witnesses.mt || witnesses.security || witnesses.sheq)
+      ? { mt: witnesses.mt?.trim(), security: witnesses.security?.trim(), sheq: witnesses.sheq?.trim() }
+      : undefined;
+
     if (delivery) {
       // Update existing pending delivery to received
       delivery.deliveryNoteNumber = deliveryNoteNumber;
       delivery.deliveryDate = new Date(deliveryDate);
       delivery.receivedAtSite = receiveSiteId;
       delivery.receivedBy = req.user!._id;
+      delivery.receivedAt = new Date();
+      if (deliveredByRecord) delivery.deliveredBy = deliveredByRecord;
+      if (inspectorName) {
+        delivery.inspectedByName = inspectorName;
+        delivery.inspectedByDepartment = inspectorDepartment;
+        delivery.inspectedAt = new Date();
+      }
+      if (witnessRecord) delivery.witnesses = witnessRecord;
+      if (hasHazardousMaterials !== undefined) delivery.hasHazardousMaterials = Boolean(hasHazardousMaterials);
+      if (msdsReference) delivery.msdsReference = String(msdsReference).trim();
+      if (returnDeadline) delivery.returnDeadline = returnDeadline;
       delivery.items = items;
       delivery.isPartialDelivery = !allReceived;
       delivery.isFinalDelivery = allReceived;
@@ -74,6 +123,15 @@ const receiveGoods = async (req: Request, res: Response): Promise<any> => {
         deliveryNoteNumber,
         deliveryDate: new Date(deliveryDate),
         receivedBy: req.user!._id,
+        receivedAt: new Date(),
+        deliveredBy: deliveredByRecord,
+        inspectedByName: inspectorName,
+        inspectedByDepartment: inspectorDepartment,
+        inspectedAt: inspectorName ? new Date() : undefined,
+        witnesses: witnessRecord,
+        hasHazardousMaterials: Boolean(hasHazardousMaterials),
+        msdsReference: msdsReference ? String(msdsReference).trim() : undefined,
+        returnDeadline,
         items,
         isPartialDelivery: !allReceived,
         isFinalDelivery: allReceived,

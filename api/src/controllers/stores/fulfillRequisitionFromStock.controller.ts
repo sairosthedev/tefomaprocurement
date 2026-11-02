@@ -28,7 +28,7 @@ const fulfillRequisitionFromStock = async (req: Request, res: Response): Promise
       action: 'fulfilled_from_stock',
       by: req.user!._id,
       role: req.user!.role,
-      comments: notes || 'Issued from stock — no external purchase required (FC-HQ-P-07 §6.3.2)'
+      comments: notes || 'Issued from stock — no external purchase required'
     });
 
     await requisition.save();

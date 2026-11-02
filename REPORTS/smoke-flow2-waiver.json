@@ -1,0 +1,147 @@
+{
+  "runId": "1784458385767",
+  "flow": "waiver",
+  "target": "https://tefomaprocurement-api.vercel.app",
+  "startedAt": "2026-07-19T10:58:57.366Z",
+  "steps": [
+    {
+      "phase": "auth",
+      "name": "Re-authenticate all smoke roles",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "phase": "requisition",
+      "name": "End user creates requisition",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "phase": "requisition",
+      "name": "HOD approves requisition",
+      "status": "PASS",
+      "detail": "Requisition approved and forwarded to stores"
+    },
+    {
+      "phase": "procurement",
+      "name": "Procurement accepts requisition",
+      "status": "PASS",
+      "detail": "Requisition accepted"
+    },
+    {
+      "phase": "rfq",
+      "name": "Procurement creates RFQ",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "phase": "quotation",
+      "name": "Supplier submits quotation",
+      "status": "PASS",
+      "detail": "Quotation submitted successfully"
+    },
+    {
+      "phase": "quotation",
+      "name": "Waiver by Procurement Head (expected role gap)",
+      "status": "FAIL",
+      "detail": "Waiver approval requires COO or Procurement Manager"
+    },
+    {
+      "phase": "quotation",
+      "name": "Waiver approved (admin fallback)",
+      "status": "PASS",
+      "detail": "Quotation waiver approved"
+    },
+    {
+      "phase": "quotation",
+      "name": "HOD selects quotation (waiver satisfies min-3)",
+      "status": "PASS",
+      "detail": "Quotation selected by HOD. Awaiting Procurement Manager authorization."
+    },
+    {
+      "phase": "quotation",
+      "name": "Procurement authorizes quotation",
+      "status": "PASS",
+      "detail": "Quotation authorized by Procurement Manager. Ready for acceptance."
+    },
+    {
+      "phase": "quotation",
+      "name": "Procurement accepts quotation",
+      "status": "PASS",
+      "detail": "Quotation accepted successfully"
+    },
+    {
+      "phase": "po",
+      "name": "Procurement creates PO",
+      "status": "PASS",
+      "detail": "total=1288 "
+    },
+    {
+      "phase": "po",
+      "name": "Procurement submits PO",
+      "status": "PASS",
+      "detail": "Purchase order submitted. Awaiting HOD → Finance approval."
+    },
+    {
+      "phase": "po",
+      "name": "HOD approves PO",
+      "status": "PASS",
+      "detail": "Purchase order approved by HOD. Awaiting Finance Manager approval."
+    },
+    {
+      "phase": "po",
+      "name": "Finance approves PO",
+      "status": "PASS",
+      "detail": "Purchase order approved by Finance. All approvals complete."
+    },
+    {
+      "phase": "po",
+      "name": "COO approval (below 5k threshold)",
+      "status": "SKIP",
+      "detail": "total=1288"
+    },
+    {
+      "phase": "po",
+      "name": "Supplier acknowledges PO",
+      "status": "PASS",
+      "detail": "Purchase order acknowledged successfully"
+    },
+    {
+      "phase": "delivery",
+      "name": "Stores receives goods (GRV)",
+      "status": "PASS",
+      "detail": "All goods received and requisition marked as completed"
+    },
+    {
+      "phase": "delivery",
+      "name": "Delivery auto-accepted on receive",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "phase": "invoice",
+      "name": "Supplier submits invoice",
+      "status": "PASS",
+      "detail": "Invoice submitted with variances — finance review required"
+    },
+    {
+      "phase": "invoice",
+      "name": "Finance approves invoice",
+      "status": "PASS",
+      "detail": "Invoice approved for payment"
+    },
+    {
+      "phase": "payment",
+      "name": "Finance records payment",
+      "status": "PASS",
+      "detail": "Payment completed"
+    }
+  ],
+  "finishedAt": "2026-07-19T11:00:16.361Z",
+  "summary": {
+    "pass": 20,
+    "fail": 1,
+    "skip": 1,
+    "total": 22
+  }
+}

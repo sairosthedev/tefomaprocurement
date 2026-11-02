@@ -1,0 +1,59 @@
+type NotificationLike = {
+  entity?: string;
+  entityId?: string;
+  type?: string;
+};
+
+const SUPPLIER_ENTITY_ROUTES: Record<string, (id: string) => string> = {
+  RFQ: (id) => `/app/my-rfqs/${id}`,
+  Quotation: (id) => `/app/my-submitted-quotations`,
+  PurchaseOrder: (id) => `/app/my-purchase-orders`,
+  Delivery: (id) => `/app/my-deliveries`,
+  Invoice: (id) => `/app/my-invoices`,
+  SupplierProfile: () => `/app/supplier-profile`
+};
+
+const INTERNAL_ENTITY_ROUTES: Record<string, (id: string) => string | null> = {
+  PurchaseRequisition: (id) => `/app/requisitions/${id}`,
+  PurchaseOrder: (id) => `/app/purchase-orders/${id}`,
+  RFQ: (id) => `/app/rfqs/${id}`,
+  Quotation: (id) => `/app/quotations/${id}`,
+  Invoice: (id) => `/app/invoices/${id}`,
+  SupplierProfile: (id) => `/app/suppliers/${id}`,
+  SupplierEvaluation: () => `/app/suppliers/evaluations`,
+  Delivery: () => `/app/deliveries`,
+  StoreRequisition: () => `/app/store-requisitions`,
+  User: () => `/app/profile`
+};
+
+export function getNotificationPath(
+  notification: NotificationLike,
+  role?: string
+): string | null {
+  const entity = notification.entity;
+  const entityId = notification.entityId ? String(notification.entityId) : '';
+
+  if (!entity) return null;
+
+  // "Quotation selected — your authorization required" was once filed against
+  // the RFQ, whose page has no authorize control. New ones point at the
+  // quotation; older ones go to the queue where the authorization is done.
+  if (role !== 'supplier' && entity === 'RFQ' && notification.type === 'quotation_submitted') {
+    return '/app/authorizations';
+  }
+
+  // Department heads and requesters do not open the procurement PO pages. A
+  // head's PO notifications are approval requests, so they open the queue the
+  // approval is done in (the Head of Procurement's included); a requester
+  // follows the order from their requisitions.
+  if (entity === 'PurchaseOrder') {
+    if (role === 'department_head') return '/app/approvals';
+    if (role === 'end_user') return '/app/requisitions';
+  }
+
+  const routes = role === 'supplier' ? SUPPLIER_ENTITY_ROUTES : INTERNAL_ENTITY_ROUTES;
+  const resolver = routes[entity];
+  if (!resolver) return null;
+
+  return resolver(entityId);
+}

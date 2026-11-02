@@ -1,10 +1,16 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useToast } from '../../components/Toast';
 import api from '../../lib/api';
 import { Truck, Loader2, CheckCircle, XCircle, Clock, Package, AlertCircle } from 'lucide-react';
 import ViewButton from '../../components/ViewButton';
 import Modal from '../../components/Modal';
+import PageHeader from '../../components/PageHeader';
+import Pagination from '../../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
 import { formatCurrency } from '../../lib/constants';
+import { WorkflowStepper, NextStepCard } from '../../components/WorkflowStepper';
+import { supplierDeliveryJourney } from '../../lib/supplierJourney';
+import { SubmitInvoiceDrawer } from '../../components/InvoiceForm';
 
 const statusColors: any = {
   pending: 'bg-yellow-100 text-yellow-700',
@@ -21,17 +27,23 @@ export default function MyDeliveries() {
   const [loading, setLoading] = useState<any>(true);
   const [selectedDelivery, setSelectedDelivery] = useState<any>(null);
   const [showViewModal, setShowViewModal] = useState<any>(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
+  const [pagination, setPagination] = useState(emptyPagination());
+  // The order the invoice drawer is billing; null while it is closed.
+  const [invoicingPoId, setInvoicingPoId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMyDeliveries();
-  }, []);
+  }, [page, limit]);
 
   const fetchMyDeliveries = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/supplier/deliveries');
+      const response = await api.get('/supplier/deliveries', { params: { page, limit } });
       if (response.data.success) {
         setDeliveries(response.data.data || []);
+        setPagination(parsePagination(response.data.pagination));
       } else {
         showToast(response.data.message || 'Failed to load deliveries', 'error');
       }
@@ -49,11 +61,10 @@ export default function MyDeliveries() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">My Deliveries</h1>
-        <p className="text-gray-500 mt-1">Track your goods deliveries and GRV status</p>
-      </div>
+      <PageHeader
+        title="My Deliveries"
+        subtitle="Track your goods deliveries and GRV status"
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
@@ -127,7 +138,7 @@ export default function MyDeliveries() {
       </div>
 
       {/* Deliveries List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -150,43 +161,44 @@ export default function MyDeliveries() {
             </div>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
+            <table className="w-full text-sm border-collapse">
+              <thead>
                 <tr>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">GRV #</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">PO Number</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Delivery Note</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Delivery Date</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Items</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Type</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Status</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Actions</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">GRV #</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">PO Number</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Delivery Note</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Delivery Date</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Items</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Type</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {deliveries.map((delivery: any) => (
-                  <tr key={delivery._id} className="hover:bg-gray-50">
-                    <td className="py-4 px-6">
+                  <tr key={delivery._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       {delivery.status === 'pending' ? (
-                        <span className="text-sm text-yellow-600 italic">Awaiting GRV</span>
+                        <span className="text-yellow-600 italic">Awaiting GRV</span>
                       ) : (
-                        <span className="font-mono text-sm font-medium text-primary">
+                        <span className="font-mono font-medium text-primary">
                           {delivery.grvNumber || '-'}
                         </span>
                       )}
                     </td>
-                    <td className="py-4 px-6">
-                      <span className="font-mono text-sm text-gray-600">
+                    <td className="py-2 px-3 border-b border-gray-100">
+                      <span className="font-mono text-gray-600">
                         {delivery.purchaseOrder?.poNumber || '-'}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
-                      <span className="text-sm text-gray-600">
+                    <td className="py-2 px-3 border-b border-gray-100">
+                      <span className="text-gray-600">
                         {delivery.deliveryNoteNumber || (delivery.status === 'pending' ? 'Not yet provided' : '-')}
                       </span>
                     </td>
-                    <td className="py-4 px-6 text-sm text-gray-500">
+                    <td className="py-2 px-3 border-b border-gray-100 text-gray-500">
                       {delivery.status === 'pending' && delivery.expectedDeliveryDate ? (
                         <span>
                           Expected: {new Date(delivery.expectedDeliveryDate).toLocaleDateString('en-ZA')}
@@ -195,10 +207,10 @@ export default function MyDeliveries() {
                         new Date(delivery.deliveryDate).toLocaleDateString('en-ZA')
                       )}
                     </td>
-                    <td className="py-4 px-6">
-                      <span className="text-sm text-gray-600">{delivery.items?.length || 0} items</span>
+                    <td className="py-2 px-3 border-b border-gray-100">
+                      <span className="text-gray-600">{delivery.items?.length || 0} items</span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       {delivery.isPartialDelivery ? (
                         <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
                           Partial
@@ -209,12 +221,12 @@ export default function MyDeliveries() {
                         </span>
                       )}
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[delivery.status] || statusColors.received}`}>
                         {formatStatus(delivery.status)}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <ViewButton
                         onClick={() => { setSelectedDelivery(delivery); setShowViewModal(true); }}
                       />
@@ -224,6 +236,16 @@ export default function MyDeliveries() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+            itemLabel="deliveries"
+          />
+          </>
         )}
       </div>
 
@@ -232,10 +254,28 @@ export default function MyDeliveries() {
         isOpen={showViewModal}
         onClose={() => setShowViewModal(false)}
         title="Delivery Details"
-        size="lg"
+        size="xl"
       >
         {selectedDelivery && (
           <div className="space-y-6">
+            <div>
+              <WorkflowStepper steps={supplierDeliveryJourney(selectedDelivery).steps} compact />
+              {['accepted', 'partially_accepted'].includes(selectedDelivery.status) && selectedDelivery.purchaseOrder?._id ? (
+                <NextStepCard
+                  title="Submit your invoice"
+                  description={`Bill what Stores accepted against ${selectedDelivery.purchaseOrder.poNumber}.`}
+                  action={{
+                    label: 'Submit invoice',
+                    onClick: () => { setShowViewModal(false); setInvoicingPoId(selectedDelivery.purchaseOrder._id); }
+                  }}
+                />
+              ) : selectedDelivery.status !== 'rejected' ? (
+                <NextStepCard
+                  waiting
+                  title={selectedDelivery.status === 'pending' ? 'Stores to receive the goods' : 'Stores to inspect and accept the goods'}
+                />
+              ) : null}
+            </div>
             {selectedDelivery.status === 'pending' && (
               <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-200 mb-6">
                 <div className="flex items-start gap-3">
@@ -326,27 +366,27 @@ export default function MyDeliveries() {
 
             <div>
               <label className="text-sm text-gray-500 mb-2 block">Delivered Items</label>
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
                     <tr>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Description</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Ordered</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Received</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Description</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Ordered</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Received</th>
                       {selectedDelivery.status !== 'pending' && (
                         <>
-                          <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Rejected</th>
-                          <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Condition</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Rejected</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Condition</th>
                         </>
                       )}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody>
                     {selectedDelivery.items?.map((item: any, index: any) => (
-                      <tr key={index}>
-                        <td className="py-3 px-4 text-sm font-medium">{item.description}</td>
-                        <td className="py-3 px-4 text-sm text-gray-600">{item.quantityOrdered || '-'}</td>
-                        <td className="py-3 px-4 text-sm text-gray-900 font-medium">
+                      <tr key={index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                        <td className="py-2 px-3 border-b border-gray-100 font-medium">{item.description}</td>
+                        <td className="py-2 px-3 border-b border-gray-100 text-gray-600">{item.quantityOrdered || '-'}</td>
+                        <td className="py-2 px-3 border-b border-gray-100 font-medium text-gray-900">
                           {selectedDelivery.status === 'pending' ? (
                             <span className="text-yellow-600 italic">Pending</span>
                           ) : (
@@ -355,8 +395,8 @@ export default function MyDeliveries() {
                         </td>
                         {selectedDelivery.status !== 'pending' && (
                           <>
-                            <td className="py-3 px-4 text-sm text-red-600">{item.quantityRejected || 0}</td>
-                            <td className="py-3 px-4 text-sm">
+                            <td className="py-2 px-3 border-b border-gray-100 text-red-600">{item.quantityRejected || 0}</td>
+                            <td className="py-2 px-3 border-b border-gray-100">
                               <span className={`px-2 py-0.5 rounded text-xs ${
                                 item.condition === 'good' ? 'bg-green-100 text-green-700' :
                                 item.condition === 'damaged' ? 'bg-red-100 text-red-700' :
@@ -383,6 +423,13 @@ export default function MyDeliveries() {
           </div>
         )}
       </Modal>
+
+      <SubmitInvoiceDrawer
+        isOpen={invoicingPoId !== null}
+        purchaseOrderId={invoicingPoId}
+        onClose={() => setInvoicingPoId(null)}
+        onSaved={() => setInvoicingPoId(null)}
+      />
     </div>
   );
 }

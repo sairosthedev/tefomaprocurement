@@ -1,0 +1,193 @@
+import type { Request, Response } from 'express';
+import { RFQ } from '../../models/index.js';
+import { QUOTATION_WAIVER_TYPES } from '../../models/RFQ.model.js';
+import { createAuditLog } from '../../middleware/index.js';
+import { isProcurementHead } from '@fossil/shared';
+import {
+  buildLineAwards,
+  collectLineBids,
+  lineFullyAuthorized,
+  lineIdStr
+} from '../../services/lineAward.service.js';
+import { getSupplierPerformanceScores, rankLineBids } from '../../services/bidRanking.service.js';
+
+const isProcOfficer = (user: any) =>
+  user?.role === 'procurement_officer' || isProcurementHead(user);
+
+/** GET the per-line award matrix: each RFQ line, its bids, and award state. */
+export const getLineAwardMatrix = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const rfq = await RFQ.findById(req.params.id);
+    if (!rfq || rfq.isDeleted) {
+      return res.status(404).json({ success: false, message: 'RFQ not found' });
+    }
+    // Refresh (non-destructive) so newly-arrived quotes and unquoted lines show.
+    rfq.lineAwards = await buildLineAwards(rfq) as any;
+    await rfq.save();
+
+    const bids = await collectLineBids(rfq);
+
+    // Supplier evaluation scores break near-ties in the ranking. Fetched once
+    // for every bidding supplier rather than per line.
+    const supplierIds = Array.from(
+      new Set([...bids.values()].flat().map((b) => b.supplierId))
+    );
+    const performance = await getSupplierPerformanceScores(supplierIds);
+
+    const lines = (rfq.lineAwards as any[]).map((la) => {
+      const key = lineIdStr(la.rfqLineId);
+      const lineBids = bids.get(key) || [];
+      const ranking = rankLineBids(lineBids, performance);
+      return {
+        ...(la.toObject?.() ?? la),
+        // Ranked cheapest-first, with one bid flagged `recommended`. Advisory
+        // only — the award still requires a selection and PM authorization.
+        bids: ranking.bids,
+        bidCount: ranking.bids.length,
+        lowestUnitPrice: ranking.lowestUnitPrice,
+        spreadPercent: ranking.spreadPercent,
+        mixedCurrency: ranking.mixedCurrency,
+        currencies: ranking.currencies,
+        fullyAuthorized: lineFullyAuthorized(la, lineBids.length)
+      };
+    });
+
+    res.status(200).json({ success: true, data: { rfqId: rfq._id, splitAward: rfq.splitAward, lines } });
+  } catch (error: any) {
+    console.error('Get line award matrix error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Server error' });
+  }
+};
+
+// Find a line award by rfqLineId (throws-style helper returning [rfq, award]).
+async function loadLine(id: string, rfqLineId: string) {
+  const rfq = await RFQ.findById(id);
+  if (!rfq || rfq.isDeleted) return { rfq: null as any, award: null as any };
+  if (!rfq.lineAwards?.length) {
+    rfq.lineAwards = await buildLineAwards(rfq) as any;
+  }
+  const award = (rfq.lineAwards as any[]).find((la) => lineIdStr(la.rfqLineId) === String(rfqLineId));
+  return { rfq, award };
+}
+
+/** Procurement selects the winning supplier/quotation for a single RFQ line. */
+export const selectLine = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { id } = req.params;
+    const { rfqLineId, quotationId, supplierId, unitPrice, justification } = req.body;
+    if (!rfqLineId || !quotationId || !justification?.trim()) {
+      return res.status(400).json({ success: false, message: 'rfqLineId, quotationId and justification are required' });
+    }
+
+    const { rfq, award } = await loadLine(id, rfqLineId);
+    if (!rfq) return res.status(404).json({ success: false, message: 'RFQ not found' });
+    if (!award) return res.status(404).json({ success: false, message: 'RFQ line not found' });
+
+    if (!isProcOfficer(req.user)) {
+      return res.status(403).json({ success: false, message: 'Not permitted to select for this line' });
+    }
+    // Authorization is for one supplier at one price. Changing the winner
+    // afterwards would carry that sign-off over to a choice nobody authorized.
+    if (award.pmAuthorization?.by) {
+      return res.status(400).json({
+        success: false,
+        message: 'This line is already authorized; its supplier can no longer be changed'
+      });
+    }
+    if (award.poGenerated) {
+      return res.status(400).json({ success: false, message: 'A purchase order already exists for this line' });
+    }
+
+    award.status = 'awarded';
+    award.awardedQuotation = quotationId;
+    award.awardedSupplier = supplierId;
+    award.awardedUnitPrice = unitPrice;
+    award.hodSelection = { by: req.user!._id, justification: justification.trim(), at: new Date() };
+    rfq.splitAward = true;
+    await rfq.save();
+
+    await createAuditLog({
+      action: 'approve', entity: 'RFQ', entityId: rfq._id, user: req.user,
+      description: `Procurement selected supplier for RFQ ${rfq.rfqNumber} line ${rfqLineId}`,
+      newData: { rfqLineId, quotationId, unitPrice }, req
+    });
+
+    res.status(200).json({ success: true, message: 'Line awarded (selection recorded).', data: award });
+  } catch (error: any) {
+    console.error('Select line error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Server error' });
+  }
+};
+
+/** Procurement Manager authorizes a single awarded line. */
+export const pmAuthorizeLine = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { id } = req.params;
+    const { rfqLineId } = req.body;
+    // Head of Procurement only: the officer who selected must not also authorize.
+    if (!isProcurementHead(req.user)) {
+      return res.status(403).json({ success: false, message: 'Only the Head of Procurement can authorize a line' });
+    }
+    const { rfq, award } = await loadLine(id, rfqLineId);
+    if (!rfq) return res.status(404).json({ success: false, message: 'RFQ not found' });
+    if (!award) return res.status(404).json({ success: false, message: 'RFQ line not found' });
+    if (award.status !== 'awarded' || !award.hodSelection?.by) {
+      return res.status(400).json({ success: false, message: 'Select a supplier for this line before authorizing it' });
+    }
+    if (String(award.hodSelection.by) === String(req.user!._id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'You selected this supplier, so someone else must authorize it'
+      });
+    }
+
+    award.pmAuthorization = { by: req.user!._id, at: new Date() };
+    await rfq.save();
+
+    await createAuditLog({
+      action: 'approve', entity: 'RFQ', entityId: rfq._id, user: req.user,
+      description: `PM authorized RFQ ${rfq.rfqNumber} line ${rfqLineId}`, newData: { rfqLineId }, req
+    });
+
+    res.status(200).json({ success: true, message: 'Line authorized by Procurement Manager.', data: award });
+  } catch (error: any) {
+    console.error('PM authorize line error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Server error' });
+  }
+};
+
+/** Approve a per-line waiver (a line with fewer than 3 quotes). */
+export const waiveLine = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { id } = req.params;
+    const { rfqLineId, reason, waiverType } = req.body;
+    if (!isProcurementHead(req.user) && req.user!.role !== 'coo') {
+      return res.status(403).json({ success: false, message: 'Only the COO or the Head of Procurement can approve a waiver' });
+    }
+    if (!reason?.trim()) {
+      return res.status(400).json({ success: false, message: 'Waiver reason is required' });
+    }
+    if (waiverType !== undefined && !QUOTATION_WAIVER_TYPES.includes(waiverType)) {
+      return res.status(400).json({ success: false, message: `Invalid waiver type. Allowed: ${QUOTATION_WAIVER_TYPES.join(', ')}` });
+    }
+    const { rfq, award } = await loadLine(id, rfqLineId);
+    if (!rfq) return res.status(404).json({ success: false, message: 'RFQ not found' });
+    if (!award) return res.status(404).json({ success: false, message: 'RFQ line not found' });
+
+    award.waiver = {
+      waived: true, reason: reason.trim(), waiverType: waiverType || 'other',
+      approvedBy: req.user!._id, approvedAt: new Date()
+    };
+    await rfq.save();
+
+    await createAuditLog({
+      action: 'approve', entity: 'RFQ', entityId: rfq._id, user: req.user,
+      description: `Approved per-line waiver for RFQ ${rfq.rfqNumber} line ${rfqLineId}`, newData: { rfqLineId, reason }, req
+    });
+
+    res.status(200).json({ success: true, message: 'Line waiver approved.', data: award });
+  } catch (error: any) {
+    console.error('Waive line error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Server error' });
+  }
+};

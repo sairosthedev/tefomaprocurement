@@ -1,5 +1,7 @@
 import mongoose, { Schema, type Document } from 'mongoose';
-import { requiresCooApproval } from '../services/poApprovalFlow.service.js';
+import { SUPPORTED_CURRENCY_CODES } from '@fossil/shared';
+import { nextNumber } from '../services/numbering.service.js';
+import { currentBaseCurrency } from '../tenancy/sbuContext.js';
 
 export interface IPOItem {
   description: string;
@@ -13,7 +15,7 @@ export interface IPOItem {
 }
 
 export interface IApprovalHistory {
-  action: 'created' | 'submitted' | 'hod_approved' | 'hod_rejected' | 'finance_approved' | 'finance_rejected' | 'coo_approved' | 'coo_rejected' | 'issued' | 'acknowledged';
+  action: 'created' | 'submitted' | 'hod_approved' | 'dept_hod_approved' | 'proc_hod_approved' | 'hod_rejected' | 'finance_approved' | 'finance_rejected' | 'coo_approved' | 'coo_rejected' | 'issued' | 'acknowledged' | 'cancelled';
   by: mongoose.Types.ObjectId | any;
   role?: string;
   comments?: string;
@@ -31,6 +33,14 @@ export interface IPurchaseOrder extends Document {
   subtotal: number;
   vatAmount: number;
   totalAmount: number;
+  /** Currency of every amount on the PO. Defaults to the SBU's base currency. */
+  currency: string;
+  /** totalAmount in USD at the rate below, as assessed for the COO limit. */
+  totalAmountUsd?: number;
+  /** Units of `currency` per USD used for the assessment. */
+  fxRateToUsd?: number;
+  /** The SBU's COO limit (USD) when the PO was assessed. */
+  cooThresholdUsd?: number;
   deliverToSite?: mongoose.Types.ObjectId | any;
   deliveryAddress?: {
     street?: string;
@@ -41,7 +51,17 @@ export interface IPurchaseOrder extends Document {
   expectedDeliveryDate?: Date;
   paymentTerms?: string;
   termsAndConditions?: string;
-  status: 'draft' | 'pending_hod' | 'pending_finance' | 'pending_coo' | 'pending_approvals' | 'approved' | 'rejected' | 'issued' | 'partially_received' | 'completed' | 'cancelled';
+  status: 'draft' | 'pending_hod' | 'pending_dept_hod' | 'pending_proc_hod' | 'pending_finance' | 'pending_coo' | 'pending_approvals' | 'approved' | 'rejected' | 'issued' | 'partially_received' | 'completed' | 'cancelled';
+  // Requesting-department HOD approval (first step).
+  deptHodApproved: boolean;
+  deptHodApprovedBy?: mongoose.Types.ObjectId | any;
+  deptHodApprovedAt?: Date;
+  // Procurement HOD approval (second step).
+  procHodApproved: boolean;
+  procHodApprovedBy?: mongoose.Types.ObjectId | any;
+  procHodApprovedAt?: Date;
+  // Legacy combined HOD flag — set true once BOTH HOD steps pass, so existing
+  // Finance queries and status panels keep working.
   hodApproved: boolean;
   hodApprovedBy?: mongoose.Types.ObjectId | any;
   hodApprovedAt?: Date;
@@ -59,6 +79,9 @@ export interface IPurchaseOrder extends Document {
   totalInvoiced: number;
   totalPaid: number;
   notes?: string;
+  cancelledBy?: mongoose.Types.ObjectId | any;
+  cancelledAt?: Date;
+  cancellationReason?: string;
   isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -95,7 +118,7 @@ const POItemSchema = new Schema<IPOItem>({
 const ApprovalHistorySchema = new Schema<IApprovalHistory>({
   action: {
     type: String,
-    enum: ['created', 'submitted', 'hod_approved', 'hod_rejected', 'finance_approved', 'finance_rejected', 'coo_approved', 'coo_rejected', 'issued', 'acknowledged'],
+    enum: ['created', 'submitted', 'hod_approved', 'dept_hod_approved', 'proc_hod_approved', 'hod_rejected', 'finance_approved', 'finance_rejected', 'coo_approved', 'coo_rejected', 'issued', 'acknowledged', 'cancelled'],
     required: true
   },
   by: {
@@ -153,6 +176,15 @@ const PurchaseOrderSchema = new Schema<IPurchaseOrder>({
     type: Number,
     required: true
   },
+  currency: {
+    type: String,
+    enum: [...SUPPORTED_CURRENCY_CODES],
+    required: true,
+    default: currentBaseCurrency
+  },
+  totalAmountUsd: Number,
+  fxRateToUsd: Number,
+  cooThresholdUsd: Number,
   deliverToSite: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Site'
@@ -168,9 +200,27 @@ const PurchaseOrderSchema = new Schema<IPurchaseOrder>({
   termsAndConditions: String,
   status: {
     type: String,
-    enum: ['draft', 'pending_hod', 'pending_finance', 'pending_coo', 'pending_approvals', 'approved', 'rejected', 'issued', 'partially_received', 'completed', 'cancelled'],
+    enum: ['draft', 'pending_hod', 'pending_dept_hod', 'pending_proc_hod', 'pending_finance', 'pending_coo', 'pending_approvals', 'approved', 'rejected', 'issued', 'partially_received', 'completed', 'cancelled'],
     default: 'draft'
   },
+  deptHodApproved: {
+    type: Boolean,
+    default: false
+  },
+  deptHodApprovedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  deptHodApprovedAt: Date,
+  procHodApproved: {
+    type: Boolean,
+    default: false
+  },
+  procHodApprovedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  procHodApprovedAt: Date,
   hodApproved: {
     type: Boolean,
     default: false
@@ -221,6 +271,9 @@ const PurchaseOrderSchema = new Schema<IPurchaseOrder>({
     default: 0
   },
   notes: String,
+  cancelledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  cancelledAt: Date,
+  cancellationReason: String,
   isDeleted: {
     type: Boolean,
     default: false
@@ -229,16 +282,16 @@ const PurchaseOrderSchema = new Schema<IPurchaseOrder>({
   timestamps: true
 });
 
-// Generate PO number before saving
 PurchaseOrderSchema.pre('save', async function(next) {
-  if (this.isNew) {
-    const count = await (this.constructor as any).countDocuments();
-    const year = new Date().getFullYear();
-    this.poNumber = `PO-${year}-${String(count + 1).padStart(5, '0')}`;
+  // COO required at or above the SBU's USD limit, converted at the stored FX
+  // rate. Assessed only when the amount or currency changes, so a rate update
+  // never moves a PO that is already in its approval chain. The import is
+  // dynamic because the FX service reaches the platform connection, which
+  // registers this model — a static import would be a cycle.
+  if (this.isNew || this.isModified('totalAmount') || this.isModified('currency')) {
+    const { applyCooAssessment } = await import('../services/poApprovalFlow.service.js');
+    await applyCooAssessment(this);
   }
-
-  // FC-HQ-P-07 §6.3.11 — COO required above USD 5,000
-  this.requiresCooApproval = requiresCooApproval(this.totalAmount);
 
   // Calculate pending quantities
   this.items.forEach((item: any) => {
@@ -246,6 +299,15 @@ PurchaseOrderSchema.pre('save', async function(next) {
   });
 
   next();
+});
+
+// Numbering runs on `pre('validate')`, not `pre('save')`: Mongoose validates
+// before user save hooks, so a required number field assigned in `pre('save')`
+// fails validation and the hook never runs at all.
+PurchaseOrderSchema.pre('validate', async function () {
+  if (this.isNew && !this.poNumber) {
+    this.poNumber = await nextNumber(this, { type: 'purchaseOrder', prefix: 'PO' });
+  }
 });
 
 export default mongoose.model<IPurchaseOrder>('PurchaseOrder', PurchaseOrderSchema);

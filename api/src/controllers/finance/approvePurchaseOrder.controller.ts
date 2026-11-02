@@ -2,6 +2,8 @@ import type { Request, Response } from 'express';
 import { PurchaseOrder } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole, notifySupplier } from '../../services/notification.service.js';
+import { emailApprovedPurchaseOrderToSupplier } from '../../services/purchaseOrderDocument.service.js';
+import { describeCooAssessment } from '../../services/poApprovalFlow.service.js';
 
 const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -26,7 +28,7 @@ const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> =
     if (!po.hodApproved) {
       return res.status(400).json({
         success: false,
-        message: 'HOD approval is required before Finance can approve (FC-HQ-P-07 §6.3.12)'
+        message: 'HOD approval is required before Finance can approve'
       });
     }
 
@@ -41,7 +43,7 @@ const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> =
       action: 'finance_approved',
       by: req.user!._id,
       role: 'finance',
-      comments: comments || 'Approved by Finance Manager (FC-HQ-P-07 §6.3.12)'
+      comments: comments || 'Approved by Finance Manager'
     });
 
     if (po.requiresCooApproval) {
@@ -66,7 +68,7 @@ const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> =
       await notifyUsersByRole('coo', {
         type: 'po_finance_approved',
         title: 'PO awaiting COO authorization',
-        message: `PO ${po.poNumber} (≥ USD 5,000) requires COO authorization.`,
+        message: `PO ${po.poNumber} (${describeCooAssessment(po)}) requires COO authorization.`,
         entity: 'PurchaseOrder',
         entityId: po._id,
         relatedUser: req.user!._id
@@ -80,6 +82,11 @@ const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> =
         entityId: po._id,
         relatedUser: req.user!._id
       });
+      // Below the COO threshold, Finance is the last approval — so this is the
+      // point the order becomes one the supplier may act on (Rev 9 clause
+      // 6.3.14). Above the threshold the COO controller sends it instead.
+      await emailApprovedPurchaseOrderToSupplier(po._id, req.user, req);
+
       await notifySupplier(po.supplier, {
         type: 'po_coo_approved',
         title: 'Purchase Order Approved',
@@ -95,7 +102,7 @@ const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> =
       success: true,
       message: po.status === 'approved'
         ? 'Purchase order approved by Finance. All approvals complete.'
-        : 'Finance approved. Awaiting COO authorization (amount ≥ USD 5,000).',
+        : `Finance approved. Awaiting COO authorization (${describeCooAssessment(po)}).`,
       data: po
     });
   } catch (error) {

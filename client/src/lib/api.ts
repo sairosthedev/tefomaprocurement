@@ -14,7 +14,8 @@ export {
   financeAPI,
   cooAPI,
   storesAPI,
-  notificationsAPI
+  notificationsAPI,
+  dashboardAPI
 } from '../services';
 
 export default http;

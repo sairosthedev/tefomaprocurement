@@ -1,4 +1,7 @@
 import mongoose, { Schema, type Document } from 'mongoose';
+import { SUPPORTED_CURRENCY_CODES } from '@fossil/shared';
+import { currentBaseCurrency } from '../tenancy/sbuContext.js';
+import { nextNumber } from '../services/numbering.service.js';
 
 export interface IInvoiceItem {
   description: string;
@@ -29,9 +32,22 @@ export interface IThreeWayMatchResult {
   varianceAmount: number;
   matched: boolean;
   withinTolerance: boolean;
+  /** GRV numbers whose receipted quantities back this match. */
+  grvNumbers?: string[];
+  /** Whether stores has raised any GRV for the PO at all. */
+  hasGrv?: boolean;
   lines: IMatchLineResult[];
   messages: string[];
   matchedAt?: Date;
+}
+
+/** Record of a finance user approving an invoice despite a failed match. */
+export interface IVarianceOverride {
+  reason: string;
+  approvedBy: mongoose.Types.ObjectId;
+  approvedAt: Date;
+  varianceAmount: number;
+  hadGrv: boolean;
 }
 
 export interface IInvoice extends Document {
@@ -45,6 +61,8 @@ export interface IInvoice extends Document {
   vatAmount: number;
   totalAmount: number;
   amountPaid: number;
+  /** Always the PO's currency: a supplier invoices in the currency it was ordered in. */
+  currency: string;
   balanceDue: number;
   invoiceDate: Date;
   dueDate?: Date;
@@ -58,6 +76,7 @@ export interface IInvoice extends Document {
     | 'paid'
     | 'cancelled';
   matchResult?: IThreeWayMatchResult;
+  varianceOverride?: IVarianceOverride;
   approvedBy?: mongoose.Types.ObjectId;
   approvedAt?: Date;
   rejectedBy?: mongoose.Types.ObjectId;
@@ -98,9 +117,19 @@ const MatchResultSchema = new Schema<IThreeWayMatchResult>({
   varianceAmount: Number,
   matched: Boolean,
   withinTolerance: Boolean,
+  grvNumbers: [String],
+  hasGrv: Boolean,
   lines: [MatchLineSchema],
   messages: [String],
   matchedAt: Date
+}, { _id: false });
+
+const VarianceOverrideSchema = new Schema<IVarianceOverride>({
+  reason: { type: String, required: true },
+  approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  approvedAt: { type: Date, required: true },
+  varianceAmount: Number,
+  hadGrv: Boolean
 }, { _id: false });
 
 const InvoiceSchema = new Schema<IInvoice>({
@@ -125,6 +154,12 @@ const InvoiceSchema = new Schema<IInvoice>({
   subtotal: { type: Number, required: true, default: 0 },
   vatAmount: { type: Number, default: 0 },
   totalAmount: { type: Number, required: true, default: 0 },
+  currency: {
+    type: String,
+    enum: [...SUPPORTED_CURRENCY_CODES],
+    required: true,
+    default: currentBaseCurrency
+  },
   amountPaid: { type: Number, default: 0 },
   balanceDue: { type: Number, default: 0 },
   invoiceDate: { type: Date, required: true },
@@ -135,6 +170,7 @@ const InvoiceSchema = new Schema<IInvoice>({
     default: 'submitted'
   },
   matchResult: MatchResultSchema,
+  varianceOverride: VarianceOverrideSchema,
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   approvedAt: Date,
   rejectedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -145,16 +181,19 @@ const InvoiceSchema = new Schema<IInvoice>({
 }, { timestamps: true });
 
 InvoiceSchema.pre('save', async function (next) {
-  if (this.isNew && !this.invoiceNumber) {
-    const count = await (this.constructor as typeof mongoose.Model).countDocuments();
-    const year = new Date().getFullYear();
-    this.invoiceNumber = `INV-${year}-${String(count + 1).padStart(5, '0')}`;
-  }
-
   this.subtotal = this.items.reduce((sum, item) => sum + item.totalPrice, 0);
   this.totalAmount = this.subtotal + (this.vatAmount || 0);
   this.balanceDue = Math.max(0, this.totalAmount - (this.amountPaid || 0));
   next();
+});
+
+// Numbering runs on `pre('validate')`, not `pre('save')`: Mongoose validates
+// before user save hooks, so a required number field assigned in `pre('save')`
+// fails validation and the hook never runs at all.
+InvoiceSchema.pre('validate', async function () {
+  if (this.isNew && !this.invoiceNumber) {
+    this.invoiceNumber = await nextNumber(this, { type: 'invoice', prefix: 'INV' });
+  }
 });
 
 export default mongoose.model<IInvoice>('Invoice', InvoiceSchema);

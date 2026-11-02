@@ -1,6 +1,8 @@
 import type { Request, Response, NextFunction } from 'express';
 import { ApiError } from '../lib/ApiError.js';
 import { logger } from '../lib/logger.js';
+import { applyCorsHeaders } from '../config/cors.js';
+import { isDevelopment } from '../config/env.js';
 
 /**
  * 404 catch-all for unmatched routes. Mount AFTER all real routes.
@@ -60,9 +62,12 @@ export function errorHandler(
   const body: Record<string, unknown> = { success: false, message };
   if (code) body.code = code;
   if (details) body.details = details;
-  if (isServerError && process.env.NODE_ENV !== 'production') {
+  // Stack traces name internal paths and library versions, so they are for
+  // local debugging only — staging is shared and must behave like production.
+  if (isServerError && isDevelopment()) {
     body.stack = err.stack;
   }
 
+  applyCorsHeaders(req.headers.origin, res);
   res.status(status).json(body);
 }

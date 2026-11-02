@@ -1,20 +1,66 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 import { useToast } from '../components/Toast';
-import api from '../lib/api';
+import api, { storesAPI } from '../lib/api';
 import { 
   Search, Package, AlertTriangle, TrendingDown, 
-  TrendingUp, Loader2, Edit, Plus
+  TrendingUp, Loader2, Plus, Upload, Download, FileSpreadsheet, PackageCheck, X, ArrowLeft, XCircle
 } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
 import ViewButton from '../components/ViewButton';
-import Modal from '../components/Modal';
+import Modal, { ModalFooter } from '../components/Modal';
 import { CategorySelect } from '../components/CategorySelect';
 import { formatCurrency, UNITS_OF_MEASUREMENT, getCategoryName } from '../lib/constants';
+import Pagination from '../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
+import { getCurrentSbuCurrency } from '../lib/sbu';
+import { FormSteps, FormStepNav } from '../components/FormSteps';
+
+// Map a spreadsheet row (any header casing/variant) to our canonical fields.
+const TEMPLATE_HEADERS = ['code', 'name', 'description', 'category', 'unit', 'reorderLevel', 'quantity', 'unitPrice'];
+
+const COLUMN_ALIASES: Record<string, string> = {
+  code: 'code', itemcode: 'code', 'item code': 'code', sku: 'code',
+  name: 'name', item: 'name', 'item name': 'name', itemname: 'name',
+  description: 'description', desc: 'description', details: 'description',
+  category: 'category', cat: 'category',
+  unit: 'unit', uom: 'unit', units: 'unit',
+  reorderlevel: 'reorderLevel', reorder: 'reorderLevel', 'reorder level': 'reorderLevel', min: 'reorderLevel', minimum: 'reorderLevel',
+  quantity: 'quantity', qty: 'quantity', 'on hand': 'quantity', onhand: 'quantity', stock: 'quantity', opening: 'quantity', 'opening balance': 'quantity',
+  unitprice: 'unitPrice', 'unit price': 'unitPrice', price: 'unitPrice', cost: 'unitPrice', 'unit cost': 'unitPrice'
+};
+
+function mapRow(raw: Record<string, any>): Record<string, any> {
+  const mapped: Record<string, any> = {};
+  for (const key of Object.keys(raw)) {
+    const canonical = COLUMN_ALIASES[key.trim().toLowerCase()];
+    if (canonical && raw[key] !== undefined && raw[key] !== null && String(raw[key]).trim() !== '') {
+      mapped[canonical] = typeof raw[key] === 'string' ? raw[key].trim() : raw[key];
+    }
+  }
+  return mapped;
+}
+
+const ADD_STEPS = [
+  { label: 'Item', description: 'What the item is' },
+  { label: 'Stock', description: 'Price, quantity, reorder level' },
+  { label: 'Review & add', description: 'Check, then add' }
+];
+
+const IMPORT_STEPS = [
+  { label: 'Upload', description: 'Choose the spreadsheet' },
+  { label: 'Preview', description: 'Check the rows' },
+  { label: 'Result', description: 'Created, updated, failed' }
+];
 
 export default function Inventory() {
   const { showToast } = useToast();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [inventory, setInventory] = useState<any[]>([]);
   const [loading, setLoading] = useState<any>(true);
-  const [searchTerm, setSearchTerm] = useState<any>('');
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search')?.trim() || '');
   const [categoryFilter, setCategoryFilter] = useState<any>('');
   const [showLowStock, setShowLowStock] = useState<any>(false);
   const [showAddModal, setShowAddModal] = useState<any>(false);
@@ -30,38 +76,163 @@ export default function Inventory() {
     currentQuantity: 0,
     unitPrice: 0
   });
+  const [showImportModal, setShowImportModal] = useState<any>(false);
+  const [importRows, setImportRows] = useState<any[]>([]);
+  const [importFileName, setImportFileName] = useState<any>('');
+  const [importing, setImporting] = useState<any>(false);
+  const [importResult, setImportResult] = useState<any>(null);
+  const [parseError, setParseError] = useState<any>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
+  const [pagination, setPagination] = useState(emptyPagination());
+  const [stats, setStats] = useState({
+    totalItems: 0,
+    lowStockCount: 0,
+    totalStockValue: 0,
+    categoryCount: 0
+  });
+  const [issuingItemId, setIssuingItemId] = useState<string | null>(null);
+  const [addStep, setAddStep] = useState(0);
+  const [adding, setAdding] = useState(false);
+  const addTopRef = useRef<HTMLDivElement>(null);
+
+  const issueContext = useMemo(() => {
+    const prId = searchParams.get('prId');
+    const lineIndex = searchParams.get('lineIndex');
+    if (!prId || lineIndex === null || lineIndex === '') return null;
+    return {
+      prId,
+      lineIndex: Number(lineIndex),
+      prNumber: searchParams.get('prNumber') || '',
+      lineQty: Number(searchParams.get('lineQty')) || 0,
+      lineUnit: searchParams.get('lineUnit') || 'each',
+      lineDescription: searchParams.get('search')?.trim() || ''
+    };
+  }, [searchParams]);
+
+  const clearIssueContext = () => {
+    const next = new URLSearchParams(searchParams);
+    ['prId', 'lineIndex', 'prNumber', 'lineQty', 'lineUnit'].forEach((k) => next.delete(k));
+    setSearchParams(next, { replace: true });
+  };
+
+  const issueForRequisition = async (inv: any) => {
+    if (!issueContext) return;
+    const itemId = inv.item?._id;
+    if (!itemId) return;
+
+    const available = inv.quantityOnHand || 0;
+    if (available < issueContext.lineQty) {
+      showToast(
+        `Not enough stock. Need ${issueContext.lineQty} ${issueContext.lineUnit}, only ${available} on hand.`,
+        'error'
+      );
+      return;
+    }
+
+    try {
+      setIssuingItemId(itemId);
+      const res = await storesAPI.issuePurchaseRequisitionLine(issueContext.prId, {
+        lineIndex: issueContext.lineIndex,
+        itemId,
+        notes: `Issued from inventory: ${inv.item?.name || issueContext.lineDescription}`
+      });
+      showToast(res.data?.message || 'Stock issued', 'success');
+      navigate('/app/stores-pr-review');
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Could not issue stock', 'error');
+    } finally {
+      setIssuingItemId(null);
+    }
+  };
+
+  // Keep search in sync when arriving from Stores PR Review (or other deep links).
+  useEffect(() => {
+    const q = searchParams.get('search')?.trim() || '';
+    setSearchTerm((prev: string) => (prev === q ? prev : q));
+  }, [searchParams]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, categoryFilter, showLowStock]);
 
   useEffect(() => {
     fetchInventory();
-  }, [searchTerm, categoryFilter, showLowStock]);
+  }, [page, limit, searchTerm, categoryFilter, showLowStock]);
 
-  const fetchInventory = async () => {
+  const handleSearchSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    setPage(1);
+    fetchInventory({ page: 1, search: searchTerm.trim() });
+  };
+
+  const fetchInventory = async (overrides?: {
+    page?: number;
+    search?: string;
+    category?: string;
+    lowStock?: boolean;
+  }) => {
     try {
       setLoading(true);
       const response = await api.get('/stores/inventory', {
         params: { 
-          search: searchTerm, 
-          category: categoryFilter,
-          lowStock: showLowStock 
+          search: (overrides?.search ?? searchTerm).trim(), 
+          category: overrides?.category ?? categoryFilter,
+          lowStock: overrides?.lowStock ?? showLowStock,
+          page: overrides?.page ?? page,
+          limit
         }
       });
       if (response.data.success) {
         setInventory(response.data.data || []);
+        setPagination(parsePagination(response.data.pagination));
+        if (response.data.stats) {
+          setStats(response.data.stats);
+        }
       }
     } catch (error: any) {
-      console.error('Failed to fetch inventory:', error);
+      showToast(error.response?.data?.message || 'Failed to load inventory', 'error');
     } finally {
       setLoading(false);
     }
   };
 
+  const openAddModal = () => {
+    setAddStep(0);
+    setShowAddModal(true);
+  };
+
+  const goToAddStep = (step: number) => {
+    setAddStep(step);
+    addTopRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  };
+
+  const validateItemStep = () => {
+    if (!formData.name.trim()) {
+      showToast('Please enter item name', 'error');
+      return false;
+    }
+    if (!formData.category) {
+      showToast('Please select a category', 'error');
+      return false;
+    }
+    return true;
+  };
+
+  const nextAddStep = () => {
+    if (addStep === 0 && !validateItemStep()) return;
+    goToAddStep(addStep + 1);
+  };
+
   const handleAddItem = async () => {
     try {
-      if (!formData.name.trim()) {
-        showToast('Please enter item name', 'error');
+      if (!validateItemStep()) {
+        goToAddStep(0);
         return;
       }
 
+      setAdding(true);
       await api.post('/stores/inventory', formData);
       showToast('Item added to inventory', 'success');
       setShowAddModal(false);
@@ -75,33 +246,98 @@ export default function Inventory() {
         currentQuantity: 0,
         unitPrice: 0
       });
-      fetchInventory();
+      setSearchTerm('');
+      setCategoryFilter('');
+      setShowLowStock(false);
+      setPage(1);
+      fetchInventory({ page: 1, search: '', category: '', lowStock: false });
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to add item', 'error');
+    } finally {
+      setAdding(false);
     }
   };
 
-  const lowStockCount = inventory.filter((inv: any) => {
-    const item = inv.item || {};
-    return inv.quantityOnHand <= (item.reorderLevel || 0);
-  }).length;
+  const downloadTemplate = () => {
+    const example = [
+      {
+        code: 'ITEM-000001',
+        name: 'A4 Paper',
+        description: '80gsm white printing paper',
+        category: 'OFF-STAT',
+        unit: 'box',
+        reorderLevel: 10,
+        quantity: 50,
+        unitPrice: 4.5
+      }
+    ];
+    const ws = XLSX.utils.json_to_sheet(example, { header: TEMPLATE_HEADERS });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Inventory');
+    XLSX.writeFile(wb, 'inventory-import-template.xlsx');
+  };
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setParseError('');
+    setImportResult(null);
+    setImportFileName(file.name);
+    try {
+      const buffer = await file.arrayBuffer();
+      const wb = XLSX.read(buffer, { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rawRows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' });
+      const rows = rawRows.map(mapRow).filter((r) => r.name || r.code);
+      if (rows.length === 0) {
+        setParseError('No valid rows found. Make sure your file has a "name" column.');
+        setImportRows([]);
+        return;
+      }
+      setImportRows(rows);
+    } catch (err: any) {
+      setParseError('Could not read this file. Use the .xlsx or .csv template.');
+      setImportRows([]);
+    }
+  };
+
+  const doImport = async () => {
+    if (importRows.length === 0) return;
+    try {
+      setImporting(true);
+      const res = await api.post('/stores/inventory/bulk', { items: importRows });
+      setImportResult(res.data);
+      showToast(res.data.message || 'Import complete', res.data.summary?.failed ? 'info' : 'success');
+      setSearchTerm('');
+      setCategoryFilter('');
+      setShowLowStock(false);
+      setPage(1);
+      fetchInventory({ page: 1, search: '', category: '', lowStock: false });
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Import failed', 'error');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const resetImport = () => {
+    setShowImportModal(false);
+    setImportRows([]);
+    setImportFileName('');
+    setImportResult(null);
+    setParseError('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const lowStockCount = stats.lowStockCount;
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Inventory Management</h1>
-          <p className="text-gray-500 mt-1">View and manage stock levels</p>
-        </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors"
-        >
-          <Plus className="h-5 w-5" />
-          Add Item
-        </button>
-      </div>
+      <PageHeader
+        title="Inventory Management"
+        subtitle="View and manage stock levels"
+        bottomSpacing="mb-4"
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -112,7 +348,7 @@ export default function Inventory() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Total Items</p>
-              <p className="text-2xl font-bold text-gray-900">{inventory.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.totalItems}</p>
             </div>
           </div>
         </div>
@@ -144,9 +380,7 @@ export default function Inventory() {
             <div>
               <p className="text-sm text-gray-500">Stock Value</p>
               <p className="text-2xl font-bold text-gray-900">
-                {formatCurrency(inventory.reduce((sum: any, inv: any) => 
-                  sum + (inv.totalValue || 0), 0
-                ))}
+                {formatCurrency(stats.totalStockValue, getCurrentSbuCurrency())}
               </p>
             </div>
           </div>
@@ -159,44 +393,92 @@ export default function Inventory() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Categories</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {new Set(inventory.map((inv: any) => inv.item?.category).filter(Boolean)).size}
-              </p>
+              <p className="text-2xl font-bold text-gray-900">{stats.categoryCount}</p>
             </div>
           </div>
         </div>
       </div>
 
+      {issueContext && (
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
+          <div className="text-sm text-gray-800">
+            <span className="font-semibold text-primary">Issuing for {issueContext.prNumber}</span>
+            <span className="text-gray-500"> — </span>
+            {issueContext.lineQty} {issueContext.lineUnit} of &ldquo;{issueContext.lineDescription}&rdquo;
+            <p className="text-xs text-gray-500 mt-0.5">Confirm the item below, then click Issue.</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              to="/app/stores-pr-review"
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Back to review
+            </Link>
+            <button
+              type="button"
+              onClick={clearIssueContext}
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg hover:bg-white"
+            >
+              <X className="h-3.5 w-3.5" />
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+      <div className="mb-4 flex flex-col md:flex-row md:items-center gap-4">
+        <button
+          type="button"
+          onClick={openAddModal}
+          className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors whitespace-nowrap shrink-0"
+        >
+          <Plus className="h-4 w-4" />
+          Add Item
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowImportModal(true)}
+          className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors whitespace-nowrap shrink-0"
+        >
+          <Upload className="h-4 w-4" />
+          Import Excel
+        </button>
+        <form
+          onSubmit={handleSearchSubmit}
+          className="flex flex-col sm:flex-row sm:items-center gap-3 md:ml-auto"
+        >
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by name or item code..."
+              placeholder="Search by name, code, or description..."
               value={searchTerm}
               onChange={(e: any) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
-          <select
-            value={categoryFilter}
-            onChange={(e: any) => setCategoryFilter(e.target.value)}
-            className="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+          <button
+            type="submit"
+            className="px-3 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors"
           >
-            <option value="">All Categories</option>
-            <option value="Office Supplies">Office Supplies</option>
-            <option value="IT Equipment">IT Equipment</option>
-            <option value="Furniture">Furniture</option>
-            <option value="Cleaning">Cleaning</option>
-            <option value="Stationery">Stationery</option>
-          </select>
-        </div>
+            Search
+          </button>
+          <div className="w-full sm:w-56">
+            <CategorySelect
+              value={categoryFilter}
+              onChange={setCategoryFilter}
+              placeholder="All Categories"
+              clearable
+              className="w-full flex items-center justify-between px-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white"
+            />
+          </div>
+        </form>
       </div>
 
       {/* Inventory Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -207,52 +489,56 @@ export default function Inventory() {
             <p className="text-gray-500">No items found</p>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
+            <table className="w-full text-sm border-collapse">
+              <thead>
                 <tr>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Item Code</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Name</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Category</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Stock Level</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Reorder Level</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Unit Price</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Status</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Actions</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Item Code</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Name</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Category</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Stock Level</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Reorder Level</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Unit Price</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {inventory.map((inv: any) => {
                   const item = inv.item || {};
                   const isLowStock = inv.quantityOnHand <= (item.reorderLevel || 0);
+                  const canIssue =
+                    issueContext && (inv.quantityOnHand || 0) >= issueContext.lineQty;
+                  const isIssuing = issuingItemId === item._id;
                   return (
                     <tr key={inv._id} className={`hover:bg-gray-50 ${isLowStock ? 'bg-red-50/50' : ''}`}>
-                      <td className="py-4 px-6">
-                        <span className="font-mono text-sm font-medium text-primary">
+                      <td className="py-2 px-3 border-b border-gray-100">
+                        <span className="font-mono font-medium text-primary">
                           {item.code || `ITM-${inv._id.slice(-6).toUpperCase()}`}
                         </span>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-2 px-3 border-b border-gray-100">
                         <p className="font-medium text-gray-900">{item.name || '-'}</p>
-                        <p className="text-sm text-gray-500 truncate max-w-xs">{item.description || ''}</p>
+                        <p className="text-xs text-gray-500 truncate max-w-xs">{item.description || ''}</p>
                       </td>
-                      <td className="py-4 px-6">
-                        <span className="text-sm text-gray-600" title={item.category || ''}>
+                      <td className="py-2 px-3 border-b border-gray-100">
+                        <span className="text-gray-600" title={item.category || ''}>
                           {item.category ? getCategoryName(item.category) : '-'}
                         </span>
                       </td>
-                      <td className="py-4 px-6">
-                        <span className={`text-sm font-semibold ${isLowStock ? 'text-red-600' : 'text-gray-900'}`}>
+                      <td className="py-2 px-3 border-b border-gray-100">
+                        <span className={`font-semibold ${isLowStock ? 'text-red-600' : 'text-gray-900'}`}>
                           {inv.quantityOnHand || 0} {item.unit || 'each'}
                         </span>
                       </td>
-                      <td className="py-4 px-6 text-sm text-gray-500">
+                      <td className="py-2 px-3 border-b border-gray-100 text-gray-500">
                         {item.reorderLevel || 0} {item.unit || 'each'}
                       </td>
-                      <td className="py-4 px-6 text-sm text-gray-900">
-                        {formatCurrency(inv.unitCost || 0)}
+                      <td className="py-2 px-3 border-b border-gray-100 text-gray-900">
+                        {formatCurrency(inv.unitCost || 0, getCurrentSbuCurrency())}
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-2 px-3 border-b border-gray-100">
                         {isLowStock ? (
                           <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
                             Low Stock
@@ -263,10 +549,32 @@ export default function Inventory() {
                           </span>
                         )}
                       </td>
-                      <td className="py-4 px-6">
-                        <ViewButton
-                          onClick={() => { setSelectedItem({ ...inv, item }); setShowViewModal(true); }}
-                        />
+                      <td className="py-2 px-3 border-b border-gray-100">
+                        <div className="flex items-center gap-2">
+                          {issueContext && (
+                            <button
+                              type="button"
+                              disabled={!canIssue || isIssuing}
+                              title={
+                                canIssue
+                                  ? `Issue ${issueContext.lineQty} ${issueContext.lineUnit} for ${issueContext.prNumber}`
+                                  : `Need ${issueContext.lineQty} on hand (${inv.quantityOnHand || 0} available)`
+                              }
+                              onClick={() => issueForRequisition(inv)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              {isIssuing ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <PackageCheck className="h-3.5 w-3.5" />
+                              )}
+                              Issue
+                            </button>
+                          )}
+                          <ViewButton
+                            onClick={() => { setSelectedItem({ ...inv, item }); setShowViewModal(true); }}
+                          />
+                        </div>
                       </td>
                     </tr>
                   );
@@ -274,6 +582,16 @@ export default function Inventory() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+            itemLabel="items"
+          />
+          </>
         )}
       </div>
 
@@ -282,115 +600,178 @@ export default function Inventory() {
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         title="Add Inventory Item"
+        size="lg"
       >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            // Enter on an earlier step moves on rather than adding early.
+            if (addStep < ADD_STEPS.length - 1) nextAddStep();
+            else handleAddItem();
+          }}
+        >
+        <div ref={addTopRef} className="scroll-mt-4" />
+        <FormSteps steps={ADD_STEPS} current={addStep} onSelect={goToAddStep} />
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Item Code</label>
-              <input
-                type="text"
-                value={formData.itemCode}
-                onChange={(e: any) => setFormData({ ...formData, itemCode: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
-                placeholder="Auto-generated if empty"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-              <CategorySelect
-                value={formData.category}
-                onChange={(code) => setFormData({ ...formData, category: code })}
-                placeholder="Select Category"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
-              />
-            </div>
-          </div>
+          {addStep === 0 && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Item Code</label>
+                  <input
+                    type="text"
+                    value={formData.itemCode}
+                    onChange={(e: any) => setFormData({ ...formData, itemCode: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    placeholder="Auto-generated if empty"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                  <CategorySelect
+                    value={formData.category}
+                    onChange={(code) => setFormData({ ...formData, category: code })}
+                    placeholder="Select Category"
+                    required
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  />
+                </div>
+              </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e: any) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
-              placeholder="e.g., A4 Paper"
-            />
-          </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e: any) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  placeholder="e.g., A4 Paper"
+                />
+              </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea
-              value={formData.description}
-              onChange={(e: any) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-none"
-              rows={2}
-            />
-          </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e: any) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-none"
+                  rows={2}
+                />
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
-              <select
-                value={formData.unit}
-                onChange={(e: any) => setFormData({ ...formData, unit: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
-              >
-                {UNITS_OF_MEASUREMENT.map((unit: any) => (
-                  <option key={unit} value={unit}>{unit}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Unit Price (USD)</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.unitPrice}
-                onChange={(e: any) => setFormData({ ...formData, unitPrice: parseFloat(e.target.value) || 0 })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
-              />
-            </div>
-          </div>
+            </>
+          )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Current Quantity</label>
-              <input
-                type="number"
-                min="0"
-                value={formData.currentQuantity}
-                onChange={(e: any) => setFormData({ ...formData, currentQuantity: parseInt(e.target.value) || 0 })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Reorder Level</label>
-              <input
-                type="number"
-                min="0"
-                value={formData.reorderLevel}
-                onChange={(e: any) => setFormData({ ...formData, reorderLevel: parseInt(e.target.value) || 0 })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
-              />
-            </div>
-          </div>
+          {addStep === 1 && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
+                  <select
+                    value={formData.unit}
+                    onChange={(e: any) => setFormData({ ...formData, unit: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  >
+                    {UNITS_OF_MEASUREMENT.map((unit: any) => (
+                      <option key={unit} value={unit}>{unit}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Unit Price ({getCurrentSbuCurrency()})</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.unitPrice}
+                    onChange={(e: any) => setFormData({ ...formData, unitPrice: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  />
+                </div>
+              </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <button
-              onClick={() => setShowAddModal(false)}
-              className="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 rounded-lg"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleAddItem}
-              className="px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark"
-            >
-              Add Item
-            </button>
-          </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Current Quantity</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.currentQuantity}
+                    onChange={(e: any) => setFormData({ ...formData, currentQuantity: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Reorder Level</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.reorderLevel}
+                    onChange={(e: any) => setFormData({ ...formData, reorderLevel: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  />
+                </div>
+              </div>
+
+            </>
+          )}
+
+          {addStep === 2 && (
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-gray-500">Name</p>
+                <p className="font-medium text-gray-900">{formData.name}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Item code</p>
+                <p className="font-mono text-gray-900">{formData.itemCode || 'Auto-generated'}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Category</p>
+                <p className="text-gray-900">{formData.category ? getCategoryName(formData.category) : '—'}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Unit</p>
+                <p className="text-gray-900">{formData.unit}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Opening quantity</p>
+                <p className="text-gray-900">{formData.currentQuantity}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Reorder level</p>
+                <p className="text-gray-900">{formData.reorderLevel}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Unit price</p>
+                <p className="text-gray-900">{formatCurrency(formData.unitPrice || 0, getCurrentSbuCurrency())}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Opening value</p>
+                <p className="font-medium text-green-600">
+                  {formatCurrency((formData.unitPrice || 0) * (formData.currentQuantity || 0), getCurrentSbuCurrency())}
+                </p>
+              </div>
+              {formData.description?.trim() && (
+                <div className="col-span-2">
+                  <p className="text-gray-500">Description</p>
+                  <p className="text-gray-900">{formData.description}</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
+
+        <FormStepNav
+          current={addStep}
+          total={ADD_STEPS.length}
+          onBack={() => goToAddStep(addStep - 1)}
+          onNext={nextAddStep}
+          onCancel={() => setShowAddModal(false)}
+          finishLabel={adding ? 'Adding...' : 'Add Item'}
+          submitting={adding}
+        />
+        </form>
       </Modal>
 
       {/* View Modal */}
@@ -420,7 +801,7 @@ export default function Inventory() {
               </div>
               <div>
                 <label className="text-sm text-gray-500">Unit Price</label>
-                <p className="text-gray-900">{formatCurrency(selectedItem.unitCost || 0)}</p>
+                <p className="text-gray-900">{formatCurrency(selectedItem.unitCost || 0, getCurrentSbuCurrency())}</p>
               </div>
             </div>
             <div>
@@ -434,11 +815,156 @@ export default function Inventory() {
             <div>
               <label className="text-sm text-gray-500">Total Value</label>
               <p className="text-xl font-bold text-green-600">
-                {formatCurrency(selectedItem.totalValue || 0)}
+                {formatCurrency(selectedItem.totalValue || 0, getCurrentSbuCurrency())}
               </p>
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Bulk Import Modal */}
+      <Modal
+        isOpen={showImportModal}
+        onClose={resetImport}
+        title="Bulk Import Inventory"
+        size="xl"
+      >
+        <FormSteps steps={IMPORT_STEPS} current={importResult ? 2 : importRows.length > 0 ? 1 : 0} />
+        <div className="space-y-4">
+          {!importResult && (
+            <>
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-800">
+                <p className="font-medium mb-1">How it works</p>
+                <p className="text-blue-700">
+                  Upload an Excel/CSV with columns: <span className="font-mono text-xs">code, name, description, category, unit, reorderLevel, quantity, unitPrice</span>.
+                  Existing items (matched by code or name) are updated; new ones are created. Quantity sets the opening stock balance.
+                </p>
+                <button
+                  onClick={downloadTemplate}
+                  className="mt-3 inline-flex items-center gap-1.5 text-primary font-medium hover:underline"
+                >
+                  <Download className="h-4 w-4" /> Download template
+                </button>
+              </div>
+
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={handleFile}
+                  className="hidden"
+                  id="inventory-import-file"
+                />
+                <label
+                  htmlFor="inventory-import-file"
+                  className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-300 rounded-xl py-8 cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
+                >
+                  <FileSpreadsheet className="h-8 w-8 text-gray-400" />
+                  <span className="text-sm font-medium text-gray-700">
+                    {importFileName || 'Click to choose an Excel or CSV file'}
+                  </span>
+                  <span className="text-xs text-gray-400">.xlsx, .xls or .csv</span>
+                </label>
+              </div>
+
+              {parseError && (
+                <p className="text-sm text-red-600 flex items-center gap-1.5">
+                  <XCircle className="h-4 w-4" /> {parseError}
+                </p>
+              )}
+
+              {importRows.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-2">
+                    Preview — {importRows.length} row{importRows.length > 1 ? 's' : ''}
+                  </p>
+                  <div className="overflow-x-auto max-h-56 overflow-y-auto">
+                    <table className="w-full text-sm border-collapse">
+                      <thead className="sticky top-0">
+                        <tr>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Name</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Category</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Unit</th>
+                          <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Qty</th>
+                          <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Price</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importRows.slice(0, 50).map((r: any, i: number) => (
+                          <tr key={i} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                            <td className="py-2 px-3 border-b border-gray-100 text-gray-900">{r.name || r.code}</td>
+                            <td className="py-2 px-3 border-b border-gray-100 text-gray-500">{r.category || '—'}</td>
+                            <td className="py-2 px-3 border-b border-gray-100 text-gray-500">{r.unit || 'each'}</td>
+                            <td className="py-2 px-3 border-b border-gray-100 text-right text-gray-900">{r.quantity ?? '—'}</td>
+                            <td className="py-2 px-3 border-b border-gray-100 text-right text-gray-900">{r.unitPrice ?? '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {importRows.length > 50 && (
+                    <p className="text-xs text-gray-400 mt-1">Showing first 50 of {importRows.length} rows.</p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {importResult && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-green-50 rounded-xl p-3 text-center">
+                  <p className="text-2xl font-bold text-green-600">{importResult.summary?.created || 0}</p>
+                  <p className="text-xs text-gray-500">Created</p>
+                </div>
+                <div className="bg-blue-50 rounded-xl p-3 text-center">
+                  <p className="text-2xl font-bold text-blue-600">{importResult.summary?.updated || 0}</p>
+                  <p className="text-xs text-gray-500">Updated</p>
+                </div>
+                <div className="bg-red-50 rounded-xl p-3 text-center">
+                  <p className="text-2xl font-bold text-red-600">{importResult.summary?.failed || 0}</p>
+                  <p className="text-xs text-gray-500">Failed</p>
+                </div>
+              </div>
+              {importResult.results?.some((r: any) => r.status === 'failed') && (
+                <div className="border border-red-100 rounded-xl overflow-hidden max-h-40 overflow-y-auto">
+                  <table className="w-full text-xs border-collapse">
+                    <tbody className="divide-y divide-red-50">
+                      {importResult.results
+                        .filter((r: any) => r.status === 'failed')
+                        .map((r: any, i: number) => (
+                          <tr key={i} className="bg-red-50/40">
+                            <td className="py-1.5 px-3 text-gray-700">Row {r.row}: {r.name}</td>
+                            <td className="py-1.5 px-3 text-red-600">{r.message}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          <ModalFooter>
+            <button
+              onClick={resetImport}
+              className="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 rounded-lg"
+            >
+              {importResult ? 'Close' : 'Cancel'}
+            </button>
+            {!importResult && (
+              <button
+                onClick={doImport}
+                disabled={importing || importRows.length === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                Import {importRows.length > 0 ? `${importRows.length} rows` : ''}
+              </button>
+            )}
+          </ModalFooter>
+        </div>
       </Modal>
     </div>
   );

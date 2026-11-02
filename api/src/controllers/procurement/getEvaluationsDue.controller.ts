@@ -1,33 +1,24 @@
 import type { Request, Response } from 'express';
-import { SupplierProfile, SupplierEvaluation } from '../../models/index.js';
+import { SupplierProfile } from '../../models/index.js';
 
 const getEvaluationsDue = async (req: Request, res: Response): Promise<any> => {
   try {
     const now = new Date();
 
-    const [suppliersDue, pendingEvaluations] = await Promise.all([
-      SupplierProfile.find({
-        isDeleted: false,
-        status: { $in: ['active', 'dormant'] },
-        $or: [
-          { nextEvaluationDue: { $lte: now } },
-          { nextEvaluationDue: { $exists: false } }
-        ]
-      }).select('companyName status lastEvaluationAt nextEvaluationDue kysComplete'),
-      SupplierEvaluation.find({
-        isDeleted: false,
-        status: { $in: ['pending_hod', 'pending_sec'] }
-      })
-        .populate('supplier', 'companyName')
-        .sort({ createdAt: -1 })
-        .limit(50)
-    ]);
+    const suppliersDue = await SupplierProfile.find({
+      isDeleted: false,
+      status: { $in: ['active', 'dormant'] },
+      $or: [
+        { nextEvaluationDue: { $lte: now } },
+        { nextEvaluationDue: { $exists: false } }
+      ]
+    }).select('companyName status lastEvaluationAt nextEvaluationDue kysComplete');
 
     res.status(200).json({
       success: true,
       data: {
         suppliersDueForReview: suppliersDue,
-        pendingEvaluations
+        pendingEvaluations: []
       }
     });
   } catch (error) {

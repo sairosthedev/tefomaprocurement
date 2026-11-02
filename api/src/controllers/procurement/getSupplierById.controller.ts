@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 
 import { SupplierProfile } from '../../models/index.js';
+import { canSeeFullBankDetails, maskBankNumbers } from '../../lib/bankMasking.js';
 
 const getSupplierById = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -20,7 +21,8 @@ const getSupplierById = async (req: Request, res: Response): Promise<any> => {
 
     res.status(200).json({
       success: true,
-      data: supplier
+      // Read-only oversight (the COO) sees which account, not the full number.
+      data: canSeeFullBankDetails(req.user) ? supplier : maskBankNumbers(supplier)
     });
   } catch (error: any) {
     console.error('Get supplier error:', error);

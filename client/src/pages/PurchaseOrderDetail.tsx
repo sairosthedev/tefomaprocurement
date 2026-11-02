@@ -1,11 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+﻿import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { procurementAPI, financeAPI, cooAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency } from '../lib/constants';
+import { cooThresholdLabel, usdEquivalentLabel } from '../lib/cooApproval';
+import { PO_CANCELLATION_REASONS, isProcurementHead } from '@fossil/shared';
+import PageHeader from '../components/PageHeader';
+import CancelWorkflowModal from '../components/CancelWorkflowModal';
+import { canCancelPurchaseOrder, purchaseOrderCancelApiBase } from '../lib/cancellationAccess';
+import { WorkflowStepper, NextStepCard } from '../components/WorkflowStepper';
+import { purchaseOrderSteps, PO_WAITING_ON } from '../lib/purchaseOrderSteps';
 import { 
-  ArrowLeft, 
   ShoppingCart, 
   Calendar, 
   Building2,
@@ -34,16 +40,20 @@ const statusColors: any = {
 
 export default function PurchaseOrderDetail() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const { showToast } = useToast();
   const { user } = useAuth();
   const [loading, setLoading] = useState<any>(true);
   const [po, setPo] = useState<any>(null);
   const [submitting, setSubmitting] = useState<any>(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
-  const isProcurement = user?.role === 'procurement_officer' || user?.role === 'admin';
+  // The Head of Procurement is stored as a department_head but raises POs too.
+  // Admins read POs but take no step on them.
+  const isProcurement = user?.role === 'procurement_officer' || isProcurementHead(user);
   const isFinance = user?.role === 'finance';
   const isCOO = user?.role === 'coo';
+  const mayCancelPo = canCancelPurchaseOrder(user, po);
 
   useEffect(() => {
     fetchPurchaseOrder();
@@ -85,6 +95,34 @@ export default function PurchaseOrderDetail() {
     }
   };
 
+  const handleCancelPurchaseOrder = async ({
+    reasonCode,
+    comments
+  }: {
+    reasonCode: string;
+    comments?: string;
+  }) => {
+    try {
+      setCancelling(true);
+      const payload = { reasonCode, comments };
+      const base = purchaseOrderCancelApiBase(user);
+      if (base === '/finance') {
+        await financeAPI.cancelPurchaseOrder(id, payload);
+      } else if (base === '/coo') {
+        await cooAPI.cancelPurchaseOrder(id, payload);
+      } else {
+        await procurementAPI.cancelPurchaseOrder(id, payload);
+      }
+      showToast('Purchase order cancelled', 'success');
+      fetchPurchaseOrder();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to cancel purchase order', 'error');
+      throw error;
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -102,65 +140,92 @@ export default function PurchaseOrderDetail() {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      {/* Header with Back Button */}
-      <div className="flex items-center gap-4 mb-6">
-        <button
-          onClick={() => navigate('/app/purchase-orders')}
-          className="flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Purchase Orders
-        </button>
-      </div>
+    <div className="p-8">
+      <PageHeader
+        backTo="/app/purchase-orders"
+        backLabel="Back to Purchase Orders"
+        title="Purchase Order"
+        subtitle={`#${po.poNumber}`}
+        actions={
+          <>
+            <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[po.status]}`}>
+              {po.status?.replace(/_/g, ' ').replace(/\b\w/g, (l: any) => l.toUpperCase())}
+            </span>
+            {isProcurement && po.status === 'draft' && (
+              <button
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {submitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FileText className="h-4 w-4" />
+                )}
+                Submit for Approval
+              </button>
+            )}
+            {mayCancelPo && (
+              <button
+                type="button"
+                onClick={() => setShowCancelModal(true)}
+                disabled={cancelling}
+                className="px-4 py-2 border border-red-200 text-red-700 rounded-lg hover:bg-red-50 transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                <XCircle className="h-4 w-4" />
+                Cancel PO
+              </button>
+            )}
+          </>
+        }
+      />
 
-      {/* Hero Section with Green Background and SVG */}
-      <div className="bg-gradient-to-br from-green-50 via-green-100/50 to-green-50 rounded-2xl p-8 border border-green-200 relative overflow-hidden mb-6">
-        {/* Decorative SVG/Pattern */}
-        <div className="absolute top-0 right-0 w-64 h-64 opacity-10">
-          <svg viewBox="0 0 200 200" className="w-full h-full text-green-600">
-            <path d="M40,120 Q100,80 160,120 T280,120" stroke="currentColor" strokeWidth="2" fill="none" />
-            <path d="M40,140 Q100,100 160,140 T280,140" stroke="currentColor" strokeWidth="2" fill="none" />
-            <circle cx="100" cy="130" r="20" fill="currentColor" opacity="0.2" />
-            <circle cx="150" cy="110" r="15" fill="currentColor" opacity="0.15" />
-          </svg>
+      <CancelWorkflowModal
+        isOpen={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        title="Cancel purchase order"
+        description="The supplier will be notified. Cancellation is blocked if goods have been received or an invoice is active."
+        reasons={PO_CANCELLATION_REASONS}
+        onConfirm={handleCancelPurchaseOrder}
+      />
+
+      <WorkflowStepper steps={purchaseOrderSteps(po, { withSources: true })} />
+      {po.status === 'draft' && isProcurement ? (
+        <NextStepCard
+          title="Submit this purchase order for approval"
+          description="It goes to the Head of Procurement, then Finance."
+          action={{ label: submitting ? 'Submitting...' : 'Submit for approval', onClick: handleSubmit, disabled: submitting }}
+        />
+      ) : PO_WAITING_ON[po.status] ? (
+        <NextStepCard
+          title={PO_WAITING_ON[po.status]}
+          waiting={!(
+            (po.status === 'pending_finance' && isFinance) ||
+            (po.status === 'pending_coo' && isCOO) ||
+            (['pending_hod', 'pending_proc_hod'].includes(po.status) && isProcurementHead(user))
+          )}
+          action={
+            (po.status === 'pending_finance' && isFinance) ||
+            (po.status === 'pending_coo' && isCOO) ||
+            (['pending_hod', 'pending_proc_hod'].includes(po.status) && isProcurementHead(user))
+              ? { label: 'Open approvals', to: '/app/approvals' }
+              : undefined
+          }
+        />
+      ) : po.status === 'issued' || po.status === 'partially_received' ? (
+        <NextStepCard
+          title="Supplier to deliver, and Stores to receive the goods"
+          description="Stores record the delivery against this order when it arrives."
+          waiting={user?.role !== 'stores_officer'}
+          action={user?.role === 'stores_officer' ? { label: 'Open deliveries', to: '/app/deliveries' } : undefined}
+        />
+      ) : null}
+
+      {po.status === 'cancelled' && po.cancellationReason && (
+        <div className="mb-6 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <strong>Cancellation reason:</strong> {po.cancellationReason}
         </div>
-        
-        <div className="relative z-10">
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-3 bg-white/80 rounded-xl shadow-sm">
-                  <ShoppingCart className="h-8 w-8 text-green-600" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900">Purchase Order</h1>
-                  <p className="text-sm text-gray-600 mt-1 font-mono">#{po.poNumber}</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[po.status]}`}>
-                {po.status?.replace(/_/g, ' ').replace(/\b\w/g, (l: any) => l.toUpperCase())}
-              </span>
-              {isProcurement && po.status === 'draft' && (
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitting}
-                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2 disabled:opacity-50"
-                >
-                  {submitting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <FileText className="h-4 w-4" />
-                  )}
-                  Submit for Approval
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Details */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
@@ -170,7 +235,7 @@ export default function PurchaseOrderDetail() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <label className="text-sm text-gray-500">PO Number</label>
-              <p className="text-sm font-medium text-gray-900 mt-1 font-mono">{po.poNumber}</p>
+              <p className="text-sm font-medium text-gray-900 mt-1 font-mono break-all">{po.poNumber}</p>
             </div>
             <div>
               <label className="text-sm text-gray-500">Status</label>
@@ -181,8 +246,11 @@ export default function PurchaseOrderDetail() {
             <div>
               <label className="text-sm text-gray-500">Total Amount</label>
               <p className="text-sm font-medium text-gray-900 mt-1">
-                {formatCurrency(po.totalAmount || 0)}
+                {formatCurrency(po.totalAmount || 0, po.currency)}
               </p>
+              {usdEquivalentLabel(po) && (
+                <p className="text-xs text-gray-500 mt-0.5">{usdEquivalentLabel(po)}</p>
+              )}
             </div>
             <div>
               <label className="text-sm text-gray-500">Date</label>
@@ -218,8 +286,51 @@ export default function PurchaseOrderDetail() {
 
         {/* Approval Status */}
         <div className="border-t pt-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Approval Status</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Approval Status</h3>
+            {po.status === 'approved' || po.status === 'issued' || po.status === 'partially_received' || po.status === 'completed' ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                <CheckCircle className="h-3.5 w-3.5" /> Fully Approved
+              </span>
+            ) : po.status === 'rejected' ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                <XCircle className="h-3.5 w-3.5" /> Rejected
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                <Clock className="h-3.5 w-3.5" /> In approval
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Procurement HOD */}
+            <div className={`p-4 rounded-lg ${po.procHodApproved ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
+              <div className="flex items-center gap-2 mb-2">
+                {po.procHodApproved ? (
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                ) : (
+                  <Clock className="h-5 w-5 text-amber-600" />
+                )}
+                <span className="font-medium text-gray-900">1. Procurement HOD</span>
+              </div>
+              {po.procHodApproved ? (
+                <div>
+                  <p className="text-sm text-green-700">Approved</p>
+                  {po.procHodApprovedBy && (
+                    <p className="text-xs text-gray-600 mt-1">
+                      By: {po.procHodApprovedBy.firstName} {po.procHodApprovedBy.lastName}
+                    </p>
+                  )}
+                  {po.procHodApprovedAt && (
+                    <p className="text-xs text-gray-600">On: {new Date(po.procHodApprovedAt).toLocaleDateString()}</p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-amber-700">Pending</p>
+              )}
+            </div>
+
+            {/* Finance */}
             <div className={`p-4 rounded-lg ${po.financeApproved ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
               <div className="flex items-center gap-2 mb-2">
                 {po.financeApproved ? (
@@ -227,7 +338,7 @@ export default function PurchaseOrderDetail() {
                 ) : (
                   <Clock className="h-5 w-5 text-amber-600" />
                 )}
-                <span className="font-medium text-gray-900">Finance Approval</span>
+                <span className="font-medium text-gray-900">2. Finance Approval</span>
               </div>
               {po.financeApproved ? (
                 <div>
@@ -238,23 +349,31 @@ export default function PurchaseOrderDetail() {
                     </p>
                   )}
                   {po.financeApprovedAt && (
-                    <p className="text-xs text-gray-600">
-                      On: {new Date(po.financeApprovedAt).toLocaleDateString()}
-                    </p>
+                    <p className="text-xs text-gray-600">On: {new Date(po.financeApprovedAt).toLocaleDateString()}</p>
                   )}
                 </div>
               ) : (
                 <p className="text-sm text-amber-700">Pending</p>
               )}
             </div>
-            <div className={`p-4 rounded-lg ${po.cooApproved ? 'bg-green-50 border border-green-200' : 'bg-purple-50 border border-purple-200'}`}>
+
+            {/* COO — only when the server flagged the PO (USD limit converted at the stored FX rate) */}
+            <div className={`p-4 rounded-lg ${
+              po.cooApproved
+                ? 'bg-green-50 border border-green-200'
+                : po.requiresCooApproval
+                ? 'bg-purple-50 border border-purple-200'
+                : 'bg-gray-50 border border-gray-200'
+            }`}>
               <div className="flex items-center gap-2 mb-2">
                 {po.cooApproved ? (
                   <CheckCircle className="h-5 w-5 text-green-600" />
-                ) : (
+                ) : po.requiresCooApproval ? (
                   <Clock className="h-5 w-5 text-purple-600" />
+                ) : (
+                  <CheckCircle className="h-5 w-5 text-gray-400" />
                 )}
-                <span className="font-medium text-gray-900">COO Approval</span>
+                <span className="font-medium text-gray-900">3. COO Authorization</span>
               </div>
               {po.cooApproved ? (
                 <div>
@@ -265,13 +384,20 @@ export default function PurchaseOrderDetail() {
                     </p>
                   )}
                   {po.cooApprovedAt && (
-                    <p className="text-xs text-gray-600">
-                      On: {new Date(po.cooApprovedAt).toLocaleDateString()}
-                    </p>
+                    <p className="text-xs text-gray-600">On: {new Date(po.cooApprovedAt).toLocaleDateString()}</p>
                   )}
                 </div>
+              ) : po.requiresCooApproval ? (
+                <div>
+                  <p className="text-sm text-purple-700">Pending</p>
+                  <p className="text-xs text-gray-600 mt-1">
+                    COO approval required (≥ {cooThresholdLabel(po)} equivalent)
+                  </p>
+                </div>
               ) : (
-                <p className="text-sm text-purple-700">Pending</p>
+                <p className="text-sm text-gray-500">
+                  Not required (below {cooThresholdLabel(po)} equivalent)
+                </p>
               )}
             </div>
           </div>
@@ -282,41 +408,41 @@ export default function PurchaseOrderDetail() {
           <div className="border-t pt-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Order Items</h3>
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full text-sm border-collapse">
                 <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">Description</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-700">Quantity</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-700">Unit Price</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-700">Total</th>
+                  <tr>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Description</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Quantity</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Unit Price</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {po.items.map((item: any, index: any) => (
-                    <tr key={index} className="border-b border-gray-100">
-                      <td className="py-3 px-4">
+                    <tr key={index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                      <td className="py-2 px-3 border-b border-gray-100">
                         <p className="font-medium text-gray-900">{item.description}</p>
                         {item.unit && (
                           <p className="text-xs text-gray-500 mt-1">Unit: {item.unit}</p>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-right text-sm text-gray-900">{item.quantity}</td>
-                      <td className="py-3 px-4 text-right text-sm text-gray-900">
-                        {formatCurrency(item.unitPrice || 0)}
+                      <td className="py-2 px-3 border-b border-gray-100 text-right text-gray-900">{item.quantity}</td>
+                      <td className="py-2 px-3 border-b border-gray-100 text-right text-gray-900">
+                        {formatCurrency(item.unitPrice || 0, po.currency)}
                       </td>
-                      <td className="py-3 px-4 text-right text-sm font-medium text-gray-900">
-                        {formatCurrency((item.quantity || 0) * (item.unitPrice || 0))}
+                      <td className="py-2 px-3 border-b border-gray-100 text-right font-medium text-gray-900">
+                        {formatCurrency((item.quantity || 0) * (item.unitPrice || 0), po.currency)}
                       </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="bg-gray-50">
-                    <td colSpan={3} className="py-3 px-4 text-right font-semibold text-gray-900">
+                    <td colSpan={3} className="py-2.5 px-4 text-right font-semibold text-gray-900">
                       Total Amount:
                     </td>
-                    <td className="py-3 px-4 text-right font-bold text-lg text-gray-900">
-                      {formatCurrency(po.totalAmount || 0)}
+                    <td className="py-2 px-3 border-b border-gray-100 text-right font-bold text-lg text-gray-900">
+                      {formatCurrency(po.totalAmount || 0, po.currency)}
                     </td>
                   </tr>
                 </tfoot>

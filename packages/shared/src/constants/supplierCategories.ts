@@ -282,3 +282,26 @@ export function getCategoryByCode(code: string): SupplierCategory | undefined {
 export function getCategoryName(code: string): string {
   return CODE_TO_CATEGORY[code]?.name ?? code;
 }
+
+/** The sections the given codes belong to (unknown codes are ignored). */
+export function getSectionsForCodes(codes: readonly string[]): string[] {
+  const sections: string[] = [];
+  for (const code of codes) {
+    const section = CODE_TO_CATEGORY[code]?.section;
+    if (section && !sections.includes(section)) sections.push(section);
+  }
+  return sections;
+}
+
+/**
+ * Codes sharing a section with any of `codes`, excluding the codes themselves.
+ * These are the "related" categories used to widen a supplier invitation when
+ * an exact-code match alone would not reach the minimum quotation count.
+ */
+export function getRelatedCategoryCodes(codes: readonly string[]): string[] {
+  const sections = getSectionsForCodes(codes);
+  if (sections.length === 0) return [];
+  return SUPPLIER_CATEGORY_LIST
+    .filter((c) => sections.includes(c.section) && !codes.includes(c.code))
+    .map((c) => c.code);
+}

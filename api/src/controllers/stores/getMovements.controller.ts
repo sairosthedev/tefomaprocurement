@@ -1,12 +1,19 @@
 import type { Request, Response } from 'express';
 
 import { StoreTransaction, Delivery, StoreRequisition } from '../../models/index.js';
+import { buildSiteFilterAsync } from '../../lib/siteScope.js';
 
 const getMovements = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { search, type, range, page = 1, limit = 50 } = req.query as Record<string, any>;
+    const { search, type, range, site, page = 1, limit = 50 } = req.query as Record<string, any>;
     
     const query: any = { isDeleted: false };
+
+    try {
+      Object.assign(query, await buildSiteFilterAsync(req.user, site));
+    } catch (err: any) {
+      return res.status(err.statusCode || 403).json({ success: false, message: err.message });
+    }
     
     // Filter by type (map frontend types to backend types)
     if (type) {

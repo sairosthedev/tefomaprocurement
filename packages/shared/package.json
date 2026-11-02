@@ -1,5 +1,5 @@
 {
-  "name": "@fosssil/shared",
+  "name": "@fossil/shared",
   "version": "1.0.0",
   "description": "Shared constants and domain enums used by both the API and the client",
   "private": true,

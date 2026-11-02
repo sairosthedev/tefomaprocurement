@@ -1,4 +1,4 @@
-import { Notification, User, SupplierProfile } from '../models/index.js';
+import { Notification, User, SupplierProfile, Department } from '../models/index.js';
 import { sendNotificationEmail, getUserEmail } from './email.service.js';
 
 /**
@@ -106,14 +106,20 @@ const notifyUsersByRole = async (roles: any, notificationData: any): Promise<voi
  */
 const notifyUsersByDepartment = async (departmentId: any, notificationData: any, excludeUserId: any = null): Promise<void> => {
   try {
+    // The department's head may be linked only via Department.head, without a
+    // matching User.department, so include them explicitly.
+    const department = await Department.findById(departmentId).select('head').lean();
+    const memberMatch: any[] = [{ department: departmentId }];
+    if (department?.head) memberMatch.push({ _id: department.head });
+
     const query: any = {
-      department: departmentId,
+      $and: [{ $or: memberMatch }],
       status: 'active',
       isDeleted: false
     };
 
     if (excludeUserId) {
-      query._id = { $ne: excludeUserId };
+      query.$and.push({ _id: { $ne: excludeUserId } });
     }
 
     const users = await User.find(query).select('_id email firstName lastName');

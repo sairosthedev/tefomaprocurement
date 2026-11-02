@@ -8,7 +8,22 @@ import { findOrCreateInventory, userSiteId, canAccessAllSites } from '../../lib/
 const issueStock = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params; // Store requisition ID
-    const { items } = req.body;
+    const { items, collectedBy } = req.body;
+
+    // Who physically carried the goods away. Optional so existing callers that
+    // post an empty body keep working, but recorded whenever supplied — stock
+    // leaving the store is a custody hand-over and Rev 9 clause 6.4.4 treats an
+    // unauthorised collection as a prohibited practice, which can only be
+    // evidenced if the collection is recorded at all.
+    const collectedByRecord = collectedBy?.name
+      ? {
+          name: String(collectedBy.name).trim(),
+          idNumber: collectedBy.idNumber ? String(collectedBy.idNumber).trim() : undefined,
+          department: collectedBy.department ? String(collectedBy.department).trim() : undefined,
+          contactNumber: collectedBy.contactNumber ? String(collectedBy.contactNumber).trim() : undefined,
+          signedAt: new Date()
+        }
+      : undefined;
 
     const requisition = await StoreRequisition.findById(id).populate('items.item');
     if (!requisition || requisition.isDeleted) {
@@ -146,6 +161,17 @@ const issueStock = async (req: Request, res: Response): Promise<any> => {
     (requisition as any).status = allIssued ? 'issued' : 'partially_issued';
     (requisition as any).issuedBy = req.user!._id;
     (requisition as any).issuedAt = new Date();
+    if (collectedByRecord) (requisition as any).collectedBy = collectedByRecord;
+
+    // Assigned once, on the first issue, so a partially-issued requisition keeps
+    // one note number across subsequent collections rather than minting a new
+    // document each time.
+    if (!(requisition as any).issueNoteNumber) {
+      const issuedCount = await StoreRequisition.countDocuments({ issueNoteNumber: { $exists: true, $ne: null } });
+      (requisition as any).issueNoteNumber =
+        `SIN-${new Date().getFullYear()}-${String(issuedCount + 1).padStart(5, '0')}`;
+    }
+
     await requisition.save();
 
     await createAuditLog({

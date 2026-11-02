@@ -1,10 +1,14 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { financeAPI } from '../lib/api';
 import { formatCurrency } from '../lib/constants';
+import { getCurrentSbuCurrency } from '../lib/sbu';
 import { useToast } from '../components/Toast';
-import { FileText, Loader2, Search, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Loader2, Search, AlertTriangle, CheckCircle } from 'lucide-react';
 import ViewButton from '../components/ViewButton';
+import PageHeader from '../components/PageHeader';
+import Pagination from '../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 const statusColors: Record<string, string> = {
   submitted: 'bg-blue-100 text-blue-700',
@@ -22,16 +26,24 @@ export default function Invoices() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
+  const [pagination, setPagination] = useState(emptyPagination());
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter]);
 
   useEffect(() => {
     fetchInvoices();
-  }, [search, statusFilter]);
+  }, [page, limit, search, statusFilter]);
 
   const fetchInvoices = async () => {
     try {
       setLoading(true);
-      const res = await financeAPI.getInvoices({ search, status: statusFilter });
+      const res = await financeAPI.getInvoices({ search, status: statusFilter, page, limit });
       setInvoices(res.data.data);
+      setPagination(parsePagination(res.data.pagination));
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to load invoices', 'error');
     } finally {
@@ -42,22 +54,19 @@ export default function Invoices() {
   const formatStatus = (s: string) => s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <FileText className="h-7 w-7 text-primary" />
-            Invoices
-          </h1>
-          <p className="text-gray-500 mt-1">Three-way match and accounts payable</p>
-        </div>
-        <button
-          onClick={() => navigate('/app/payments')}
-          className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
-        >
-          Payments
-        </button>
-      </div>
+    <div className="p-6">
+      <PageHeader
+        title="Invoices"
+        subtitle="Three-way match and accounts payable"
+        actions={
+          <button
+            onClick={() => navigate('/app/payments')}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+          >
+            Payments
+          </button>
+        }
+      />
 
       <div className="flex flex-wrap gap-3 mb-6">
         <div className="relative flex-1 min-w-[200px]">
@@ -91,45 +100,54 @@ export default function Invoices() {
       ) : invoices.length === 0 ? (
         <div className="text-center py-12 text-gray-500">No invoices found</div>
       ) : (
-        <div className="bg-white rounded-xl shadow overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
               <tr>
-                <th className="text-left p-4 text-sm font-medium text-gray-600">Invoice</th>
-                <th className="text-left p-4 text-sm font-medium text-gray-600">PO</th>
-                <th className="text-left p-4 text-sm font-medium text-gray-600">Supplier</th>
-                <th className="text-left p-4 text-sm font-medium text-gray-600">Amount</th>
-                <th className="text-left p-4 text-sm font-medium text-gray-600">Status</th>
-                <th className="text-left p-4 text-sm font-medium text-gray-600">Match</th>
-                <th className="p-4" />
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Invoice</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">PO</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Supplier</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Amount</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Match</th>
+                <th className="py-2.5 px-4 bg-gray-50 border-b border-gray-200" />
               </tr>
             </thead>
             <tbody>
               {invoices.map((inv) => (
-                <tr key={inv._id} className="border-b hover:bg-gray-50">
-                  <td className="p-4 font-medium">{inv.invoiceNumber}</td>
-                  <td className="p-4">{inv.purchaseOrder?.poNumber || '—'}</td>
-                  <td className="p-4">{inv.supplier?.companyName || '—'}</td>
-                  <td className="p-4">{formatCurrency(inv.totalAmount)}</td>
-                  <td className="p-4">
+                <tr key={inv._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                  <td className="py-2 px-3 border-b border-gray-100 font-medium">{inv.invoiceNumber}</td>
+                  <td className="py-2 px-3 border-b border-gray-100">{inv.purchaseOrder?.poNumber || '—'}</td>
+                  <td className="py-2 px-3 border-b border-gray-100">{inv.supplier?.companyName || '—'}</td>
+                  <td className="py-2 px-3 border-b border-gray-100">{formatCurrency(inv.totalAmount, inv.currency || getCurrentSbuCurrency())}</td>
+                  <td className="py-2 px-3 border-b border-gray-100">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[inv.status] || 'bg-gray-100'}`}>
                       {formatStatus(inv.status)}
                     </span>
                   </td>
-                  <td className="p-4">
+                  <td className="py-2 px-3 border-b border-gray-100">
                     {inv.matchResult?.matched ? (
                       <CheckCircle className="h-5 w-5 text-green-600" />
                     ) : (
                       <AlertTriangle className="h-5 w-5 text-amber-500" />
                     )}
                   </td>
-                  <td className="p-4">
+                  <td className="py-2 px-3 border-b border-gray-100">
                     <ViewButton onClick={() => navigate(`/app/invoices/${inv._id}`)} />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+            itemLabel="invoices"
+          />
         </div>
       )}
     </div>

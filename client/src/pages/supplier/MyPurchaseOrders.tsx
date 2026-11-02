@@ -1,11 +1,18 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../components/Toast';
 import api from '../../lib/api';
 import { ShoppingCart, Loader2, CheckCircle, Truck, Download } from 'lucide-react';
 import ViewButton from '../../components/ViewButton';
-import Modal from '../../components/Modal';
+import Modal, { ModalFooter } from '../../components/Modal';
+import PageHeader from '../../components/PageHeader';
+import Pagination from '../../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
 import { formatCurrency } from '../../lib/constants';
+import { getCurrentSbuCurrency } from '../../lib/sbu';
+import { WorkflowStepper, NextStepCard } from '../../components/WorkflowStepper';
+import { supplierPoJourney, supplierPoNext } from '../../lib/supplierJourney';
+import { SubmitInvoiceDrawer } from '../../components/InvoiceForm';
 
 const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
@@ -37,18 +44,24 @@ export default function MyPurchaseOrders() {
     deliveryNoteNumber: '',
     expectedDeliveryDate: ''
   });
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
+  const [pagination, setPagination] = useState(emptyPagination());
+  // The order the invoice drawer is billing; null while it is closed.
+  const [invoicingPoId, setInvoicingPoId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMyPurchaseOrders();
-  }, []);
+  }, [page, limit]);
 
   const fetchMyPurchaseOrders = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/supplier/purchase-orders');
+      const response = await api.get('/supplier/purchase-orders', { params: { page, limit } });
       if (response.data.success) {
         console.log('Purchase orders received:', response.data.data);
         setPurchaseOrders(response.data.data || []);
+        setPagination(parsePagination(response.data.pagination));
       } else {
         console.error('Failed to fetch purchase orders:', response.data.message);
         showToast(response.data.message || 'Failed to load purchase orders', 'error');
@@ -78,10 +91,13 @@ export default function MyPurchaseOrders() {
         deliveryNoteNumber: acknowledgeData.deliveryNoteNumber.trim() || undefined,
         expectedDeliveryDate: acknowledgeData.expectedDeliveryDate || undefined
       });
-      showToast('Purchase order acknowledged', 'success');
+      showToast('Purchase order acknowledged — next, deliver the goods', 'success');
       setShowAcknowledgeModal(false);
       setAcknowledgeData({ deliveryNoteNumber: '', expectedDeliveryDate: '' });
       fetchMyPurchaseOrders();
+      // Show the order again with its next step, rather than leaving the list.
+      setSelectedPO({ ...selectedPO, isAcknowledged: true });
+      setShowViewModal(true);
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to acknowledge', 'error');
     }
@@ -89,11 +105,10 @@ export default function MyPurchaseOrders() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">My Purchase Orders</h1>
-        <p className="text-gray-500 mt-1">View and manage received purchase orders</p>
-      </div>
+      <PageHeader
+        title="My Purchase Orders"
+        subtitle="View and manage received purchase orders"
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -141,7 +156,7 @@ export default function MyPurchaseOrders() {
       </div>
 
       {/* Purchase Orders List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -152,50 +167,51 @@ export default function MyPurchaseOrders() {
             <p className="text-gray-500">No purchase orders received yet</p>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
+            <table className="w-full text-sm border-collapse">
+              <thead>
                 <tr>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">PO #</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Items</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Total Value</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Delivery Expected</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Status</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Actions</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">PO #</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Items</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Total Value</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Delivery Expected</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {purchaseOrders.map((po: any) => (
-                  <tr key={po._id} className="hover:bg-gray-50">
-                    <td className="py-4 px-6">
-                      <span className="font-mono text-sm font-medium text-primary">
+                  <tr key={po._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                    <td className="py-2 px-3 border-b border-gray-100">
+                      <span className="font-mono font-medium text-primary">
                         {po.poNumber}
                       </span>
                       <p className="text-xs text-gray-500 mt-1">
-                        {po.issuedAt 
+                        {po.issuedAt
                           ? new Date(po.issuedAt).toLocaleDateString('en-ZA')
                           : new Date(po.createdAt).toLocaleDateString('en-ZA')}
                       </p>
                     </td>
-                    <td className="py-4 px-6">
-                      <span className="text-sm text-gray-600">{po.items?.length || 0} items</span>
+                    <td className="py-2 px-3 border-b border-gray-100">
+                      <span className="text-gray-600">{po.items?.length || 0} items</span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className="font-semibold text-gray-900">
-                        {formatCurrency(po.totalAmount, po.currency || 'USD')}
+                        {formatCurrency(po.totalAmount, po.currency || getCurrentSbuCurrency())}
                       </span>
                     </td>
-                    <td className="py-4 px-6 text-sm text-gray-500">
-                      {po.expectedDeliveryDate 
+                    <td className="py-2 px-3 border-b border-gray-100 text-gray-500">
+                      {po.expectedDeliveryDate
                         ? new Date(po.expectedDeliveryDate).toLocaleDateString('en-ZA')
                         : '-'}
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[po.status] || statusColors.sent}`}>
                         {po.status?.replace('_', ' ') || 'Received'}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <div className="flex items-center gap-2">
                         <ViewButton
                           onClick={() => { setSelectedPO(po); setShowViewModal(true); }}
@@ -206,6 +222,14 @@ export default function MyPurchaseOrders() {
                             className="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
                           >
                             Acknowledge
+                          </button>
+                        )}
+                        {supplierPoNext(po)?.action === 'invoice' && (
+                          <button
+                            onClick={() => setInvoicingPoId(po._id)}
+                            className="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
+                          >
+                            Submit invoice
                           </button>
                         )}
                         {po.isAcknowledged && (
@@ -230,6 +254,16 @@ export default function MyPurchaseOrders() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+            itemLabel="purchase orders"
+          />
+          </>
         )}
       </div>
 
@@ -249,7 +283,7 @@ export default function MyPurchaseOrders() {
                 <strong>PO Number:</strong> {selectedPO.poNumber}
               </p>
               <p className="text-sm text-blue-800 mt-1">
-                <strong>Total Value:</strong> {formatCurrency(selectedPO.totalAmount, selectedPO.currency || 'USD')}
+                <strong>Total Value:</strong> {formatCurrency(selectedPO.totalAmount, selectedPO.currency || getCurrentSbuCurrency())}
               </p>
             </div>
 
@@ -287,7 +321,7 @@ export default function MyPurchaseOrders() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t">
+            <ModalFooter>
               <button
                 onClick={() => {
                   setShowAcknowledgeModal(false);
@@ -303,7 +337,7 @@ export default function MyPurchaseOrders() {
               >
                 Confirm Acknowledgment
               </button>
-            </div>
+            </ModalFooter>
           </div>
         )}
       </Modal>
@@ -313,10 +347,24 @@ export default function MyPurchaseOrders() {
         isOpen={showViewModal}
         onClose={() => setShowViewModal(false)}
         title="Purchase Order Details"
-        size="lg"
+        size="xl"
       >
         {selectedPO && (
           <div className="space-y-6">
+            <div>
+              <WorkflowStepper steps={supplierPoJourney(selectedPO).steps} compact />
+              {(() => {
+                const next = supplierPoNext(selectedPO);
+                if (!next) return null;
+                const action =
+                  next.action === 'acknowledge'
+                    ? { label: 'Acknowledge', onClick: () => { setShowViewModal(false); openAcknowledgeModal(selectedPO); } }
+                    : next.action === 'invoice'
+                      ? { label: 'Submit invoice', onClick: () => { setShowViewModal(false); setInvoicingPoId(selectedPO._id); } }
+                      : undefined;
+                return <NextStepCard title={next.title} description={next.description} waiting={next.waiting} action={action} />;
+              })()}
+            </div>
             {/* Acknowledgment Info */}
             {selectedPO.isAcknowledged && (selectedPO.status === 'issued' || selectedPO.status === 'approved') && (
               <div className="bg-green-50 border border-green-200 rounded-xl p-4">
@@ -355,7 +403,7 @@ export default function MyPurchaseOrders() {
               <div>
                 <label className="text-sm text-gray-500">Total Value</label>
                 <p className="text-xl font-bold text-gray-900">
-                  {formatCurrency(selectedPO.totalAmount, selectedPO.currency || 'USD')}
+                  {formatCurrency(selectedPO.totalAmount, selectedPO.currency || getCurrentSbuCurrency())}
                 </p>
               </div>
               <div>
@@ -382,26 +430,26 @@ export default function MyPurchaseOrders() {
 
             <div>
               <label className="text-sm text-gray-500 mb-2 block">Order Items</label>
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
                     <tr>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Item</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Qty</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Unit Price</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600">Total</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Item</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Qty</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Unit Price</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Total</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody>
                     {selectedPO.items?.map((item: any, index: any) => (
-                      <tr key={index}>
-                        <td className="py-3 px-4 text-sm font-medium">{item.description}</td>
-                        <td className="py-3 px-4 text-sm">{item.quantity} {item.unit}</td>
-                        <td className="py-3 px-4 text-sm">
-                          {formatCurrency(item.unitPrice, selectedPO.currency || 'USD')}
+                      <tr key={index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                        <td className="py-2 px-3 border-b border-gray-100 font-medium">{item.description}</td>
+                        <td className="py-2 px-3 border-b border-gray-100">{item.quantity} {item.unit}</td>
+                        <td className="py-2 px-3 border-b border-gray-100">
+                          {formatCurrency(item.unitPrice, selectedPO.currency || getCurrentSbuCurrency())}
                         </td>
-                        <td className="py-3 px-4 text-sm font-medium">
-                          {formatCurrency(item.totalPrice || item.quantity * item.unitPrice, selectedPO.currency || 'USD')}
+                        <td className="py-2 px-3 border-b border-gray-100 font-medium">
+                          {formatCurrency(item.totalPrice || item.quantity * item.unitPrice, selectedPO.currency || getCurrentSbuCurrency())}
                         </td>
                       </tr>
                     ))}
@@ -423,6 +471,17 @@ export default function MyPurchaseOrders() {
           </div>
         )}
       </Modal>
+
+      <SubmitInvoiceDrawer
+        isOpen={invoicingPoId !== null}
+        purchaseOrderId={invoicingPoId}
+        onClose={() => setInvoicingPoId(null)}
+        onSaved={() => {
+          setInvoicingPoId(null);
+          // The order's next step moves on from "Submit invoice".
+          fetchMyPurchaseOrders();
+        }}
+      />
     </div>
   );
 }

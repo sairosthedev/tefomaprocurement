@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import api from '../lib/api';
 import { useToast } from '../components/Toast';
 import { 
@@ -6,6 +6,9 @@ import {
   Loader2, Calendar, Filter
 } from 'lucide-react';
 import { formatCurrency } from '../lib/constants';
+import PageHeader from '../components/PageHeader';
+import Pagination from '../components/Pagination';
+import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 const movementTypes: any = {
   'stock-in': { label: 'Stock In', color: 'text-green-600 bg-green-100', icon: ArrowDownLeft },
@@ -21,19 +24,27 @@ export default function StockMovements() {
   const [searchTerm, setSearchTerm] = useState<any>('');
   const [typeFilter, setTypeFilter] = useState<any>('');
   const [dateRange, setDateRange] = useState<any>('all');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
+  const [pagination, setPagination] = useState(emptyPagination());
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, typeFilter, dateRange]);
 
   useEffect(() => {
     fetchMovements();
-  }, [searchTerm, typeFilter, dateRange]);
+  }, [page, limit, searchTerm, typeFilter, dateRange]);
 
   const fetchMovements = async () => {
     try {
       setLoading(true);
       const response = await api.get('/stores/movements', {
-        params: { search: searchTerm, type: typeFilter, range: dateRange }
+        params: { search: searchTerm, type: typeFilter, range: dateRange, page, limit }
       });
       if (response.data.success) {
         setMovements(response.data.data || []);
+        setPagination(parsePagination(response.data.pagination));
       }
     } catch (error: any) {
       console.error('Failed to fetch movements:', error);
@@ -46,11 +57,10 @@ export default function StockMovements() {
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Stock Movements</h1>
-        <p className="text-gray-500 mt-1">Complete history of all stock transactions</p>
-      </div>
+      <PageHeader
+        title="Stock Movements"
+        subtitle="Complete history of all stock transactions"
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -113,7 +123,7 @@ export default function StockMovements() {
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-6">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
               placeholder="Search by item name, code, or reference..."
@@ -147,7 +157,7 @@ export default function StockMovements() {
       </div>
 
       {/* Movements List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -158,52 +168,53 @@ export default function StockMovements() {
             <p className="text-gray-500">No stock movements found</p>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
+            <table className="w-full text-sm border-collapse">
+              <thead>
                 <tr>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Type</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Item</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Quantity</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Reference</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Performed By</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Date</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-600">Notes</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Type</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Item</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Quantity</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Reference</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Performed By</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Date</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Notes</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {movements.map((movement: any) => {
                   const typeInfo = movementTypes[movement.type] || movementTypes['adjustment'];
                   const Icon = typeInfo.icon;
                   return (
-                    <tr key={movement._id} className="hover:bg-gray-50">
-                      <td className="py-4 px-6">
+                    <tr key={movement._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                      <td className="py-2 px-3 border-b border-gray-100">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${typeInfo.color}`}>
                           <Icon className="h-3.5 w-3.5" />
                           {typeInfo.label}
                         </span>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-2 px-3 border-b border-gray-100">
                         <p className="font-medium text-gray-900">{movement.item?.name}</p>
-                        <p className="text-sm text-gray-500 font-mono">{movement.item?.itemCode}</p>
+                        <p className="text-xs text-gray-500 font-mono">{movement.item?.itemCode}</p>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-2 px-3 border-b border-gray-100">
                         <span className={`font-semibold ${movement.quantity > 0 ? 'text-green-600' : 'text-red-600'}`}>
                           {movement.quantity > 0 ? '+' : ''}{movement.quantity} {movement.unit}
                         </span>
                       </td>
-                      <td className="py-4 px-6">
-                        <span className="font-mono text-sm text-primary">{movement.reference}</span>
+                      <td className="py-2 px-3 border-b border-gray-100">
+                        <span className="font-mono text-primary">{movement.reference}</span>
                       </td>
-                      <td className="py-4 px-6 text-sm text-gray-600">
+                      <td className="py-2 px-3 border-b border-gray-100 text-gray-600">
                         {movement.performedBy?.firstName} {movement.performedBy?.lastName}
                       </td>
-                      <td className="py-4 px-6 text-sm text-gray-500">
+                      <td className="py-2 px-3 border-b border-gray-100 text-gray-500">
                         {new Date(movement.createdAt).toLocaleDateString('en-ZA')}
                         <br />
                         <span className="text-xs">{new Date(movement.createdAt).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}</span>
                       </td>
-                      <td className="py-4 px-6 text-sm text-gray-500 max-w-xs truncate">
+                      <td className="py-2 px-3 border-b border-gray-100 text-gray-500 max-w-xs truncate">
                         {movement.notes || '-'}
                       </td>
                     </tr>
@@ -212,6 +223,16 @@ export default function StockMovements() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            pages={pagination.pages}
+            total={pagination.total}
+            onPageChange={setPage}
+          pageSize={limit}
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+            itemLabel="movements"
+          />
+          </>
         )}
       </div>
     </div>

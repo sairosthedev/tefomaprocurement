@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { PurchaseRequisition } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { createNotification } from '../../services/notification.service.js';
+import { canActOnDepartment } from '../../lib/departmentScope.js';
 
 const rejectRequisition = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -23,16 +24,14 @@ const rejectRequisition = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    if (
-      req.user!.role !== 'admin' &&
-      requisition.department?.toString() !== req.user!.department?.toString()
-    ) {
+    if (!(await canActOnDepartment(req.user, requisition.department))) {
       return res.status(403).json({
         success: false,
         message: 'You can only reject requisitions from your department'
       });
     }
 
+    const previousStatus = requisition.status;
     requisition.status = 'rejected';
     requisition.statusHistory.push({
       action: 'rejected',
@@ -48,8 +47,10 @@ const rejectRequisition = async (req: Request, res: Response): Promise<any> => {
       entity: 'PurchaseRequisition',
       entityId: requisition._id,
       user: req.user,
+      entityLabel: requisition.requisitionNumber,
       description: `Rejected requisition: ${requisition.requisitionNumber}`,
       newData: { status: 'rejected' },
+      previousData: { status: previousStatus },
       req
     });
 

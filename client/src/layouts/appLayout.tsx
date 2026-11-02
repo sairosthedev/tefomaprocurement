@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { cn } from '../../lib/utils'
 import Logo from '../components/Logo'
@@ -20,6 +20,7 @@ import {
   Truck,
   ArrowLeftRight,
   Building2,
+  MapPin,
   FileCheck,
   DollarSign,
   CreditCard,
@@ -27,98 +28,181 @@ import {
   Send,
   Archive,
   Settings,
-  ShieldCheck
+  ShieldCheck,
+  Landmark,
+  ChevronLeft,
+  ChevronRight,
+  LogOut
 } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { isProcurementHead } from '@fossil/shared'
+import { notificationsAPI, dashboardAPI } from '../lib/api'
 
-// Role-based navigation configuration
+// Role-based navigation configuration.
+//
+// Items are grouped into sections so a role's whole menu fits on screen
+// without scrolling: only one section is open at a time, and the section
+// holding the current page opens by itself. Profile lives on the user card
+// above the menu rather than in it.
+const supplierSection = (extra: any[] = []) => ({
+  name: "Suppliers", icon: Users, children: [
+    { name: 'All Suppliers', href: '/app/suppliers', icon: Users },
+    { name: 'Performance', href: '/app/suppliers/analytics/performance', icon: TrendingUp },
+    { name: 'Compliance', href: '/app/suppliers/analytics/compliance', icon: BarChart3 },
+    { name: 'Evaluations', href: '/app/suppliers/evaluations', icon: ClipboardList },
+    ...extra
+  ]
+})
+
+const bankChanges = { name: 'Banking Changes', href: '/app/bank-changes', icon: Landmark }
+
 const roleNavigation: any = {
+  // Runs the system. Suppliers and purchase orders are read-only views; the
+  // procurement steps themselves belong to the business roles.
   admin: [
     { name: "Dashboard", href: "/app", icon: LayoutDashboard },
-    { name: "Staff Team", href: "/app/users", icon: Users },
-    { name: "Departments", href: "/app/departments", icon: Building2 },
-    { name: "Suppliers", href: "/app/suppliers", icon: Users },
-    { name: "RFQs", href: "/app/rfqs", icon: FileSearch },
-    { name: "Quotations", href: "/app/quotations", icon: FileText },
-    { name: "Purchase Orders", href: "/app/purchase-orders", icon: ShoppingCart },
-    { name: "Reports", href: "/app/reports", icon: BarChart3 },
-    { name: "Audit Logs", href: "/app/audit-logs", icon: FileCheck },
+    { name: "Organisation", icon: Building2, children: [
+      { name: "Staff Team", href: "/app/users", icon: Users },
+      { name: "Departments", href: "/app/departments", icon: Building2 },
+      { name: "Sites", href: "/app/sites", icon: MapPin },
+    ] },
+    supplierSection(),
+    { name: "Oversight", icon: FileCheck, children: [
+      { name: "Purchase Orders", href: "/app/purchase-orders", icon: ShoppingCart },
+      { name: "Reports", href: "/app/reports", icon: BarChart3 },
+      { name: "Audit Logs", href: "/app/audit-logs", icon: FileCheck },
+    ] },
     { name: "Notifications", href: "/app/notifications", icon: Bell },
   ],
-  
+
   department_head: [
     { name: "Dashboard", href: "/app", icon: LayoutDashboard },
     { name: "Approvals", href: "/app/approvals", icon: CheckSquare },
-    { name: "My Requisitions", href: "/app/requisitions", icon: ClipboardList },
-    { name: "Store Requisitions", href: "/app/store-requisitions", icon: Package },
+    { name: "Requisitions", icon: ClipboardList, children: [
+      { name: "Department Requisitions", href: "/app/requisitions", icon: ClipboardList },
+      { name: "Store Requisitions", href: "/app/store-requisitions", icon: Package },
+    ] },
     { name: "Reports", href: "/app/reports", icon: BarChart3 },
     { name: "Notifications", href: "/app/notifications", icon: Bell },
-    { name: "Profile", href: "/app/profile", icon: UserCircle },
   ],
 
   end_user: [
     { name: "Dashboard", href: "/app", icon: LayoutDashboard },
     { name: "My Requisitions", href: "/app/requisitions", icon: ClipboardList },
     { name: "Notifications", href: "/app/notifications", icon: Bell },
-    { name: "Profile", href: "/app/profile", icon: UserCircle },
   ],
-  
+
   procurement_officer: [
     { name: "Dashboard", href: "/app", icon: LayoutDashboard },
-    { name: "Requisitions", href: "/app/requisitions", icon: ClipboardList },
-    { name: "RFQs", href: "/app/rfqs", icon: FileSearch },
-    { name: "Quotations", href: "/app/quotations", icon: FileText },
-    { name: "Purchase Orders", href: "/app/purchase-orders", icon: ShoppingCart },
-    { name: "Suppliers", href: "/app/suppliers", icon: Users },
+    { name: "Sourcing", icon: ShoppingCart, children: [
+      { name: "Requisitions", href: "/app/requisitions", icon: ClipboardList },
+      { name: "RFQs", href: "/app/rfqs", icon: FileSearch },
+      { name: "Quotations", href: "/app/quotations", icon: FileText },
+      { name: "Purchase Orders", href: "/app/purchase-orders", icon: ShoppingCart },
+    ] },
+    supplierSection([bankChanges]),
     { name: "Reports", href: "/app/reports", icon: BarChart3 },
     { name: "Notifications", href: "/app/notifications", icon: Bell },
-    { name: "Profile", href: "/app/profile", icon: UserCircle },
   ],
-  
+
+  // Head of the Procurement department: full procurement access plus the
+  // department-head approval queue.
+  procurement_head: [
+    { name: "Dashboard", href: "/app", icon: LayoutDashboard },
+    { name: "Sign-offs", icon: ShieldCheck, children: [
+      { name: "Authorizations", href: "/app/authorizations", icon: ShieldCheck },
+      { name: "Approvals", href: "/app/approvals", icon: CheckSquare },
+    ] },
+    { name: "Sourcing", icon: ShoppingCart, children: [
+      { name: "Requisitions", href: "/app/requisitions", icon: ClipboardList },
+      { name: "Store Requisitions", href: "/app/store-requisitions", icon: Package },
+      { name: "RFQs", href: "/app/rfqs", icon: FileSearch },
+      { name: "Quotations", href: "/app/quotations", icon: FileText },
+      { name: "Purchase Orders", href: "/app/purchase-orders", icon: ShoppingCart },
+    ] },
+    supplierSection([bankChanges]),
+    { name: "Reports", href: "/app/reports", icon: BarChart3 },
+    { name: "Notifications", href: "/app/notifications", icon: Bell },
+  ],
+
   finance: [
     { name: "Dashboard", href: "/app", icon: LayoutDashboard },
     { name: "Approvals", href: "/app/approvals", icon: CheckSquare },
-    { name: "Invoices", href: "/app/invoices", icon: FileText },
-    { name: "Payments", href: "/app/payments", icon: CreditCard },
+    { name: "Payables", icon: CreditCard, children: [
+      { name: "Invoices", href: "/app/invoices", icon: FileText },
+      { name: "Payments", href: "/app/payments", icon: CreditCard },
+      { name: "Purchase Orders", href: "/app/purchase-orders", icon: ShoppingCart },
+    ] },
     { name: "Budgets", href: "/app/budgets", icon: DollarSign },
-    { name: "Purchase Orders", href: "/app/purchase-orders", icon: ShoppingCart },
     { name: "Reports", href: "/app/reports", icon: BarChart3 },
     { name: "Notifications", href: "/app/notifications", icon: Bell },
-    { name: "Profile", href: "/app/profile", icon: UserCircle },
   ],
-  
+
   coo: [
     { name: "Dashboard", href: "/app", icon: LayoutDashboard },
     { name: "Approvals", href: "/app/approvals", icon: CheckSquare },
+    supplierSection(),
     { name: "Reports", href: "/app/reports", icon: BarChart3 },
-    { name: "Suppliers", href: "/app/suppliers", icon: Users },
     { name: "Notifications", href: "/app/notifications", icon: Bell },
-    { name: "Profile", href: "/app/profile", icon: UserCircle },
   ],
-  
+
   stores_officer: [
     { name: "Dashboard", href: "/app", icon: LayoutDashboard },
-    { name: "PR Stores Review", href: "/app/stores-pr-review", icon: ClipboardList },
-    { name: "Deliveries (GRV)", href: "/app/deliveries", icon: Truck },
-    { name: "Inventory", href: "/app/inventory", icon: Package },
-    { name: "Store Requisitions", href: "/app/store-requisitions", icon: ClipboardList },
-    { name: "Stock Movements", href: "/app/stock-movements", icon: ArrowLeftRight },
+    { name: "Receiving", icon: Truck, children: [
+      { name: "PR Stores Review", href: "/app/stores-pr-review", icon: ClipboardList },
+      { name: "Deliveries (GRV)", href: "/app/deliveries", icon: Truck },
+      { name: "Store Requisitions", href: "/app/store-requisitions", icon: Package },
+    ] },
+    { name: "Stock", icon: Package, children: [
+      { name: "Inventory", href: "/app/inventory", icon: Package },
+      { name: "Stock Movements", href: "/app/stock-movements", icon: ArrowLeftRight },
+      { name: "Stock Transfers", href: "/app/stock-transfers", icon: Truck },
+    ] },
     { name: "Reports", href: "/app/reports", icon: BarChart3 },
     { name: "Notifications", href: "/app/notifications", icon: Bell },
-    { name: "Profile", href: "/app/profile", icon: UserCircle },
   ],
-  
+
   supplier: [
     { name: "Dashboard", href: "/app", icon: LayoutDashboard },
-    { name: "My RFQs", href: "/app/my-rfqs", icon: FileSearch },
-    { name: "My Submitted Quotations", href: "/app/my-submitted-quotations", icon: FileText },
-    { name: "My Purchase Orders", href: "/app/my-purchase-orders", icon: ShoppingCart },
-    { name: "My Invoices", href: "/app/my-invoices", icon: FileText },
-    { name: "Deliveries", href: "/app/my-deliveries", icon: Truck },
-    { name: "KYS Documents", href: "/app/my-kys", icon: ShieldCheck },
-    { name: "My Profile", href: "/app/supplier-profile", icon: Building2 },
+    { name: "Bidding", icon: FileSearch, children: [
+      { name: "My RFQs", href: "/app/my-rfqs", icon: FileSearch },
+      { name: "Submitted Quotations", href: "/app/my-submitted-quotations", icon: FileText },
+    ] },
+    { name: "Orders", icon: ShoppingCart, children: [
+      { name: "Purchase Orders", href: "/app/my-purchase-orders", icon: ShoppingCart },
+      { name: "Deliveries", href: "/app/my-deliveries", icon: Truck },
+      { name: "Invoices", href: "/app/my-invoices", icon: FileText },
+    ] },
+    { name: "Account", icon: Building2, children: [
+      { name: "Company Profile", href: "/app/supplier-profile", icon: Building2 },
+      { name: "KYS Documents", href: "/app/my-kys", icon: ShieldCheck },
+    ] },
     { name: "Notifications", href: "/app/notifications", icon: Bell },
   ],
+}
+
+/**
+ * Count beside a menu item. Unread notifications are red — they are the alert.
+ * Work queues are amber, so a full inbox and a full in-tray do not read as the
+ * same kind of urgency. Collapsed, the count shrinks to a dot.
+ */
+function NavBadge({ count, collapsed = false, tone = 'work' }: { count: number; collapsed?: boolean; tone?: 'alert' | 'work' }) {
+  if (count <= 0) return null
+  const colour = tone === 'alert' ? 'bg-red-500' : 'bg-amber-500'
+
+  return collapsed ? (
+    <span className={cn('absolute top-1.5 right-3 h-2 w-2 rounded-full', colour)} />
+  ) : (
+    <span
+      className={cn(
+        'min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center rounded-full text-white text-[11px] font-semibold',
+        colour
+      )}
+    >
+      {count > 99 ? '99+' : count}
+    </span>
+  )
 }
 
 export function SidebarLayout({ children }: any) {
@@ -127,6 +211,44 @@ export function SidebarLayout({ children }: any) {
   const { user, logout } = useAuth()
   const [showLogoutModal, setShowLogoutModal] = useState<any>(false)
   const [isLoggingOut, setIsLoggingOut] = useState<any>(false)
+  const [unreadCount, setUnreadCount] = useState(0)
+  // Work waiting on this user, keyed by nav href. The server decides which
+  // counts a role gets, so the sidebar needs no per-role rules of its own.
+  const [actionCounts, setActionCounts] = useState<Record<string, number>>({})
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadBadges = async () => {
+      if (!user) return
+
+      // Fetched together on one timer: two independent polls would double the
+      // request rate for what is drawn as a single row of numbers.
+      const [unread, actions] = await Promise.allSettled([
+        notificationsAPI.getUnreadCount(),
+        dashboardAPI.getActionCounts()
+      ])
+
+      if (cancelled) return
+
+      if (unread.status === 'fulfilled' && unread.value.data.success) {
+        setUnreadCount(unread.value.data.count ?? unread.value.data.data?.count ?? 0)
+      }
+
+      if (actions.status === 'fulfilled' && actions.value.data.success) {
+        setActionCounts(actions.value.data.data || {})
+      }
+      // Failures are ignored: the badges are an aid, and a counting problem
+      // must never stop the navigation itself rendering.
+    }
+
+    loadBadges()
+    const interval = setInterval(loadBadges, 60000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [user?._id, user?.id, location.pathname])
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
@@ -134,13 +256,19 @@ export function SidebarLayout({ children }: any) {
     logout()
     setIsLoggingOut(false)
     setShowLogoutModal(false)
-    navigate('/login')
+    navigate('/')
   }
 
-  // Get navigation items for current user's role
-  const navigation = roleNavigation[user?.role] || roleNavigation.admin
+  // Get navigation items for current user's role. The procurement department
+  // head gets a combined procurement + approvals menu. An unrecognised role
+  // gets no menu rather than the admin's.
+  const procurementHead = isProcurementHead(user)
+  const navigation = procurementHead
+    ? roleNavigation.procurement_head
+    : roleNavigation[user?.role] || []
 
   const getRoleDisplayName = (role: any) => {
+    if (procurementHead) return 'Head of Procurement'
     const names: any = {
       admin: 'System Administrator',
       procurement_officer: 'Procurement Officer',
@@ -154,54 +282,177 @@ export function SidebarLayout({ children }: any) {
     return names[role] || role
   }
 
+  const profileHref = user?.role === 'supplier' ? '/app/supplier-profile' : '/app/profile'
+
+  const isHrefActive = (href?: string): boolean => {
+    if (!href) return false
+    if (href === '/app') return location.pathname === '/app'
+    return location.pathname.startsWith(href)
+  }
+
+  // Notifications keep their unread count; every other item shows whatever
+  // the server says is waiting on this user.
+  const badgeFor = (href?: string): number =>
+    !href ? 0 : href === '/app/notifications' ? unreadCount : actionCounts[href] || 0
+
+  // Sections open one at a time, so the menu never grows past the screen.
+  // `null` means "whichever section holds the current page".
+  const [openSection, setOpenSection] = useState<string | null>(null)
+  useEffect(() => { setOpenSection(null) }, [location.pathname])
+
+  const sectionIsOpen = (item: any): boolean =>
+    openSection === null
+      ? item.children.some((c: any) => isHrefActive(c.href))
+      : openSection === item.name
+
+  const toggleSection = (item: any) =>
+    setOpenSection(sectionIsOpen(item) ? '' : item.name)
+
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem('sidebar-collapsed') === '1' } catch { return false }
+  })
+
+  const toggleCollapsed = () => setCollapsed(prev => {
+    const next = !prev
+    try { localStorage.setItem('sidebar-collapsed', next ? '1' : '0') } catch { /* ignore */ }
+    return next
+  })
+
   return (
     <div className="flex min-h-screen">
       {/* Sidebar */}
-      <aside className="w-64 bg-primary text-gray-100 border-r border-primary-light fixed h-full">
+      <aside className={cn(
+        "fixed z-30 h-full border-r border-primary-light bg-primary text-gray-100 transition-[width] duration-300",
+        collapsed ? "w-[4.5rem]" : "w-64"
+      )}>
+        {/* Collapse toggle */}
+        <button
+          onClick={toggleCollapsed}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="absolute -right-3 top-7 z-40 h-6 w-6 flex items-center justify-center rounded-full bg-primary border border-primary-light text-gray-100 hover:text-white hover:bg-primary-light shadow-md transition-colors"
+        >
+          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        </button>
+
         <div className="flex flex-col h-full py-6">
           {/* Logo/Brand */}
-          <div className="px-4 mb-6">
-            <Link to="/app" className="flex items-center hover:opacity-90 transition-opacity">
-              <Logo variant="compact" showText={true} className="text-white" />
+          <div className={cn("mb-6", collapsed ? "px-2" : "px-4")}>
+            <Link to="/app" className="block hover:opacity-90 transition-opacity">
+              {collapsed
+                ? <Logo variant="icon" showText={false} />
+                : <Logo variant="compact" showText={true} className="text-white" />}
             </Link>
           </div>
 
-          {/* User Info */}
-          <div className="px-4 mb-5">
-            <div className="bg-white/10 rounded-xl p-3">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 bg-white/20 rounded-full flex items-center justify-center">
+          {/* User Info — also the way to the profile page */}
+          <div className={cn("mb-4", collapsed ? "px-2" : "px-4")}>
+            <Link
+              to={profileHref}
+              title={collapsed ? `${user?.firstName} ${user?.lastName} — ${getRoleDisplayName(user?.role)}` : 'Your profile'}
+              className={cn(
+                "block rounded-xl transition-colors",
+                isHrefActive(profileHref) ? "bg-primary-light" : "bg-white/10 hover:bg-white/15",
+                collapsed ? "p-2" : "p-3"
+              )}
+            >
+              <div className={cn("flex items-center", collapsed ? "justify-center" : "gap-3")}>
+                <div className="h-9 w-9 bg-white/20 rounded-full flex items-center justify-center shrink-0">
                   <span className="text-sm font-semibold text-white">
                     {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
                   </span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{user?.firstName} {user?.lastName}</p>
-                  <p className="text-[11px] text-gray-400">{getRoleDisplayName(user?.role)}</p>
-                </div>
+                {!collapsed && (
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">{user?.firstName} {user?.lastName}</p>
+                    <p className="text-[11px] text-gray-400">{getRoleDisplayName(user?.role)}</p>
+                  </div>
+                )}
               </div>
-            </div>
+            </Link>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-3 flex flex-col gap-0.5 overflow-y-auto">
+          <nav className="flex-1 min-h-0 px-3 flex flex-col gap-0.5 overflow-y-auto scrollbar-none">
             {navigation.map((item: any) => {
-              // Special handling for My RFQs - also active on submit-quotation page
-              let isActive: any;
-              if (item.href === '/app/my-rfqs') {
-                isActive = location.pathname.startsWith(item.href) || location.pathname.startsWith('/app/submit-quotation');
-              } else if (item.href === '/app') {
-                isActive = location.pathname === '/app';
-              } else {
-                isActive = location.pathname.startsWith(item.href);
-              }
               const Icon = item.icon
+
+              // A section: a header that opens its items in place.
+              if (item.children && Array.isArray(item.children)) {
+                const anyChildActive = item.children.some((c: any) => isHrefActive(c.href))
+                const isOpen = sectionIsOpen(item)
+                const sectionBadge = item.children.reduce((sum: number, c: any) => sum + badgeFor(c.href), 0)
+
+                return (
+                  <div key={item.name}>
+                    <button
+                      onClick={() => {
+                        if (collapsed) {
+                          toggleCollapsed()
+                          setOpenSection(item.name)
+                        } else {
+                          toggleSection(item)
+                        }
+                      }}
+                      title={collapsed ? item.name : undefined}
+                      className={cn(
+                        "w-full flex items-center gap-3 py-2.5 rounded-lg text-[14px] font-medium transition-all duration-200",
+                        collapsed ? "px-0 justify-center relative" : "px-3",
+                        "outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
+                        "focus-visible:bg-primary-light focus-visible:text-white",
+                        anyChildActive && (collapsed || !isOpen)
+                          ? "bg-primary-light text-white shadow-sm"
+                          : anyChildActive
+                            ? "text-white"
+                            : "text-gray-100/80 hover:bg-primary-light hover:text-white active:bg-primary-light",
+                      )}
+                    >
+                      <Icon className="h-[18px] w-[18px] shrink-0" />
+                      {!collapsed && <span className="flex-1 text-left">{item.name}</span>}
+                      {/* A closed section still shows that work is waiting inside it. */}
+                      {(collapsed || !isOpen) && <NavBadge count={sectionBadge} collapsed={collapsed} />}
+                      {!collapsed && (
+                        <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen ? "rotate-180" : "rotate-0")} />
+                      )}
+                    </button>
+
+                    {isOpen && !collapsed && (
+                      <div className="mt-0.5 mb-1 ml-[1.15rem] pl-3 border-l border-white/15 flex flex-col gap-0.5">
+                        {item.children.map((child: any) => {
+                          const ChildIcon = child.icon || Users
+                          const childActive = isHrefActive(child.href)
+                          return (
+                            <Link
+                              key={child.name}
+                              to={child.href}
+                              className={cn(
+                                "flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium",
+                                childActive
+                                  ? "bg-primary-light text-white shadow-sm"
+                                  : "text-gray-100/80 hover:bg-primary-light hover:text-white"
+                              )}
+                            >
+                              <ChildIcon className="h-[14px] w-[14px] shrink-0 opacity-80" />
+                              <span className="flex-1">{child.name}</span>
+                              <NavBadge count={badgeFor(child.href)} />
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              }
+
+              const isActive = isHrefActive(item.href)
+
               return (
                 <Link
                   key={item.name}
                   to={item.href}
+                  title={collapsed ? item.name : undefined}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-[14px] font-medium transition-all duration-200",
+                    "flex items-center gap-3 py-2.5 rounded-lg text-[14px] font-medium transition-all duration-200",
+                    collapsed ? "px-0 justify-center relative" : "px-3",
                     "outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
                     "focus-visible:bg-primary-light focus-visible:text-white",
                     isActive
@@ -210,28 +461,38 @@ export function SidebarLayout({ children }: any) {
                   )}
                 >
                   <Icon className="h-[18px] w-[18px] shrink-0" />
-                  {item.name}
+                  {!collapsed && <span className="flex-1">{item.name}</span>}
+                  <NavBadge
+                    count={badgeFor(item.href)}
+                    collapsed={collapsed}
+                    tone={item.href === '/app/notifications' ? 'alert' : 'work'}
+                  />
                 </Link>
               )
             })}
           </nav>
 
           {/* Logout Button */}
-          <div className="px-3 mt-4">
+          <div className={cn("mt-4", collapsed ? "px-2" : "px-3")}>
             <button
               onClick={() => setShowLogoutModal(true)}
-              className="w-full flex items-center justify-center px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 bg-red-600 hover:bg-red-700 text-white"
+              title={collapsed ? "Logout" : undefined}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 bg-red-600 hover:bg-red-700 text-white"
             >
-              Logout
+              <LogOut className="h-4 w-4 shrink-0" />
+              {!collapsed && <span>Logout</span>}
             </button>
           </div>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 bg-gray-50 ml-64 min-h-screen px-4 md:px-8">{children}</main>
-
-      {/* Logout Confirmation Modal */}
+      <main className={cn(
+        "min-h-screen min-w-0 overflow-x-hidden bg-gray-50 px-4 md:px-8 transition-[margin,width] duration-300",
+        collapsed ? "ml-[4.5rem] w-[calc(100%-4.5rem)]" : "ml-64 w-[calc(100%-16rem)]"
+      )}>
+        {children}
+      </main>
       {showLogoutModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div 

@@ -1,8 +1,10 @@
 import type { Request, Response } from 'express';
 import { RFQ } from '../../models/index.js';
+import { QUOTATION_WAIVER_TYPES } from '../../models/RFQ.model.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { isProcurementHead } from '@fossil/shared';
 
-/** FC-HQ-P-07 §6.3.5 — waiver when fewer than 3 quotations */
+/** Waiver when fewer than 3 quotations */
 const approveQuotationWaiver = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
@@ -17,11 +19,24 @@ const approveQuotationWaiver = async (req: Request, res: Response): Promise<any>
       return res.status(400).json({ success: false, message: 'Waiver reason is required' });
     }
 
-    const isCooOrAdmin = ['coo', 'admin'].includes(req.user!.role);
-    if (!isCooOrAdmin && req.user!.role !== 'procurement_officer') {
+    // Validate waiverType up front so a bad value returns a clear 400 rather than
+    // an opaque 500 from the Mongoose enum validator at save time.
+    if (waiverType !== undefined && !QUOTATION_WAIVER_TYPES.includes(waiverType)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid waiver type. Allowed: ${QUOTATION_WAIVER_TYPES.join(', ')}`
+      });
+    }
+
+    // The head of the Procurement department carries procurement-officer authority
+    // across the app. Waiving the three-quotation rule is an exception to
+    // competition, so it is the COO's or the Head of Procurement's, never the
+    // officer running the sourcing.
+    const isAuthorized = req.user!.role === 'coo' || isProcurementHead(req.user);
+    if (!isAuthorized) {
       return res.status(403).json({
         success: false,
-        message: 'Waiver approval requires COO or Procurement Manager'
+        message: 'Only the COO or the Head of Procurement can approve a waiver'
       });
     }
 

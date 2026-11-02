@@ -1,12 +1,15 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
+import { SplashScreen, shouldShowSplash } from './components/SplashScreen';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
+import { EnvironmentBanner } from './components/EnvironmentBanner';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { SidebarLayout } from './layouts/appLayout';
 
 // Shared Pages
 import Login from './pages/Login';
+import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Notifications from './pages/Notifications';
 import Unauthorized from './pages/Unauthorized';
@@ -17,25 +20,30 @@ import Reports from './pages/Reports';
 import Users from './pages/Users';
 import Departments from './pages/Departments';
 import AuditLogs from './pages/AuditLogs';
+import Sites from './pages/Sites';
 
 // Procurement Pages
 import Suppliers from './pages/Suppliers';
-import SupplierKys from './pages/SupplierKys';
+import SupplierDetails from './pages/SupplierDetails';
 import RFQs from './pages/RFQs';
 import RFQDetail from './pages/RFQDetail';
-import CreateRFQ from './pages/CreateRFQ';
+import AwardMatrix from './pages/AwardMatrix';
 import Quotations from './pages/Quotations';
 import QuotationDetail from './pages/QuotationDetail';
+import BankChanges from './pages/BankChanges';
+import Performance from './pages/suppliers/Performance';
+import Compliance from './pages/suppliers/Compliance';
+import Evaluations from './pages/suppliers/Evaluations';
 import PurchaseOrders from './pages/PurchaseOrders';
 import PurchaseOrderDetail from './pages/PurchaseOrderDetail';
 
 // Department Head Pages
 import Requisitions from './pages/Requisitions';
 import RequisitionDetail from './pages/RequisitionDetail';
-import CreateRequisition from './pages/CreateRequisition';
 import StoreRequisitions from './pages/StoreRequisitions';
 import StoresPrReview from './pages/StoresPrReview';
 import Approvals from './pages/Approvals';
+import Authorizations from './pages/Authorizations';
 
 // Finance Pages
 import Budgets from './pages/Budgets';
@@ -47,10 +55,11 @@ import Payments from './pages/Payments';
 import Deliveries from './pages/Deliveries';
 import Inventory from './pages/Inventory';
 import StockMovements from './pages/StockMovements';
+import StockTransfers from './pages/StockTransfers';
 
 // Supplier Portal Pages
 import MyRFQs from './pages/supplier/MyRFQs';
-import SubmitQuotation from './pages/supplier/SubmitQuotation';
+import SupplierRFQDetail from './pages/supplier/SupplierRFQDetail';
 import MyQuotations from './pages/supplier/MyQuotations';
 import MySubmittedQuotations from './pages/supplier/MySubmittedQuotations';
 import MyPurchaseOrders from './pages/supplier/MyPurchaseOrders';
@@ -58,7 +67,26 @@ import MyDeliveries from './pages/supplier/MyDeliveries';
 import SupplierProfile from './pages/supplier/SupplierProfile';
 import MyKys from './pages/supplier/MyKys';
 import MyInvoices from './pages/supplier/MyInvoices';
-import SubmitInvoice from './pages/supplier/SubmitInvoice';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import NotFound from './pages/NotFound';
+
+function SupplierKysRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/app/suppliers/${id}?tab=documents`} replace />;
+}
+
+/** Old create-page links: open the form's drawer on the page that hosts it, keeping their query. */
+function OpenInDrawer({ to }: { to: string }) {
+  const params = new URLSearchParams(useLocation().search);
+  params.set('new', '1');
+  return <Navigate to={`${to}?${params}`} replace />;
+}
+
+function SubmitQuotationRedirect() {
+  const rfq = new URLSearchParams(useLocation().search).get('rfq');
+  return <Navigate to={rfq ? `/app/my-rfqs/${rfq}?quote=1` : '/app/my-rfqs'} replace />;
+}
 
 function AppLayout({ children, allowedRoles }: any) {
   return (
@@ -68,15 +96,29 @@ function AppLayout({ children, allowedRoles }: any) {
   );
 }
 
+// Decided once at load: StrictMode runs state initialisers twice, and the
+// second call would see the flag the first one set.
+const SHOW_SPLASH = shouldShowSplash();
+
 function App() {
+  const [splashDone, setSplashDone] = useState(!SHOW_SPLASH);
+
   return (
-    <BrowserRouter>
+    <>
+      {!splashDone && <SplashScreen onComplete={() => setSplashDone(true)} />}
+      <BrowserRouter>
       <AuthProvider>
         <ToastProvider>
+          {/* Renders nothing in production. */}
+          <EnvironmentBanner />
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<Login />} />
-            <Route path="/login" element={<Login />} />
+            <Route path="/login" element={<Navigate to="/" replace />} />
+            <Route path="/supplier/login" element={<Navigate to="/" replace />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
 
             {/* Dashboard - All authenticated users */}
@@ -118,6 +160,11 @@ function App() {
                 <Departments />
               </AppLayout>
             } />
+            <Route path="/app/sites" element={
+              <AppLayout allowedRoles={['admin']}>
+                <Sites />
+              </AppLayout>
+            } />
             <Route path="/app/audit-logs" element={
               <AppLayout allowedRoles={['admin']}>
                 <AuditLogs />
@@ -130,36 +177,82 @@ function App() {
                 <Suppliers />
               </AppLayout>
             } />
+            <Route path="/app/suppliers/:id" element={
+              <AppLayout allowedRoles={['admin', 'procurement_officer', 'coo']}>
+                <SupplierDetails />
+              </AppLayout>
+            } />
+            <Route path="/app/verification-hub" element={
+              <Navigate to="/app/suppliers?status=pending" replace />
+            } />
+            <Route path="/app/suppliers/analytics/performance" element={
+              <AppLayout allowedRoles={['admin', 'procurement_officer', 'coo']}>
+                <Performance />
+              </AppLayout>
+            } />
+            <Route path="/app/suppliers/analytics/compliance" element={
+              <AppLayout allowedRoles={['admin', 'procurement_officer', 'coo']}>
+                <Compliance />
+              </AppLayout>
+            } />
+            <Route path="/app/suppliers/evaluations" element={
+              <AppLayout allowedRoles={['admin', 'procurement_officer', 'coo']}>
+                <Evaluations />
+              </AppLayout>
+            } />
+            <Route path="/app/suppliers/reports" element={
+              <Navigate to="/app/reports?tab=suppliers" replace />
+            } />
+            {/* Banking changes are held here until callback-verified and
+                approved by a second person; payments pause meanwhile. The
+                whole workflow is procurement's, so only they open it. */}
+            <Route path="/app/bank-changes" element={
+              <AppLayout allowedRoles={['procurement_officer']}>
+                <BankChanges />
+              </AppLayout>
+            } />
             <Route path="/app/suppliers/:id/kys" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer']}>
-                <SupplierKys />
+              <AppLayout allowedRoles={['admin', 'procurement_officer', 'coo']}>
+                <SupplierKysRedirect />
               </AppLayout>
             } />
             <Route path="/app/rfqs" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer']}>
+              <AppLayout allowedRoles={['procurement_officer']}>
                 <RFQs />
               </AppLayout>
             } />
-            <Route path="/app/rfqs/create" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer']}>
-                <CreateRFQ />
-              </AppLayout>
-            } />
+            <Route path="/app/rfqs/create" element={<OpenInDrawer to="/app/rfqs" />} />
             <Route path="/app/rfqs/:id" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer']}>
+              <AppLayout allowedRoles={['procurement_officer']}>
                 <RFQDetail />
               </AppLayout>
             } />
+            {/* The COO opens the award matrix and a quotation only to approve a
+                waiver; those pages show them nothing else to act on. */}
+            <Route path="/app/rfqs/:id/award" element={
+              <AppLayout allowedRoles={['procurement_officer', 'coo']}>
+                <AwardMatrix />
+              </AppLayout>
+            } />
+            {/* Head of Procurement's queue; they hold procurement_officer
+                through ProtectedRoute, and only their menu links here. */}
+            <Route path="/app/authorizations" element={
+              <AppLayout allowedRoles={['procurement_officer']}>
+                <Authorizations />
+              </AppLayout>
+            } />
             <Route path="/app/quotations" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer']}>
+              <AppLayout allowedRoles={['procurement_officer']}>
                 <Quotations />
               </AppLayout>
             } />
             <Route path="/app/quotations/:id" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer']}>
+              <AppLayout allowedRoles={['procurement_officer', 'coo']}>
                 <QuotationDetail />
               </AppLayout>
             } />
+            {/* Department heads and requesters follow a PO from its requisition
+                rather than opening the procurement PO pages. */}
             <Route path="/app/purchase-orders" element={
               <AppLayout allowedRoles={['admin', 'procurement_officer', 'finance', 'coo']}>
                 <PurchaseOrders />
@@ -173,56 +266,53 @@ function App() {
 
             {/* Department Head Routes */}
             <Route path="/app/requisitions" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer', 'department_head', 'end_user']}>
+              <AppLayout allowedRoles={['procurement_officer', 'department_head', 'end_user']}>
                 <Requisitions />
               </AppLayout>
             } />
             <Route path="/app/requisitions/:id" element={
-              <AppLayout allowedRoles={['admin', 'procurement_officer', 'department_head', 'end_user']}>
+              <AppLayout allowedRoles={['procurement_officer', 'department_head', 'end_user']}>
                 <RequisitionDetail />
               </AppLayout>
             } />
-            <Route path="/app/requisitions/create" element={
-              <AppLayout allowedRoles={['department_head', 'end_user', 'admin']}>
-                <CreateRequisition />
-              </AppLayout>
-            } />
+            {/* Creating now happens in a drawer on the list; old links land there. */}
+            <Route path="/app/requisitions/create" element={<Navigate to="/app/requisitions?new=1" replace />} />
             <Route path="/app/store-requisitions" element={
               <AppLayout allowedRoles={['department_head', 'stores_officer']}>
                 <StoreRequisitions />
               </AppLayout>
             } />
             <Route path="/app/approvals" element={
-              <AppLayout allowedRoles={['finance', 'coo', 'department_head', 'admin']}>
+              <AppLayout allowedRoles={['finance', 'coo', 'department_head']}>
                 <Approvals />
               </AppLayout>
             } />
 
             {/* Finance Routes */}
             <Route path="/app/budgets" element={
-              <AppLayout allowedRoles={['admin', 'finance']}>
+              <AppLayout allowedRoles={['finance']}>
                 <Budgets />
               </AppLayout>
             } />
             <Route path="/app/invoices" element={
-              <AppLayout allowedRoles={['admin', 'finance']}>
+              <AppLayout allowedRoles={['finance']}>
                 <Invoices />
               </AppLayout>
             } />
             <Route path="/app/invoices/:id" element={
-              <AppLayout allowedRoles={['admin', 'finance']}>
+              <AppLayout allowedRoles={['finance']}>
                 <InvoiceDetail />
               </AppLayout>
             } />
             <Route path="/app/payments" element={
-              <AppLayout allowedRoles={['admin', 'finance']}>
+              <AppLayout allowedRoles={['finance']}>
                 <Payments />
               </AppLayout>
             } />
 
             {/* Stores Routes */}
             <Route path="/app/stores-pr-review" element={
-              <AppLayout allowedRoles={['stores_officer', 'admin']}>
+              <AppLayout allowedRoles={['stores_officer']}>
                 <StoresPrReview />
               </AppLayout>
             } />
@@ -241,6 +331,11 @@ function App() {
                 <StockMovements />
               </AppLayout>
             } />
+            <Route path="/app/stock-transfers" element={
+              <AppLayout allowedRoles={['stores_officer']}>
+                <StockTransfers />
+              </AppLayout>
+            } />
 
             {/* Supplier Portal Routes */}
             <Route path="/app/my-rfqs" element={
@@ -248,11 +343,12 @@ function App() {
                 <MyRFQs />
               </AppLayout>
             } />
-            <Route path="/app/submit-quotation" element={
+            <Route path="/app/my-rfqs/:id" element={
               <AppLayout allowedRoles={['supplier']}>
-                <SubmitQuotation />
+                <SupplierRFQDetail />
               </AppLayout>
             } />
+            <Route path="/app/submit-quotation" element={<SubmitQuotationRedirect />} />
             <Route path="/app/my-submitted-quotations" element={
               <AppLayout allowedRoles={['supplier']}>
                 <MySubmittedQuotations />
@@ -288,21 +384,15 @@ function App() {
                 <MyInvoices />
               </AppLayout>
             } />
-            <Route path="/app/submit-invoice" element={
-              <AppLayout allowedRoles={['supplier']}>
-                <SubmitInvoice />
-              </AppLayout>
-            } />
+            <Route path="/app/submit-invoice" element={<OpenInDrawer to="/app/my-invoices" />} />
 
-            {/* Redirect root to login */}
-            <Route path="/" element={<Navigate to="/login" replace />} />
-            
-            {/* Catch all - redirect to app */}
-            <Route path="*" element={<Navigate to="/app" replace />} />
+            {/* Catch all */}
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </ToastProvider>
       </AuthProvider>
-    </BrowserRouter>
+      </BrowserRouter>
+    </>
   );
 }
 

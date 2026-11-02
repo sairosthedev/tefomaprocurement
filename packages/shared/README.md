@@ -1,13 +1,13 @@
-# @fosssil/shared
+# @fossil/shared
 
 Cross-runtime constants and domain enums consumed by both the Express API and the React client.
 
 Written in plain CommonJS so it works natively in Node and via Vite's CJS interop in the browser.
 
 ```js
-const { USER_ROLES, RFQ_STATUS, formatCurrency } = require('@fosssil/shared');
+const { USER_ROLES, RFQ_STATUS, formatCurrency } = require('@fossil/shared');
 // or, from the client:
-import { USER_ROLES, RFQ_STATUS, formatCurrency } from '@fosssil/shared';
+import { USER_ROLES, RFQ_STATUS, formatCurrency } from '@fossil/shared';
 ```
 
 ## Modules

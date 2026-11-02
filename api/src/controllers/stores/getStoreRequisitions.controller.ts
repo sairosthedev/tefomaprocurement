@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 
 import { StoreRequisition } from '../../models/index.js';
-import { buildSiteFilter } from '../../lib/siteScope.js';
+import { buildSiteFilterAsync } from '../../lib/siteScope.js';
 
 const getStoreRequisitions = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -12,7 +12,7 @@ const getStoreRequisitions = async (req: Request, res: Response): Promise<any> =
     };
 
     try {
-      query = { ...query, ...buildSiteFilter(req.user, site) };
+      query = { ...query, ...(await buildSiteFilterAsync(req.user, site)) };
     } catch (err: any) {
       return res.status(err.statusCode || 403).json({ success: false, message: err.message });
     }
