@@ -1,10 +1,11 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useToast } from '../components/Toast';
 import api, { adminAPI } from '../lib/api';
 import { Building2, Plus, Loader2 } from 'lucide-react';
 import Modal, { ModalFooter } from '../components/Modal';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
+import TableSkeleton from '../components/TableSkeleton';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 export default function Departments() {
@@ -127,35 +128,27 @@ export default function Departments() {
       </div>
 
       {/* Departments Grid */}
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 text-primary animate-spin" />
-        </div>
-      ) : departments.length === 0 ? (
-        <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-gray-100">
-          <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500">No departments found</p>
-          <button
-            onClick={() => setShowModal(true)}
-            className="mt-4 text-primary font-medium hover:underline"
-          >
-            Create your first department
-          </button>
-        </div>
-      ) : (
-        <>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Code</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Name</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Description</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Head</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Members</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
-              </tr>
-            </thead>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Code</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Name</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Description</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Head</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Members</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
+            </tr>
+          </thead>
+          {loading ? (
+            <TableSkeleton cols={6} />
+          ) : departments.length === 0 ? (
+            <tbody><tr><td colSpan={6} className="text-center py-12 text-gray-500">
+              <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+              <p>No departments found</p>
+              <button onClick={() => setShowModal(true)} className="mt-4 text-primary font-medium hover:underline">Create your first department</button>
+            </td></tr></tbody>
+          ) : (
             <tbody>
               {departments.map((dept: any) => (
                 <tr key={dept._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
@@ -185,19 +178,18 @@ export default function Departments() {
                 </tr>
               ))}
             </tbody>
-          </table>
-        </div>
-        <Pagination
-          page={page}
-          pages={pagination.pages}
-          total={pagination.total}
-          onPageChange={setPage}
-          pageSize={limit}
-          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
-          itemLabel="departments"
-        />
-        </>
-      )}
+          )}
+        </table>
+      </div>
+      {!loading && <Pagination
+        page={page}
+        pages={pagination.pages}
+        total={pagination.total}
+        onPageChange={setPage}
+        pageSize={limit}
+        onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+        itemLabel="departments"
+      />}
 
       {/* Add/Edit Modal */}
       <Modal

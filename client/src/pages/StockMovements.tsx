@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../lib/api';
 import { useToast } from '../components/Toast';
 import { 
@@ -8,6 +8,7 @@ import {
 import { formatCurrency } from '../lib/constants';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
+import TableSkeleton from '../components/TableSkeleton';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 const movementTypes: any = {
@@ -158,30 +159,27 @@ export default function StockMovements() {
 
       {/* Movements List */}
       <div>
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 text-primary animate-spin" />
-          </div>
-        ) : movements.length === 0 ? (
-          <div className="text-center py-12">
-            <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">No stock movements found</p>
-          </div>
-        ) : (
-          <>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Type</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Item</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Quantity</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Reference</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Performed By</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Date</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Notes</th>
-                </tr>
-              </thead>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Type</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Item</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Quantity</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Reference</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Performed By</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Date</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Notes</th>
+              </tr>
+            </thead>
+            {loading ? (
+              <TableSkeleton cols={7} />
+            ) : movements.length === 0 ? (
+              <tbody><tr><td colSpan={7} className="text-center py-12 text-gray-500">
+                <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                <p>No stock movements found</p>
+              </td></tr></tbody>
+            ) : (
               <tbody>
                 {movements.map((movement: any) => {
                   const typeInfo = movementTypes[movement.type] || movementTypes['adjustment'];
@@ -221,19 +219,18 @@ export default function StockMovements() {
                   );
                 })}
               </tbody>
-            </table>
-          </div>
-          <Pagination
-            page={page}
-            pages={pagination.pages}
-            total={pagination.total}
-            onPageChange={setPage}
+            )}
+          </table>
+        </div>
+        {!loading && <Pagination
+          page={page}
+          pages={pagination.pages}
+          total={pagination.total}
+          onPageChange={setPage}
           pageSize={limit}
           onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
-            itemLabel="movements"
-          />
-          </>
-        )}
+          itemLabel="movements"
+        />}
       </div>
     </div>
   );
