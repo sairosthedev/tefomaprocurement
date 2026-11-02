@@ -26,6 +26,14 @@ export async function resolveUserDepartmentIds(user: any): Promise<string[]> {
     if (id) ids.add(id);
   }
 
+  const deputied = await Department.find({ deputyHead: user?._id, isDeleted: false })
+    .select('_id')
+    .lean();
+  for (const dept of deputied) {
+    const id = idOf(dept._id);
+    if (id) ids.add(id);
+  }
+
   return Array.from(ids);
 }
 

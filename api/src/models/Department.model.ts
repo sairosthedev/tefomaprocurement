@@ -5,6 +5,7 @@ export interface IDepartment extends Document {
   code?: string;
   description?: string;
   head?: mongoose.Types.ObjectId | any;
+  deputyHead?: mongoose.Types.ObjectId | any;
   status: 'active' | 'inactive';
   isDeleted: boolean;
   createdAt: Date;
@@ -29,6 +30,10 @@ const DepartmentSchema = new Schema<IDepartment>({
     trim: true
   },
   head: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  deputyHead: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },

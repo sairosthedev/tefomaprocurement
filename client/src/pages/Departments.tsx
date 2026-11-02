@@ -19,7 +19,8 @@ export default function Departments() {
     name: '',
     code: '',
     description: '',
-    head: ''
+    head: '',
+    deputyHead: ''
   });
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(emptyPagination());
@@ -74,7 +75,7 @@ export default function Departments() {
 
       setShowModal(false);
       setEditingDepartment(null);
-      setFormData({ name: '', code: '', description: '', head: '' });
+      setFormData({ name: '', code: '', description: '', head: '', deputyHead: '' });
       fetchDepartments();
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to save department', 'error');
@@ -87,7 +88,8 @@ export default function Departments() {
       name: dept.name,
       code: dept.code || '',
       description: dept.description || '',
-      head: dept.head?._id || ''
+      head: dept.head?._id || '',
+      deputyHead: dept.deputyHead?._id || ''
     });
     setShowModal(true);
   };
@@ -111,7 +113,7 @@ export default function Departments() {
         subtitle="Manage organization departments"
         actions={
           <button
-            onClick={() => { setEditingDepartment(null); setFormData({ name: '', code: '', description: '', head: '' }); setShowModal(true); }}
+            onClick={() => { setEditingDepartment(null); setFormData({ name: '', code: '', description: '', head: '', deputyHead: '' }); setShowModal(true); }}
             className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors"
           >
             <Plus className="h-5 w-5" />
@@ -250,6 +252,31 @@ export default function Departments() {
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white"
               >
                 <option value="">Select a department head (optional)</option>
+                {departmentHeads.map((user: any) => (
+                  <option key={user._id} value={user._id}>
+                    {user.firstName} {user.lastName} {user.email ? `(${user.email})` : ''}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Deputy HOD
+            </label>
+            {loadingHeads ? (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading department heads...
+              </div>
+            ) : (
+              <select
+                value={formData.deputyHead}
+                onChange={(e: any) => setFormData({ ...formData, deputyHead: e.target.value })}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white"
+              >
+                <option value="">Select a deputy HOD (optional)</option>
                 {departmentHeads.map((user: any) => (
                   <option key={user._id} value={user._id}>
                     {user.firstName} {user.lastName} {user.email ? `(${user.email})` : ''}

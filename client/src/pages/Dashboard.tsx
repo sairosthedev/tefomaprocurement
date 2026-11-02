@@ -377,35 +377,42 @@ export default function Dashboard() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {isAdmin ? (
-          <div className="lg:col-span-2 space-y-6">
-            {attentionItems.length > 0 && (
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-gray-900">Needs attention</h2>
-                  <span className="text-xs font-medium text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full">
-                    {attentionItems.length} item{attentionItems.length === 1 ? '' : 's'}
-                  </span>
-                </div>
-                <div className="space-y-3">
-                  {attentionItems.map((item: any) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => navigate(item.href)}
-                      className={`w-full flex items-center justify-between gap-4 p-4 rounded-xl border transition-colors text-left ${attentionSeverityStyles[item.severity] || attentionSeverityStyles.low}`}
-                    >
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{item.label}</p>
-                        <p className="text-xs text-gray-600 mt-0.5">Click to review</p>
-                      </div>
-                      <span className="text-2xl font-bold text-gray-900 tabular-nums">{item.count}</span>
-                    </button>
-                  ))}
-                </div>
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Needs attention</h2>
+              {attentionItems.length > 0 && (
+                <span className="text-xs font-medium text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full">
+                  {attentionItems.length} item{attentionItems.length === 1 ? '' : 's'}
+                </span>
+              )}
+            </div>
+            {attentionItems.length === 0 ? (
+              <div className="text-center py-8 text-gray-400">
+                <CheckCircle className="h-10 w-10 mx-auto mb-2 text-green-300" />
+                <p className="text-sm">Nothing needs your attention right now</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {attentionItems.map((item: any) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => navigate(item.href)}
+                    className={`w-full flex items-center justify-between gap-4 p-4 rounded-xl border transition-colors text-left ${attentionSeverityStyles[item.severity] || attentionSeverityStyles.low}`}
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{item.label}</p>
+                      <p className="text-xs text-gray-600 mt-0.5">Click to review</p>
+                    </div>
+                    <span className="text-2xl font-bold text-gray-900 tabular-nums">{item.count}</span>
+                  </button>
+                ))}
               </div>
             )}
+          </div>
 
+          {isAdmin && (
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
@@ -453,43 +460,8 @@ export default function Dashboard() {
                 )}
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-gray-900">Additional Statistics</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {Object.entries(getAdditionalStats()).length > 0 ? (
-                Object.entries(getAdditionalStats()).map(([key, stat]: any) => {
-                  const Icon = iconMap[key] || FileText;
-                  const color = colorMap[key] || 'bg-gray-500';
-                  return (
-                    <div
-                      key={key}
-                      className="bg-gray-50 rounded-xl p-5 border border-gray-100 hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">{stat.label}</p>
-                          <p className="text-2xl font-bold text-gray-900 mt-2">{stat.value}</p>
-                        </div>
-                        <div className={`${color} p-3 rounded-lg`}>
-                          <Icon className="h-5 w-5 text-white" />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="col-span-2 text-center py-8 text-gray-500">
-                  <TrendingUp className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                  <p>No additional statistics available</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Quick Actions */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
