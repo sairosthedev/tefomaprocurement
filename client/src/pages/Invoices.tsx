@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { financeAPI } from '../lib/api';
 import { formatCurrency } from '../lib/constants';
@@ -8,6 +8,7 @@ import { Loader2, Search, AlertTriangle, CheckCircle } from 'lucide-react';
 import ViewButton from '../components/ViewButton';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
+import TableSkeleton from '../components/TableSkeleton';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 const statusColors: Record<string, string> = {
@@ -93,26 +94,24 @@ export default function Invoices() {
         </select>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      ) : invoices.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">No invoices found</div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Invoice</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">PO</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Supplier</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Amount</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Match</th>
-                <th className="py-2.5 px-4 bg-gray-50 border-b border-gray-200" />
-              </tr>
-            </thead>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Invoice</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">PO</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Supplier</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Amount</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Match</th>
+              <th className="py-2.5 px-4 bg-primary border-b border-primary" />
+            </tr>
+          </thead>
+          {loading ? (
+            <TableSkeleton cols={7} />
+          ) : invoices.length === 0 ? (
+            <tbody><tr><td colSpan={7} className="text-center py-12 text-gray-500">No invoices found</td></tr></tbody>
+          ) : (
             <tbody>
               {invoices.map((inv) => (
                 <tr key={inv._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
@@ -138,18 +137,18 @@ export default function Invoices() {
                 </tr>
               ))}
             </tbody>
-          </table>
-          <Pagination
-            page={page}
-            pages={pagination.pages}
-            total={pagination.total}
-            onPageChange={setPage}
+          )}
+        </table>
+        {!loading && <Pagination
+          page={page}
+          pages={pagination.pages}
+          total={pagination.total}
+          onPageChange={setPage}
           pageSize={limit}
           onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
-            itemLabel="invoices"
-          />
-        </div>
-      )}
+          itemLabel="invoices"
+        />}
+      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
@@ -12,6 +12,7 @@ import Drawer from '../components/Drawer';
 import RequisitionForm, { type RequisitionFormHandle } from '../components/RequisitionForm';
 import { CreateRFQDrawer } from '../components/RFQForm';
 import Pagination from '../components/Pagination';
+import TableSkeleton from '../components/TableSkeleton';
 import { formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
@@ -418,29 +419,8 @@ export default function Requisitions() {
 
       {/* Requisitions List */}
       <div>
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 text-primary animate-spin" />
-          </div>
-        ) : requisitions.length === 0 ? (
-          <div className="text-center py-12">
-            <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">
-              {isProcurement ? 'No requisitions to process' : 'No requisitions found'}
-            </p>
-            {!isProcurement && (
-              <button
-                onClick={openCreate}
-                className="mt-4 text-primary font-medium hover:underline"
-              >
-                Create your first requisition
-              </button>
-            )}
-          </div>
-        ) : (
-          <>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
               <thead>
                 <tr>
                   <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">REQ #</th>
@@ -456,6 +436,19 @@ export default function Requisitions() {
                   <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap"></th>
                 </tr>
               </thead>
+              {loading ? (
+                <TableSkeleton cols={showRequester ? 9 : 8} />
+              ) : requisitions.length === 0 ? (
+                <tbody><tr><td colSpan={showRequester ? 9 : 8} className="text-center py-12 text-gray-500">
+                  <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <p>{isProcurement ? 'No requisitions to process' : 'No requisitions found'}</p>
+                  {!isProcurement && (
+                    <button onClick={openCreate} className="mt-4 text-primary font-medium hover:underline">
+                      Create your first requisition
+                    </button>
+                  )}
+                </td></tr></tbody>
+              ) : (
               <tbody>
                 {requisitions.map((req: any) => (
                   <tr key={req._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
@@ -685,19 +678,18 @@ export default function Requisitions() {
                   </tr>
                 ))}
               </tbody>
-            </table>
-          </div>
-          <Pagination
-            page={page}
-            pages={pagination.pages}
-            total={pagination.total}
-            onPageChange={setPage}
+              )}
+          </table>
+        </div>
+        {!loading && <Pagination
+          page={page}
+          pages={pagination.pages}
+          total={pagination.total}
+          onPageChange={setPage}
           pageSize={limit}
           onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
-            itemLabel="requisitions"
-          />
-          </>
-        )}
+          itemLabel="requisitions"
+        />}
       </div>
 
       {/* Accept/Reject Action Modal */}

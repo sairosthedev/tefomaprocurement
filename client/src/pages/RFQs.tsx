@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
@@ -13,6 +13,7 @@ import {
   Search
 } from 'lucide-react';
 import Pagination from '../components/Pagination';
+import TableSkeleton from '../components/TableSkeleton';
 import { CreateRFQDrawer } from '../components/RFQForm';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
@@ -163,29 +164,28 @@ export default function RFQs() {
       </div>
 
       {/* RFQ Cards */}
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 text-primary animate-spin" />
-        </div>
-      ) : rfqs.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          <FileSearch className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-          <p>No RFQs found. Create your first RFQ to get started.</p>
-        </div>
-      ) : (
-        <>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">RFQ Number</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Title</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Deadline</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Suppliers</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
-              </tr>
-            </thead>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">RFQ Number</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Title</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Deadline</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Suppliers</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
+            </tr>
+          </thead>
+          {loading ? (
+            <TableSkeleton cols={6} />
+          ) : rfqs.length === 0 ? (
+            <tbody>
+              <tr><td colSpan={6} className="text-center py-12 text-gray-500">
+                <FileSearch className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                <p>No RFQs found. Create your first RFQ to get started.</p>
+              </td></tr>
+            </tbody>
+          ) : (
             <tbody>
               {rfqs.map((rfq: any) => (
                 <tr key={rfq._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
@@ -231,19 +231,18 @@ export default function RFQs() {
                 </tr>
               ))}
             </tbody>
-          </table>
-        </div>
-        <Pagination
-          page={page}
-          pages={pagination.pages}
-          total={pagination.total}
-          onPageChange={setPage}
-          pageSize={limit}
-          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
-          itemLabel="RFQs"
-        />
-        </>
-      )}
+          )}
+        </table>
+      </div>
+      {!loading && <Pagination
+        page={page}
+        pages={pagination.pages}
+        total={pagination.total}
+        onPageChange={setPage}
+        pageSize={limit}
+        onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+        itemLabel="RFQs"
+      />}
 
       <CreateRFQDrawer
         isOpen={createOpen}
