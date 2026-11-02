@@ -328,25 +328,6 @@ export default function Requisitions() {
         bottomSpacing="mb-4"
       />
 
-      {/* HOD view tabs */}
-      {isDeptHead && !isProcurement && (
-        <div className="flex gap-1 mb-4">
-          {(['all', 'mine', 'team'] as const).map((v) => (
-            <button
-              key={v}
-              onClick={() => setViewFilter(v)}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                viewFilter === v
-                  ? 'bg-primary text-white border-primary'
-                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              {v === 'all' ? 'All' : v === 'mine' ? 'My Requisitions' : 'Team Requisitions'}
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* Filters */}
       <div className="mb-4">
         <div className="flex flex-col md:flex-row md:items-center gap-4">
@@ -360,19 +341,34 @@ export default function Requisitions() {
             </button>
           )}
           {/* Pushed to the right edge, with or without the button beside it. */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4 md:ml-auto">
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 md:ml-auto">
+            <div className="relative w-full sm:w-52">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search requisitions..."
                 value={searchTerm}
                 onChange={(e: any) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
+            {/* HOD view: their own requisitions, their team's, or both */}
+            {isDeptHead && !isProcurement && (
+              <FilterSelect
+                label="Show"
+                size="sm"
+                options={[
+                  { value: '', label: 'All' },
+                  { value: 'mine', label: 'My Requisitions' },
+                  { value: 'team', label: 'Team Requisitions' }
+                ]}
+                value={viewFilter === 'all' ? '' : viewFilter}
+                onChange={(v) => setViewFilter((v || 'all') as 'all' | 'mine' | 'team')}
+              />
+            )}
             <FilterSelect
               label="Status"
+              size="sm"
               options={[
                 { value: '', label: 'All' },
                 ...(!isProcurement || procHead ? [{ value: 'draft', label: 'Draft' }] : []),
