@@ -111,16 +111,19 @@ export default function Departments() {
       <PageHeader
         title="Departments"
         subtitle="Manage organization departments"
-        actions={
-          <button
-            onClick={() => { setEditingDepartment(null); setFormData({ name: '', code: '', description: '', head: '', deputyHead: '' }); setShowModal(true); }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors"
-          >
-            <Plus className="h-5 w-5" />
-            Add Department
-          </button>
-        }
+        bottomSpacing="mb-4"
       />
+
+      <div className="mb-4 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => { setEditingDepartment(null); setFormData({ name: '', code: '', description: '', head: '', deputyHead: '' }); setShowModal(true); }}
+          className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors whitespace-nowrap shrink-0"
+        >
+          <Plus className="h-4 w-4" />
+          Add Department
+        </button>
+      </div>
 
       {/* Departments Grid */}
       {loading ? (

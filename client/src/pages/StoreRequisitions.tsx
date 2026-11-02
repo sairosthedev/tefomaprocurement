@@ -321,30 +321,33 @@ export default function StoreRequisitions() {
         subtitle={
           isStoresOfficer ? 'Process department stock requests' : 'Request items from stores'
         }
-        actions={
-          !isStoresOfficer ? (
-            <button
-              onClick={openCreateModal}
-              className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors"
-            >
-              <Plus className="h-5 w-5" />
-              Request from Store
-            </button>
-          ) : undefined
-        }
+        bottomSpacing="mb-4"
       />
 
-      {/* Search */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-6">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search requisitions..."
-            value={searchTerm}
-            onChange={(e: any) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
-          />
+      {/* Toolbar */}
+      <div className="mb-4">
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+          {!isStoresOfficer && (
+            <button
+              type="button"
+              onClick={openCreateModal}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors whitespace-nowrap shrink-0"
+            >
+              <Plus className="h-4 w-4" />
+              Request from Store
+            </button>
+          )}
+          {/* Pushed to the right edge, with or without the button beside it. */}
+          <div className="relative w-full sm:w-52 md:ml-auto">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search requisitions..."
+              value={searchTerm}
+              onChange={(e: any) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            />
+          </div>
         </div>
       </div>
 

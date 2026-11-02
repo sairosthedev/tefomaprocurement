@@ -331,53 +331,58 @@ export default function Suppliers() {
       <PageHeader
         title="Suppliers"
         subtitle="Manage and view all registered suppliers"
-        actions={
-          canManage ? (
-            <>
-              <button
-                onClick={() => setShowBulkImportModal(true)}
-                className="flex items-center gap-2 border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2.5 px-4 rounded-xl transition-colors"
-              >
-                <Upload className="h-5 w-5" />
-                Bulk Import
-              </button>
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium px-3 py-2 text-sm rounded-lg transition-colors"
-              >
-                <Plus className="h-5 w-5" />
-                Add Supplier
-              </button>
-            </>
-          ) : undefined
-        }
+        bottomSpacing="mb-4"
       />
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+      <div className="mb-4">
         <div className="flex flex-col md:flex-row md:items-center gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search suppliers..."
-              value={search}
-              onChange={(e: any) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+          {canManage && (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(true)}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors whitespace-nowrap shrink-0"
+              >
+                <Plus className="h-4 w-4" />
+                Add Supplier
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowBulkImportModal(true)}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors whitespace-nowrap shrink-0"
+              >
+                <Upload className="h-4 w-4" />
+                Bulk Import
+              </button>
+            </>
+          )}
+          {/* Pushed to the right edge, with or without the button beside it. */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 md:ml-auto">
+            <div className="relative w-full sm:w-52">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search suppliers..."
+                value={search}
+                onChange={(e: any) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              />
+            </div>
+            <FilterSelect
+              size="sm"
+              label="Status"
+              options={[
+                { value: '', label: 'All' },
+                { value: 'pending', label: 'Pending' },
+                { value: 'active', label: 'Active' },
+                { value: 'suspended', label: 'Suspended' },
+                { value: 'blacklisted', label: 'Blacklisted' }
+              ]}
+              value={statusFilter}
+              onChange={setStatusFilter}
             />
           </div>
-          <FilterSelect
-            label="Status"
-            options={[
-              { value: '', label: 'All' },
-              { value: 'pending', label: 'Pending' },
-              { value: 'active', label: 'Active' },
-              { value: 'suspended', label: 'Suspended' },
-              { value: 'blacklisted', label: 'Blacklisted' }
-            ]}
-            value={statusFilter}
-            onChange={setStatusFilter}
-          />
         </div>
       </div>
 

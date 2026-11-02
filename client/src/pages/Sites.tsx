@@ -119,17 +119,19 @@ export default function Sites() {
       <PageHeader
         title="Sites & Locations"
         subtitle="Manage HQ and store locations used for inventory and deliveries"
-        actions={
-          <button
-            type="button"
-            onClick={openCreate}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark"
-          >
-            <Plus className="h-5 w-5" />
-            Add site
-          </button>
-        }
+        bottomSpacing="mb-4"
       />
+
+      <div className="mb-4 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={openCreate}
+          className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors whitespace-nowrap shrink-0"
+        >
+          <Plus className="h-4 w-4" />
+          Add site
+        </button>
+      </div>
 
       {loading ? (
         <div className="flex justify-center py-12">

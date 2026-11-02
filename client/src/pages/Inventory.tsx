@@ -335,24 +335,7 @@ export default function Inventory() {
       <PageHeader
         title="Inventory Management"
         subtitle="View and manage stock levels"
-        actions={
-          <>
-            <button
-              onClick={() => setShowImportModal(true)}
-              className="flex items-center gap-2 px-4 py-2.5 border border-primary text-primary rounded-xl font-medium hover:bg-primary/5 transition-colors"
-            >
-              <Upload className="h-5 w-5" />
-              Import Excel
-            </button>
-            <button
-              onClick={openAddModal}
-              className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors"
-            >
-              <Plus className="h-5 w-5" />
-              Add Item
-            </button>
-          </>
-        }
+        bottomSpacing="mb-4"
       />
 
       {/* Stats */}
@@ -444,34 +427,50 @@ export default function Inventory() {
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-6">
+      <div className="mb-4 flex flex-col md:flex-row md:items-center gap-4">
+        <button
+          type="button"
+          onClick={openAddModal}
+          className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors whitespace-nowrap shrink-0"
+        >
+          <Plus className="h-4 w-4" />
+          Add Item
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowImportModal(true)}
+          className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors whitespace-nowrap shrink-0"
+        >
+          <Upload className="h-4 w-4" />
+          Import Excel
+        </button>
         <form
           onSubmit={handleSearchSubmit}
-          className="flex flex-col md:flex-row gap-4"
+          className="flex flex-col sm:flex-row sm:items-center gap-3 md:ml-auto"
         >
-          <div className="flex-1 relative">
+          <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
               placeholder="Search by name, code, or description..."
               value={searchTerm}
               onChange={(e: any) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
           <button
             type="submit"
-            className="px-5 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors"
+            className="px-3 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors"
           >
             Search
           </button>
-          <div className="w-full md:w-72">
+          <div className="w-full sm:w-56">
             <CategorySelect
               value={categoryFilter}
               onChange={setCategoryFilter}
               placeholder="All Categories"
               clearable
-              className="w-full flex items-center justify-between px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white"
+              className="w-full flex items-center justify-between px-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white"
             />
           </div>
         </form>

@@ -204,23 +204,22 @@ export default function StockTransfers() {
       <PageHeader
         title="Stock Transfers"
         subtitle="Move inventory between store locations"
-        actions={
-          <button
-            type="button"
-            onClick={openCreate}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark"
-          >
-            <Plus className="h-5 w-5" />
-            New transfer
-          </button>
-        }
+        bottomSpacing="mb-4"
       />
 
-      <div className="mb-6">
+      <div className="mb-4 flex flex-col md:flex-row md:items-center gap-4">
+        <button
+          type="button"
+          onClick={openCreate}
+          className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors whitespace-nowrap shrink-0"
+        >
+          <Plus className="h-4 w-4" />
+          New transfer
+        </button>
         <select
           value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-          className="px-4 py-2 border border-gray-200 rounded-xl text-sm"
+          className="md:ml-auto px-3 py-[7px] border border-gray-200 rounded-lg text-sm"
         >
           <option value="">All statuses</option>
           <option value="pending">Pending</option>

@@ -224,42 +224,46 @@ export default function Users() {
       <PageHeader
         title="Staff Team"
         subtitle="Manage system users and their roles"
-        actions={
-          <button
-            onClick={() => handleOpenModal()}
-            className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium px-3 py-2 text-sm rounded-lg transition-colors"
-          >
-            <Plus className="h-5 w-5" />
-            Add User
-          </button>
-        }
+        bottomSpacing="mb-4"
       />
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+      <div className="mb-4">
         <div className="flex flex-col md:flex-row md:items-center gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search users..."
-              value={search}
-              onChange={(e: any) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+          <button
+            type="button"
+            onClick={() => handleOpenModal()}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors whitespace-nowrap shrink-0"
+          >
+            <Plus className="h-4 w-4" />
+            Add User
+          </button>
+          {/* Pushed to the right edge, with or without the button beside it. */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 md:ml-auto">
+            <div className="relative w-full sm:w-52">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search users..."
+                value={search}
+                onChange={(e: any) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              />
+            </div>
+            <FilterSelect
+              size="sm"
+              label="Role"
+              options={[
+                { value: '', label: 'All' },
+                ...roleOptions.map((role: any) => ({
+                  value: role.value,
+                  label: role.label
+                }))
+              ]}
+              value={roleFilter}
+              onChange={setRoleFilter}
             />
           </div>
-          <FilterSelect
-            label="Role"
-            options={[
-              { value: '', label: 'All' },
-              ...roleOptions.map((role: any) => ({
-                value: role.value,
-                label: role.label
-              }))
-            ]}
-            value={roleFilter}
-            onChange={setRoleFilter}
-          />
         </div>
       </div>
 

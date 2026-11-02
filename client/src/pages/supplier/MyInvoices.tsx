@@ -41,15 +41,19 @@ export default function MyInvoices() {
     <div className="p-6">
       <PageHeader
         title="My Invoices"
-        actions={
-          <button
-            onClick={() => navigate('/app/submit-invoice')}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" /> Submit invoice
-          </button>
-        }
+        bottomSpacing="mb-4"
       />
+
+      <div className="mb-4 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => navigate('/app/submit-invoice')}
+          className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors whitespace-nowrap shrink-0"
+        >
+          <Plus className="h-4 w-4" />
+          Submit invoice
+        </button>
+      </div>
 
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
