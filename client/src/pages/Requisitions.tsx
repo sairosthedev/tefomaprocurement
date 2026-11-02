@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
@@ -442,34 +442,34 @@ export default function Requisitions() {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">REQ #</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Title</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">REQ #</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Title</th>
                   {showRequester && (
-                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Requested By</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Requested By</th>
                   )}
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Items</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Priority</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Status</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">PO Status</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap">Date</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap"></th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Items</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Priority</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">PO Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Date</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap"></th>
                 </tr>
               </thead>
               <tbody>
                 {requisitions.map((req: any) => (
                   <tr key={req._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
-                    <td className="py-2 px-3 border border-gray-200 whitespace-nowrap">
+                    <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
                       <span className="font-mono text-sm font-medium text-primary">
                         {req.requisitionNumber || `REQ-${req._id.slice(-6).toUpperCase()}`}
                       </span>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <p className="font-medium text-gray-900 truncate max-w-[14rem]" title={req.title || 'Untitled'}>
                         {req.title || 'Untitled'}
                       </p>
                     </td>
                     {showRequester && (
-                      <td className="py-2 px-3 border border-gray-200 whitespace-nowrap">
+                      <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
                         {isOwner(req) ? (
                           <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">You</span>
                         ) : (
@@ -480,15 +480,15 @@ export default function Requisitions() {
                         {isProcurement && <p className="text-xs text-gray-500">{req.department?.name || 'No dept'}</p>}
                       </td>
                     )}
-                    <td className="py-2 px-3 border border-gray-200 whitespace-nowrap">
+                    <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
                       <span className="text-gray-600">{itemCountOf(req)} {itemCountOf(req) === 1 ? 'item' : 'items'}</span>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${priorityColors[req.priority] || priorityColors.medium}`}>
                         {req.priority || 'Medium'}
                       </span>
                     </td>
-                    <td className="py-2 px-3 border border-gray-200 whitespace-nowrap">
+                    <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
                       {/* Show computed status: if PO exists, show 'ordered', if delivered to stores, show appropriate status */}
                       {(() => {
                         let displayStatus = req.status;
@@ -504,7 +504,7 @@ export default function Requisitions() {
                         );
                       })()}
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       {req.purchaseOrder ? (
                         <div className="flex flex-col gap-1">
                           <div className="font-mono text-sm font-semibold text-primary whitespace-nowrap">
@@ -581,10 +581,10 @@ export default function Requisitions() {
                         <span className="text-xs text-gray-400">-</span>
                       )}
                     </td>
-                    <td className="py-2 px-3 border border-gray-200 text-gray-500">
+                    <td className="py-2 px-3 border-b border-gray-100 text-gray-500">
                       {new Date(req.createdAt).toLocaleDateString('en-ZA')}
                     </td>
-                    <td className="py-2 px-3 border border-gray-200">
+                    <td className="py-2 px-3 border-b border-gray-100">
                       <div className="flex items-center gap-2">
                         <ViewButton
                           size="xs"
