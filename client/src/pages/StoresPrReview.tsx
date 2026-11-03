@@ -166,7 +166,7 @@ export default function StoresPrReview() {
                             <button
                               disabled={!!acting}
                               onClick={() => fulfillFromStock(pr._id)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-white hover:bg-primary-dark transition-colors disabled:opacity-50"
                             >
                               {acting === `fulfill-${pr._id}` && <Loader2 className="h-3 w-3 animate-spin" />}
                               Fulfill from stock

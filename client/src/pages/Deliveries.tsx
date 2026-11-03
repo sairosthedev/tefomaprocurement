@@ -449,7 +449,7 @@ export default function Deliveries() {
                         {canAcceptDelivery(delivery) && (
                           <button
                             onClick={() => openAcceptFlow(delivery)}
-                            className="px-2.5 py-1 text-xs font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                            className="px-2.5 py-1 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
                           >
                             Accept
                           </button>
@@ -1024,7 +1024,7 @@ export default function Deliveries() {
                   <button
                     onClick={handleAcceptDelivery}
                     disabled={isAccepting}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 disabled:opacity-50"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-medium rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50"
                   >
                     {isAccepting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                     Confirm {acceptStatus === 'rejected' ? 'Rejection' : 'Acceptance'}

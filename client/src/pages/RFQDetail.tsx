@@ -7,12 +7,11 @@ import { isProcurementHead } from '@fossil/shared';
 import PageHeader from '../components/PageHeader';
 import EquipmentDetailsView from '../components/EquipmentDetailsView';
 import RfqRankingPanel from '../components/RfqRankingPanel';
+import InvitedSuppliersList from '../components/InvitedSuppliersList';
 import {
   Calendar,
-  Users,
   Send,
   Loader2,
-  CheckCircle,
   XCircle,
   Split
 } from 'lucide-react';
@@ -288,53 +287,11 @@ export default function RFQDetail() {
 
         {/* Invited Suppliers */}
         {rfq.invitedSuppliers && rfq.invitedSuppliers.length > 0 && (
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Invited Suppliers ({rfq.invitedSuppliers.length})
-            </h3>
-            <div className="space-y-2">
-              {rfq.invitedSuppliers.map((invitation: any, index: any) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {invitation.supplier?.companyName || 'Supplier'}
-                    </p>
-                    {invitation.responded && (
-                      <span className="text-xs text-green-600 flex items-center gap-1 mt-1">
-                        <CheckCircle className="h-3 w-3" />
-                        Submitted
-                      </span>
-                    )}
-                    {/* Why this supplier is on the list. Auto-invited names carry
-                        the match that put them here, so the list can be defended. */}
-                    {invitation.invitationReason && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        {invitation.autoInvited && (
-                          <span className="inline-block px-1.5 py-0.5 mr-1.5 rounded bg-blue-50 text-blue-700 font-medium">
-                            {invitation.basis === 'related_category_topup' ? 'Auto · related' : 'Auto · category'}
-                          </span>
-                        )}
-                        {invitation.invitationReason}
-                      </p>
-                    )}
-                  </div>
-                  {invitation.quotation && !bidsAreSealed && (
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/app/quotations/${invitation.quotation._id}`)}
-                      className="text-sm text-primary hover:underline"
-                    >
-                      View Quotation
-                    </button>
-                  )}
-                  {invitation.quotation && bidsAreSealed && (
-                    <span className="text-xs text-amber-600 font-medium">Bid sealed</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+          <InvitedSuppliersList
+            invitations={rfq.invitedSuppliers}
+            bidsAreSealed={bidsAreSealed}
+            onViewQuotation={(quotationId) => navigate(`/app/quotations/${quotationId}`)}
+          />
         )}
 
         {/* Terms & Conditions */}

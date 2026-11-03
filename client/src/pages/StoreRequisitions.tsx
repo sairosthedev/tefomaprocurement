@@ -380,7 +380,7 @@ export default function StoreRequisitions() {
                                 setSelectedRequisition(req);
                                 setShowApproveModal(true);
                               }}
-                              className="px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700"
+                              className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
                             >
                               Approve
                             </button>
@@ -389,7 +389,7 @@ export default function StoreRequisitions() {
                                 setSelectedRequisition(req);
                                 setShowRejectModal(true);
                               }}
-                              className="px-3 py-1.5 text-xs font-medium bg-red-600 text-white rounded-lg hover:bg-red-700"
+                              className="px-3 py-1.5 text-xs font-medium border border-red-200 text-red-700 rounded-lg hover:bg-red-50 transition-colors"
                             >
                               Reject
                             </button>
@@ -681,7 +681,7 @@ export default function StoreRequisitions() {
             <button
               onClick={handleApprove}
               disabled={actionLoading}
-              className="px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 bg-primary text-white font-medium rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {actionLoading ? (
                 <>
@@ -741,7 +741,7 @@ export default function StoreRequisitions() {
             <button
               onClick={handleReject}
               disabled={actionLoading || !actionComment.trim()}
-              className="px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 border border-red-200 text-red-700 font-medium rounded-xl hover:bg-red-50 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {actionLoading ? (
                 <>

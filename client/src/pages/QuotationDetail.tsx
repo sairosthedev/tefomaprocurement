@@ -313,7 +313,7 @@ export default function QuotationDetail() {
                 type="button"
                 onClick={handleCloseRfq}
                 disabled={closingRfq}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors disabled:opacity-50"
               >
                 {closingRfq ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                 Close RFQ &amp; Reveal Bids
@@ -366,7 +366,7 @@ export default function QuotationDetail() {
                       ? 'Accept this quotation'
                       : 'Complete the selection and Head of Procurement authorization first'
                   }
-                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-4 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <CheckCircle className="h-4 w-4" />
                   Accept
@@ -374,14 +374,14 @@ export default function QuotationDetail() {
                 <button
                   onClick={() => setShowReviseModal(true)}
                   title="Ask the supplier to submit a revised (lower) price"
-                  className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+                  className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
                 >
                   <DollarSign className="h-4 w-4" />
                   Request Revision
                 </button>
                 <button
                   onClick={() => setShowRejectModal(true)}
-                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+                  className="flex items-center gap-2 border border-red-200 text-red-700 hover:bg-red-50 font-medium py-2.5 px-4 rounded-xl transition-colors"
                 >
                   <XCircle className="h-4 w-4" />
                   Reject
@@ -481,7 +481,7 @@ export default function QuotationDetail() {
                         type="button"
                         onClick={handleApproveWaiver}
                         disabled={approvingWaiver || !waiverType || !waiverReason.trim()}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50"
                       >
                         {approvingWaiver ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
                         Approve waiver
@@ -767,7 +767,7 @@ export default function QuotationDetail() {
           <button
             onClick={handleAccept}
             disabled={processing}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+            className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary-dark transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             {processing ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -827,7 +827,7 @@ export default function QuotationDetail() {
           <button
             onClick={handleReject}
             disabled={processing || !rejectReason.trim()}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
+            className="px-4 py-2 border border-red-200 text-red-700 rounded-xl text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             {processing ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -893,7 +893,7 @@ export default function QuotationDetail() {
           <button
             onClick={handleRequestRevision}
             disabled={processing || !reviseReason.trim()}
-            className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 flex items-center gap-2"
+            className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary-dark transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <DollarSign className="h-4 w-4" />}
             Request Revision

@@ -249,7 +249,7 @@ export default function AwardMatrix() {
                     )}
                     {canWaive && line.bidCount > 0 && line.bidCount < 3 && !line.waiver?.waived && (
                       <button disabled={busy} onClick={() => waiveLine(line)}
-                        className="ml-2 inline-flex items-center gap-1 text-xs bg-amber-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-amber-600 disabled:opacity-50">
+                        className="ml-2 inline-flex items-center gap-1 text-xs bg-primary text-white px-2.5 py-1.5 rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50">
                         <DollarSign className="h-3.5 w-3.5" /> Waiver
                       </button>
                     )}
@@ -264,7 +264,7 @@ export default function AwardMatrix() {
       {canSelect && (
         <div className="flex flex-wrap items-center gap-3 mt-6">
           <button disabled={busy || !anyAwarded} onClick={generatePOs}
-            className="inline-flex items-center gap-2 bg-green-600 text-white px-4 py-2.5 rounded-xl hover:bg-green-700 disabled:opacity-50">
+            className="inline-flex items-center gap-2 bg-primary text-white px-4 py-2.5 rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4" />}
             Generate POs for authorized lines
           </button>

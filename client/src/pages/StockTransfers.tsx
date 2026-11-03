@@ -246,7 +246,7 @@ export default function StockTransfers() {
                         type="button"
                         disabled={acting === transfer._id}
                         onClick={() => runAction(transfer._id, 'approve')}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
                       >
                         {acting === transfer._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                         Approve
@@ -257,7 +257,7 @@ export default function StockTransfers() {
                         type="button"
                         disabled={acting === transfer._id}
                         onClick={() => runAction(transfer._id, 'ship')}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
                       >
                         {acting === transfer._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4" />}
                         Ship
@@ -268,7 +268,7 @@ export default function StockTransfers() {
                         type="button"
                         disabled={acting === transfer._id}
                         onClick={() => runAction(transfer._id, 'receive')}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
                       >
                         {acting === transfer._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
                         Receive

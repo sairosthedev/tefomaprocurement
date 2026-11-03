@@ -545,7 +545,7 @@ export default function Approvals() {
               <button
                 onClick={handleReject}
                 disabled={actionLoading}
-                className="flex items-center gap-2 px-4 py-2.5 bg-red-600 text-white font-medium rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2.5 border border-red-200 text-red-700 font-medium rounded-xl hover:bg-red-50 transition-colors disabled:opacity-50"
               >
                 <XCircle className="h-4 w-4" />
                 Reject

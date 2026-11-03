@@ -187,7 +187,7 @@ export default function InvoiceDetail() {
         <div className="bg-white rounded-xl shadow p-6 flex flex-wrap gap-3">
           {canApprove && !awaitingGrv && (
             <>
-              <button disabled={acting} onClick={() => handleApprove()} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">
+              <button disabled={acting} onClick={() => handleApprove()} className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary-dark transition-colors disabled:opacity-50">
                 Approve
               </button>
               {match && !match.matched && (
@@ -202,7 +202,7 @@ export default function InvoiceDetail() {
                   <button
                     disabled={acting || !overrideReason.trim()}
                     onClick={() => handleApprove(overrideReason)}
-                    className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50"
+                    className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary-dark transition-colors disabled:opacity-50"
                   >
                     Approve with variance
                   </button>
@@ -234,7 +234,7 @@ export default function InvoiceDetail() {
                 onChange={(e) => setRejectReason(e.target.value)}
                 className="flex-1 border rounded-lg px-3 py-2"
               />
-              <button disabled={acting} onClick={handleReject} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-1">
+              <button disabled={acting} onClick={handleReject} className="px-4 py-2 border border-red-200 text-red-700 rounded-xl text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50 flex items-center gap-1">
                 <XCircle className="h-4 w-4" /> Reject
               </button>
             </div>

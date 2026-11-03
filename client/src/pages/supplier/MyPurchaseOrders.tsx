@@ -239,7 +239,7 @@ export default function MyPurchaseOrders() {
                             {po.status === 'issued' && (
                               <button
                                 onClick={() => navigate('/app/my-deliveries')}
-                                className="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                className="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
                               >
                                 Manage Delivery
                               </button>

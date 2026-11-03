@@ -460,13 +460,13 @@ export default function Requisitions() {
                           <>
                             <button
                               onClick={() => openActionModal(req, 'approve')}
-                              className="px-2 py-1 text-xs border border-green-600 rounded bg-green-600 hover:bg-green-700 hover:border-green-700 text-white transition-colors"
+                              className="px-2 py-1 text-xs bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
                             >
                               Approve
                             </button>
                             <button
                               onClick={() => openActionModal(req, 'hod_reject')}
-                              className="px-2 py-1 text-xs border border-red-600 rounded bg-red-600 hover:bg-red-700 hover:border-red-700 text-white transition-colors"
+                              className="px-2 py-1 text-xs border border-red-200 text-red-700 rounded-lg hover:bg-red-50 transition-colors"
                             >
                               Reject
                             </button>
@@ -478,13 +478,13 @@ export default function Requisitions() {
                           <>
                             <button
                               onClick={() => openActionModal(req, 'accept')}
-                              className="px-2 py-1 text-xs border border-green-600 rounded bg-green-600 hover:bg-green-700 hover:border-green-700 text-white transition-colors"
+                              className="px-2 py-1 text-xs bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
                             >
                               Accept
                             </button>
                             <button
                               onClick={() => openActionModal(req, 'reject')}
-                              className="px-2 py-1 text-xs border border-red-600 rounded bg-red-600 hover:bg-red-700 hover:border-red-700 text-white transition-colors"
+                              className="px-2 py-1 text-xs border border-red-200 text-red-700 rounded-lg hover:bg-red-50 transition-colors"
                             >
                               Reject
                             </button>
