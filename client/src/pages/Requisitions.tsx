@@ -387,36 +387,6 @@ export default function Requisitions() {
         </div>
       </div>
 
-      {/* Stats for Procurement */}
-      {isProcurement && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-            <p className="text-sm text-amber-600 font-medium">Pending Acceptance</p>
-            <p className="text-2xl font-bold text-amber-700">
-              {requisitions.filter((r: any) => r.status === 'pending_acceptance').length}
-            </p>
-          </div>
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-            <p className="text-sm text-green-600 font-medium">Accepted</p>
-            <p className="text-2xl font-bold text-green-700">
-              {requisitions.filter((r: any) => r.status === 'accepted' && !r.purchaseOrder).length}
-            </p>
-          </div>
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-            <p className="text-sm text-blue-600 font-medium">In Sourcing</p>
-            <p className="text-2xl font-bold text-blue-700">
-              {requisitions.filter((r: any) => r.status === 'sourcing' && !r.purchaseOrder).length}
-            </p>
-          </div>
-          <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-            <p className="text-sm text-purple-600 font-medium">Ordered</p>
-            <p className="text-2xl font-bold text-purple-700">
-              {requisitions.filter((r: any) => r.purchaseOrder || r.status === 'ordered').length}
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* Requisitions List */}
       <div>
         <div className="overflow-x-auto">

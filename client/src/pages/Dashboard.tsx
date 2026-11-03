@@ -376,6 +376,30 @@ export default function Dashboard() {
         </div>
       )}
 
+      {effectiveRole === 'procurement_officer' && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Requisition pipeline</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <button type="button" onClick={() => navigate('/app/requisitions?status=pending_acceptance')} className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-left hover:bg-amber-100 transition-colors">
+              <p className="text-sm text-amber-600 font-medium">Pending Acceptance</p>
+              <p className="text-2xl font-bold text-amber-700">{additionalStats.pendingAcceptance?.value ?? 0}</p>
+            </button>
+            <button type="button" onClick={() => navigate('/app/requisitions?status=accepted')} className="bg-green-50 border border-green-200 rounded-xl p-4 text-left hover:bg-green-100 transition-colors">
+              <p className="text-sm text-green-600 font-medium">Accepted</p>
+              <p className="text-2xl font-bold text-green-700">{additionalStats.acceptedRequisitions?.value ?? 0}</p>
+            </button>
+            <button type="button" onClick={() => navigate('/app/requisitions?status=sourcing')} className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-left hover:bg-blue-100 transition-colors">
+              <p className="text-sm text-blue-600 font-medium">In Sourcing</p>
+              <p className="text-2xl font-bold text-blue-700">{additionalStats.sourcingRequisitions?.value ?? 0}</p>
+            </button>
+            <button type="button" onClick={() => navigate('/app/requisitions?status=ordered')} className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-left hover:bg-purple-100 transition-colors">
+              <p className="text-sm text-purple-600 font-medium">Ordered</p>
+              <p className="text-2xl font-bold text-purple-700">{additionalStats.orderedRequisitions?.value ?? 0}</p>
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">

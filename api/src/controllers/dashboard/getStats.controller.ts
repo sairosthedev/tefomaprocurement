@@ -350,11 +350,23 @@ const getStats = async (req: Request, res: Response): Promise<any> => {
             status: 'pending_acceptance',
             isDeleted: false
           });
+          const noPO = { $or: [{ purchaseOrder: { $exists: false } }, { purchaseOrder: null }] };
+          const [acceptedRequisitions, sourcingRequisitions, orderedRequisitions] = await Promise.all([
+            PurchaseRequisition.countDocuments({ status: 'accepted', ...noPO, isDeleted: false }),
+            PurchaseRequisition.countDocuments({ status: 'sourcing', ...noPO, isDeleted: false }),
+            PurchaseRequisition.countDocuments({
+              $or: [{ purchaseOrder: { $exists: true, $ne: null } }, { status: 'ordered' }],
+              isDeleted: false
+            })
+          ]);
           additionalStats = {
             totalQuotations: { value: totalQuotations, label: 'Total Quotations' },
             approvedQuotations: { value: approvedQuotations, label: 'Approved Quotations' },
             totalRFQs: { value: totalRFQs, label: 'Total RFQs' },
-            pendingAcceptance: { value: pendingAcceptance, label: 'Awaiting Acceptance' }
+            pendingAcceptance: { value: pendingAcceptance, label: 'Awaiting Acceptance' },
+            acceptedRequisitions: { value: acceptedRequisitions, label: 'Accepted' },
+            sourcingRequisitions: { value: sourcingRequisitions, label: 'In Sourcing' },
+            orderedRequisitions: { value: orderedRequisitions, label: 'Ordered' }
           };
           attentionItems = [
             { id: 'pending-acceptance', label: 'Requisitions awaiting acceptance', count: pendingAcceptance, href: '/app/requisitions', severity: 'high' as const },
