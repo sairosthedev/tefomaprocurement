@@ -7,13 +7,16 @@ import { useToast } from '../components/Toast'
 import PageHeader, { PageStatCard } from '../components/PageHeader'
 import Pagination from '../components/Pagination'
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination'
+import { useDebouncedValue } from '../lib/useDebouncedValue'
 
 export default function VerificationHub() {
   const { showToast } = useToast()
   const navigate = useNavigate()
   const [suppliers, setSuppliers] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
-  const [search, setSearch] = useState('')
+  const [searchInput, setSearch] = useState('')
+  // The box shows what's typed; the list is fetched once typing pauses.
+  const search = useDebouncedValue(searchInput)
   const [verificationStatusFilter, setVerificationStatusFilter] = useState('')
   const [selectedSection, setSelectedSection] = useState('')
   const [verifyingSupplierId, setVerifyingSupplierId] = useState('')
@@ -187,7 +190,7 @@ export default function VerificationHub() {
               <div className="relative w-full sm:w-52">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
-                  value={search}
+                  value={searchInput}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   placeholder="Search supplier name or code..."
