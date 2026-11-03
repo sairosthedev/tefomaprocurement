@@ -254,13 +254,11 @@ export default function RFQDetail() {
             ? {
                 title: 'Suppliers are quoting',
                 description: `Bids stay sealed until ${new Date(rfq.submissionDeadline).toLocaleString()}. ${bids} received so far. You can close early once every invited supplier has responded.`,
-                waiting: true,
-                action: { label: closing ? 'Closing...' : 'Close RFQ & reveal bids', onClick: handleClose, disabled: closing }
+                waiting: true
               }
             : {
                 title: 'Close the RFQ to evaluate the bids',
-                description: `The deadline has passed. ${bids} bid(s) received.`,
-                action: { label: closing ? 'Closing...' : 'Close RFQ & reveal bids', onClick: handleClose, disabled: closing }
+                description: `The deadline has passed. ${bids} bid(s) received.`
               };
         } else if (rfq.status === 'closed' && bids === 0) {
           next = { title: 'No quotations were received', description: 'Invite more suppliers on a new RFQ, or cancel this one.' };
