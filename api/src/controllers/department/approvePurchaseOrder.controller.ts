@@ -3,6 +3,7 @@ import { PurchaseOrder, PurchaseRequisition, User } from '../../models/index.js'
 import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole, createNotifications } from '../../services/notification.service.js';
 import { isProcurementDepartment, isProcurementHead } from '@fossil/shared';
+import procApprovePurchaseOrder from './procApprovePurchaseOrder.controller.js';
 
 // Normalize a populated department doc or a raw ObjectId to a hex id string.
 const toIdString = (value: any): string | undefined => {
@@ -53,7 +54,10 @@ const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> =
     // requisition behind it has no requesting department, and letting any head
     // approve it would let one approve another department's spend; the Head of
     // Procurement takes those instead.
-    if (!requestingDept && !isProcurementHead(req.user)) {
+    if (!requestingDept && isProcurementHead(req.user)) {
+      return procApprovePurchaseOrder(req, res);
+    }
+    if (!requestingDept) {
       return res.status(403).json({
         success: false,
         message: 'This purchase order has no requesting department; the Head of Procurement must approve it'
@@ -61,6 +65,11 @@ const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> =
     }
     if (requestingDept) {
       const sameDept = toIdString(requestingDept) === toIdString(req.user!.department);
+      // The department-head step no longer exists for new POs, so the Head of
+      // Procurement takes another department's leftover one as their own step.
+      if (!sameDept && isProcurementHead(req.user)) {
+        return procApprovePurchaseOrder(req, res);
+      }
       if (!sameDept) {
         return res.status(403).json({
           success: false,

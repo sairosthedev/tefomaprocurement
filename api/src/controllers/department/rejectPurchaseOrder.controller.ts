@@ -49,9 +49,10 @@ const rejectPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
         ? await PurchaseRequisition.findById(po.purchaseRequisition).select('department')
         : null;
       const reqDept = (requisition as any)?.department;
-      const allowed = reqDept
-        ? await canActOnDepartment(req.user, reqDept)
-        : isProcurementHead(req.user);
+      // The Head of Procurement also holds POs left at the removed
+      // department-head step, since those now come to them next.
+      const allowed =
+        isProcurementHead(req.user) || (reqDept ? await canActOnDepartment(req.user, reqDept) : false);
       if (!allowed) {
         return res.status(403).json({
           success: false,

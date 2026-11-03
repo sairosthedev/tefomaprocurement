@@ -5,10 +5,14 @@ import { notifyUsersByRole } from '../../services/notification.service.js';
 import { isProcurementHead } from '@fossil/shared';
 
 /**
- * Second HOD approval: the head of the Procurement department. Runs after the
- * requesting-department HOD and advances the PO to Finance review. Sets the
- * legacy hodApproved flag so downstream Finance queries continue to work.
+ * The Head of Procurement's approval, the first step after a PO is submitted.
+ * Advances the PO to Finance review. Sets the legacy hodApproved flag so
+ * downstream Finance queries continue to work.
  */
+
+// The department-head PO step was removed; POs submitted before then may still
+// sit at it, and the Head of Procurement takes them on from there.
+const LEGACY_DEPT_HOD_STATUSES = ['pending_dept_hod', 'pending_hod', 'pending_approvals'];
 const procApprovePurchaseOrder = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
@@ -26,7 +30,8 @@ const procApprovePurchaseOrder = async (req: Request, res: Response): Promise<an
       return res.status(404).json({ success: false, message: 'Purchase order not found' });
     }
 
-    if (po.status !== 'pending_proc_hod') {
+    const previousStatus = po.status;
+    if (po.status !== 'pending_proc_hod' && !LEGACY_DEPT_HOD_STATUSES.includes(po.status)) {
       return res.status(400).json({
         success: false,
         message: 'Purchase order is not awaiting Procurement HOD approval'
@@ -60,6 +65,7 @@ const procApprovePurchaseOrder = async (req: Request, res: Response): Promise<an
       entityId: po._id,
       user: req.user,
       description: `Procurement HOD approved PO: ${po.poNumber}`,
+      previousData: { status: previousStatus },
       newData: { status: 'pending_finance', procHodApproved: true },
       req
     });

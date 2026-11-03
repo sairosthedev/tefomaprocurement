@@ -72,18 +72,13 @@ async function countPendingApprovals(user: any): Promise<number> {
     const reqIds: any[] = reqs.map((r) => r._id);
 
     if (isProcurementHead(user)) {
-      // Their own department's first step, plus orders with no requisition,
-      // which only the Head of Procurement may take.
-      reqIds.push(null);
+      // Their own step, plus every order still at the removed department-head
+      // step, which now comes to them.
       return PurchaseOrder.countDocuments({
         isDeleted: false,
         $or: [
           { status: 'pending_proc_hod', procHodApproved: false },
-          {
-            status: { $in: ['pending_dept_hod', 'pending_hod', 'pending_approvals'] },
-            deptHodApproved: false,
-            purchaseRequisition: { $in: reqIds }
-          }
+          { status: { $in: ['pending_dept_hod', 'pending_hod', 'pending_approvals'] }, deptHodApproved: false }
         ]
       });
     }

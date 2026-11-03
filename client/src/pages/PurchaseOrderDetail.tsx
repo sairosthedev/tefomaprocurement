@@ -1,12 +1,13 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { procurementAPI, financeAPI, cooAPI } from '../lib/api';
+import api, { procurementAPI, financeAPI, cooAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency } from '../lib/constants';
 import { cooThresholdLabel, usdEquivalentLabel } from '../lib/cooApproval';
 import { PO_CANCELLATION_REASONS, isProcurementHead } from '@fossil/shared';
 import PageHeader from '../components/PageHeader';
+import Modal from '../components/Modal';
 import CancelWorkflowModal from '../components/CancelWorkflowModal';
 import { canCancelPurchaseOrder, purchaseOrderCancelApiBase } from '../lib/cancellationAccess';
 import { 
@@ -25,6 +26,9 @@ import {
 
 const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
+  pending_proc_hod: 'bg-fuchsia-100 text-fuchsia-700',
+  pending_dept_hod: 'bg-fuchsia-100 text-fuchsia-700',
+  pending_hod: 'bg-fuchsia-100 text-fuchsia-700',
   pending_finance: 'bg-amber-100 text-amber-700',
   pending_coo: 'bg-purple-100 text-purple-700',
   pending_approvals: 'bg-blue-100 text-blue-700',
@@ -36,6 +40,15 @@ const statusColors: any = {
   cancelled: 'bg-gray-100 text-gray-700'
 };
 
+// The department-head PO step was removed; orders submitted before then may
+// still sit at it, and the Head of Procurement takes them on from there.
+const LEGACY_DEPT_HOD_STATUSES = ['pending_dept_hod', 'pending_hod', 'pending_approvals'];
+
+function statusLabel(status: string) {
+  if (status === 'pending_proc_hod' || LEGACY_DEPT_HOD_STATUSES.includes(status)) return 'Pending Head of Procurement';
+  return status?.replace(/_/g, ' ').replace(/\b\w/g, (l: any) => l.toUpperCase());
+}
+
 export default function PurchaseOrderDetail() {
   const { id } = useParams();
   const { showToast } = useToast();
@@ -45,6 +58,9 @@ export default function PurchaseOrderDetail() {
   const [submitting, setSubmitting] = useState<any>(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [decision, setDecision] = useState<'approve' | 'reject' | null>(null);
+  const [decisionComment, setDecisionComment] = useState('');
+  const [deciding, setDeciding] = useState(false);
 
   // The Head of Procurement is stored as a department_head but raises POs too.
   // Admins read POs but take no step on them.
@@ -121,6 +137,49 @@ export default function PurchaseOrderDetail() {
     }
   };
 
+  // The approver whose step the order is at, by the API that takes it.
+  const approvalApi = !po
+    ? null
+    : isProcurementHead(user) &&
+        (po.status === 'pending_proc_hod' || (LEGACY_DEPT_HOD_STATUSES.includes(po.status) && !po.hodApproved))
+      ? 'department'
+      : isFinance && po.status === 'pending_finance'
+        ? 'finance'
+        : isCOO && po.status === 'pending_coo'
+          ? 'coo'
+          : null;
+
+  const closeDecision = () => {
+    setDecision(null);
+    setDecisionComment('');
+  };
+
+  const handleDecision = async () => {
+    if (!approvalApi || !decision) return;
+    if (decision === 'reject' && !decisionComment.trim()) {
+      showToast('Give a reason for rejecting', 'error');
+      return;
+    }
+    try {
+      setDeciding(true);
+      const comment = decisionComment.trim();
+      if (decision === 'approve') {
+        const step = approvalApi === 'department' ? 'proc-approve' : 'approve';
+        await api.put(`/${approvalApi}/purchase-orders/${id}/${step}`, { comments: comment || undefined });
+        showToast('Purchase order approved', 'success');
+      } else {
+        await api.put(`/${approvalApi}/purchase-orders/${id}/reject`, { reason: comment, comments: comment });
+        showToast('Purchase order rejected', 'success');
+      }
+      closeDecision();
+      fetchPurchaseOrder();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || `Failed to ${decision} the purchase order`, 'error');
+    } finally {
+      setDeciding(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -146,9 +205,29 @@ export default function PurchaseOrderDetail() {
         subtitle={`#${po.poNumber}`}
         actions={
           <>
-            <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[po.status]}`}>
-              {po.status?.replace(/_/g, ' ').replace(/\b\w/g, (l: any) => l.toUpperCase())}
+            <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[po.status] || 'bg-gray-100 text-gray-700'}`}>
+              {statusLabel(po.status)}
             </span>
+            {approvalApi && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setDecision('approve')}
+                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDecision('reject')}
+                  className="px-4 py-2 border border-red-200 text-red-700 rounded-lg hover:bg-red-50 transition-colors flex items-center gap-2"
+                >
+                  <XCircle className="h-4 w-4" />
+                  Reject
+                </button>
+              </>
+            )}
             {isProcurement && po.status === 'draft' && (
               <button
                 onClick={handleSubmit}
@@ -178,6 +257,44 @@ export default function PurchaseOrderDetail() {
         }
       />
 
+      <Modal
+        isOpen={!!decision}
+        onClose={() => { if (!deciding) closeDecision(); }}
+        title={decision === 'approve' ? `Approve ${po.poNumber}?` : `Reject ${po.poNumber}?`}
+        subtitle={`${po.supplier?.companyName || 'Supplier'} · ${formatCurrency(po.totalAmount || 0, po.currency)}`}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={closeDecision}
+              disabled={deciding}
+              className="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleDecision}
+              disabled={deciding || (decision === 'reject' && !decisionComment.trim())}
+              className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50 ${
+                decision === 'reject' ? 'bg-red-600 hover:bg-red-700' : 'bg-primary hover:bg-primary-dark'
+              }`}
+            >
+              {deciding && <Loader2 className="h-4 w-4 animate-spin" />}
+              {decision === 'reject' ? 'Reject' : 'Approve'}
+            </button>
+          </>
+        }
+      >
+        <textarea
+          value={decisionComment}
+          onChange={(e) => setDecisionComment(e.target.value)}
+          rows={3}
+          placeholder={decision === 'reject' ? 'Reason for rejecting (required)' : 'Comments (optional)'}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+        />
+      </Modal>
+
       <CancelWorkflowModal
         isOpen={showCancelModal}
         onClose={() => setShowCancelModal(false)}
@@ -206,8 +323,8 @@ export default function PurchaseOrderDetail() {
             </div>
             <div>
               <label className="text-sm text-gray-500">Status</label>
-              <p className="text-sm font-medium text-gray-900 mt-1 capitalize">
-                {po.status?.replace(/_/g, ' ')}
+              <p className="text-sm font-medium text-gray-900 mt-1">
+                {statusLabel(po.status)}
               </p>
             </div>
             <div>

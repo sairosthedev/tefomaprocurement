@@ -36,10 +36,15 @@ const getPendingPoApprovals = async (req: Request, res: Response): Promise<any> 
       deptHodApproved: false,
       purchaseRequisition: { $in: reqIds }
     };
+    // The Head of Procurement takes every order left at the removed step, not
+    // just their own departments'.
     const filter: Record<string, any> = procHead
       ? {
           isDeleted: false,
-          $or: [{ status: 'pending_proc_hod', procHodApproved: false }, deptStep]
+          $or: [
+            { status: 'pending_proc_hod', procHodApproved: false },
+            { status: deptStep.status, deptHodApproved: false }
+          ]
         }
       : { isDeleted: false, ...deptStep };
 
