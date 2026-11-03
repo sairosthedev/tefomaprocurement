@@ -40,8 +40,18 @@ http.interceptors.request.use(
   (error: any) => Promise.reject(error)
 );
 
+/** Fired after any successful write, so views that summarise data (the
+ *  sidebar badges) can refresh straight away instead of polling hard. */
+export const DATA_CHANGED_EVENT = 'procureline:data-changed';
+
 http.interceptors.response.use(
-  (response: any) => response,
+  (response: any) => {
+    const method = String(response.config?.method || 'get').toLowerCase();
+    if (method !== 'get' && typeof window !== 'undefined') {
+      window.dispatchEvent(new Event(DATA_CHANGED_EVENT));
+    }
+    return response;
+  },
   (error: any) => {
     const url = error.config?.url || '';
     const isAuthEndpoint =

@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx';
 
 /**
  * Parsing for the supplier bulk import.
@@ -137,7 +136,8 @@ export function parsePastedText(text: string): SupplierImportRow[] {
 
 /** Parse .csv, .xlsx or .xls — all read through the same sheet reader. */
 export async function parseSpreadsheet(file: File): Promise<SupplierImportRow[]> {
-  const buffer = await file.arrayBuffer();
+  // Loaded on use: the spreadsheet library is larger than the rest of the app.
+  const [buffer, XLSX] = await Promise.all([file.arrayBuffer(), import('xlsx')]);
   const wb = XLSX.read(buffer, { type: 'array' });
   const sheet = wb.Sheets[wb.SheetNames[0]];
   if (!sheet) return [];

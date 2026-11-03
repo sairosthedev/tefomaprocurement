@@ -1,6 +1,5 @@
 ﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import * as XLSX from 'xlsx';
 import { useToast } from '../components/Toast';
 import api, { storesAPI } from '../lib/api';
 import { 
@@ -258,7 +257,9 @@ export default function Inventory() {
     }
   };
 
-  const downloadTemplate = () => {
+  // The spreadsheet library is loaded on use: it is larger than the rest of the app.
+  const downloadTemplate = async () => {
+    const XLSX = await import('xlsx');
     const example = [
       {
         code: 'ITEM-000001',
@@ -284,7 +285,7 @@ export default function Inventory() {
     setImportResult(null);
     setImportFileName(file.name);
     try {
-      const buffer = await file.arrayBuffer();
+      const [buffer, XLSX] = await Promise.all([file.arrayBuffer(), import('xlsx')]);
       const wb = XLSX.read(buffer, { type: 'array' });
       const sheet = wb.Sheets[wb.SheetNames[0]];
       const rawRows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' });

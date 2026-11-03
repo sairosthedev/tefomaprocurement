@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
 import { SplashScreen, shouldShowSplash } from './components/SplashScreen';
 import { AuthProvider } from './context/AuthContext';
@@ -6,69 +6,70 @@ import { ToastProvider } from './components/Toast';
 import { EnvironmentBanner } from './components/EnvironmentBanner';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { SidebarLayout } from './layouts/appLayout';
+import { lazyPage, PageFallback, preloadPagesWhenIdle } from './lib/lazyPage';
 
 // Shared Pages
 import Login from './pages/Login';
-import Register from './pages/Register';
+const Register = lazyPage(() => import('./pages/Register'));
 import Dashboard from './pages/Dashboard';
-import Notifications from './pages/Notifications';
+const Notifications = lazyPage(() => import('./pages/Notifications'));
 import Unauthorized from './pages/Unauthorized';
-import Profile from './pages/Profile';
-import Reports from './pages/Reports';
+const Profile = lazyPage(() => import('./pages/Profile'));
+const Reports = lazyPage(() => import('./pages/Reports'));
 
 // Admin Pages
-import Users from './pages/Users';
-import Departments from './pages/Departments';
-import AuditLogs from './pages/AuditLogs';
-import Sites from './pages/Sites';
+const Users = lazyPage(() => import('./pages/Users'));
+const Departments = lazyPage(() => import('./pages/Departments'));
+const AuditLogs = lazyPage(() => import('./pages/AuditLogs'));
+const Sites = lazyPage(() => import('./pages/Sites'));
 
 // Procurement Pages
-import Suppliers from './pages/Suppliers';
-import SupplierDetails from './pages/SupplierDetails';
-import RFQs from './pages/RFQs';
-import RFQDetail from './pages/RFQDetail';
-import AwardMatrix from './pages/AwardMatrix';
-import Quotations from './pages/Quotations';
-import QuotationDetail from './pages/QuotationDetail';
-import BankChanges from './pages/BankChanges';
-import Performance from './pages/suppliers/Performance';
-import Compliance from './pages/suppliers/Compliance';
-import Evaluations from './pages/suppliers/Evaluations';
-import PurchaseOrders from './pages/PurchaseOrders';
-import PurchaseOrderDetail from './pages/PurchaseOrderDetail';
+const Suppliers = lazyPage(() => import('./pages/Suppliers'));
+const SupplierDetails = lazyPage(() => import('./pages/SupplierDetails'));
+const RFQs = lazyPage(() => import('./pages/RFQs'));
+const RFQDetail = lazyPage(() => import('./pages/RFQDetail'));
+const AwardMatrix = lazyPage(() => import('./pages/AwardMatrix'));
+const Quotations = lazyPage(() => import('./pages/Quotations'));
+const QuotationDetail = lazyPage(() => import('./pages/QuotationDetail'));
+const BankChanges = lazyPage(() => import('./pages/BankChanges'));
+const Performance = lazyPage(() => import('./pages/suppliers/Performance'));
+const Compliance = lazyPage(() => import('./pages/suppliers/Compliance'));
+const Evaluations = lazyPage(() => import('./pages/suppliers/Evaluations'));
+const PurchaseOrders = lazyPage(() => import('./pages/PurchaseOrders'));
+const PurchaseOrderDetail = lazyPage(() => import('./pages/PurchaseOrderDetail'));
 
 // Department Head Pages
-import Requisitions from './pages/Requisitions';
-import RequisitionDetail from './pages/RequisitionDetail';
-import StoreRequisitions from './pages/StoreRequisitions';
-import StoresPrReview from './pages/StoresPrReview';
-import Approvals from './pages/Approvals';
-import Authorizations from './pages/Authorizations';
+const Requisitions = lazyPage(() => import('./pages/Requisitions'));
+const RequisitionDetail = lazyPage(() => import('./pages/RequisitionDetail'));
+const StoreRequisitions = lazyPage(() => import('./pages/StoreRequisitions'));
+const StoresPrReview = lazyPage(() => import('./pages/StoresPrReview'));
+const Approvals = lazyPage(() => import('./pages/Approvals'));
+const Authorizations = lazyPage(() => import('./pages/Authorizations'));
 
 // Finance Pages
-import Budgets from './pages/Budgets';
-import Invoices from './pages/Invoices';
-import InvoiceDetail from './pages/InvoiceDetail';
-import Payments from './pages/Payments';
+const Budgets = lazyPage(() => import('./pages/Budgets'));
+const Invoices = lazyPage(() => import('./pages/Invoices'));
+const InvoiceDetail = lazyPage(() => import('./pages/InvoiceDetail'));
+const Payments = lazyPage(() => import('./pages/Payments'));
 
 // Stores Pages
-import Deliveries from './pages/Deliveries';
-import Inventory from './pages/Inventory';
-import StockMovements from './pages/StockMovements';
-import StockTransfers from './pages/StockTransfers';
+const Deliveries = lazyPage(() => import('./pages/Deliveries'));
+const Inventory = lazyPage(() => import('./pages/Inventory'));
+const StockMovements = lazyPage(() => import('./pages/StockMovements'));
+const StockTransfers = lazyPage(() => import('./pages/StockTransfers'));
 
 // Supplier Portal Pages
-import MyRFQs from './pages/supplier/MyRFQs';
-import SupplierRFQDetail from './pages/supplier/SupplierRFQDetail';
-import MyQuotations from './pages/supplier/MyQuotations';
-import MySubmittedQuotations from './pages/supplier/MySubmittedQuotations';
-import MyPurchaseOrders from './pages/supplier/MyPurchaseOrders';
-import MyDeliveries from './pages/supplier/MyDeliveries';
-import SupplierProfile from './pages/supplier/SupplierProfile';
-import MyKys from './pages/supplier/MyKys';
-import MyInvoices from './pages/supplier/MyInvoices';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
+const MyRFQs = lazyPage(() => import('./pages/supplier/MyRFQs'));
+const SupplierRFQDetail = lazyPage(() => import('./pages/supplier/SupplierRFQDetail'));
+const MyQuotations = lazyPage(() => import('./pages/supplier/MyQuotations'));
+const MySubmittedQuotations = lazyPage(() => import('./pages/supplier/MySubmittedQuotations'));
+const MyPurchaseOrders = lazyPage(() => import('./pages/supplier/MyPurchaseOrders'));
+const MyDeliveries = lazyPage(() => import('./pages/supplier/MyDeliveries'));
+const SupplierProfile = lazyPage(() => import('./pages/supplier/SupplierProfile'));
+const MyKys = lazyPage(() => import('./pages/supplier/MyKys'));
+const MyInvoices = lazyPage(() => import('./pages/supplier/MyInvoices'));
+const ForgotPassword = lazyPage(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazyPage(() => import('./pages/ResetPassword'));
 import NotFound from './pages/NotFound';
 
 function SupplierKysRedirect() {
@@ -89,9 +90,14 @@ function SubmitQuotationRedirect() {
 }
 
 function AppLayout({ children, allowedRoles }: any) {
+  // Signed in: fetch the other pages' code in the background.
+  React.useEffect(preloadPagesWhenIdle, []);
   return (
     <ProtectedRoute allowedRoles={allowedRoles}>
-      <SidebarLayout>{children}</SidebarLayout>
+      {/* Inside the layout, so the sidebar stays put while a page's code loads. */}
+      <SidebarLayout>
+        <Suspense fallback={<PageFallback />}>{children}</Suspense>
+      </SidebarLayout>
     </ProtectedRoute>
   );
 }
@@ -111,6 +117,7 @@ function App() {
         <ToastProvider>
           {/* Renders nothing in production. */}
           <EnvironmentBanner />
+          <Suspense fallback={<PageFallback />}>
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<Login />} />
@@ -389,6 +396,7 @@ function App() {
             {/* Catch all */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
         </ToastProvider>
       </AuthProvider>
       </BrowserRouter>

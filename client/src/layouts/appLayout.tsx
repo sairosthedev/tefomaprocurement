@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { cn } from '../../lib/utils'
 import Logo from '../components/Logo'
@@ -38,6 +38,10 @@ import { ChevronDown } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { isProcurementHead } from '@fossil/shared'
 import { notificationsAPI, dashboardAPI } from '../lib/api'
+import { DATA_CHANGED_EVENT } from '../services/http'
+
+// Badge counts younger than this are reused when moving between pages.
+const BADGES_STALE_MS = 30000
 
 // Role-based navigation configuration.
 //
@@ -216,11 +220,16 @@ export function SidebarLayout({ children }: any) {
   // counts a role gets, so the sidebar needs no per-role rules of its own.
   const [actionCounts, setActionCounts] = useState<Record<string, number>>({})
 
+  // When the badges were last fetched, and the loader for the current user.
+  const badgesLoadedAt = useRef(0)
+  const loadBadgesRef = useRef<() => void>(() => {})
+
   useEffect(() => {
     let cancelled = false
 
     const loadBadges = async () => {
       if (!user) return
+      badgesLoadedAt.current = Date.now()
 
       // Fetched together on one timer: two independent polls would double the
       // request rate for what is drawn as a single row of numbers.
@@ -241,14 +250,42 @@ export function SidebarLayout({ children }: any) {
       // Failures are ignored: the badges are an aid, and a counting problem
       // must never stop the navigation itself rendering.
     }
+    loadBadgesRef.current = loadBadges
+
+    // An approval, submission or any other write changes what is waiting, so
+    // refresh then (once per burst of writes) rather than on every page change.
+    let writeTimer: ReturnType<typeof setTimeout> | undefined
+    const onDataChanged = () => {
+      clearTimeout(writeTimer)
+      writeTimer = setTimeout(loadBadges, 400)
+    }
+    window.addEventListener(DATA_CHANGED_EVENT, onDataChanged)
 
     loadBadges()
-    const interval = setInterval(loadBadges, 60000)
+    // Background tabs skip the poll; returning to the tab catches up below.
+    const interval = setInterval(() => {
+      if (!document.hidden) loadBadges()
+    }, 60000)
     return () => {
       cancelled = true
       clearInterval(interval)
+      clearTimeout(writeTimer)
+      window.removeEventListener(DATA_CHANGED_EVENT, onDataChanged)
     }
-  }, [user?._id, user?.id, location.pathname])
+  }, [user?._id, user?.id])
+
+  // Moving between pages refreshes only counts that have gone stale.
+  useEffect(() => {
+    if (Date.now() - badgesLoadedAt.current > BADGES_STALE_MS) loadBadgesRef.current()
+  }, [location.pathname])
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (!document.hidden && Date.now() - badgesLoadedAt.current > BADGES_STALE_MS) loadBadgesRef.current()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [])
 
   const handleLogout = async () => {
     setIsLoggingOut(true)

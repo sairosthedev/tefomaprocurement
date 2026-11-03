@@ -5,7 +5,10 @@ import { maskBankNumbers } from '../../lib/bankMasking.js';
 
 const getSuppliers = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { status, search, category, categories, kys, page = 1, limit = 20 } = req.query as Record<string, any>;
+    const { status, search, category, categories, kys, view, page = 1, limit = 20 } = req.query as Record<string, any>;
+    // `view=picker`: only what a supplier picker shows (the RFQ form asks for
+    // hundreds at once, and the full profile is over a kilobyte each).
+    const picker = view === 'picker';
     
     const query: any = { isDeleted: false };
     
@@ -41,11 +44,19 @@ const getSuppliers = async (req: Request, res: Response): Promise<any> => {
     const skip = (pageNum - 1) * limitNum;
 
     const [suppliers, total] = await Promise.all([
-      SupplierProfile.find(query)
-        .populate('user', 'email firstName lastName phone')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limitNum),
+      picker
+        ? SupplierProfile.find(query)
+            .select('companyName tradingName contactEmail categories status user')
+            .populate('user', 'email')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limitNum)
+            .lean()
+        : SupplierProfile.find(query)
+            .populate('user', 'email firstName lastName phone')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limitNum),
       SupplierProfile.countDocuments(query)
     ]);
 

@@ -139,7 +139,7 @@ const RFQForm = forwardRef<RFQFormHandle, {
     try {
       // Ask for a full page of suppliers: the default page size is small, and
       // anyone outside it could never be found or matched here.
-      const response = await procurementAPI.getSuppliers({ status: 'active', limit: 500 });
+      const response = await procurementAPI.getSuppliers({ status: 'active', limit: 500, view: 'picker' });
       setSuppliers(response.data.data || []);
     } catch (error: any) {
       console.error('Error fetching suppliers:', error);

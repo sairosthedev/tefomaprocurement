@@ -18,6 +18,15 @@ export default defineConfig({
     // to cover the linked workspace path as well.
     commonjsOptions: {
       include: [/node_modules/, /packages[\\/]shared/]
+    },
+    rollupOptions: {
+      output: {
+        // Libraries change far less often than the app, so a deploy leaves
+        // this chunk cached in users' browsers.
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom', 'axios']
+        }
+      }
     }
   },
   // Do not pre-bundle the workspace package — it changes often and a stale
