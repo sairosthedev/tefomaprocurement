@@ -15,7 +15,7 @@ import { journeyStatus, journeySteps } from '../lib/requisitionJourney';
 import { 
   FileText,
   CheckCircle,
-  XCircle,
+  Ban,
   Clock,
   Loader2,
   ShoppingCart,
@@ -376,9 +376,9 @@ export default function RequisitionDetail() {
                 type="button"
                 onClick={() => setShowCancelModal(true)}
                 disabled={cancelling}
-                className="px-4 py-2 border border-red-200 text-red-700 rounded-xl text-sm font-medium hover:bg-red-50 transition-colors flex items-center gap-2 disabled:opacity-50"
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors flex items-center gap-2 disabled:opacity-50"
               >
-                <XCircle className="h-4 w-4" />
+                <Ban className="h-4 w-4" />
                 Cancel requisition
               </button>
             )}
