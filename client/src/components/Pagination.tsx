@@ -20,7 +20,7 @@ export default function Pagination({
   onPageChange,
   pageSize,
   onPageSizeChange,
-  pageSizeOptions = [10, 20, 50, 100],
+  pageSizeOptions = [5, 10, 20, 50, 100],
   className = '',
   itemLabel = 'items'
 }: PaginationProps) {

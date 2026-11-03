@@ -37,7 +37,7 @@ const getRequisitionById = async (req: Request, res: Response): Promise<any> => 
       purchaseRequisition: id,
       isDeleted: false
     })
-      .select('poNumber status deptHodApproved procHodApproved financeApproved cooApproved financeApprovedBy cooApprovedBy financeApprovedAt cooApprovedAt purchaseRequisition rfq quotation supplier items totalAmount')
+      .select('poNumber status deptHodApproved procHodApproved financeApproved cooApproved financeApprovedBy cooApprovedBy financeApprovedAt cooApprovedAt purchaseRequisition rfq quotation supplier items totalAmount currency requiresCooApproval totalAmountUsd cooThresholdUsd')
       .populate('supplier', 'companyName')
       .populate('financeApprovedBy', 'firstName lastName')
       .populate('cooApprovedBy', 'firstName lastName')
@@ -60,7 +60,7 @@ const getRequisitionById = async (req: Request, res: Response): Promise<any> => 
           quotation: { $in: quotationIds },
           isDeleted: false
         })
-          .select('poNumber status deptHodApproved procHodApproved financeApproved cooApproved financeApprovedBy cooApprovedBy financeApprovedAt cooApprovedAt purchaseRequisition rfq quotation supplier items totalAmount')
+          .select('poNumber status deptHodApproved procHodApproved financeApproved cooApproved financeApprovedBy cooApprovedBy financeApprovedAt cooApprovedAt purchaseRequisition rfq quotation supplier items totalAmount currency requiresCooApproval totalAmountUsd cooThresholdUsd')
           .populate('supplier', 'companyName')
           .populate('financeApprovedBy', 'firstName lastName')
           .populate('cooApprovedBy', 'firstName lastName')
