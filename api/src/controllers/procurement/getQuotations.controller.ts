@@ -24,9 +24,11 @@ const getQuotations = async (req: Request, res: Response): Promise<any> => {
     
     const [quotations, total] = await Promise.all([
       Quotation.find(query)
+        // A list row: the quote's header terms. Its lines (and their photos),
+        // the revision trail and the submitter are on GET /quotations/:id.
+        .select('-items -revisionRequests -submittedBy')
         .populate('rfq', 'rfqNumber title status submissionDeadline')
         .populate('supplier', 'companyName')
-        .populate('submittedBy', 'firstName lastName')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit)),

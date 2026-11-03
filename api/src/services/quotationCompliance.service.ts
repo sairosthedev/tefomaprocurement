@@ -20,7 +20,15 @@ export async function meetsMinimumQuotations(rfqId: string, rfq?: IRFQ): Promise
   count: number;
   waived: boolean;
 }> {
-  const count = await countSubmittedQuotations(rfqId);
+  return minimumQuotationsFrom(await countSubmittedQuotations(rfqId), rfq);
+}
+
+/** meetsMinimumQuotations for a count already taken with countSubmittedQuotations. */
+export function minimumQuotationsFrom(count: number, rfq?: IRFQ): {
+  met: boolean;
+  count: number;
+  waived: boolean;
+} {
   const waived = rfq ? hasValidQuotationWaiver(rfq) : false;
   return {
     met: count >= MIN_QUOTATIONS_REQUIRED || waived,

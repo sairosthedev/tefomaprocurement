@@ -18,18 +18,15 @@ export async function resolveUserDepartmentIds(user: any): Promise<string[]> {
   const own = idOf(user?.department);
   if (own) ids.add(own);
 
-  const headed = await Department.find({ head: user?._id, isDeleted: false })
+  // Headed or deputised, in one round trip: this runs on every
+  // department-scoped request.
+  const led = await Department.find({
+    $or: [{ head: user?._id }, { deputyHead: user?._id }],
+    isDeleted: false
+  })
     .select('_id')
     .lean();
-  for (const dept of headed) {
-    const id = idOf(dept._id);
-    if (id) ids.add(id);
-  }
-
-  const deputied = await Department.find({ deputyHead: user?._id, isDeleted: false })
-    .select('_id')
-    .lean();
-  for (const dept of deputied) {
+  for (const dept of led) {
     const id = idOf(dept._id);
     if (id) ids.add(id);
   }

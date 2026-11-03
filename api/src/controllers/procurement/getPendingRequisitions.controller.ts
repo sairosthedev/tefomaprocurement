@@ -1,11 +1,22 @@
 import type { Request, Response } from 'express';
 
-import { PurchaseRequisition, PurchaseOrder, Quotation, Delivery, StoreRequisition } from '../../models/index.js';
+import { PurchaseRequisition, PurchaseOrder, Quotation, Delivery } from '../../models/index.js';
 import { isProcurementHead } from '@fossil/shared';
 import { resolveUserDepartmentIds } from '../../lib/departmentScope.js';
+import { DELIVERED_TO_STORES, collectedRequisitionRefs, requisitionRef } from '../../lib/requisitionLinks.js';
 
 // Statuses procurement works with, across every department.
 const PROCUREMENT_STATUSES = ['pending_acceptance', 'accepted', 'sourcing', 'quoted', 'ordered', 'completed'];
+
+// This feeds the requisitions table, so a row carries only what the table
+// shows or acts on; everything else comes from GET /requisitions/:id.
+// `items._id` is read for the line count only.
+const ROW_FIELDS = 'requisitionNumber title priority status createdAt department requestedBy rfq items._id budgetCheck';
+// The RFQ form raises an RFQ from an accepted row of this list
+// (?status=accepted) and copies its lines and justification, so accepted rows
+// keep those in full.
+const RFQ_SOURCE_FIELDS = 'items justification';
+const PO_FIELDS = 'poNumber status financeApproved cooApproved supplier purchaseRequisition quotation';
 
 const getPendingRequisitions = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -46,196 +57,152 @@ const getPendingRequisitions = async (req: Request, res: Response): Promise<any>
     const [total, requisitions] = await Promise.all([
       PurchaseRequisition.countDocuments(query),
       PurchaseRequisition.find(query)
-      .populate('department', 'name code')
-      .populate('requestedBy', 'firstName lastName email')
-      .populate('processedBy', 'firstName lastName')
-      .populate({
-        path: 'rfq',
-        select: 'rfqNumber status publishedAt closedAt'
-      })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limitNum)
-      .lean()
+        .select(ROW_FIELDS)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .lean()
     ]);
 
-    // Get purchase orders for these requisitions - check both direct link and via RFQ
-    const requisitionIds = requisitions.map(r => r._id);
-    const rfqIds = requisitions.filter(r => r.rfq).map(r => (r.rfq._id || r.rfq).toString());
-    
-    // Find POs linked directly to requisitions
-    const directPOs = await PurchaseOrder.find({
-      purchaseRequisition: { $in: requisitionIds },
-      isDeleted: false
-    })
-      .select('poNumber status financeApproved cooApproved financeApprovedBy cooApprovedBy financeApprovedAt cooApprovedAt purchaseRequisition rfq quotation supplier items totalAmount')
-      .populate('supplier', 'companyName')
-      .populate('financeApprovedBy', 'firstName lastName')
-      .populate('cooApprovedBy', 'firstName lastName')
-      .lean();
+    const requisitionIds = requisitions.map((r: any) => r._id);
+    const rfqIds = requisitions.filter((r: any) => r.rfq).map((r: any) => r.rfq);
+    const acceptedIds = requisitions.filter((r: any) => r.status === 'accepted').map((r: any) => r._id);
 
-    // Also find POs linked via RFQ -> quotation -> PO chain
-    let rfqLinkedPOs: any[] = [];
-    if (rfqIds.length > 0) {
-      const quotations = await Quotation.find({
-        rfq: { $in: rfqIds },
-        isDeleted: false
-      })
-        .select('_id rfq')
-        .lean();
-      
-      const quotationIds = quotations.map(q => q._id);
-      
-      if (quotationIds.length > 0) {
-        rfqLinkedPOs = await PurchaseOrder.find({
-          quotation: { $in: quotationIds },
+    // Everything below needs only the page's own ids, so it goes out at once
+    // rather than one lookup after another.
+    const [, quotations, directPOs, rfqSources] = await Promise.all([
+      PurchaseRequisition.populate(requisitions, [
+        { path: 'department', select: 'name code', options: { lean: true } },
+        { path: 'requestedBy', select: 'firstName lastName', options: { lean: true } },
+        { path: 'rfq', select: 'rfqNumber', options: { lean: true } }
+      ]),
+      rfqIds.length > 0
+        ? Quotation.find({ rfq: { $in: rfqIds }, isDeleted: false }).select('_id rfq').lean()
+        : Promise.resolve([] as any[]),
+      // POs linked directly to the requisitions
+      PurchaseOrder.find({ purchaseRequisition: { $in: requisitionIds }, isDeleted: false })
+        .select(PO_FIELDS)
+        .lean(),
+      acceptedIds.length > 0
+        ? PurchaseRequisition.find({ _id: { $in: acceptedIds } }).select(RFQ_SOURCE_FIELDS).lean()
+        : Promise.resolve([] as any[])
+    ]);
+
+    const rfqToQuotationIds: Record<string, string[]> = {};
+    quotations.forEach((q: any) => {
+      (rfqToQuotationIds[q.rfq.toString()] ||= []).push(q._id.toString());
+    });
+
+    const directPoFor = (reqId: string) => directPOs.find((p: any) => p.purchaseRequisition?.toString() === reqId);
+
+    // Requisitions with no direct PO may still have one through their RFQ's
+    // quotations. Only those need the second lookup.
+    const viaQuotationIds = requisitions
+      .filter((r: any) => r.rfq && !directPoFor(r._id.toString()))
+      .flatMap((r: any) => rfqToQuotationIds[(r.rfq._id || r.rfq).toString()] || []);
+    const rfqLinkedPOs: any[] = viaQuotationIds.length > 0
+      ? await PurchaseOrder.find({ quotation: { $in: viaQuotationIds }, isDeleted: false })
+        .select(PO_FIELDS)
+        .lean()
+      : [];
+
+    // Direct links first, then the RFQ-linked ones, without duplicates
+    const allPOs: any[] = [...directPOs];
+    rfqLinkedPOs.forEach((po) => {
+      if (!allPOs.find((p) => p._id.toString() === po._id.toString())) allPOs.push(po);
+    });
+
+    const poByRequisition = new Map<string, any>();
+    requisitions.forEach((r: any) => {
+      const reqId = r._id.toString();
+      // First the direct link via purchaseRequisition, then via RFQ -> quotation -> PO
+      let po = allPOs.find((p) => p.purchaseRequisition?.toString() === reqId);
+      if (!po && r.rfq) {
+        const quotationIds = rfqToQuotationIds[(r.rfq._id || r.rfq).toString()] || [];
+        if (quotationIds.length > 0) {
+          po = allPOs.find((p) => quotationIds.includes(p.quotation?._id ? p.quotation._id.toString() : p.quotation?.toString()));
+        }
+      }
+      if (po) poByRequisition.set(reqId, po);
+    });
+
+    // Delivery and collection state only matter for rows that have a PO.
+    const matchedPOs = Array.from(new Set(poByRequisition.values()));
+    let poWithDeliveries = new Set<string>();
+    let collectedRefs = new Set<string>();
+    if (matchedPOs.length > 0) {
+      const [, deliveries, collected] = await Promise.all([
+        PurchaseOrder.populate(matchedPOs, { path: 'supplier', select: 'companyName', options: { lean: true } }),
+        // received counts too: receiveGoods auto-accepts
+        Delivery.find({
+          purchaseOrder: { $in: matchedPOs.map((po) => po._id) },
+          status: { $in: DELIVERED_TO_STORES },
           isDeleted: false
         })
-          .select('poNumber status financeApproved cooApproved financeApprovedBy cooApprovedBy financeApprovedAt cooApprovedAt purchaseRequisition rfq quotation supplier items totalAmount')
-          .populate('supplier', 'companyName')
-          .populate('financeApprovedBy', 'firstName lastName')
-          .populate('cooApprovedBy', 'firstName lastName')
-          .lean();
-      }
+          .select('purchaseOrder')
+          .lean(),
+        // Procurement sees every department's store requisitions.
+        collectedRequisitionRefs(
+          requisitions.filter((r: any) => poByRequisition.has(r._id.toString())).map(requisitionRef)
+        )
+      ]);
+      poWithDeliveries = new Set(deliveries.map((d: any) => d.purchaseOrder.toString()));
+      collectedRefs = collected;
     }
 
-    // Combine both PO lists and remove duplicates
-    const allPOs = [...directPOs];
-    rfqLinkedPOs.forEach(po => {
-      if (!allPOs.find(p => p._id.toString() === po._id.toString())) {
-        allPOs.push(po);
-      }
-    });
-    
-    // Fetch all quotations for RFQs linked to these requisitions
-    let allQuotations: any[] = [];
-    if (rfqIds.length > 0) {
-      allQuotations = await Quotation.find({
-        rfq: { $in: rfqIds },
-        isDeleted: false
-      })
-        .select('_id quotationNumber rfq supplier status totalAmount currency submittedAt')
-        .populate('supplier', 'companyName')
-        .sort({ submittedAt: -1 })
-        .lean();
-    }
+    const sourceById = new Map<string, any>(rfqSources.map((s: any) => [s._id.toString(), s]));
 
-    // Create a map of RFQ ID to quotations for lookup
-    const rfqToQuotationsMap: any = {};
-    allQuotations.forEach(q => {
-      const rfqId = q.rfq?.toString();
-      if (rfqId) {
-        if (!rfqToQuotationsMap[rfqId]) {
-          rfqToQuotationsMap[rfqId] = [];
-        }
-        rfqToQuotationsMap[rfqId].push(q);
-      }
-    });
+    const rows = requisitions.map((r: any) => {
+      const row: any = {
+        _id: r._id,
+        requisitionNumber: r.requisitionNumber,
+        title: r.title,
+        priority: r.priority,
+        status: r.status,
+        createdAt: r.createdAt,
+        department: r.department,
+        requestedBy: r.requestedBy,
+        itemCount: r.items?.length || 0,
+        rfq: r.rfq
+      };
 
-    // Also create a map of RFQ ID to quotation IDs for PO lookup
-    const rfqToQuotationMap: any = {};
-    allQuotations.forEach(q => {
-      const rfqId = q.rfq?.toString();
-      if (rfqId) {
-        if (!rfqToQuotationMap[rfqId]) {
-          rfqToQuotationMap[rfqId] = [];
-        }
-        rfqToQuotationMap[rfqId].push(q._id.toString());
+      const source = sourceById.get(r._id.toString());
+      if (source) {
+        row.items = source.items;
+        row.justification = source.justification;
       }
-    });
 
-    // Get PO IDs to check deliveries
-    const poIds = allPOs.map(po => po._id);
-    
-    // Check which POs have received or accepted deliveries (items in stores)
-    // Include 'received' status because receiveGoods auto-accepts, but also check accepted
-    const deliveries = await Delivery.find({
-      purchaseOrder: { $in: poIds },
-      status: { $in: ['received', 'accepted', 'partially_accepted'] },
-      isDeleted: false
-    })
-      .select('purchaseOrder status')
-      .lean();
-    
-    const poWithDeliveries = new Set(
-      deliveries.map(d => d.purchaseOrder.toString())
-    );
+      // The approver is shown the overrun before approving.
+      if (r.budgetCheck?.exceedsBudget) {
+        const { fiscalYear, requestAmount, availableBefore, availableAfter, exceedsBudget } = r.budgetCheck;
+        row.budgetCheck = { fiscalYear, requestAmount, availableBefore, availableAfter, exceedsBudget };
+      }
 
-    // Check which requisitions have store requisitions that are issued (items collected)
-    // For procurement, we need to check all departments' store requisitions
-    const storeRequisitions = await StoreRequisition.find({
-      isDeleted: false,
-      status: { $in: ['issued', 'partially_issued'] }
-    })
-      .select('_id purpose status department')
-      .lean();
-    
-    // Create a set of requisition IDs that have collected items
-    // We'll match by checking if the store requisition purpose contains the purchase requisition number
-    const collectedRequisitionIds = new Set();
-    requisitions.forEach(req => {
-      const reqNumber = req.requisitionNumber || `PR-${req._id.toString().slice(-6)}`;
-      const hasCollected = storeRequisitions.some(sr => 
-        sr.purpose && sr.purpose.includes(reqNumber)
-      );
-      if (hasCollected) {
-        collectedRequisitionIds.add(req._id.toString());
-      }
-    });
-
-    // Map POs and quotations to requisitions
-    const requisitionsWithPOs = requisitions.map(req => {
-      const reqObj = { ...req };
-      
-      // Get quotations for this requisition's RFQ
-      if (req.rfq) {
-        const rfqId = (req.rfq._id || req.rfq).toString();
-        (reqObj as any).quotations = rfqToQuotationsMap[rfqId] || [];
-      } else {
-        (reqObj as any).quotations = [];
-      }
-      
-      // First try direct link via purchaseRequisition
-      let po = allPOs.find(p => {
-        const poReqId = p.purchaseRequisition?.toString();
-        const reqId = req._id.toString();
-        return poReqId === reqId;
-      });
-      
-      // If not found, try via RFQ -> quotation -> PO
-      if (!po && req.rfq) {
-        const rfqId = (req.rfq._id || req.rfq).toString();
-        const quotationIds = rfqToQuotationMap[rfqId] || [];
-        if (quotationIds.length > 0) {
-          po = allPOs.find(p => {
-            // Handle both populated and non-populated quotation field
-            const poQuotationId = p.quotation?._id ? p.quotation._id.toString() : p.quotation?.toString();
-            return quotationIds.includes(poQuotationId);
-          });
-        }
-      }
-      
+      const po = poByRequisition.get(r._id.toString());
       if (po) {
-        (reqObj as any).purchaseOrder = po;
-        
-        // Check if items have been delivered to stores (received or accepted deliveries exist)
-        (reqObj as any).itemsDeliveredToStores = poWithDeliveries.has(po._id.toString());
-        
-        // Check if items have been collected (store requisition issued)
-        (reqObj as any).itemsCollected = collectedRequisitionIds.has(req._id.toString());
-        
-        // If PO exists, update requisition status to 'ordered' for display
-        if (reqObj.status !== 'ordered' && reqObj.status !== 'completed') {
-          (reqObj as any).status = 'ordered';
+        row.purchaseOrder = {
+          _id: po._id,
+          poNumber: po.poNumber,
+          status: po.status,
+          financeApproved: po.financeApproved,
+          cooApproved: po.cooApproved,
+          supplier: po.supplier ? { companyName: po.supplier.companyName } : null
+        };
+        row.itemsDeliveredToStores = poWithDeliveries.has(po._id.toString());
+        row.itemsCollected = collectedRefs.has(requisitionRef(r));
+
+        // A PO means the requisition is ordered, even if its status lags
+        if (row.status !== 'ordered' && row.status !== 'completed') {
+          row.status = 'ordered';
         }
       }
-      
-      return reqObj;
+
+      return row;
     });
 
     res.status(200).json({
       success: true,
-      data: requisitionsWithPOs,
+      data: rows,
       pagination: {
         page: pageNum,
         limit: limitNum,

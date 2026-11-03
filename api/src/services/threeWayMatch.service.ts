@@ -33,12 +33,24 @@ export interface GrvEvidence {
  * inspection are not payable.
  */
 export async function collectGrvEvidence(po: IPurchaseOrder): Promise<GrvEvidence> {
-  const deliveries = await Delivery.find({
-    purchaseOrder: po._id,
+  return grvEvidenceFrom(po, await findReceiptedDeliveries(po._id));
+}
+
+/** The GRVs raised against a PO. Needs only the PO id, so a caller holding
+ *  just the id can read them alongside the PO itself. */
+export function findReceiptedDeliveries(purchaseOrderId: any) {
+  return Delivery.find({
+    purchaseOrder: purchaseOrderId,
     status: { $in: RECEIPTED_STATUSES },
     isDeleted: false
   }).lean();
+}
 
+/** collectGrvEvidence for GRVs already read by findReceiptedDeliveries. */
+export function grvEvidenceFrom(
+  po: IPurchaseOrder,
+  deliveries: Awaited<ReturnType<typeof findReceiptedDeliveries>>
+): GrvEvidence {
   const quantityByPoIndex = new Map<number, number>();
   const grvNumbers: string[] = [];
 

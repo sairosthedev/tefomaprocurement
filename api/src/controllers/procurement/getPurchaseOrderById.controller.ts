@@ -13,9 +13,11 @@ const getPurchaseOrderById = async (req: Request, res: Response): Promise<any> =
       .populate('hodApprovedBy', 'firstName lastName')
       .populate('financeApprovedBy', 'firstName lastName')
       .populate('cooApprovedBy', 'firstName lastName')
-      .populate('purchaseRequisition', 'requisitionNumber title department')
+      // One populate for the path: a second, unselected one used to override
+      // this select and send the whole requisition, items and history.
       .populate({
         path: 'purchaseRequisition',
+        select: 'requisitionNumber title department',
         populate: {
           path: 'department',
           select: 'name code'

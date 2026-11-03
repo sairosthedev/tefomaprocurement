@@ -26,6 +26,10 @@ import { buildDepartmentFilter } from '../../lib/departmentScope.js';
  *
  * Returned as a map keyed by nav href so the sidebar needs no per-role mapping
  * of its own; a role that cannot see a tab simply never reads that key.
+ *
+ * The counts are independent of one another, so they are all started at once
+ * and awaited together: one after another, each cost a full database round
+ * trip, and this runs on every page.
  */
 
 const toIdString = (value: any): string | undefined => {
@@ -63,14 +67,6 @@ async function countPendingApprovals(user: any): Promise<number> {
   }
 
   if (role === 'department_head') {
-    // A requesting-department HOD only approves their own department's orders,
-    // resolved through the requisitions belonging to that department.
-    const deptId = toIdString(user?.department);
-    const reqs = deptId
-      ? await PurchaseRequisition.find({ department: deptId, isDeleted: false }).select('_id')
-      : [];
-    const reqIds: any[] = reqs.map((r) => r._id);
-
     if (isProcurementHead(user)) {
       // Their own step, plus every order still at the removed department-head
       // step, which now comes to them.
@@ -83,7 +79,11 @@ async function countPendingApprovals(user: any): Promise<number> {
       });
     }
 
+    // A requesting-department HOD only approves their own department's orders,
+    // resolved through the requisitions belonging to that department.
+    const deptId = toIdString(user?.department);
     if (!deptId) return 0;
+    const reqIds = await PurchaseRequisition.find({ department: deptId, isDeleted: false }).distinct('_id');
     return PurchaseOrder.countDocuments({
       isDeleted: false,
       status: { $in: ['pending_dept_hod', 'pending_hod', 'pending_approvals'] },
@@ -114,84 +114,87 @@ const getActionCounts = async (req: Request, res: Response): Promise<any> => {
     // The Head of Procurement is stored as a department_head; the procurement
     // counts below have to recognise them separately.
     const procHead = isProcurementHead(user);
-    const counts: Record<string, number> = {};
+    const procurement = role === 'procurement_officer' || procHead;
+    // Each count is started as it is added and only awaited at the end.
+    const pending: Record<string, Promise<number>> = {};
 
     // ── Approvals ──
     if (['department_head', 'finance', 'coo'].includes(role)) {
-      counts['/app/approvals'] = await countPendingApprovals(user);
+      pending['/app/approvals'] = countPendingApprovals(user);
     }
 
     // ── Requisitions ──
-    if (role === 'department_head') {
-      // For an HOD the actionable number is what awaits their approval, not
-      // every requisition their department has ever raised.
-      counts['/app/requisitions'] = await countRequisitionsAwaitingHod(user);
-    }
-
-    if (role === 'procurement_officer' || procHead) {
+    if (procurement) {
       // Procurement acts on requisitions handed to them by stores. The Head of
       // Procurement's list also carries their own department's HOD approvals,
       // so those stay in the number.
-      const accepting = await PurchaseRequisition.countDocuments({
+      const accepting = PurchaseRequisition.countDocuments({
         status: 'pending_acceptance',
         isDeleted: false
-      });
-      counts['/app/requisitions'] = procHead
-        ? accepting + (await countRequisitionsAwaitingHod(user))
+      }).exec();
+      pending['/app/requisitions'] = procHead
+        ? Promise.all([accepting, countRequisitionsAwaitingHod(user)]).then(([a, b]) => a + b)
         : accepting;
+    } else if (role === 'department_head') {
+      // For an HOD the actionable number is what awaits their approval, not
+      // every requisition their department has ever raised.
+      pending['/app/requisitions'] = countRequisitionsAwaitingHod(user);
     }
 
     // ── Stores ──
     if (role === 'stores_officer') {
       // Mirrors stores/getPendingPurchaseRequisitions.
-      counts['/app/stores-pr-review'] = await PurchaseRequisition.countDocuments({
+      pending['/app/stores-pr-review'] = PurchaseRequisition.countDocuments({
         status: 'stores_review',
         isDeleted: false
-      });
+      }).exec();
 
       // Mirrors stores/getPendingDeliveries: orders issued but not yet fully
       // received are the ones stores still has to book in.
-      counts['/app/deliveries'] = await PurchaseOrder.countDocuments({
+      pending['/app/deliveries'] = PurchaseOrder.countDocuments({
         status: { $in: ['issued', 'partially_received'] },
         isDeleted: false
-      });
+      }).exec();
 
-      counts['/app/store-requisitions'] = await StoreRequisition.countDocuments({
+      pending['/app/store-requisitions'] = StoreRequisition.countDocuments({
         status: 'pending',
         isDeleted: false
-      });
+      }).exec();
     }
 
     if (role === 'department_head') {
       // Mirrors department/getStoreRequisitions: only their own department's.
-      counts['/app/store-requisitions'] = await StoreRequisition.countDocuments({
-        ...(await buildDepartmentFilter(user)),
-        status: 'pending',
-        isDeleted: false
-      });
+      pending['/app/store-requisitions'] = buildDepartmentFilter(user).then((deptFilter) =>
+        StoreRequisition.countDocuments({
+          ...deptFilter,
+          status: 'pending',
+          isDeleted: false
+        }).exec()
+      );
     }
 
     // ── Sourcing ──
-    if (role === 'procurement_officer' || procHead) {
+    if (procurement) {
       // Live RFQs: still collecting bids, or collected and awaiting an award
       // decision. Draft and awarded need no action.
-      counts['/app/rfqs'] = await RFQ.countDocuments({
+      pending['/app/rfqs'] = RFQ.countDocuments({
         status: { $in: ['open', 'evaluating'] },
         isDeleted: false
-      });
+      }).exec();
 
       // Quotations a supplier has sent in that nobody has ruled on yet.
-      counts['/app/quotations'] = await Quotation.countDocuments({
+      pending['/app/quotations'] = Quotation.countDocuments({
         status: { $in: ['submitted', 'under_review'] },
         isDeleted: false
-      });
+      }).exec();
     }
 
     if (procHead) {
       // Mirrors procurement/getPendingAuthorizations, less the ones this user
       // selected themselves: they cannot authorize those, so it is not their work.
-      const pending = await listPendingAuthorizations(user._id);
-      counts['/app/authorizations'] = pending.filter((p) => !p.selectedByMe).length;
+      pending['/app/authorizations'] = listPendingAuthorizations(user._id).then(
+        (items) => items.filter((p) => !p.selectedByMe).length
+      );
     }
 
     // ── Finance ──
@@ -199,11 +202,15 @@ const getActionCounts = async (req: Request, res: Response): Promise<any> => {
       // Invoices finance still has to rule on: newly submitted, and those the
       // three-way match flagged as a variance. Approved, paid and rejected are
       // settled and need no action.
-      counts['/app/invoices'] = await Invoice.countDocuments({
+      pending['/app/invoices'] = Invoice.countDocuments({
         status: { $in: ['submitted', 'variance'] },
         isDeleted: false
-      });
+      }).exec();
     }
+
+    const hrefs = Object.keys(pending);
+    const values = await Promise.all(Object.values(pending));
+    const counts: Record<string, number> = Object.fromEntries(hrefs.map((href, i) => [href, values[i]]));
 
     res.status(200).json({ success: true, data: counts });
   } catch (error: any) {

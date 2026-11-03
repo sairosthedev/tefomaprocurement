@@ -22,17 +22,33 @@ export interface LineBid {
 }
 
 /**
+ * The live (non-superseded) quotations for an RFQ, with each supplier's name.
+ *
+ * Takes only the RFQ id, so a caller can run it alongside the RFQ read rather
+ * than after it. Line photos are left out: a bid needs its prices, not the
+ * supplier's images, and those can run to megabytes.
+ */
+export function findLiveQuotations(rfqId: any) {
+  return Quotation.find({
+    rfq: rfqId,
+    isDeleted: false,
+    status: { $in: ['submitted', 'under_review', 'accepted'] }
+  })
+    .select('-items.attachments')
+    .populate('supplier', 'companyName categories');
+}
+
+/**
  * Gather, per RFQ line, the bids from all live (non-superseded) quotations.
  * A quote line is matched to an RFQ line by rfqLineId, falling back to a
  * description match for legacy quotes.
  */
 export async function collectLineBids(rfq: IRFQ): Promise<Map<string, LineBid[]>> {
-  const quotes = await Quotation.find({
-    rfq: rfq._id,
-    isDeleted: false,
-    status: { $in: ['submitted', 'under_review', 'accepted'] }
-  }).populate('supplier', 'companyName categories');
+  return groupLineBids(rfq, await findLiveQuotations(rfq._id));
+}
 
+/** collectLineBids for quotations already loaded by findLiveQuotations. */
+export function groupLineBids(rfq: IRFQ, quotes: any[]): Map<string, LineBid[]> {
   const byLine = new Map<string, LineBid[]>();
   for (const line of rfq.items as any[]) {
     byLine.set(idStr(line._id), []);
@@ -66,10 +82,14 @@ export async function collectLineBids(rfq: IRFQ): Promise<Map<string, LineBid[]>
 
 /**
  * Initialise the lineAwards array for an RFQ from its items, marking lines with
- * zero bids as 'unquoted'. Preserves any existing award decisions.
+ * zero bids as 'unquoted'. Preserves any existing award decisions. Pass the
+ * bids when the caller has already collected them, to skip a second read.
  */
-export async function buildLineAwards(rfq: IRFQ): Promise<ILineAward[]> {
-  const bids = await collectLineBids(rfq);
+export async function buildLineAwards(
+  rfq: IRFQ,
+  collected?: Map<string, LineBid[]>
+): Promise<ILineAward[]> {
+  const bids = collected ?? (await collectLineBids(rfq));
   const existing = new Map<string, ILineAward>();
   for (const la of rfq.lineAwards || []) existing.set(idStr(la.rfqLineId), la);
 

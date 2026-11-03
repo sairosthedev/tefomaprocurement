@@ -25,7 +25,9 @@ const getPendingPoApprovals = async (req: Request, res: Response): Promise<any> 
     // For proc HOD: POs at pending_proc_hod. The Dept HOD step was removed so
     // other department heads have no PO approval step; their query is kept for
     // any legacy pending_dept_hod records still in the system.
-    const deptIds = await resolveUserDepartmentIds(req.user);
+    // The Head of Procurement's filter below does not use the requisition ids,
+    // so their department lookup is skipped.
+    const deptIds = procHead ? [] : await resolveUserDepartmentIds(req.user);
     const reqs = deptIds.length
       ? await PurchaseRequisition.find({ department: { $in: deptIds }, isDeleted: false }).select('_id')
       : [];
@@ -51,6 +53,8 @@ const getPendingPoApprovals = async (req: Request, res: Response): Promise<any> 
     const [total, orders] = await Promise.all([
       PurchaseOrder.countDocuments(filter),
       PurchaseOrder.find(filter)
+        // The approval trail is read on the COO's queue, not this one.
+        .select('-approvalHistory')
         .populate('supplier', 'companyName')
         .populate('createdBy', 'firstName lastName')
         .sort({ createdAt: -1 })

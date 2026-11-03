@@ -18,9 +18,15 @@ const getInvoices = async (req: Request, res: Response): Promise<any> => {
     const skip = (Number(page) - 1) * Number(limit);
     const [invoices, total] = await Promise.all([
       Invoice.find(query)
+        // A list row: header figures and whether it matched. Line items, the
+        // full match breakdown and who submitted it are on GET /invoices/:id.
+        .select(
+          'invoiceNumber vendorInvoiceNumber purchaseOrder supplier subtotal vatAmount totalAmount ' +
+            'currency amountPaid balanceDue invoiceDate dueDate status matchResult.matched ' +
+            'approvedAt rejectedAt createdAt updatedAt'
+        )
         .populate('purchaseOrder', 'poNumber totalAmount totalInvoiced totalPaid status')
         .populate('supplier', 'companyName')
-        .populate('submittedBy', 'firstName lastName email')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(Number(limit)),

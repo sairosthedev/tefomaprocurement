@@ -3,7 +3,8 @@ import type { Request, Response } from 'express';
 import { Quotation, PurchaseOrder } from '../../models/index.js';
 import { isRfqSealed } from '../../lib/rfqVisibility.js';
 import {
-  meetsMinimumQuotations,
+  countSubmittedQuotations,
+  minimumQuotationsFrom,
   quotationFullyAuthorized
 } from '../../services/quotationCompliance.service.js';
 
@@ -11,26 +12,42 @@ const getQuotationById = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
 
-    const quotation = await Quotation.findById(id)
-      .populate({
-        path: 'rfq',
-        select: 'rfqNumber title description items submissionDeadline status hodSelection pmAuthorization selectedQuotation quotationWaiver purchaseRequisition',
-        populate: {
-          path: 'purchaseRequisition',
-          select: 'requisitionNumber title department',
-          populate: { path: 'department', select: 'name code' }
-        }
-      })
-      .populate('supplier', 'companyName contactEmail contactPhone')
-      .populate('submittedBy', 'firstName lastName email')
-      .select('-isDeleted');
+    // Filter deleted quotes in the query: `isDeleted` is deselected, so a
+    // check on the loaded document could never see it.
+    const quotation = await Quotation.findOne({ _id: id, isDeleted: false }).select('-isDeleted');
 
-    if (!quotation || quotation.isDeleted) {
+    if (!quotation) {
       return res.status(404).json({
         success: false,
         message: 'Quotation not found'
       });
     }
+
+    // The PO lookup and the RFQ's bid count need only ids the quotation already
+    // carries, so they run while its references populate. Neither is sent
+    // until the sealed-bid check below has passed.
+    const rfqId = String(quotation.rfq);
+    const [, existingPO, submittedCount] = await Promise.all([
+      quotation.populate([
+        {
+          path: 'rfq',
+          select: 'rfqNumber title description items submissionDeadline status hodSelection pmAuthorization selectedQuotation quotationWaiver purchaseRequisition',
+          populate: {
+            path: 'purchaseRequisition',
+            select: 'requisitionNumber title department',
+            populate: { path: 'department', select: 'name code' }
+          }
+        },
+        { path: 'supplier', select: 'companyName contactEmail contactPhone' },
+        { path: 'submittedBy', select: 'firstName lastName email' }
+      ]),
+      // Check if a PO already exists for this quotation
+      PurchaseOrder.findOne({
+        quotation: id,
+        isDeleted: false
+      }).select('poNumber status'),
+      countSubmittedQuotations(rfqId)
+    ]);
 
     // Sealed bids: while the RFQ is still ongoing, procurement cannot open
     // individual bids. Admins are exempt.
@@ -47,12 +64,6 @@ const getQuotationById = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    // Check if a PO already exists for this quotation
-    const existingPO = await PurchaseOrder.findOne({
-      quotation: id,
-      isDeleted: false
-    }).select('poNumber status');
-
     const quotationData: any = quotation.toObject();
     if (existingPO) {
       quotationData.existingPurchaseOrder = {
@@ -66,7 +77,7 @@ const getQuotationById = async (req: Request, res: Response): Promise<any> => {
     // the UI can guide the user through selection and PM authorization.
     const rfq = quotation.rfq as any;
     const qid = String(quotation._id);
-    const { met, count, waived } = await meetsMinimumQuotations(String(rfq._id), rfq);
+    const { met, count, waived } = minimumQuotationsFrom(submittedCount, rfq);
     const hodSelected =
       rfq?.hodSelection?.quotation && String(rfq.hodSelection.quotation) === qid;
     const hodHasJustification = Boolean(rfq?.hodSelection?.justification);

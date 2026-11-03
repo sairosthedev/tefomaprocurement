@@ -26,6 +26,8 @@ const getMyQuotations = async (req: Request, res: Response): Promise<any> => {
     
     const [quotations, total] = await Promise.all([
       Quotation.find(query)
+        // The list shows each line's figures; the photos stay on the quote.
+        .select('-items.attachments')
         .populate('rfq', 'rfqNumber title')
         .sort({ createdAt: -1 })
         .skip(skip)

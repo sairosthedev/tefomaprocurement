@@ -195,7 +195,10 @@ export default function MyQuotations() {
                             }, 300);
                           }
                         }}
-                      />
+                        className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
+                      >
+                        View
+                      </button>
                     </td>
                   </tr>
                 ))}

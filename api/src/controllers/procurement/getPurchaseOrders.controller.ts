@@ -18,12 +18,11 @@ const getPurchaseOrders = async (req: Request, res: Response): Promise<any> => {
     
     const [orders, total] = await Promise.all([
       PurchaseOrder.find(query)
-        .select('poNumber status financeApproved cooApproved financeApprovedBy cooApprovedBy financeApprovedAt cooApprovedAt supplier createdBy quotation items totalAmount expectedDeliveryDate createdAt')
+        // A list row: header, totals and approval flags. Lines and who created
+        // or approved the order are on GET /purchase-orders/:id.
+        .select('poNumber status financeApproved cooApproved financeApprovedAt cooApprovedAt supplier quotation totalAmount expectedDeliveryDate createdAt')
         .populate('supplier', 'companyName')
-        .populate('createdBy', 'firstName lastName')
         .populate('quotation', 'quotationNumber currency')
-        .populate('financeApprovedBy', 'firstName lastName')
-        .populate('cooApprovedBy', 'firstName lastName')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit)),

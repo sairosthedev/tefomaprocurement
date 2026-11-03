@@ -121,22 +121,42 @@ export interface RfqRanking {
  */
 export async function rankRfqResponses(
   rfq: IRFQ,
-  weights: readonly RankingCriterionWeight[] = DEFAULT_RANKING_WEIGHTS
+  weights: readonly RankingCriterionWeight[] = DEFAULT_RANKING_WEIGHTS,
+  loaded?: RankingInputs
 ): Promise<RfqRanking> {
-  const quotes = await Quotation.find({
-    rfq: rfq._id,
+  const { quotes, performance } = loaded ?? (await loadRankingInputs(rfq._id));
+  return scoreResponses(rfq, quotes, performance, weights);
+}
+
+export interface RankingInputs {
+  quotes: any[];
+  performance: Map<string, number>;
+}
+
+/**
+ * The live responses to an RFQ and their suppliers' evaluation scores.
+ *
+ * Needs only the RFQ id, so a caller can load it alongside the RFQ itself. The
+ * scores need only the supplier ids the quotes already carry, so they are read
+ * while the suppliers populate rather than after. Line photos are left out:
+ * scoring reads prices, not images.
+ */
+export async function loadRankingInputs(rfqId: any): Promise<RankingInputs> {
+  const found = await Quotation.find({
+    rfq: rfqId,
     isDeleted: false,
     status: { $in: LIVE_QUOTATION_STATUSES }
-  }).populate(
-    'supplier',
-    'companyName status kysComplete kysExempt isDeleted transactability expiredDocumentTypes'
-  );
+  }).select('-items.attachments');
 
-  const performance = await getSupplierPerformanceScores(
-    Array.from(new Set(quotes.map((q: any) => idStr(q.supplier))))
-  );
+  const [quotes, performance] = await Promise.all([
+    Quotation.populate(found, {
+      path: 'supplier',
+      select: 'companyName status kysComplete kysExempt isDeleted transactability expiredDocumentTypes'
+    }),
+    getSupplierPerformanceScores(Array.from(new Set(found.map((q: any) => idStr(q.supplier)))))
+  ]);
 
-  return scoreResponses(rfq, quotes, performance, weights);
+  return { quotes, performance };
 }
 
 /**

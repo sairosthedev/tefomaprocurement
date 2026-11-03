@@ -5,7 +5,8 @@ import { createAuditLog } from '../../middleware/index.js';
 import { isProcurementHead } from '@fossil/shared';
 import {
   buildLineAwards,
-  collectLineBids,
+  findLiveQuotations,
+  groupLineBids,
   lineFullyAuthorized,
   lineIdStr
 } from '../../services/lineAward.service.js';
@@ -17,22 +18,30 @@ const isProcOfficer = (user: any) =>
 /** GET the per-line award matrix: each RFQ line, its bids, and award state. */
 export const getLineAwardMatrix = async (req: Request, res: Response): Promise<any> => {
   try {
-    const rfq = await RFQ.findById(req.params.id);
+    // The quotations need only the RFQ id, so they load alongside the RFQ.
+    const [rfq, quotes] = await Promise.all([
+      RFQ.findById(req.params.id),
+      findLiveQuotations(req.params.id)
+    ]);
     if (!rfq || rfq.isDeleted) {
       return res.status(404).json({ success: false, message: 'RFQ not found' });
     }
-    // Refresh (non-destructive) so newly-arrived quotes and unquoted lines show.
-    rfq.lineAwards = await buildLineAwards(rfq) as any;
-    await rfq.save();
+    // One read of the bids serves both the refresh and the matrix: saving the
+    // RFQ touches only its line awards, never the quotations.
+    const bids = groupLineBids(rfq, quotes);
 
-    const bids = await collectLineBids(rfq);
+    // Refresh (non-destructive) so newly-arrived quotes and unquoted lines show.
+    rfq.lineAwards = await buildLineAwards(rfq, bids) as any;
 
     // Supplier evaluation scores break near-ties in the ranking. Fetched once
-    // for every bidding supplier rather than per line.
+    // for every bidding supplier rather than per line, while the save runs.
     const supplierIds = Array.from(
       new Set([...bids.values()].flat().map((b) => b.supplierId))
     );
-    const performance = await getSupplierPerformanceScores(supplierIds);
+    const [, performance] = await Promise.all([
+      rfq.save(),
+      getSupplierPerformanceScores(supplierIds)
+    ]);
 
     const lines = (rfq.lineAwards as any[]).map((la) => {
       const key = lineIdStr(la.rfqLineId);

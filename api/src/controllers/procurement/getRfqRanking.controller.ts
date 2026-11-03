@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 
 import { RFQ } from '../../models/index.js';
-import { rankRfqResponses } from '../../services/quotationRanking.service.js';
+import { loadRankingInputs, rankRfqResponses } from '../../services/quotationRanking.service.js';
 
 /**
  * GET the ranked responses to an RFQ.
@@ -17,7 +17,16 @@ import { rankRfqResponses } from '../../services/quotationRanking.service.js';
  */
 const getRfqRanking = async (req: Request, res: Response): Promise<any> => {
   try {
-    const rfq = await RFQ.findById(req.params.id);
+    // The responses load alongside the RFQ. Nothing from them is sent while the
+    // RFQ is sealed; the seal is checked below, before any of it is used. Only
+    // the RFQ fields the seal and the scoring read are loaded — its line photos
+    // are not needed to rank anything.
+    const [rfq, loaded] = await Promise.all([
+      RFQ.findById(req.params.id).select(
+        'rfqNumber status submissionDeadline isDeleted items._id items.description invitedSuppliers.responded'
+      ),
+      loadRankingInputs(req.params.id)
+    ]);
     if (!rfq || rfq.isDeleted) {
       return res.status(404).json({ success: false, message: 'RFQ not found' });
     }
@@ -45,7 +54,7 @@ const getRfqRanking = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    const ranking = await rankRfqResponses(rfq);
+    const ranking = await rankRfqResponses(rfq, undefined, loaded);
 
     res.status(200).json({ success: true, data: { ...ranking, sealed: false } });
   } catch (error: any) {

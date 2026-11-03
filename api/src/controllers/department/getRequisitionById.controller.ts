@@ -1,30 +1,38 @@
 import type { Request, Response } from 'express';
-import { PurchaseRequisition, PurchaseOrder, Quotation, Delivery, StoreRequisition } from '../../models/index.js';
+import { PurchaseRequisition } from '../../models/index.js';
 import { getRfqSourcingProgress } from '../../services/rfqProgress.service.js';
 import { buildDepartmentFilter } from '../../lib/departmentScope.js';
+import { requisitionOrderProgress } from '../../lib/requisitionLinks.js';
+
+// The requisition page reads the RFQ's number, title and deadline; where
+// sourcing stands comes from `sourcing` below.
+const DETAIL_POPULATE = [
+  { path: 'department', select: 'name code', options: { lean: true } },
+  { path: 'requestedBy', select: 'firstName lastName email', options: { lean: true } },
+  { path: 'hodApprovedBy', select: 'firstName lastName', options: { lean: true } },
+  { path: 'storesReviewedBy', select: 'firstName lastName', options: { lean: true } },
+  { path: 'processedBy', select: 'firstName lastName', options: { lean: true } },
+  { path: 'rfq', select: 'rfqNumber title submissionDeadline', options: { lean: true } }
+];
 
 const getRequisitionById = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
 
+    // The department scope also bounds the store requisitions checked for
+    // collection, so it is resolved once; end users need it only for that,
+    // so theirs runs alongside the requisition lookup.
+    const departmentScope = buildDepartmentFilter(req.user);
+    departmentScope.catch(() => undefined); // awaited below; never left unhandled
+
     const scope: any = { _id: id, isDeleted: false };
     if (req.user!.role === 'end_user') {
       scope.requestedBy = req.user!._id;
     } else {
-      Object.assign(scope, await buildDepartmentFilter(req.user));
+      Object.assign(scope, await departmentScope);
     }
 
-    const requisition: any = await PurchaseRequisition.findOne(scope)
-      .populate('department', 'name code')
-      .populate('requestedBy', 'firstName lastName email')
-      .populate('hodApprovedBy', 'firstName lastName')
-      .populate('storesReviewedBy', 'firstName lastName')
-      .populate('processedBy', 'firstName lastName')
-      .populate({
-        path: 'rfq',
-        select: 'rfqNumber status publishedAt closedAt title description items submissionDeadline'
-      })
-      .lean();
+    const requisition: any = await PurchaseRequisition.findOne(scope).lean();
 
     if (!requisition) {
       return res.status(404).json({
@@ -33,75 +41,31 @@ const getRequisitionById = async (req: Request, res: Response): Promise<any> => 
       });
     }
 
-    // Where sourcing stands, so the requester can follow it without access to
-    // the RFQ itself.
+    // The people and RFQ it references, where sourcing stands, and the PO
+    // with its delivery state are independent, so they are fetched together.
+    const rfqId = requisition.rfq;
+    const populated = PurchaseRequisition.populate(requisition, DETAIL_POPULATE);
+    const [, sourcing, order] = await Promise.all([
+      populated,
+      // Where sourcing stands, so the requester can follow it without access
+      // to the RFQ itself.
+      rfqId ? getRfqSourcingProgress(rfqId, req.user) : Promise.resolve(null),
+      requisitionOrderProgress(
+        requisition,
+        rfqId,
+        populated.then(() => Boolean(requisition.rfq)),
+        departmentScope
+      )
+    ]);
+
     if (requisition.rfq) {
-      (requisition.rfq as any).sourcing = await getRfqSourcingProgress(requisition.rfq._id, req.user);
+      (requisition.rfq as any).sourcing = sourcing;
     }
 
-    // Find PO linked directly or via RFQ
-    let po = await PurchaseOrder.findOne({
-      purchaseRequisition: id,
-      isDeleted: false
-    })
-      .select('poNumber status deptHodApproved procHodApproved financeApproved cooApproved financeApprovedBy cooApprovedBy financeApprovedAt cooApprovedAt purchaseRequisition rfq quotation supplier items totalAmount currency requiresCooApproval totalAmountUsd cooThresholdUsd')
-      .populate('supplier', 'companyName')
-      .populate('financeApprovedBy', 'firstName lastName')
-      .populate('cooApprovedBy', 'firstName lastName')
-      .lean();
-
-    // If not found, try via RFQ -> quotation -> PO
-    if (!po && requisition.rfq) {
-      const rfqId = (requisition.rfq._id || requisition.rfq).toString();
-      const quotations = await Quotation.find({
-        rfq: rfqId,
-        isDeleted: false
-      })
-        .select('_id rfq')
-        .lean();
-
-      const quotationIds = quotations.map(q => q._id);
-
-      if (quotationIds.length > 0) {
-        po = await PurchaseOrder.findOne({
-          quotation: { $in: quotationIds },
-          isDeleted: false
-        })
-          .select('poNumber status deptHodApproved procHodApproved financeApproved cooApproved financeApprovedBy cooApprovedBy financeApprovedAt cooApprovedAt purchaseRequisition rfq quotation supplier items totalAmount currency requiresCooApproval totalAmountUsd cooThresholdUsd')
-          .populate('supplier', 'companyName')
-          .populate('financeApprovedBy', 'firstName lastName')
-          .populate('cooApprovedBy', 'firstName lastName')
-          .lean();
-      }
-    }
-
-    if (po) {
-      (requisition as any).purchaseOrder = po;
-
-      // Check deliveries
-      const deliveries = await Delivery.find({
-        purchaseOrder: po._id,
-        status: { $in: ['received', 'accepted', 'partially_accepted'] },
-        isDeleted: false
-      })
-        .select('purchaseOrder status')
-        .lean();
-
-      (requisition as any).itemsDeliveredToStores = deliveries.length > 0;
-
-      // Check store requisitions
-      const storeRequisitions = await StoreRequisition.find({
-        ...(await buildDepartmentFilter(req.user)),
-        isDeleted: false,
-        status: { $in: ['issued', 'partially_issued'] }
-      })
-        .select('_id purpose status')
-        .lean();
-
-      const reqNumber = requisition.requisitionNumber || `PR-${requisition._id.toString().slice(-6)}`;
-      (requisition as any).itemsCollected = storeRequisitions.some(sr =>
-        sr.purpose && sr.purpose.includes(reqNumber)
-      );
+    if (order) {
+      requisition.purchaseOrder = order.purchaseOrder;
+      requisition.itemsDeliveredToStores = order.itemsDeliveredToStores;
+      requisition.itemsCollected = order.itemsCollected;
     }
 
     res.status(200).json({

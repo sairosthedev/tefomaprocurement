@@ -27,9 +27,24 @@ const getMyRFQs = async (req: Request, res: Response): Promise<any> => {
     
     const [rfqs, total] = await Promise.all([
       RFQ.find(query)
-        .populate('invitedSuppliers.supplier', '_id')
+        // Only this supplier's own invitation: the rest of the list (and the
+        // other suppliers' quote statuses) is not theirs to see. Lines carry
+        // what the row shows, without the photos — the RFQ page loads those.
+        .select({
+          rfqNumber: 1,
+          title: 1,
+          description: 1,
+          'items._id': 1,
+          'items.description': 1,
+          'items.specifications': 1,
+          'items.quantity': 1,
+          'items.unit': 1,
+          submissionDeadline: 1,
+          status: 1,
+          publishedAt: 1,
+          invitedSuppliers: { $elemMatch: { supplier: profile._id } }
+        })
         .populate('invitedSuppliers.quotation', 'status quotationNumber')
-        .select('rfqNumber title description items submissionDeadline status publishedAt invitedSuppliers')
         .sort({ publishedAt: -1, createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit)),
@@ -57,8 +72,10 @@ const getMyRFQs = async (req: Request, res: Response): Promise<any> => {
       const revisionRequested = quotationStatus === 'revision_requested';
       const hasSubmitted = (invitation?.responded || false) && !revisionRequested;
 
+      // The invitation is summarised below rather than sent as-is.
+      const { invitedSuppliers: _invitation, ...row } = rfq.toObject();
       return {
-        ...rfq.toObject(),
+        ...row,
         hasResponded: invitation?.responded || false,
         hasSubmitted,
         revisionRequested,
