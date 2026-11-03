@@ -20,6 +20,7 @@ import {
 import Pagination from '../components/Pagination';
 import TableSkeleton from '../components/TableSkeleton';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
+import { useDebouncedValue } from '../lib/useDebouncedValue';
 
 const roleColors: any = {
   admin: 'bg-purple-100 text-purple-700',
@@ -57,7 +58,9 @@ export default function Users() {
   const [users, setUsers] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [loading, setLoading] = useState<any>(true);
-  const [search, setSearch] = useState<any>('');
+  const [searchInput, setSearch] = useState<any>('');
+  // The box shows what's typed; the list is fetched once typing pauses.
+  const search = useDebouncedValue(searchInput);
   const [roleFilter, setRoleFilter] = useState<any>('');
   const [showModal, setShowModal] = useState<any>(false);
   const [editingUser, setEditingUser] = useState<any>(null);
@@ -247,7 +250,7 @@ export default function Users() {
               <input
                 type="text"
                 placeholder="Search users..."
-                value={search}
+                value={searchInput}
                 onChange={(e: any) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />

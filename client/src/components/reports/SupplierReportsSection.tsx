@@ -17,6 +17,7 @@ import { procurementAPI } from '../../services/procurement.service';
 import { useToast } from '../Toast';
 import Pagination from '../Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
+import { useDebouncedValue } from '../../lib/useDebouncedValue';
 
 const STATUS_LABELS: Record<string, string> = {
   active: 'Active',
@@ -42,7 +43,9 @@ export default function SupplierReportsSection({ tabs }: { tabs?: React.ReactNod
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<any>(null);
-  const [search, setSearch] = useState('');
+  const [searchInput, setSearch] = useState('');
+  // The box shows what's typed; the list is fetched once typing pauses.
+  const search = useDebouncedValue(searchInput);
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
@@ -245,7 +248,7 @@ export default function SupplierReportsSection({ tabs }: { tabs?: React.ReactNod
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
                     type="text"
-                    value={search}
+                    value={searchInput}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search suppliers..."
                     className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"

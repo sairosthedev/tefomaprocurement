@@ -37,6 +37,7 @@ import {
   rowIssues,
   type SupplierImportRow
 } from '../lib/supplierImport';
+import { useDebouncedValue } from '../lib/useDebouncedValue';
 
 const statusColors: any = {
   pending: 'bg-amber-100 text-amber-700',
@@ -113,7 +114,9 @@ export default function Suppliers() {
   const canManage = user?.role === 'procurement_officer' || isProcurementHead(user);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [loading, setLoading] = useState<any>(true);
-  const [search, setSearch] = useState<any>('');
+  const [searchInput, setSearch] = useState<any>('');
+  // The box shows what's typed; the list is fetched once typing pauses.
+  const search = useDebouncedValue(searchInput);
   const [statusFilter, setStatusFilter] = useState<any>(() => {
     const fromUrl = searchParams.get('status');
     if (fromUrl) return fromUrl;
@@ -365,7 +368,7 @@ export default function Suppliers() {
               <input
                 type="text"
                 placeholder="Search suppliers..."
-                value={search}
+                value={searchInput}
                 onChange={(e: any) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />

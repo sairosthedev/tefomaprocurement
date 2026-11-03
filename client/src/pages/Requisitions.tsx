@@ -22,6 +22,7 @@ import {
   REQUISITION_STATUS_LABELS as statusLabels
 } from '../lib/requisitionJourney';
 import { isProcurementHead } from '@fossil/shared';
+import { useDebouncedValue } from '../lib/useDebouncedValue';
 
 const priorityColors: any = {
   low: 'bg-gray-100 text-gray-600',
@@ -36,7 +37,9 @@ export default function Requisitions() {
   const navigate = useNavigate();
   const [requisitions, setRequisitions] = useState<any[]>([]);
   const [loading, setLoading] = useState<any>(true);
-  const [searchTerm, setSearchTerm] = useState<any>('');
+  const [searchTermInput, setSearchTerm] = useState<any>('');
+  // The box shows what's typed; the list is fetched once typing pauses.
+  const searchTerm = useDebouncedValue(searchTermInput);
   const [statusFilter, setStatusFilter] = useState<any>('');
   const [selectedRequisition, setSelectedRequisition] = useState<any>(null);
   const [showActionModal, setShowActionModal] = useState<any>(false);
@@ -309,7 +312,7 @@ export default function Requisitions() {
               <input
                 type="text"
                 placeholder="Search requisitions..."
-                value={searchTerm}
+                value={searchTermInput}
                 onChange={(e: any) => setSearchTerm(e.target.value)}
                 className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />

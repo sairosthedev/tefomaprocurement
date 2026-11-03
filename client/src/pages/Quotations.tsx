@@ -26,6 +26,7 @@ import {
 import ViewButton from '../components/ViewButton';
 import Pagination from '../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
+import { useDebouncedValue } from '../lib/useDebouncedValue';
 
 const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
@@ -71,7 +72,9 @@ export default function Quotations() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [quotations, setQuotations] = useState<any[]>([]);
   const [loading, setLoading] = useState<any>(true);
-  const [search, setSearch] = useState<any>('');
+  const [searchInput, setSearch] = useState<any>('');
+  // The box shows what's typed; the list is fetched once typing pauses.
+  const search = useDebouncedValue(searchInput);
   const [statusFilter, setStatusFilter] = useState<any>(searchParams.get('status') || '');
   const [selectedQuotation, setSelectedQuotation] = useState<any>(null);
   const [showViewModal, setShowViewModal] = useState<any>(false);
@@ -248,7 +251,7 @@ export default function Quotations() {
             <input
               type="text"
               placeholder="Search quotations..."
-              value={search}
+              value={searchInput}
               onChange={(e: any) => setSearch(e.target.value)}
               className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />

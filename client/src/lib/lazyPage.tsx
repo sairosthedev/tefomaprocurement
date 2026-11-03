@@ -48,9 +48,13 @@ let preloadStarted = false;
 export function preloadPagesWhenIdle() {
   if (preloadStarted || typeof window === 'undefined') return;
   preloadStarted = true;
+  // On a metered or very slow connection, pages load only when opened.
+  const connection = (navigator as any).connection;
+  if (connection?.saveData || /2g/.test(connection?.effectiveType || '')) return;
   const idle: (cb: () => void) => void =
-    (window as any).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 1500));
-  idle(() => {
+    (window as any).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 200));
+  // Give the first screen's own data a head start before competing for bandwidth.
+  setTimeout(() => idle(() => {
     // A few at a time, so the current page's API calls are never queued behind them.
     let next = 0;
     const pump = () => {
@@ -60,7 +64,7 @@ export function preloadPagesWhenIdle() {
       Promise.allSettled(batch.map((load) => load())).then(() => idle(pump));
     };
     pump();
-  });
+  }), 3000);
 }
 
 /** Shown only if a page's code takes a noticeable time; quick loads show nothing. */

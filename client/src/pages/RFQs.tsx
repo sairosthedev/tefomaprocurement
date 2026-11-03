@@ -16,6 +16,7 @@ import Pagination from '../components/Pagination';
 import TableSkeleton from '../components/TableSkeleton';
 import { CreateRFQDrawer } from '../components/RFQForm';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
+import { useDebouncedValue } from '../lib/useDebouncedValue';
 
 function sourcingDeadlineBadge(createdAt: string): { label: string; cls: string } | null {
   const ms = Date.now() - new Date(createdAt).getTime();
@@ -46,7 +47,9 @@ export default function RFQs() {
   const { showToast } = useToast();
   const [rfqs, setRFQs] = useState<any[]>([]);
   const [loading, setLoading] = useState<any>(true);
-  const [search, setSearch] = useState<any>('');
+  const [searchInput, setSearch] = useState<any>('');
+  // The box shows what's typed; the list is fetched once typing pauses.
+  const search = useDebouncedValue(searchInput);
   const [statusFilter, setStatusFilter] = useState<any>('');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
@@ -140,7 +143,7 @@ export default function RFQs() {
               <input
                 type="text"
                 placeholder="Search RFQs..."
-                value={search}
+                value={searchInput}
                 onChange={(e: any) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />

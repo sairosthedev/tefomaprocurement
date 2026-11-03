@@ -15,6 +15,7 @@ import Pagination from '../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 import { getCurrentSbuCurrency } from '../lib/sbu';
 import { FormSteps, FormStepNav } from '../components/FormSteps';
+import { useDebouncedValue } from '../lib/useDebouncedValue';
 
 // Map a spreadsheet row (any header casing/variant) to our canonical fields.
 const TEMPLATE_HEADERS = ['code', 'name', 'description', 'category', 'unit', 'reorderLevel', 'quantity', 'unitPrice'];
@@ -59,7 +60,9 @@ export default function Inventory() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [inventory, setInventory] = useState<any[]>([]);
   const [loading, setLoading] = useState<any>(true);
-  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search')?.trim() || '');
+  const [searchTermInput, setSearchTerm] = useState(() => searchParams.get('search')?.trim() || '');
+  // The box shows what's typed; the list is fetched once typing pauses.
+  const searchTerm = useDebouncedValue(searchTermInput);
   const [categoryFilter, setCategoryFilter] = useState<any>('');
   const [showLowStock, setShowLowStock] = useState<any>(false);
   const [showAddModal, setShowAddModal] = useState<any>(false);
@@ -163,7 +166,8 @@ export default function Inventory() {
   const handleSearchSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     setPage(1);
-    fetchInventory({ page: 1, search: searchTerm.trim() });
+    // Enter searches straight away, without waiting for the pause.
+    fetchInventory({ page: 1, search: searchTermInput.trim() });
   };
 
   const fetchInventory = async (overrides?: {
@@ -455,7 +459,7 @@ export default function Inventory() {
             <input
               type="text"
               placeholder="Search by name, code, or description..."
-              value={searchTerm}
+              value={searchTermInput}
               onChange={(e: any) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />

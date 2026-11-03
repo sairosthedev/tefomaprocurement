@@ -26,6 +26,7 @@ import Pagination from '../components/Pagination';
 import TableSkeleton from '../components/TableSkeleton';
 import { CreatePurchaseOrderDrawer } from '../components/PurchaseOrderForm';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
+import { useDebouncedValue } from '../lib/useDebouncedValue';
 
 const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
@@ -65,7 +66,9 @@ export default function PurchaseOrders() {
   const { user } = useAuth();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState<any>(true);
-  const [search, setSearch] = useState<any>('');
+  const [searchInput, setSearch] = useState<any>('');
+  // The box shows what's typed; the list is fetched once typing pauses.
+  const search = useDebouncedValue(searchInput);
   const [statusFilter, setStatusFilter] = useState<any>('');
   const [submitting, setSubmitting] = useState<any>(null);
   const [page, setPage] = useState(1);
@@ -188,7 +191,7 @@ export default function PurchaseOrders() {
               <input
                 type="text"
                 placeholder="Search purchase orders..."
-                value={search}
+                value={searchInput}
                 onChange={(e: any) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />

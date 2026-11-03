@@ -15,6 +15,7 @@ import Pagination from '../../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
 import { formatCurrency } from '../../lib/constants';
 import { getCurrentSbuCurrency } from '../../lib/sbu';
+import { useDebouncedValue } from '../../lib/useDebouncedValue';
 
 const statusColors: any = {
   submitted: 'bg-blue-100 text-blue-700',
@@ -39,7 +40,9 @@ export default function MySubmittedQuotations() {
   const { showToast } = useToast();
   const [quotations, setQuotations] = useState<any[]>([]);
   const [loading, setLoading] = useState<any>(true);
-  const [searchTerm, setSearchTerm] = useState<any>('');
+  const [searchTermInput, setSearchTerm] = useState<any>('');
+  // The box shows what's typed; the list is fetched once typing pauses.
+  const searchTerm = useDebouncedValue(searchTermInput);
   const [statusFilter, setStatusFilter] = useState<any>('');
   const [selectedQuotation, setSelectedQuotation] = useState<any>(null);
   const [showViewModal, setShowViewModal] = useState<any>(false);
@@ -161,7 +164,7 @@ export default function MySubmittedQuotations() {
             <input
               type="text"
               placeholder="Search by quotation number, RFQ number, or title..."
-              value={searchTerm}
+              value={searchTermInput}
               onChange={(e: any) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
             />

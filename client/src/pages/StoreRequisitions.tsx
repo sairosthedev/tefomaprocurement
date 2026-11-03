@@ -13,6 +13,7 @@ import Pagination from '../components/Pagination';
 import { ItemSelect } from '../components/ItemSelect';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 import { FormSteps, FormStepNav } from '../components/FormSteps';
+import { useDebouncedValue } from '../lib/useDebouncedValue';
 
 const statusColors: any = {
   pending: 'bg-amber-100 text-amber-700',
@@ -36,7 +37,9 @@ export default function StoreRequisitions() {
   const { showToast } = useToast();
   const [requisitions, setRequisitions] = useState<any[]>([]);
   const [loading, setLoading] = useState<any>(true);
-  const [searchTerm, setSearchTerm] = useState<any>('');
+  const [searchTermInput, setSearchTerm] = useState<any>('');
+  // The box shows what's typed; the list is fetched once typing pauses.
+  const searchTerm = useDebouncedValue(searchTermInput);
   const [showCreateModal, setShowCreateModal] = useState<any>(false);
   const [showViewModal, setShowViewModal] = useState<any>(false);
   const [showApproveModal, setShowApproveModal] = useState<any>(false);
@@ -306,7 +309,7 @@ export default function StoreRequisitions() {
             <input
               type="text"
               placeholder="Search requisitions..."
-              value={searchTerm}
+              value={searchTermInput}
               onChange={(e: any) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />

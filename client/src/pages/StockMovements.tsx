@@ -10,6 +10,7 @@ import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import TableSkeleton from '../components/TableSkeleton';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
+import { useDebouncedValue } from '../lib/useDebouncedValue';
 
 const movementTypes: any = {
   'stock-in': { label: 'Stock In', color: 'text-green-600 bg-green-100', icon: ArrowDownLeft },
@@ -22,7 +23,9 @@ export default function StockMovements() {
   const { showToast } = useToast();
   const [movements, setMovements] = useState<any[]>([]);
   const [loading, setLoading] = useState<any>(true);
-  const [searchTerm, setSearchTerm] = useState<any>('');
+  const [searchTermInput, setSearchTerm] = useState<any>('');
+  // The box shows what's typed; the list is fetched once typing pauses.
+  const searchTerm = useDebouncedValue(searchTermInput);
   const [typeFilter, setTypeFilter] = useState<any>('');
   const [dateRange, setDateRange] = useState<any>('all');
   const [page, setPage] = useState(1);
@@ -128,7 +131,7 @@ export default function StockMovements() {
             <input
               type="text"
               placeholder="Search by item name, code, or reference..."
-              value={searchTerm}
+              value={searchTermInput}
               onChange={(e: any) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
