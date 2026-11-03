@@ -173,7 +173,7 @@ export default function RFQDetail() {
               <button
                 onClick={handleClose}
                 disabled={closing}
-                className="px-4 py-2.5 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                className="px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors flex items-center gap-2 disabled:opacity-50"
               >
                 {closing ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
                 Close RFQ & Reveal Bids

@@ -422,28 +422,6 @@ export default function RequisitionDetail() {
           ))}
         </dl>
 
-        <ol className="flex gap-1.5 px-5 pb-4 pt-3 border-t border-gray-100 overflow-x-auto scrollbar-none">
-          {steps.map((step, i) => {
-            const isCurrent = i === currentStep;
-            const bar = step.done
-              ? 'bg-emerald-500'
-              : isCurrent
-                ? stopped ? 'bg-red-400' : 'bg-primary'
-                : 'bg-gray-200';
-            return (
-              <li key={step.label} className="flex-1 min-w-[5.5rem]">
-                <div className={`h-1.5 rounded-full ${bar}`} />
-                <p className={`mt-2 text-xs font-medium flex items-center gap-1 ${
-                  step.done ? 'text-gray-900' : isCurrent ? (stopped ? 'text-red-600' : 'text-primary') : 'text-gray-400'
-                }`}>
-                  {step.done && <Check className="h-3 w-3 text-emerald-600 shrink-0" />}
-                  <span className="truncate">{isCurrent && stopped ? stage.label : step.label}</span>
-                </p>
-                {step.note && <p className="text-[11px] text-gray-400 truncate" title={step.note}>{step.note}</p>}
-              </li>
-            );
-          })}
-        </ol>
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
