@@ -1,11 +1,11 @@
 import type { Request, Response } from 'express';
 
-import { Quotation } from '../../models/index.js';
+import { PurchaseOrder, Quotation } from '../../models/index.js';
 import { isRfqSealed } from '../../lib/rfqVisibility.js';
 
 const getQuotations = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { status, rfqId, search, page = 1, limit = 20 } = req.query as Record<string, any>;
+    const { status, rfqId, search, withoutPurchaseOrder, page = 1, limit = 20 } = req.query as Record<string, any>;
     
     const query: any = { isDeleted: false };
     
@@ -13,6 +13,11 @@ const getQuotations = async (req: Request, res: Response): Promise<any> => {
     if (rfqId) query.rfq = rfqId;
     if (search) {
       query.quotationNumber = { $regex: search, $options: 'i' };
+    }
+    // Only quotations still waiting for their order (one PO per quotation).
+    if (withoutPurchaseOrder === 'true') {
+      const ordered = await PurchaseOrder.distinct('quotation', { isDeleted: false, quotation: { $ne: null } });
+      query._id = { $nin: ordered };
     }
 
     const skip = (page - 1) * limit;

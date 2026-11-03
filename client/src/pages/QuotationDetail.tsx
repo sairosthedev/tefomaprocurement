@@ -5,12 +5,10 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
-import { COO_POLICY_NOTE } from '../lib/cooApproval';
 import { isProcurementHead } from '@fossil/shared';
 import PageHeader from '../components/PageHeader';
 import EquipmentDetailsView from '../components/EquipmentDetailsView';
 import { WorkflowStepper, NextStepCard, type WorkflowStep, type NextStepAction } from '../components/WorkflowStepper';
-import { FormSteps, FormStepNav } from '../components/FormSteps';
 import { 
   FileText, 
   Calendar, 
@@ -30,6 +28,7 @@ import {
   Circle
 } from 'lucide-react';
 import Modal, { ModalFooter } from '../components/Modal';
+import { CreatePurchaseOrderDrawer } from '../components/PurchaseOrderForm';
 
 const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
@@ -75,12 +74,6 @@ function Step({ done, title, children }: any) {
     </div>
   );
 }
-
-const PO_FORM_STEPS = [
-  { label: 'Delivery', description: 'Where and when' },
-  { label: 'Terms', description: 'Terms and notes' },
-  { label: 'Review', description: 'Check, then create' }
-];
 
 /**
  * A quotation from receipt to purchase order: the three-quote rule, procurement's
@@ -166,20 +159,7 @@ export default function QuotationDetail() {
   const [reviseTarget, setReviseTarget] = useState<any>('');
   const [processing, setProcessing] = useState<any>(false);
   const [showCreatePOModal, setShowCreatePOModal] = useState<any>(false);
-  const [poStep, setPoStep] = useState(0);
-  const poStepTop = useRef<HTMLDivElement>(null);
   const complianceRef = useRef<HTMLDivElement>(null);
-  const [poFormData, setPOFormData] = useState<any>({
-    deliveryAddress: {
-      street: '',
-      city: '',
-      province: '',
-      postalCode: ''
-    },
-    expectedDeliveryDate: '',
-    termsAndConditions: '',
-    notes: ''
-  });
 
   useEffect(() => {
     fetchQuotation();
@@ -345,65 +325,11 @@ export default function QuotationDetail() {
     }
   };
 
-  // Prefilled from the quotation and its site, so the order needs little typing.
-  const openCreatePO = () => {
-    const deliveryDate = quotation.deliveryPeriod
-      ? new Date(Date.now() + quotation.deliveryPeriod * 24 * 60 * 60 * 1000)
-          .toISOString().split('T')[0]
-      : '';
-    const site = quotation.site || quotation.rfq?.site;
-    setPOFormData({
-      deliveryAddress: {
-        street: site?.address?.street || site?.address || '',
-        city: site?.address?.city || site?.city || '',
-        province: site?.address?.province || site?.province || '',
-        postalCode: site?.address?.postalCode || site?.postalCode || '',
-      },
-      expectedDeliveryDate: deliveryDate,
-      termsAndConditions: quotation.paymentTerms || '',
-      notes: quotation.notes || '',
-    });
-    setPoStep(0);
-    setShowCreatePOModal(true);
-  };
-
-  const goToPoStep = (next: number) => {
-    setPoStep(next);
-    poStepTop.current?.scrollIntoView({ block: 'start' });
-  };
-
-  const handleCreatePO = async () => {
-    try {
-      setProcessing(true);
-      const created = await procurementAPI.createPurchaseOrder({
-        quotationId: id,
-        ...poFormData
-      });
-      showToast('Purchase Order created — submit it for approval', 'success');
-      const poId = created.data?.data?._id;
-      if (poId) {
-        // The new order's own page is where it is submitted for approval.
-        navigate(`/app/purchase-orders/${poId}`);
-        return;
-      }
-      setShowCreatePOModal(false);
-      setPOFormData({
-        deliveryAddress: {
-          street: '',
-          city: '',
-          province: '',
-          postalCode: ''
-        },
-        expectedDeliveryDate: '',
-        termsAndConditions: '',
-        notes: ''
-      });
-      fetchQuotation();
-    } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to create purchase order', 'error');
-    } finally {
-      setProcessing(false);
-    }
+  // The new order's own page is where it is submitted for approval.
+  const handlePOCreated = (poId?: string) => {
+    setShowCreatePOModal(false);
+    if (poId) navigate(`/app/purchase-orders/${poId}`);
+    else fetchQuotation();
   };
 
   if (loading) {
@@ -526,7 +452,7 @@ export default function QuotationDetail() {
             )}
             {isProcurement && quotation.status === 'accepted' && !quotation.existingPurchaseOrder && (
               <button
-                onClick={openCreatePO}
+                onClick={() => setShowCreatePOModal(true)}
                 className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium px-3 py-2 text-sm rounded-lg transition-colors"
               >
                 <ShoppingCart className="h-4 w-4" />
@@ -570,7 +496,7 @@ export default function QuotationDetail() {
           };
         } else if (quotation.status === 'accepted') {
           next = isProcurement
-            ? { title: 'Raise the purchase order', description: 'Delivery details are filled in from the quotation.', action: { label: 'Create purchase order', onClick: openCreatePO } }
+            ? { title: 'Raise the purchase order', description: 'Delivery details are filled in from the quotation.', action: { label: 'Create purchase order', onClick: () => setShowCreatePOModal(true) } }
             : { title: 'Procurement to raise the purchase order', waiting: true };
         } else if (!c.minQuotationsMet) {
           next = procurementHead || user?.role === 'coo'
@@ -1079,176 +1005,12 @@ export default function QuotationDetail() {
         </ModalFooter>
       </Modal>
 
-      {/* Create PO Modal */}
-      <Modal
+      <CreatePurchaseOrderDrawer
         isOpen={showCreatePOModal}
+        quotationId={id}
         onClose={() => setShowCreatePOModal(false)}
-        title="Create Purchase Order"
-        size="lg"
-      >
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            // Enter on an earlier step moves on rather than creating the order.
-            if (poStep < PO_FORM_STEPS.length - 1) goToPoStep(poStep + 1);
-            else handleCreatePO();
-          }}
-        >
-          <div ref={poStepTop} className="scroll-mt-4" />
-          <FormSteps steps={PO_FORM_STEPS} current={poStep} onSelect={goToPoStep} />
-
-          {poStep === 0 && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Delivery Street</label>
-                  <input
-                    type="text"
-                    value={poFormData.deliveryAddress.street}
-                    onChange={(e: any) => setPOFormData({
-                      ...poFormData,
-                      deliveryAddress: { ...poFormData.deliveryAddress, street: e.target.value }
-                    })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
-                  <input
-                    type="text"
-                    value={poFormData.deliveryAddress.city}
-                    onChange={(e: any) => setPOFormData({
-                      ...poFormData,
-                      deliveryAddress: { ...poFormData.deliveryAddress, city: e.target.value }
-                    })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Province</label>
-                  <input
-                    type="text"
-                    value={poFormData.deliveryAddress.province}
-                    onChange={(e: any) => setPOFormData({
-                      ...poFormData,
-                      deliveryAddress: { ...poFormData.deliveryAddress, province: e.target.value }
-                    })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Postal Code</label>
-                  <input
-                    type="text"
-                    value={poFormData.deliveryAddress.postalCode}
-                    onChange={(e: any) => setPOFormData({
-                      ...poFormData,
-                      deliveryAddress: { ...poFormData.deliveryAddress, postalCode: e.target.value }
-                    })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Expected Delivery Date</label>
-                <input
-                  type="date"
-                  value={poFormData.expectedDeliveryDate}
-                  onChange={(e: any) => setPOFormData({ ...poFormData, expectedDeliveryDate: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                />
-              </div>
-            </div>
-          )}
-
-          {poStep === 1 && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Terms & Conditions</label>
-                <textarea
-                  value={poFormData.termsAndConditions}
-                  onChange={(e: any) => setPOFormData({ ...poFormData, termsAndConditions: e.target.value })}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-                <textarea
-                  value={poFormData.notes}
-                  onChange={(e: any) => setPOFormData({ ...poFormData, notes: e.target.value })}
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                />
-              </div>
-            </div>
-          )}
-
-          {poStep === 2 && (
-            <div className="space-y-4">
-              {/* Read-only summary from the quotation — no re-entry needed */}
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-xs text-gray-500 mb-0.5">Supplier</p>
-                  <p className="font-medium text-gray-900">{quotation?.supplier?.companyName || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-0.5">Total Amount</p>
-                  <p className="font-medium text-gray-900">{formatCurrency(quotation?.totalAmount || 0, quotation?.currency || getCurrentSbuCurrency())}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-0.5">Payment Terms</p>
-                  <p className="font-medium text-gray-900">{quotation?.paymentTerms || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-0.5">Delivery Period</p>
-                  <p className="font-medium text-gray-900">{quotation?.deliveryPeriod ? `${quotation.deliveryPeriod} days` : '—'}</p>
-                </div>
-                <p className="col-span-2 text-xs text-gray-500">{COO_POLICY_NOTE}</p>
-              </div>
-              <div className="bg-white border border-gray-200 rounded-xl p-4 grid grid-cols-2 gap-3 text-sm">
-                <div className="col-span-2">
-                  <p className="text-xs text-gray-500 mb-0.5">Deliver to</p>
-                  <p className="font-medium text-gray-900">
-                    {[
-                      poFormData.deliveryAddress.street,
-                      poFormData.deliveryAddress.city,
-                      poFormData.deliveryAddress.province,
-                      poFormData.deliveryAddress.postalCode
-                    ].filter(Boolean).join(', ') || '—'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-0.5">Expected delivery</p>
-                  <p className="font-medium text-gray-900">
-                    {poFormData.expectedDeliveryDate
-                      ? new Date(poFormData.expectedDeliveryDate).toLocaleDateString()
-                      : '—'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-0.5">Notes</p>
-                  <p className="font-medium text-gray-900 whitespace-pre-line">{poFormData.notes || '—'}</p>
-                </div>
-                <div className="col-span-2">
-                  <p className="text-xs text-gray-500 mb-0.5">Terms &amp; Conditions</p>
-                  <p className="font-medium text-gray-900 whitespace-pre-line">{poFormData.termsAndConditions || '—'}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <FormStepNav
-            current={poStep}
-            total={PO_FORM_STEPS.length}
-            onBack={() => goToPoStep(poStep - 1)}
-            onNext={() => goToPoStep(poStep + 1)}
-            onCancel={() => setShowCreatePOModal(false)}
-            finishLabel="Create Purchase Order"
-            submitting={processing}
-          />
-        </form>
-      </Modal>
+        onSaved={handlePOCreated}
+      />
     </div>
   );
 }

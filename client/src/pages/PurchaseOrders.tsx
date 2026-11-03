@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { procurementAPI, financeAPI, cooAPI } from '../lib/api';
 import { formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
@@ -24,6 +24,7 @@ import {
 import ViewButton from '../components/ViewButton';
 import Pagination from '../components/Pagination';
 import TableSkeleton from '../components/TableSkeleton';
+import { CreatePurchaseOrderDrawer } from '../components/PurchaseOrderForm';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 const statusColors: any = {
@@ -75,6 +76,39 @@ export default function PurchaseOrders() {
   const isCoo = user?.role === 'coo';
   // Raising and submitting POs is procurement's; everyone else here only reads.
   const isProcurement = user?.role === 'procurement_officer' || isProcurementHead(user);
+  // The create drawer lives in the URL (?new=1, with ?quotation= when it is
+  // raised from one), so links from elsewhere can open it and Back closes it.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const createOpen = isProcurement && searchParams.get('new') === '1';
+
+  const openCreate = () => {
+    setSearchParams((params) => {
+      params.set('new', '1');
+      return params;
+    });
+  };
+
+  const closeCreate = () => {
+    setSearchParams(
+      (params) => {
+        params.delete('new');
+        params.delete('quotation');
+        return params;
+      },
+      { replace: true }
+    );
+  };
+
+  // Straight to the new order, where it is submitted for approval. Replacing
+  // the ?new=1 entry means Back from there returns to the list.
+  const handleCreated = (poId?: string) => {
+    if (poId) {
+      navigate(`/app/purchase-orders/${poId}`, { replace: true });
+      return;
+    }
+    closeCreate();
+    fetchOrders();
+  };
 
   useEffect(() => {
     setPage(1);
@@ -140,7 +174,7 @@ export default function PurchaseOrders() {
           {isProcurement && (
             <button
               type="button"
-              onClick={() => navigate('/app/quotations?status=accepted')}
+              onClick={openCreate}
               className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors whitespace-nowrap shrink-0"
             >
               <Plus className="h-4 w-4" />
@@ -289,6 +323,13 @@ export default function PurchaseOrders() {
           itemLabel="purchase orders"
         />}
       </div>
+
+      <CreatePurchaseOrderDrawer
+        isOpen={createOpen}
+        quotationId={searchParams.get('quotation')}
+        onClose={closeCreate}
+        onSaved={handleCreated}
+      />
     </div>
   );
 }
