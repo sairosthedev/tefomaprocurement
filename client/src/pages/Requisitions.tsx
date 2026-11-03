@@ -55,17 +55,41 @@ const priorityColors: any = {
   urgent: 'bg-red-100 text-red-600'
 };
 
-// Purchase order statuses the label chains below don't name, in words rather
-// than the raw status code.
-const poStatusText = (status: string) =>
-  ({
-    pending_hod: 'Pending HOD',
-    pending_dept_hod: 'Pending Department Head',
-    pending_proc_hod: 'Pending Head of Procurement',
-    partially_received: 'Partly Received',
-    completed: 'Completed',
-    cancelled: 'Cancelled'
-  } as Record<string, string>)[status] || status;
+// Where a requisition has got to, across the whole journey — requisition,
+// purchase order, delivery — as one label. The list shows only this; the PO
+// number, supplier and approval trail are on the requisition's own page.
+const PO_STAGE: Record<string, { label: string; className: string }> = {
+  draft: { label: 'PO drafted', className: 'bg-gray-100 text-gray-700' },
+  pending_hod: { label: 'PO with Dept Head', className: 'bg-amber-100 text-amber-700' },
+  pending_dept_hod: { label: 'PO with Dept Head', className: 'bg-amber-100 text-amber-700' },
+  pending_proc_hod: { label: 'PO with Head of Procurement', className: 'bg-amber-100 text-amber-700' },
+  pending_finance: { label: 'PO with Finance', className: 'bg-amber-100 text-amber-700' },
+  pending_coo: { label: 'PO with COO', className: 'bg-amber-100 text-amber-700' },
+  pending_approvals: { label: 'PO awaiting approval', className: 'bg-amber-100 text-amber-700' },
+  approved: { label: 'PO approved', className: 'bg-green-100 text-green-700' },
+  issued: { label: 'Ordered from supplier', className: 'bg-blue-100 text-blue-700' },
+  partially_received: { label: 'Partly delivered', className: 'bg-teal-100 text-teal-700' },
+  completed: { label: 'Delivered', className: 'bg-emerald-100 text-emerald-700' },
+  rejected: { label: 'PO rejected', className: 'bg-red-100 text-red-700' },
+  cancelled: { label: 'PO cancelled', className: 'bg-gray-100 text-gray-500' }
+};
+
+function journeyStatus(req: any): { label: string; className: string; hint?: string } {
+  const po = req.purchaseOrder;
+  const hint = po
+    ? [po.poNumber, po.supplier?.companyName].filter(Boolean).join(' · ')
+    : req.rfq?.rfqNumber;
+
+  if (req.itemsCollected) return { label: 'Collected', className: 'bg-emerald-100 text-emerald-700', hint };
+  if (req.itemsDeliveredToStores) return { label: 'Delivered to Stores', className: 'bg-green-100 text-green-700', hint };
+  if (po && PO_STAGE[po.status]) return { ...PO_STAGE[po.status], hint };
+  if (req.status === 'ordered') return { label: 'Awaiting PO', className: 'bg-amber-100 text-amber-700', hint };
+  return {
+    label: statusLabels[req.status] || req.status,
+    className: statusColors[req.status] || statusColors.draft,
+    hint
+  };
+}
 
 export default function Requisitions() {
   const { user } = useAuth();
@@ -393,23 +417,16 @@ export default function Requisitions() {
           <table className="w-full text-sm border-collapse">
               <thead>
                 <tr>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">REQ #</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Requisition</th>
                   <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Title</th>
-                  {showRequester && (
-                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Requested By</th>
-                  )}
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Items</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Priority</th>
                   <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">PO Status</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Date</th>
                   <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap"></th>
                 </tr>
               </thead>
               {loading ? (
-                <TableSkeleton cols={showRequester ? 9 : 8} />
+                <TableSkeleton cols={4} />
               ) : requisitions.length === 0 ? (
-                <tbody><tr><td colSpan={showRequester ? 9 : 8} className="text-center py-12 text-gray-500">
+                <tbody><tr><td colSpan={4} className="text-center py-12 text-gray-500">
                   <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                   <p>{isProcurement ? 'No requisitions to process' : 'No requisitions found'}</p>
                   {!isProcurement && (
@@ -422,134 +439,49 @@ export default function Requisitions() {
               <tbody>
                 {requisitions.map((req: any) => (
                   <tr key={req._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
-                    <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
+                    <td className="py-2.5 px-3 border-b border-gray-100 whitespace-nowrap align-top">
                       <span className="font-mono text-sm font-medium text-primary">
                         {req.requisitionNumber || `REQ-${req._id.slice(-6).toUpperCase()}`}
                       </span>
+                      <p className="text-xs text-gray-400 mt-0.5">{new Date(req.createdAt).toLocaleDateString('en-ZA')}</p>
                     </td>
-                    <td className="py-2 px-3 border-b border-gray-100">
-                      <p className="font-medium text-gray-900 truncate max-w-[14rem]" title={req.title || 'Untitled'}>
-                        {req.title || 'Untitled'}
+                    <td className="py-2.5 px-3 border-b border-gray-100 align-top">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <p className="font-medium text-gray-900 truncate max-w-[18rem]" title={req.title || 'Untitled'}>
+                          {req.title || 'Untitled'}
+                        </p>
+                        {/* Only priorities that change what someone does next earn a chip. */}
+                        {(req.priority === 'high' || req.priority === 'urgent') && (
+                          <span className={`shrink-0 px-2 py-0.5 rounded-full text-[11px] font-medium capitalize ${priorityColors[req.priority]}`}>
+                            {req.priority}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5 truncate max-w-[22rem]">
+                        {[
+                          showRequester
+                            ? (isOwner(req) ? 'You' : [req.requestedBy?.firstName, req.requestedBy?.lastName].filter(Boolean).join(' '))
+                            : null,
+                          req.department?.name,
+                          `${itemCountOf(req)} ${itemCountOf(req) === 1 ? 'item' : 'items'}`
+                        ].filter(Boolean).join(' · ')}
                       </p>
                     </td>
-                    {showRequester && (
-                      <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
-                        {isOwner(req) ? (
-                          <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">You</span>
-                        ) : (
-                          <p className="text-sm text-gray-900">
-                            {req.requestedBy?.firstName} {req.requestedBy?.lastName}
-                          </p>
-                        )}
-                        {isProcurement && <p className="text-xs text-gray-500">{req.department?.name || 'No dept'}</p>}
-                      </td>
-                    )}
-                    <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
-                      <span className="text-gray-600">{itemCountOf(req)} {itemCountOf(req) === 1 ? 'item' : 'items'}</span>
-                    </td>
-                    <td className="py-2 px-3 border-b border-gray-100">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${priorityColors[req.priority] || priorityColors.medium}`}>
-                        {req.priority || 'Medium'}
-                      </span>
-                    </td>
-                    <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
-                      {/* Show computed status: if PO exists, show 'ordered', if delivered to stores, show appropriate status */}
+                    <td className="py-2.5 px-3 border-b border-gray-100 whitespace-nowrap align-top">
                       {(() => {
-                        let displayStatus = req.status;
-                        if (req.purchaseOrder) {
-                          displayStatus = 'ordered';
-                        } else if (req.itemsDeliveredToStores) {
-                          displayStatus = 'ordered'; // Will show as delivered in PO Status column
-                        }
+                        const stage = journeyStatus(req);
                         return (
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[displayStatus] || statusColors.draft}`}>
-                            {statusLabels[displayStatus] || displayStatus}
+                          <span
+                            className={`px-2.5 py-1 rounded-full text-xs font-medium ${stage.className}`}
+                            title={stage.hint || undefined}
+                          >
+                            {stage.label}
                           </span>
                         );
                       })()}
                     </td>
-                    <td className="py-2 px-3 border-b border-gray-100">
-                      {req.purchaseOrder ? (
-                        <div className="flex flex-col gap-1">
-                          <div className="font-mono text-sm font-semibold text-primary whitespace-nowrap">
-                            {req.purchaseOrder.poNumber}
-                          </div>
-                          {req.purchaseOrder.supplier?.companyName && (
-                            <div className="text-xs text-gray-600">
-                              {req.purchaseOrder.supplier.companyName}
-                            </div>
-                          )}
-                          {req.purchaseOrder.status === 'pending_approvals' ? (
-                            <div className="flex flex-col gap-0.5 mt-1">
-                              <span className={`text-xs ${req.purchaseOrder.financeApproved ? 'text-green-700' : 'text-amber-700'}`}>
-                                Finance: {req.purchaseOrder.financeApproved ? 'Approved' : 'Pending'}
-                              </span>
-                              <span className={`text-xs ${req.purchaseOrder.cooApproved ? 'text-green-700' : 'text-purple-700'}`}>
-                                COO: {req.purchaseOrder.cooApproved ? 'Approved' : 'Pending'}
-                              </span>
-                            </div>
-                          ) : req.itemsDeliveredToStores ? (
-                            <div className="flex flex-col gap-0.5 mt-1">
-                              <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
-                                ✅ Delivered to Stores
-                              </span>
-                            </div>
-                          ) : (
-                            <span className={`px-2 py-0.5 rounded text-xs font-medium mt-1 ${
-                              req.purchaseOrder.status === 'approved' ? 'bg-green-100 text-green-700' :
-                              req.purchaseOrder.status === 'issued' ? 'bg-blue-100 text-blue-700' :
-                              req.purchaseOrder.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                              req.purchaseOrder.status === 'draft' ? 'bg-gray-100 text-gray-700' :
-                              'bg-gray-100 text-gray-700'
-                            }`}>
-                              {req.purchaseOrder.status === 'pending_finance' ? 'Pending Finance' :
-                               req.purchaseOrder.status === 'pending_coo' ? 'Pending COO' :
-                               req.purchaseOrder.status === 'pending_approvals' ? 'Pending Approvals' :
-                               req.purchaseOrder.status === 'approved' ? 'Approved' :
-                               req.purchaseOrder.status === 'issued' ? 'Issued' :
-                               req.purchaseOrder.status === 'rejected' ? 'Rejected' :
-                               req.purchaseOrder.status === 'draft' ? 'Draft' :
-                               poStatusText(req.purchaseOrder.status)}
-                            </span>
-                          )}
-                        </div>
-                      ) : req.status === 'ordered' ? (
-                        <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">
-                          ⏳ PO Pending
-                        </span>
-                      ) : req.status === 'quoted' ? (
-                        <div className="flex flex-col gap-0.5">
-                          <span className="px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700">
-                            📋 Quotations Received
-                          </span>
-                          {req.rfq?.rfqNumber && (
-                            <span className="text-xs text-gray-500 font-mono">
-                              {req.rfq.rfqNumber}
-                            </span>
-                          )}
-                        </div>
-                      ) : req.status === 'sourcing' && req.rfq ? (
-                        <div className="flex flex-col gap-0.5">
-                          <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
-                            🔍 RFQ Created
-                          </span>
-                          <span className="text-xs text-gray-500 font-mono">
-                            {req.rfq.rfqNumber}
-                          </span>
-                        </div>
-                      ) : req.status === 'sourcing' ? (
-                        <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
-                          🔍 Sourcing
-                        </span>
-                      ) : (
-                        <span className="text-xs text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="py-2 px-3 border-b border-gray-100 text-gray-500">
-                      {new Date(req.createdAt).toLocaleDateString('en-ZA')}
-                    </td>
-                    <td className="py-2 px-3 border-b border-gray-100">
-                      <div className="flex items-center gap-2">
+                    <td className="py-2.5 px-3 border-b border-gray-100 align-top">
+                      <div className="flex items-center justify-end gap-2">
                         <ViewButton
                           size="xs"
                           showIcon={false}

@@ -4,6 +4,7 @@ import api, { departmentAPI, procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency } from '../lib/constants';
+import { getCurrentSbuCurrency } from '../lib/sbu';
 import { PR_CANCELLATION_REASONS, isProcurementHead } from '@fossil/shared';
 import PageHeader from '../components/PageHeader';
 import CancelWorkflowModal from '../components/CancelWorkflowModal';
@@ -682,6 +683,16 @@ export default function RequisitionDetail() {
                     {poStatusStyles[requisition.purchaseOrder.status]?.label || requisition.purchaseOrder.status}
                   </span>
                 </div>
+                {(requisition.purchaseOrder.supplier?.companyName || typeof requisition.purchaseOrder.totalAmount === 'number') && (
+                  <div className="flex items-center justify-between gap-3 text-sm">
+                    <span className="text-blue-900">{requisition.purchaseOrder.supplier?.companyName || '—'}</span>
+                    {typeof requisition.purchaseOrder.totalAmount === 'number' && (
+                      <span className="font-semibold text-blue-900">
+                        {formatCurrency(requisition.purchaseOrder.totalAmount, requisition.purchaseOrder.currency || getCurrentSbuCurrency())}
+                      </span>
+                    )}
+                  </div>
+                )}
                 {SEQUENTIAL_PO_STATUSES.includes(requisition.purchaseOrder.status) && (() => {
                   const po = requisition.purchaseOrder;
                   const steps = [
