@@ -8,7 +8,6 @@ import { getCurrentSbuCurrency } from '../lib/sbu';
 import { isProcurementHead } from '@fossil/shared';
 import PageHeader from '../components/PageHeader';
 import EquipmentDetailsView from '../components/EquipmentDetailsView';
-import { WorkflowStepper, NextStepCard, type WorkflowStep, type NextStepAction } from '../components/WorkflowStepper';
 import { 
   FileText, 
   Calendar, 
@@ -75,61 +74,6 @@ function Step({ done, title, children }: any) {
   );
 }
 
-/**
- * A quotation from receipt to purchase order: the three-quote rule, procurement's
- * selection, the Head of Procurement's authorization, acceptance, then the PO.
- */
-function quotationSteps(quotation: any, isProcurement: boolean): WorkflowStep[] {
-  const c = quotation.compliance || {};
-  const accepted = quotation.status === 'accepted';
-  const po = quotation.existingPurchaseOrder;
-  const rfq = quotation.rfq;
-  const raw: Array<{ key: string; label: string; done: boolean; detail?: string; to?: string }> = [
-    {
-      key: 'rfq',
-      label: 'RFQ',
-      done: true,
-      detail: rfq?.rfqNumber,
-      to: isProcurement && rfq?._id ? `/app/rfqs/${rfq._id}` : undefined
-    },
-    {
-      key: 'received',
-      label: 'Received',
-      done: quotation.status !== 'draft',
-      detail: quotation.status === 'revision_requested' ? 'Revision requested' : undefined
-    },
-    {
-      key: 'min',
-      label: 'Three quotes',
-      done: accepted || !!c.minQuotationsMet,
-      detail: c.waived ? 'Waived' : typeof c.quotationCount === 'number' ? `${c.quotationCount} received` : undefined
-    },
-    // With an approved waiver the Head of Procurement may authorize without a selection.
-    { key: 'selected', label: 'Selected', done: accepted || !!c.hodSelected || (!!c.waived && !!c.pmAuthorized) },
-    { key: 'authorized', label: 'Authorized', done: accepted || !!c.pmAuthorized },
-    { key: 'accepted', label: 'Accepted', done: accepted },
-    {
-      key: 'po',
-      label: 'Purchase order',
-      done: !!po,
-      detail: po?.poNumber,
-      to: isProcurement && po?._id ? `/app/purchase-orders/${po._id}` : undefined
-    }
-  ];
-
-  const stopped = ['rejected', 'expired', 'superseded'].includes(quotation.status);
-  const current = raw.findIndex((s) => !s.done);
-  return raw.map((s, i) => ({
-    key: s.key,
-    label: s.label,
-    detail:
-      i === current && stopped
-        ? quotation.status.charAt(0).toUpperCase() + quotation.status.slice(1)
-        : s.detail,
-    to: s.to,
-    state: s.done ? 'done' : i === current ? (stopped ? 'stopped' : 'current') : 'upcoming'
-  }));
-}
 
 export default function QuotationDetail() {
   const { id } = useParams();
@@ -472,54 +416,6 @@ export default function QuotationDetail() {
         }
       />
 
-      <WorkflowStepper steps={quotationSteps(quotation, isProcurement)} />
-      {(() => {
-        const c = quotation.compliance || {};
-        const procurementHead = isProcurementHead(user);
-        const po = quotation.existingPurchaseOrder;
-        const toPanel: NextStepAction = {
-          label: 'Go to authorization',
-          onClick: () => complianceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        };
-        let next: { title: string; description?: string; waiting?: boolean; done?: boolean; action?: NextStepAction } | null = null;
-
-        if (['rejected', 'expired', 'superseded'].includes(quotation.status)) {
-          next = null;
-        } else if (quotation.status === 'revision_requested') {
-          next = { title: 'The supplier to submit a revised price', waiting: true };
-        } else if (po) {
-          next = {
-            title: `Purchase order ${po.poNumber} is raised`,
-            done: true,
-            description: `Status: ${String(po.status).replace(/_/g, ' ')}. Its approval and delivery continue on the order.`,
-            action: isProcurement ? { label: 'Open purchase order', to: `/app/purchase-orders/${po._id}` } : undefined
-          };
-        } else if (quotation.status === 'accepted') {
-          next = isProcurement
-            ? { title: 'Raise the purchase order', description: 'Delivery details are filled in from the quotation.', action: { label: 'Create purchase order', onClick: () => setShowCreatePOModal(true) } }
-            : { title: 'Procurement to raise the purchase order', waiting: true };
-        } else if (!c.minQuotationsMet) {
-          next = procurementHead || user?.role === 'coo'
-            ? { title: 'Approve a waiver of the three-quote rule', description: `Only ${c.quotationCount ?? 0} quotation(s) were received.`, action: toPanel }
-            : { title: 'A waiver from the Head of Procurement or COO', description: `Only ${c.quotationCount ?? 0} quotation(s) were received; three are required.`, waiting: true };
-        } else if (!c.hodSelected && !c.waived) {
-          next = isProcurement
-            ? { title: 'Select this quotation with a justification', description: 'Only if it is the best value; compare it on the RFQ first.', action: toPanel }
-            : { title: 'Procurement to select the winning quotation', waiting: true };
-        } else if (!c.pmAuthorized) {
-          next = procurementHead
-            ? { title: 'Authorize the selected quotation', action: toPanel }
-            : { title: 'Head of Procurement authorization', waiting: true };
-        } else if (c.fullyAuthorized) {
-          next = isProcurement
-            ? { title: 'Accept this quotation', description: 'Fully authorized. Accepting lets you raise the purchase order.', action: { label: 'Accept quotation', onClick: () => setShowAcceptModal(true) } }
-            : { title: 'Procurement to accept the quotation', waiting: true };
-        }
-
-        return next ? (
-          <NextStepCard title={next.title} description={next.description} waiting={next.waiting} done={next.done} action={next.action} />
-        ) : null;
-      })()}
 
       {/* Acceptance compliance workflow */}
       {quotation.compliance && quotation.status !== 'accepted' && quotation.status !== 'rejected' && (

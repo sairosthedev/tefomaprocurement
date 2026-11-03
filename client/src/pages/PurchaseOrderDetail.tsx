@@ -9,8 +9,6 @@ import { PO_CANCELLATION_REASONS, isProcurementHead } from '@fossil/shared';
 import PageHeader from '../components/PageHeader';
 import CancelWorkflowModal from '../components/CancelWorkflowModal';
 import { canCancelPurchaseOrder, purchaseOrderCancelApiBase } from '../lib/cancellationAccess';
-import { WorkflowStepper, NextStepCard } from '../components/WorkflowStepper';
-import { purchaseOrderSteps, PO_WAITING_ON } from '../lib/purchaseOrderSteps';
 import { 
   ShoppingCart, 
   Calendar, 
@@ -189,37 +187,6 @@ export default function PurchaseOrderDetail() {
         onConfirm={handleCancelPurchaseOrder}
       />
 
-      <WorkflowStepper steps={purchaseOrderSteps(po, { withSources: true })} />
-      {po.status === 'draft' && isProcurement ? (
-        <NextStepCard
-          title="Submit this purchase order for approval"
-          description="It goes to the Head of Procurement, then Finance."
-          action={{ label: submitting ? 'Submitting...' : 'Submit for approval', onClick: handleSubmit, disabled: submitting }}
-        />
-      ) : PO_WAITING_ON[po.status] ? (
-        <NextStepCard
-          title={PO_WAITING_ON[po.status]}
-          waiting={!(
-            (po.status === 'pending_finance' && isFinance) ||
-            (po.status === 'pending_coo' && isCOO) ||
-            (['pending_hod', 'pending_proc_hod'].includes(po.status) && isProcurementHead(user))
-          )}
-          action={
-            (po.status === 'pending_finance' && isFinance) ||
-            (po.status === 'pending_coo' && isCOO) ||
-            (['pending_hod', 'pending_proc_hod'].includes(po.status) && isProcurementHead(user))
-              ? { label: 'Open approvals', to: '/app/approvals' }
-              : undefined
-          }
-        />
-      ) : po.status === 'issued' || po.status === 'partially_received' ? (
-        <NextStepCard
-          title="Supplier to deliver, and Stores to receive the goods"
-          description="Stores record the delivery against this order when it arrives."
-          waiting={user?.role !== 'stores_officer'}
-          action={user?.role === 'stores_officer' ? { label: 'Open deliveries', to: '/app/deliveries' } : undefined}
-        />
-      ) : null}
 
       {po.status === 'cancelled' && po.cancellationReason && (
         <div className="mb-6 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-800">

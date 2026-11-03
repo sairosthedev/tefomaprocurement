@@ -6,7 +6,6 @@ import Pagination from '../components/Pagination';
 import Modal from '../components/Modal';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 import { FormSteps, FormStepNav } from '../components/FormSteps';
-import { WorkflowStepper, type WorkflowStep } from '../components/WorkflowStepper';
 import { ArrowLeftRight, Loader2, Plus, CheckCircle, Truck, PackageCheck } from 'lucide-react';
 
 const STATUS_COLORS: Record<string, string> = {
