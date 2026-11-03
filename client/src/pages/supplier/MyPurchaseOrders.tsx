@@ -10,8 +10,7 @@ import Pagination from '../../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
 import { formatCurrency } from '../../lib/constants';
 import { getCurrentSbuCurrency } from '../../lib/sbu';
-import { WorkflowStepper, NextStepCard } from '../../components/WorkflowStepper';
-import { supplierPoJourney, supplierPoNext } from '../../lib/supplierJourney';
+import { supplierPoNext } from '../../lib/supplierJourney';
 import { SubmitInvoiceDrawer } from '../../components/InvoiceForm';
 
 const statusColors: any = {
@@ -352,18 +351,6 @@ export default function MyPurchaseOrders() {
         {selectedPO && (
           <div className="space-y-6">
             <div>
-              <WorkflowStepper steps={supplierPoJourney(selectedPO).steps} compact />
-              {(() => {
-                const next = supplierPoNext(selectedPO);
-                if (!next) return null;
-                const action =
-                  next.action === 'acknowledge'
-                    ? { label: 'Acknowledge', onClick: () => { setShowViewModal(false); openAcknowledgeModal(selectedPO); } }
-                    : next.action === 'invoice'
-                      ? { label: 'Submit invoice', onClick: () => { setShowViewModal(false); setInvoicingPoId(selectedPO._id); } }
-                      : undefined;
-                return <NextStepCard title={next.title} description={next.description} waiting={next.waiting} action={action} />;
-              })()}
             </div>
             {/* Acknowledgment Info */}
             {selectedPO.isAcknowledged && (selectedPO.status === 'issued' || selectedPO.status === 'approved') && (

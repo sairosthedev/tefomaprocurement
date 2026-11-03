@@ -8,8 +8,6 @@ import PageHeader from '../../components/PageHeader';
 import Pagination from '../../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
 import { Loader2, Plus, ChevronDown, ChevronRight } from 'lucide-react';
-import { WorkflowStepper, NextStepCard } from '../../components/WorkflowStepper';
-import { supplierInvoiceJourney } from '../../lib/supplierJourney';
 import { SubmitInvoiceDrawer } from '../../components/InvoiceForm';
 
 export default function MyInvoices() {
@@ -122,29 +120,6 @@ export default function MyInvoices() {
                   {openId === inv._id && (
                     <tr>
                       <td colSpan={4} className="px-4 pb-4 bg-gray-50/60">
-                        <WorkflowStepper steps={supplierInvoiceJourney(inv).steps} compact />
-                        {inv.status === 'rejected' ? (
-                          <NextStepCard
-                            title="Submit a corrected invoice"
-                            description={inv.rejectionReason ? `Finance rejected it: ${inv.rejectionReason}` : 'Finance rejected this invoice.'}
-                            action={
-                              inv.purchaseOrder?._id
-                                ? { label: 'Submit corrected invoice', onClick: () => openSubmit(inv.purchaseOrder._id) }
-                                : undefined
-                            }
-                          />
-                        ) : ['submitted', 'variance', 'approved', 'partially_paid'].includes(inv.status) ? (
-                          <NextStepCard
-                            waiting
-                            title={
-                              inv.status === 'variance'
-                                ? 'Finance to resolve a difference against the order or goods received'
-                                : inv.status === 'submitted'
-                                  ? 'Finance to match and approve the invoice'
-                                  : 'Finance to complete payment'
-                            }
-                          />
-                        ) : null}
                       </td>
                     </tr>
                   )}

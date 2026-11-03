@@ -7,8 +7,6 @@ import { useToast } from '../components/Toast'
 import PageHeader, { PageStatCard } from '../components/PageHeader'
 import Pagination from '../components/Pagination'
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination'
-import { WorkflowStepper } from '../components/WorkflowStepper'
-import { supplierSteps } from '../lib/supplierOnboardingSteps'
 
 export default function VerificationHub() {
   const { showToast } = useToast()
@@ -263,9 +261,6 @@ export default function VerificationHub() {
                         <span className="text-xs text-gray-500">{sectionStatus}</span>
                       </div>
 
-                      <div className="mt-3">
-                        <WorkflowStepper compact steps={supplierSteps(supplier, completion.requiredComplete, completion.requiredTotal)} />
-                      </div>
 
                       <div className="grid gap-3 sm:grid-cols-[1fr_220px]">
                         <div>

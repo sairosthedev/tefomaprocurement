@@ -7,8 +7,6 @@ import {
 } from 'lucide-react';
 import { PROVINCES, BANKS, SUPPLIER_CATEGORIES } from '../../lib/constants';
 import PageHeader from '../../components/PageHeader';
-import { WorkflowStepper, NextStepCard } from '../../components/WorkflowStepper';
-import { supplierBankChangeJourney } from '../../lib/supplierJourney';
 
 export default function SupplierProfile() {
   const { showToast } = useToast();
@@ -359,23 +357,6 @@ export default function SupplierProfile() {
           {profile.bankChangeRequest && (
             <div className="mb-6">
               <p className="text-sm font-medium text-gray-700 mb-1">Your latest banking change</p>
-              <WorkflowStepper steps={supplierBankChangeJourney(profile.bankChangeRequest).steps} compact />
-              {['pending_verification', 'pending_approval'].includes(profile.bankChangeRequest.status) ? (
-                <NextStepCard
-                  waiting
-                  title={
-                    profile.bankChangeRequest.status === 'pending_verification'
-                      ? 'Procurement to call you back on a number already on file'
-                      : 'A second person to approve the change'
-                  }
-                  description="Payments continue to your current account until the change is approved."
-                />
-              ) : profile.bankChangeRequest.status === 'rejected' ? (
-                <NextStepCard
-                  title="Your banking change was rejected"
-                  description={profile.bankChangeRequest.rejectionReason || 'Contact Procurement before submitting it again.'}
-                />
-              ) : null}
             </div>
           )}
           

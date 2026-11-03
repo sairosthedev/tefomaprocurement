@@ -4,9 +4,7 @@ import { useToast } from '../../components/Toast';
 import api from '../../lib/api';
 import { Clock, Loader2, PartyPopper, Send } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
-import { WorkflowStepper, NextStepCard } from '../../components/WorkflowStepper';
 import { SubmitQuotationDrawer } from '../../components/QuotationForm';
-import { supplierRfqJourney, isQuoteDecided } from '../../lib/supplierJourney';
 
 export default function SupplierRFQDetail() {
   const { id } = useParams();
@@ -108,40 +106,6 @@ export default function SupplierRFQDetail() {
         }
       />
 
-      {(() => {
-        const { steps, stopped } = supplierRfqJourney(rfq, canSubmit);
-        const q = rfq.quotationStatus;
-        return (
-          <>
-            <WorkflowStepper steps={steps} />
-            {canSubmit ? (
-              <NextStepCard
-                title={rfq.revisionRequested ? 'Submit your revised quotation' : 'Submit your quotation'}
-                description={rfq.revisionRequested ? 'Procurement asked for a revised price.' : `Quotes close on ${new Date(rfq.submissionDeadline).toLocaleString('en-ZA')} (${remaining.text}).`}
-                action={{ label: rfq.revisionRequested ? 'Submit revised quote' : 'Submit quote', onClick: openQuote }}
-              />
-            ) : rfq.purchaseOrder ? (
-              !rfq.purchaseOrder.isAcknowledged && ['approved', 'issued'].includes(rfq.purchaseOrder.status) ? (
-                <NextStepCard
-                  title={`Acknowledge purchase order ${rfq.purchaseOrder.poNumber}`}
-                  description="Confirm the order and your delivery date, then deliver and invoice against it."
-                  action={{ label: 'Open purchase orders', to: '/app/my-purchase-orders' }}
-                />
-              ) : (
-                <NextStepCard
-                  title={`Follow purchase order ${rfq.purchaseOrder.poNumber}`}
-                  description="Delivery, invoicing and payment for this RFQ continue on the order."
-                  action={{ label: 'Open purchase orders', to: '/app/my-purchase-orders' }}
-                />
-              )
-            ) : q === 'accepted' ? (
-              <NextStepCard title="Procurement to issue the purchase order" description="It is approved internally before it reaches you." waiting />
-            ) : !stopped && q && !isQuoteDecided(q) ? (
-              <NextStepCard title="Procurement to evaluate the quotes" description="You are notified when a decision is made." waiting />
-            ) : null}
-          </>
-        );
-      })()}
 
       {rfq.revisionRequested && (
         <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">

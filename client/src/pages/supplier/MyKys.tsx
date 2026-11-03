@@ -4,8 +4,6 @@ import { KYS_DOCUMENT_REQUIREMENTS } from '@fossil/shared';
 import { useToast } from '../../components/Toast';
 import KysDocuments from '../../components/KysDocuments';
 import PageHeader from '../../components/PageHeader';
-import { WorkflowStepper, NextStepCard } from '../../components/WorkflowStepper';
-import { supplierOnboardingJourney } from '../../lib/supplierJourney';
 import { Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 
 export default function MyKys() {
@@ -56,7 +54,6 @@ export default function MyKys() {
     docs.some((d: any) => d.documentType === r.documentType && d.verified)
   ).length;
   const isActive = profile?.status === 'active';
-  const onboarding = supplierOnboardingJourney(profile, requiredUploaded, requiredReqs.length, requiredVerified);
 
   return (
     <div className="p-6 max-w-3xl">
@@ -65,17 +62,6 @@ export default function MyKys() {
         subtitle="Upload your Know-Your-Supplier documents. Your account is activated once Procurement verifies the mandatory documents."
       />
 
-      <WorkflowStepper steps={onboarding.steps} />
-      {!isActive && !onboarding.stopped && (
-        requiredUploaded < requiredReqs.length ? (
-          <NextStepCard
-            title="Upload your mandatory documents"
-            description={`${requiredUploaded} of ${requiredReqs.length} uploaded. Use the list below.`}
-          />
-        ) : (
-          <NextStepCard waiting title="Procurement to verify your documents" description="Your account is activated once they are verified." />
-        )
-      )}
 
       <div className="bg-white rounded-xl shadow p-6 mb-6">
         <div

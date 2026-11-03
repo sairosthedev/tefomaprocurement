@@ -26,30 +26,6 @@ const CREATE_STEPS = [
 
 const fmtDate = (d?: string) => (d ? new Date(d).toLocaleDateString('en-ZA') : undefined);
 
-/** A transfer from request to stock booked in at the receiving site. */
-function transferSteps(t: any): WorkflowStep[] {
-  const stopped = t.status === 'rejected' || t.status === 'cancelled';
-  const shipped = ['in_transit', 'received', 'partially_received'].includes(t.status);
-  const raw = [
-    { key: 'requested', label: 'Requested', done: t.status !== 'draft', detail: fmtDate(t.createdAt) },
-    // Shipping straight from pending is allowed, so a shipped transfer counts as past approval.
-    { key: 'approved', label: 'Approved', done: t.status === 'approved' || shipped, detail: fmtDate(t.approvedAt) },
-    { key: 'shipped', label: 'In transit', done: shipped, detail: fmtDate(t.shippedAt) },
-    {
-      key: 'received',
-      label: 'Received',
-      done: t.status === 'received' || t.status === 'partially_received',
-      detail: t.status === 'partially_received' ? 'Partly received' : fmtDate(t.receivedAt)
-    }
-  ];
-  const current = raw.findIndex((s) => !s.done);
-  return raw.map((s, i) => ({
-    key: s.key,
-    label: s.label,
-    detail: i === current && stopped ? (t.status === 'rejected' ? 'Rejected' : 'Cancelled') : s.detail,
-    state: s.done ? 'done' : i === current ? (stopped ? 'stopped' : 'current') : 'upcoming'
-  }));
-}
 
 export default function StockTransfers() {
   const { showToast } = useToast();
@@ -256,9 +232,6 @@ export default function StockTransfers() {
                     <p className="text-xs text-gray-400 mt-1">
                       {transfer.items?.length || 0} line(s) · {new Date(transfer.createdAt).toLocaleDateString('en-ZA')}
                     </p>
-                    <div className="mt-3 max-w-xl">
-                      <WorkflowStepper compact steps={transferSteps(transfer)} />
-                    </div>
                     <ul className="space-y-1 text-sm text-gray-600">
                       {transfer.items?.slice(0, 3).map((line: any, i: number) => (
                         <li key={i}>

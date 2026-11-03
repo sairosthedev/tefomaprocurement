@@ -8,8 +8,6 @@ import PageHeader from '../../components/PageHeader';
 import Pagination from '../../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
 import { formatCurrency } from '../../lib/constants';
-import { WorkflowStepper, NextStepCard } from '../../components/WorkflowStepper';
-import { supplierDeliveryJourney } from '../../lib/supplierJourney';
 import { SubmitInvoiceDrawer } from '../../components/InvoiceForm';
 
 const statusColors: any = {
@@ -259,22 +257,6 @@ export default function MyDeliveries() {
         {selectedDelivery && (
           <div className="space-y-6">
             <div>
-              <WorkflowStepper steps={supplierDeliveryJourney(selectedDelivery).steps} compact />
-              {['accepted', 'partially_accepted'].includes(selectedDelivery.status) && selectedDelivery.purchaseOrder?._id ? (
-                <NextStepCard
-                  title="Submit your invoice"
-                  description={`Bill what Stores accepted against ${selectedDelivery.purchaseOrder.poNumber}.`}
-                  action={{
-                    label: 'Submit invoice',
-                    onClick: () => { setShowViewModal(false); setInvoicingPoId(selectedDelivery.purchaseOrder._id); }
-                  }}
-                />
-              ) : selectedDelivery.status !== 'rejected' ? (
-                <NextStepCard
-                  waiting
-                  title={selectedDelivery.status === 'pending' ? 'Stores to receive the goods' : 'Stores to inspect and accept the goods'}
-                />
-              ) : null}
             </div>
             {selectedDelivery.status === 'pending' && (
               <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-200 mb-6">

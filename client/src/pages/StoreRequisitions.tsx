@@ -13,7 +13,6 @@ import Pagination from '../components/Pagination';
 import { ItemSelect } from '../components/ItemSelect';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 import { FormSteps, FormStepNav } from '../components/FormSteps';
-import { WorkflowStepper, NextStepCard, type WorkflowStep } from '../components/WorkflowStepper';
 
 const statusColors: any = {
   pending: 'bg-amber-100 text-amber-700',
@@ -31,43 +30,6 @@ const CREATE_STEPS = [
 
 const emptyItem = () => ({ itemId: '', itemCode: '', description: '', quantity: 1, catalogItem: null });
 
-/** A store requisition from the department's request to stock handed over. */
-function storeRequisitionSteps(req: any): WorkflowStep[] {
-  const stopped = req.status === 'rejected' || req.status === 'cancelled';
-  const raw = [
-    {
-      key: 'requested',
-      label: 'Requested',
-      done: req.status !== 'draft',
-      detail: req.requestedBy ? `${req.requestedBy.firstName || ''} ${req.requestedBy.lastName || ''}`.trim() : undefined
-    },
-    {
-      key: 'approved',
-      label: 'Stores approval',
-      done: ['approved', 'partially_issued', 'issued'].includes(req.status),
-      detail: req.approvedBy?.firstName ? `${req.approvedBy.firstName} ${req.approvedBy.lastName || ''}`.trim() : undefined
-    },
-    {
-      key: 'issued',
-      label: 'Issued',
-      done: req.status === 'issued',
-      detail: req.status === 'partially_issued' ? 'Partly issued' : req.issueNoteNumber
-    },
-    {
-      key: 'collected',
-      label: 'Collected',
-      done: req.status === 'issued' && Boolean(req.collectedBy?.name),
-      detail: req.collectedBy?.name
-    }
-  ];
-  const current = raw.findIndex((s) => !s.done);
-  return raw.map((s, i) => ({
-    key: s.key,
-    label: s.label,
-    detail: i === current && stopped ? (req.status === 'rejected' ? 'Rejected' : 'Cancelled') : s.detail,
-    state: s.done ? 'done' : i === current ? (stopped ? 'stopped' : 'current') : 'upcoming'
-  }));
-}
 
 export default function StoreRequisitions() {
   const { user } = useAuth();
@@ -625,60 +587,6 @@ export default function StoreRequisitions() {
         {selectedRequisition && (
           <div className="space-y-4">
             <div>
-              <WorkflowStepper compact steps={storeRequisitionSteps(selectedRequisition)} />
-              {(() => {
-                const status = selectedRequisition.status;
-                if (status === 'pending') {
-                  return isStoresOfficer ? (
-                    <NextStepCard
-                      title="Approve or reject this request"
-                      description="Approving lets you issue the items next."
-                      action={{
-                        label: 'Approve',
-                        onClick: () => { setShowViewModal(false); setShowApproveModal(true); }
-                      }}
-                    />
-                  ) : (
-                    <NextStepCard title="Stores to approve the request" waiting />
-                  );
-                }
-                if (['approved', 'partially_issued'].includes(status)) {
-                  return isStoresOfficer ? (
-                    <NextStepCard
-                      title={status === 'partially_issued' ? 'Issue the remaining items' : 'Issue the items'}
-                      description="Record who is collecting them."
-                      action={{
-                        label: 'Issue items',
-                        onClick: () => {
-                          setShowViewModal(false);
-                          setCollectedBy({ name: '', idNumber: '', department: '', contactNumber: '' });
-                          setShowIssueModal(true);
-                        }
-                      }}
-                    />
-                  ) : (
-                    <NextStepCard
-                      title="Stores to issue the items"
-                      description="Collect them from stores; the collector signs the issue note."
-                      waiting
-                    />
-                  );
-                }
-                if (status === 'issued') {
-                  return (
-                    <NextStepCard
-                      title="Print the issue note for signature"
-                      description="The collector signs it as the record of who took the stock."
-                      action={{
-                        label: printingId === selectedRequisition._id ? 'Opening...' : 'Print issue note',
-                        onClick: () => handlePrintIssueNote(selectedRequisition),
-                        disabled: printingId === selectedRequisition._id
-                      }}
-                    />
-                  );
-                }
-                return null;
-              })()}
             </div>
 
             <div className="grid grid-cols-2 gap-4">

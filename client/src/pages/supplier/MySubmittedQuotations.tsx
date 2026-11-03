@@ -15,8 +15,6 @@ import Pagination from '../../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
 import { formatCurrency } from '../../lib/constants';
 import { getCurrentSbuCurrency } from '../../lib/sbu';
-import { WorkflowStepper, NextStepCard } from '../../components/WorkflowStepper';
-import { supplierQuotationJourney, supplierQuotationNext } from '../../lib/supplierJourney';
 
 const statusColors: any = {
   submitted: 'bg-blue-100 text-blue-700',
@@ -299,18 +297,6 @@ export default function MySubmittedQuotations() {
         {selectedQuotation && (
           <div className="space-y-6">
             <div>
-              <WorkflowStepper steps={supplierQuotationJourney(selectedQuotation).steps} compact />
-              {(() => {
-                const next = supplierQuotationNext(selectedQuotation);
-                return next ? (
-                  <NextStepCard
-                    title={next.title}
-                    description={next.description}
-                    waiting={next.waiting}
-                    action={next.to ? { label: next.label || 'Open', to: next.to } : undefined}
-                  />
-                ) : null;
-              })()}
             </div>
             {/* Status Banner */}
             {(selectedQuotation.status === 'accepted' || selectedQuotation.status === 'awarded') && (
