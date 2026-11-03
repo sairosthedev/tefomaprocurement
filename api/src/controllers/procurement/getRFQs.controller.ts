@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 
-import { RFQ, Quotation } from '../../models/index.js';
+import { RFQ } from '../../models/index.js';
 
 const getRFQs = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -20,33 +20,13 @@ const getRFQs = async (req: Request, res: Response): Promise<any> => {
     
     const [rfqs, total] = await Promise.all([
       RFQ.find(query)
-        .populate('createdBy', 'firstName lastName')
-        .populate('purchaseRequisition', 'requisitionNumber')
-        .populate('invitedSuppliers.supplier', 'companyName')
+        .select('rfqNumber title status submissionDeadline createdAt invitedSuppliers')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit))
         .lean(),
       RFQ.countDocuments(query)
     ]);
-
-    // Attach the number of bids received per RFQ (count only, no values).
-    if (rfqs.length > 0) {
-      const counts = await Quotation.aggregate([
-        {
-          $match: {
-            rfq: { $in: rfqs.map((r) => r._id) },
-            status: { $in: ['submitted', 'under_review', 'accepted', 'rejected'] },
-            isDeleted: false
-          }
-        },
-        { $group: { _id: '$rfq', count: { $sum: 1 } } }
-      ]);
-      const countMap = new Map(counts.map((c) => [c._id.toString(), c.count]));
-      rfqs.forEach((r) => {
-        (r as any).bidCount = countMap.get(r._id.toString()) || 0;
-      });
-    }
 
     res.status(200).json({
       success: true,

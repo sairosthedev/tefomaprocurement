@@ -18,12 +18,13 @@ const getInvoices = async (req: Request, res: Response): Promise<any> => {
     const skip = (Number(page) - 1) * Number(limit);
     const [invoices, total] = await Promise.all([
       Invoice.find(query)
-        .populate('purchaseOrder', 'poNumber totalAmount totalInvoiced totalPaid status')
+        .select('invoiceNumber purchaseOrder supplier totalAmount currency status matchResult createdAt')
+        .populate('purchaseOrder', 'poNumber')
         .populate('supplier', 'companyName')
-        .populate('submittedBy', 'firstName lastName email')
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(Number(limit)),
+        .limit(Number(limit))
+        .lean(),
       Invoice.countDocuments(query)
     ]);
 
