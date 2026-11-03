@@ -242,7 +242,7 @@ export default function SupplierProfileEditor({ section, draft, onChange, onSave
         type="button"
         onClick={onSave}
         disabled={saving}
-        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
       >
         {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
         Save changes
@@ -405,10 +405,11 @@ export default function SupplierProfileEditor({ section, draft, onChange, onSave
               <button
                 type="button"
                 onClick={() => patch({ contactPersons: draft.contactPersons.filter((_, i) => i !== idx) })}
-                className="text-red-600 hover:text-red-700 p-1"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-red-200 text-red-700 rounded-lg hover:bg-red-50 transition-colors"
                 aria-label="Remove contact"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3.5 w-3.5" />
+                Remove
               </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -475,10 +476,11 @@ export default function SupplierProfileEditor({ section, draft, onChange, onSave
               <button
                 type="button"
                 onClick={() => patch({ clientReferrals: draft.clientReferrals.filter((_, i) => i !== idx) })}
-                className="text-red-600 hover:text-red-700 p-1"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-red-200 text-red-700 rounded-lg hover:bg-red-50 transition-colors"
                 aria-label="Remove reference"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3.5 w-3.5" />
+                Remove
               </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

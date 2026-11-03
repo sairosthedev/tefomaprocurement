@@ -2,11 +2,13 @@
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../components/Toast';
 import api from '../../lib/api';
-import { ShoppingCart, Loader2, CheckCircle, Truck, Download } from 'lucide-react';
+import { ShoppingCart, CheckCircle, Truck, Download } from 'lucide-react';
 import ViewButton from '../../components/ViewButton';
 import Modal, { ModalFooter } from '../../components/Modal';
 import PageHeader from '../../components/PageHeader';
+import FactsCard from '../../components/supplier/FactsCard';
 import Pagination from '../../components/Pagination';
+import TableSkeleton from '../../components/TableSkeleton';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
 import { formatCurrency } from '../../lib/constants';
 import { getCurrentSbuCurrency } from '../../lib/sbu';
@@ -155,116 +157,112 @@ export default function MyPurchaseOrders() {
       </div>
 
       {/* Purchase Orders List */}
-      <div>
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 text-primary animate-spin" />
-          </div>
-        ) : purchaseOrders.length === 0 ? (
-          <div className="text-center py-12">
-            <ShoppingCart className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">No purchase orders received yet</p>
-          </div>
-        ) : (
-          <>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">PO #</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Items</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Total Value</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Delivery Expected</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">PO #</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Items</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Total Value</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Delivery Expected</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
+            </tr>
+          </thead>
+          {loading ? (
+            <TableSkeleton cols={6} />
+          ) : purchaseOrders.length === 0 ? (
+            <tbody>
+              <tr><td colSpan={6} className="text-center py-12 text-gray-500">
+                <ShoppingCart className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                <p>No purchase orders received yet</p>
+              </td></tr>
+            </tbody>
+          ) : (
+            <tbody>
+              {purchaseOrders.map((po: any) => (
+                <tr key={po._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                  <td className="py-2 px-3 border-b border-gray-100">
+                    <span className="font-mono font-medium text-primary">
+                      {po.poNumber}
+                    </span>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {po.issuedAt
+                        ? new Date(po.issuedAt).toLocaleDateString('en-ZA')
+                        : new Date(po.createdAt).toLocaleDateString('en-ZA')}
+                    </p>
+                  </td>
+                  <td className="py-2 px-3 border-b border-gray-100">
+                    <span className="text-gray-600">{po.items?.length || 0} items</span>
+                  </td>
+                  <td className="py-2 px-3 border-b border-gray-100">
+                    <span className="font-semibold text-gray-900">
+                      {formatCurrency(po.totalAmount, po.currency || getCurrentSbuCurrency())}
+                    </span>
+                  </td>
+                  <td className="py-2 px-3 border-b border-gray-100 text-gray-500">
+                    {po.expectedDeliveryDate
+                      ? new Date(po.expectedDeliveryDate).toLocaleDateString('en-ZA')
+                      : '-'}
+                  </td>
+                  <td className="py-2 px-3 border-b border-gray-100">
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[po.status] || statusColors.sent}`}>
+                      {po.status?.replace('_', ' ') || 'Received'}
+                    </span>
+                  </td>
+                  <td className="py-2 px-3 border-b border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <ViewButton
+                        onClick={() => { setSelectedPO(po); setShowViewModal(true); }}
+                      />
+                      {(po.status === 'approved' || po.status === 'issued') && !po.isAcknowledged && (
+                        <button
+                          onClick={() => openAcknowledgeModal(po)}
+                          className="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                        >
+                          Acknowledge
+                        </button>
+                      )}
+                      {supplierPoNext(po)?.action === 'invoice' && (
+                        <button
+                          onClick={() => setInvoicingPoId(po._id)}
+                          className="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                        >
+                          Submit invoice
+                        </button>
+                      )}
+                      {po.isAcknowledged && (
+                        <div className="flex items-center gap-2">
+                          <span className="px-3 py-1.5 text-sm font-medium bg-green-100 text-green-700 rounded-lg">
+                            Acknowledged
+                          </span>
+                          {po.status === 'issued' && (
+                            <button
+                              onClick={() => navigate('/app/my-deliveries')}
+                              className="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                            >
+                              Manage Delivery
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {purchaseOrders.map((po: any) => (
-                  <tr key={po._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
-                    <td className="py-2 px-3 border-b border-gray-100">
-                      <span className="font-mono font-medium text-primary">
-                        {po.poNumber}
-                      </span>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {po.issuedAt
-                          ? new Date(po.issuedAt).toLocaleDateString('en-ZA')
-                          : new Date(po.createdAt).toLocaleDateString('en-ZA')}
-                      </p>
-                    </td>
-                    <td className="py-2 px-3 border-b border-gray-100">
-                      <span className="text-gray-600">{po.items?.length || 0} items</span>
-                    </td>
-                    <td className="py-2 px-3 border-b border-gray-100">
-                      <span className="font-semibold text-gray-900">
-                        {formatCurrency(po.totalAmount, po.currency || getCurrentSbuCurrency())}
-                      </span>
-                    </td>
-                    <td className="py-2 px-3 border-b border-gray-100 text-gray-500">
-                      {po.expectedDeliveryDate
-                        ? new Date(po.expectedDeliveryDate).toLocaleDateString('en-ZA')
-                        : '-'}
-                    </td>
-                    <td className="py-2 px-3 border-b border-gray-100">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[po.status] || statusColors.sent}`}>
-                        {po.status?.replace('_', ' ') || 'Received'}
-                      </span>
-                    </td>
-                    <td className="py-2 px-3 border-b border-gray-100">
-                      <div className="flex items-center gap-2">
-                        <ViewButton
-                          onClick={() => { setSelectedPO(po); setShowViewModal(true); }}
-                        />
-                        {(po.status === 'approved' || po.status === 'issued') && !po.isAcknowledged && (
-                          <button
-                            onClick={() => openAcknowledgeModal(po)}
-                            className="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
-                          >
-                            Acknowledge
-                          </button>
-                        )}
-                        {supplierPoNext(po)?.action === 'invoice' && (
-                          <button
-                            onClick={() => setInvoicingPoId(po._id)}
-                            className="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
-                          >
-                            Submit invoice
-                          </button>
-                        )}
-                        {po.isAcknowledged && (
-                          <div className="flex items-center gap-2">
-                            <span className="px-3 py-1.5 text-sm font-medium bg-green-100 text-green-700 rounded-lg">
-                              Acknowledged
-                            </span>
-                            {po.status === 'issued' && (
-                              <button
-                                onClick={() => navigate('/app/my-deliveries')}
-                                className="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
-                              >
-                                Manage Delivery
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <Pagination
-            page={page}
-            pages={pagination.pages}
-            total={pagination.total}
-            onPageChange={setPage}
-          pageSize={limit}
-          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
-            itemLabel="purchase orders"
-          />
-          </>
-        )}
+              ))}
+            </tbody>
+          )}
+        </table>
       </div>
+      {!loading && <Pagination
+        page={page}
+        pages={pagination.pages}
+        total={pagination.total}
+        onPageChange={setPage}
+        pageSize={limit}
+        onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+        itemLabel="purchase orders"
+      />}
 
       {/* Acknowledge Modal */}
       <Modal
@@ -326,13 +324,13 @@ export default function MyPurchaseOrders() {
                   setShowAcknowledgeModal(false);
                   setAcknowledgeData({ deliveryNoteNumber: '', expectedDeliveryDate: '' });
                 }}
-                className="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 rounded-lg"
+                className="px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAcknowledge}
-                className="px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark"
+                className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
               >
                 Confirm Acknowledgment
               </button>
@@ -349,9 +347,7 @@ export default function MyPurchaseOrders() {
         size="xl"
       >
         {selectedPO && (
-          <div className="space-y-6">
-            <div>
-            </div>
+          <div className="space-y-5">
             {/* Acknowledgment Info */}
             {selectedPO.isAcknowledged && (selectedPO.status === 'issued' || selectedPO.status === 'approved') && (
               <div className="bg-green-50 border border-green-200 rounded-xl p-4">
@@ -375,48 +371,45 @@ export default function MyPurchaseOrders() {
                 </div>
               </div>
             )}
-            <div className="flex items-center justify-between">
-              <div>
-                <label className="text-sm text-gray-500">PO Number</label>
-                <p className="font-mono text-xl font-bold text-primary">{selectedPO.poNumber}</p>
-              </div>
-              <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl hover:bg-gray-50">
-                <Download className="h-4 w-4" />
-                Download PDF
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-gray-500">Total Value</label>
-                <p className="text-xl font-bold text-gray-900">
-                  {formatCurrency(selectedPO.totalAmount, selectedPO.currency || getCurrentSbuCurrency())}
-                </p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-500">Status</label>
-                <p>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[selectedPO.status]}`}>
-                    {selectedPO.status?.replace('_', ' ')}
-                  </span>
-                </p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-500">Expected Delivery</label>
-                <p className="text-gray-900">
-                  {selectedPO.expectedDeliveryDate 
+            <FactsCard
+              facts={[
+                { label: 'PO number', value: <span className="font-mono text-primary">{selectedPO.poNumber}</span> },
+                { label: 'Total value', value: formatCurrency(selectedPO.totalAmount, selectedPO.currency || getCurrentSbuCurrency()) },
+                {
+                  label: 'Status',
+                  value: (
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${statusColors[selectedPO.status]}`}>
+                      {selectedPO.status?.replace('_', ' ')}
+                    </span>
+                  )
+                },
+                {
+                  label: 'Expected delivery',
+                  value: selectedPO.expectedDeliveryDate
                     ? new Date(selectedPO.expectedDeliveryDate).toLocaleDateString('en-ZA')
-                    : 'Not specified'}
-                </p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-500">Payment Terms</label>
-                <p className="text-gray-900">{selectedPO.paymentTerms || 'Net 30'}</p>
-              </div>
-            </div>
+                    : 'Not specified'
+                },
+                { label: 'Payment terms', value: selectedPO.paymentTerms || 'Net 30' },
+                ...(selectedPO.deliveryAddress
+                  ? [{
+                      label: 'Delivery address',
+                      wide: true,
+                      value: typeof selectedPO.deliveryAddress === 'string'
+                        ? selectedPO.deliveryAddress
+                        : `${selectedPO.deliveryAddress.street || ''}, ${selectedPO.deliveryAddress.city || ''}, ${selectedPO.deliveryAddress.province || ''} ${selectedPO.deliveryAddress.postalCode || ''}`.trim().replace(/^,\s*|,\s*$/g, '')
+                    }]
+                  : [])
+              ]}
+            />
 
             <div>
-              <label className="text-sm text-gray-500 mb-2 block">Order Items</label>
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <h3 className="text-sm font-semibold text-gray-900">Order items</h3>
+                <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                  <Download className="h-4 w-4" />
+                  Download PDF
+                </button>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm border-collapse">
                   <thead>
@@ -444,17 +437,6 @@ export default function MyPurchaseOrders() {
                 </table>
               </div>
             </div>
-
-            {selectedPO.deliveryAddress && (
-              <div>
-                <label className="text-sm text-gray-500">Delivery Address</label>
-                <p className="text-gray-900">
-                  {typeof selectedPO.deliveryAddress === 'string' 
-                    ? selectedPO.deliveryAddress 
-                    : `${selectedPO.deliveryAddress.street || ''}, ${selectedPO.deliveryAddress.city || ''}, ${selectedPO.deliveryAddress.province || ''} ${selectedPO.deliveryAddress.postalCode || ''}`.trim().replace(/^,\s*|,\s*$/g, '')}
-                </p>
-              </div>
-            )}
           </div>
         )}
       </Modal>

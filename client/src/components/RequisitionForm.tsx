@@ -276,7 +276,7 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
             <button
               type="button"
               onClick={() => setEditingItem('new')}
-              className="flex items-center gap-1 text-sm text-primary hover:text-primary-dark font-medium"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors"
             >
               <Plus className="h-4 w-4" />
               Add Item
@@ -313,7 +313,7 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
                   {formData.items.map((item: RequisitionItem, index: number) => {
                     const lineTotal = (Number(item.estimatedUnitPrice) || 0) * (Number(item.quantity) || 0);
                     return (
-                      <tr key={index} className="hover:bg-gray-50">
+                      <tr key={index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                         <td className="py-2 px-3 border-b border-gray-100 text-gray-500 tabular-nums">{index + 1}</td>
                         <td className="py-2 px-3 border-b border-gray-100 text-gray-900">
                           {item.description}
@@ -332,14 +332,14 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
                             <button
                               type="button"
                               onClick={() => setEditingItem(index)}
-                              className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100 text-gray-700"
+                              className="px-2 py-1 text-xs border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors"
                             >
                               View
                             </button>
                             <button
                               type="button"
                               onClick={() => setRemovingItem(index)}
-                              className="px-2 py-1 text-xs border border-red-200 rounded hover:bg-red-50 text-red-600"
+                              className="px-2 py-1 text-xs border border-red-200 rounded text-red-700 hover:bg-red-50 transition-colors"
                             >
                               Delete
                             </button>
@@ -412,7 +412,7 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
                     .map((item: any, index: number) => {
                       const lineTotal = (Number(item.estimatedUnitPrice) || 0) * (Number(item.quantity) || 0);
                       return (
-                        <tr key={index} className="hover:bg-gray-50">
+                        <tr key={index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                           <td className="py-2 px-3 border-b border-gray-100 text-gray-900">
                             {item.description}
                             {item.specification && <span className="block text-xs text-gray-500">{item.specification}</span>}
@@ -499,7 +499,7 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
               type="button"
               onClick={onCancel}
               disabled={loading}
-              className="mr-auto px-4 py-2.5 text-sm font-medium text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition-colors disabled:opacity-50"
+              className="mr-auto px-4 py-2.5 text-sm font-medium text-red-700 border border-red-200 rounded-xl hover:bg-red-50 transition-colors disabled:opacity-50"
             >
               Discard
             </button>

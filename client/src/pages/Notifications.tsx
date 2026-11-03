@@ -184,7 +184,7 @@ export default function Notifications() {
             <button
               onClick={handleMarkAllAsRead}
               disabled={markingAll}
-              className="flex items-center gap-2 text-sm font-medium text-primary hover:text-primary-dark transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
             >
               {markingAll ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -200,8 +200,17 @@ export default function Notifications() {
       {/* Notifications List */}
       <div className="overflow-x-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 text-primary animate-spin" />
+          <div className="divide-y divide-gray-100">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex items-start gap-4 p-5 animate-pulse">
+                <div className="h-11 w-11 rounded-xl bg-gray-100 shrink-0" />
+                <div className="flex-1 space-y-2 pt-1">
+                  <div className="h-4 bg-gray-200 rounded w-1/3" />
+                  <div className="h-3 bg-gray-100 rounded w-2/3" />
+                  <div className="h-3 bg-gray-100 rounded w-20" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : notifications.length === 0 ? (
           <div className="text-center py-12">
@@ -247,7 +256,7 @@ export default function Notifications() {
             })}
           </div>
         )}
-        <Pagination
+        {!loading && <Pagination
           page={page}
           pages={pagination.pages}
           total={pagination.total}
@@ -255,7 +264,7 @@ export default function Notifications() {
           pageSize={limit}
           onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
           itemLabel="notifications"
-        />
+        />}
       </div>
     </div>
   );

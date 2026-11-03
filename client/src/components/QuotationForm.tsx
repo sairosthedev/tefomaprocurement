@@ -9,6 +9,7 @@ import { getCurrentSbuCurrency } from '../lib/sbu';
 import { FormSteps, FormStepNav } from './FormSteps';
 import { ConfirmModal } from './Modal';
 import Drawer from './Drawer';
+import FactsCard from './supplier/FactsCard';
 
 const STEPS = [
   { label: 'Prices', description: 'A unit price for every item' },
@@ -270,8 +271,9 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
                   <tbody>
                     {formData.items.map((item: any, index: any) => (
                       <React.Fragment key={index}>
-                      <tr>
-                        <td className="py-2 px-3 border-b border-gray-100">
+                      {/* The item and its alternative-part row share one stripe, divided from the next item only. */}
+                      <tr className={index % 2 ? 'bg-primary/[0.035]' : 'bg-white'}>
+                        <td className="py-2 px-3">
                           <p className="font-medium text-gray-900">{item.description}</p>
                           {item.specifications && (
                             <p className="text-xs text-gray-500 mt-0.5">{item.specifications}</p>
@@ -282,10 +284,10 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
                             compact
                           />
                         </td>
-                        <td className="py-2 px-3 border-b border-gray-100 text-gray-600">
+                        <td className="py-2 px-3 text-gray-600">
                           {item.quantity} {item.unit}
                         </td>
-                        <td className="py-2 px-3 border-b border-gray-100">
+                        <td className="py-2 px-3">
                           <input
                             type="number"
                             step="0.01"
@@ -296,7 +298,7 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
                             placeholder="0.00"
                           />
                         </td>
-                        <td className="py-2 px-3 border-b border-gray-100">
+                        <td className="py-2 px-3">
                           <input
                             type="text"
                             value={item.brand}
@@ -305,12 +307,12 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
                             placeholder="Brand name"
                           />
                         </td>
-                        <td className="py-2 px-3 border-b border-gray-100 font-medium text-gray-900">
+                        <td className="py-2 px-3 font-medium text-gray-900">
                           {formatCurrency(item.quantity * (parseFloat(item.unitPrice) || 0), formData.currency)}
                         </td>
                       </tr>
-                      <tr className="bg-gray-50/60">
-                        <td colSpan={5} className="px-4 pb-3">
+                      <tr className={index % 2 ? 'bg-primary/[0.035]' : 'bg-white'}>
+                        <td colSpan={5} className="px-3 pb-3 border-b border-gray-100">
                           <label className="inline-flex items-center gap-2 text-xs text-gray-700">
                             <input
                               type="checkbox"
@@ -433,24 +435,14 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
 
         {step === 2 && (
           <div className="space-y-4">
-            <dl className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div>
-                <dt className="text-gray-500">Currency</dt>
-                <dd className="font-medium text-gray-900">{formData.currency}</dd>
-              </div>
-              <div>
-                <dt className="text-gray-500">Delivery</dt>
-                <dd className="font-medium text-gray-900">{formData.deliveryDays} days</dd>
-              </div>
-              <div>
-                <dt className="text-gray-500">Payment terms</dt>
-                <dd className="font-medium text-gray-900">{formData.paymentTerms}</dd>
-              </div>
-              <div>
-                <dt className="text-gray-500">Valid for</dt>
-                <dd className="font-medium text-gray-900">{formData.validityDays} days</dd>
-              </div>
-            </dl>
+            <FactsCard
+              facts={[
+                { label: 'Currency', value: formData.currency },
+                { label: 'Delivery', value: `${formData.deliveryDays} days` },
+                { label: 'Payment terms', value: formData.paymentTerms },
+                { label: 'Valid for', value: `${formData.validityDays} days` }
+              ]}
+            />
 
             <div className="overflow-x-auto">
               <table className="w-full text-sm border-collapse">
@@ -464,7 +456,7 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
                 </thead>
                 <tbody>
                   {formData.items.map((item: any, index: any) => (
-                    <tr key={index} className="hover:bg-gray-50">
+                    <tr key={index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                       <td className="py-2 px-3 border-b border-gray-100">
                         <p className="font-medium text-gray-900">{item.description}</p>
                         {(item.brand || item.isAlternative) && (

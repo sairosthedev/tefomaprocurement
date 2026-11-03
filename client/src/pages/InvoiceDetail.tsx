@@ -173,9 +173,9 @@ export default function InvoiceDetail() {
               {invoice.items.map((item: any, i: number) => (
                 <tr key={i} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                   <td className="py-2 px-3 border-b border-gray-100">{item.description}</td>
-                  <td className="text-right py-2.5 px-4">{item.quantity}</td>
-                  <td className="text-right py-2.5 px-4">{formatCurrency(item.unitPrice, currency)}</td>
-                  <td className="text-right py-2.5 px-4">{formatCurrency(item.totalPrice, currency)}</td>
+                  <td className="py-2 px-3 border-b border-gray-100 text-right">{item.quantity}</td>
+                  <td className="py-2 px-3 border-b border-gray-100 text-right">{formatCurrency(item.unitPrice, currency)}</td>
+                  <td className="py-2 px-3 border-b border-gray-100 text-right">{formatCurrency(item.totalPrice, currency)}</td>
                 </tr>
               ))}
             </tbody>
@@ -184,10 +184,10 @@ export default function InvoiceDetail() {
       </div>
 
       {(canApprove || canPay) && (
-        <div className="bg-white rounded-xl shadow p-6 flex flex-wrap gap-3">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-wrap gap-3">
           {canApprove && !awaitingGrv && (
             <>
-              <button disabled={acting} onClick={() => handleApprove()} className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary-dark transition-colors disabled:opacity-50">
+              <button disabled={acting} onClick={() => handleApprove()} className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors disabled:opacity-50">
                 Approve
               </button>
               {match && !match.matched && (
@@ -197,12 +197,12 @@ export default function InvoiceDetail() {
                     placeholder="Reason for approving despite the variance..."
                     value={overrideReason}
                     onChange={(e) => setOverrideReason(e.target.value)}
-                    className="flex-1 border rounded-lg px-3 py-2"
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   />
                   <button
                     disabled={acting || !overrideReason.trim()}
                     onClick={() => handleApprove(overrideReason)}
-                    className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary-dark transition-colors disabled:opacity-50"
+                    className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors disabled:opacity-50 whitespace-nowrap"
                   >
                     Approve with variance
                   </button>
@@ -221,7 +221,7 @@ export default function InvoiceDetail() {
             </div>
           )}
           {canPay && (
-            <button disabled={acting} onClick={handlePay} className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50">
+            <button disabled={acting} onClick={handlePay} className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors disabled:opacity-50">
               Record payment
             </button>
           )}
@@ -232,9 +232,9 @@ export default function InvoiceDetail() {
                 placeholder="Rejection reason..."
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
-                className="flex-1 border rounded-lg px-3 py-2"
+                className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
-              <button disabled={acting} onClick={handleReject} className="px-4 py-2 border border-red-200 text-red-700 rounded-xl text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50 flex items-center gap-1">
+              <button disabled={acting} onClick={handleReject} className="px-4 py-2 border border-red-200 text-red-700 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50 flex items-center gap-1">
                 <XCircle className="h-4 w-4" /> Reject
               </button>
             </div>

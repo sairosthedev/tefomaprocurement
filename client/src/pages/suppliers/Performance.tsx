@@ -81,7 +81,7 @@ export default function Performance() {
             <button
               type="button"
               onClick={() => navigate('/app/suppliers/evaluations')}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-dark"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark transition-colors"
             >
               <ClipboardList className="h-4 w-4" />
               Evaluations
@@ -89,7 +89,7 @@ export default function Performance() {
             <button
               type="button"
               onClick={() => navigate('/app/suppliers')}
-              className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
             >
               Back to Suppliers
             </button>
@@ -189,8 +189,8 @@ export default function Performance() {
               pages={pagination.pages}
               total={pagination.total}
               onPageChange={setPage}
-          pageSize={limit}
-          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+              pageSize={limit}
+              onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
               itemLabel="suppliers"
             />
           </div>
@@ -219,7 +219,7 @@ export default function Performance() {
               <button
                 type="button"
                 onClick={() => navigate('/app/suppliers/evaluations')}
-                className="mt-4 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="mt-4 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 Open evaluations
               </button>

@@ -194,7 +194,7 @@ export default function AwardMatrix() {
                     const bid = line.bids.find((b: any) => b.supplierId === s.supplierId);
                     const isAwarded = awardedTo === s.supplierId;
                     return (
-                      <td key={s.supplierId} className="text-right py-2 px-3 border border-gray-200">
+                      <td key={s.supplierId} className="text-right py-2 px-3 border-b border-gray-100">
                         {bid && !canSelect ? (
                           <span className={isAwarded ? 'px-2 py-1 rounded-lg bg-green-100 text-green-800 font-semibold' : 'px-2 py-1 text-gray-800'}>
                             {bidPrice(bid.unitPrice, bid.currency)}
@@ -234,16 +234,16 @@ export default function AwardMatrix() {
                       </td>
                     );
                   })}
-                  <td className="text-center py-2 px-3 border border-gray-200">
+                  <td className="text-center py-2 px-3 border-b border-gray-100">
                     <StatusPill line={line} />
                   </td>
-                  <td className="text-right py-2 px-3 border border-gray-200 whitespace-nowrap">
+                  <td className="text-right py-2 px-3 border-b border-gray-100 whitespace-nowrap">
                     {line.status === 'awarded' && !line.pmAuthorization?.by && !canAuthorize && (
                       <span className="text-xs text-amber-600">Awaiting Head of Procurement</span>
                     )}
                     {line.status === 'awarded' && !line.pmAuthorization?.by && canAuthorize && (
                       <button disabled={busy} onClick={() => authorizeLine(line)}
-                        className="inline-flex items-center gap-1 text-xs bg-primary text-white px-2.5 py-1.5 rounded-lg hover:bg-primary/90 disabled:opacity-50">
+                        className="inline-flex items-center gap-1 text-xs bg-primary text-white px-2.5 py-1.5 rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50">
                         <ShieldCheck className="h-3.5 w-3.5" /> Authorize
                       </button>
                     )}
@@ -264,17 +264,17 @@ export default function AwardMatrix() {
       {canSelect && (
         <div className="flex flex-wrap items-center gap-3 mt-6">
           <button disabled={busy || !anyAwarded} onClick={generatePOs}
-            className="inline-flex items-center gap-2 bg-primary text-white px-4 py-2.5 rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50">
+            className="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 text-sm font-medium rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4" />}
             Generate POs for authorized lines
           </button>
           <button disabled={busy || !anyUnresolved} onClick={resource}
-            className="inline-flex items-center gap-2 border border-amber-300 text-amber-700 px-4 py-2.5 rounded-xl hover:bg-amber-50 disabled:opacity-50">
+            className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
             <RefreshCw className="h-4 w-4" />
             Re-source unquoted / unawarded lines
           </button>
           <button onClick={() => navigate('/app/purchase-orders')}
-            className="inline-flex items-center gap-2 text-gray-600 px-4 py-2.5 rounded-xl hover:bg-gray-100">
+            className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
             <Send className="h-4 w-4" /> View purchase orders
           </button>
         </div>

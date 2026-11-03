@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useToast } from '../components/Toast';
 import api, { adminAPI } from '../lib/api';
 import { Building2, Plus, Loader2 } from 'lucide-react';
-import Modal, { ModalFooter } from '../components/Modal';
+import { ModalFooter } from '../components/Modal';
+import Drawer from '../components/Drawer';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import TableSkeleton from '../components/TableSkeleton';
@@ -169,7 +170,7 @@ export default function Departments() {
                       </button>
                       <button
                         onClick={() => handleDelete(dept._id)}
-                        className="px-2 py-1 text-xs border border-red-300 rounded hover:bg-red-50 text-red-600"
+                        className="px-2 py-1 text-xs border border-red-200 rounded text-red-700 hover:bg-red-50 transition-colors"
                       >
                         Delete
                       </button>
@@ -191,11 +192,12 @@ export default function Departments() {
         itemLabel="departments"
       />}
 
-      {/* Add/Edit Modal */}
-      <Modal
+      {/* Add/Edit drawer */}
+      <Drawer
         isOpen={showModal}
         onClose={() => { setShowModal(false); setEditingDepartment(null); }}
         title={editingDepartment ? 'Edit Department' : 'Add Department'}
+        size="md"
       >
         <div className="space-y-4">
           <div>
@@ -287,19 +289,19 @@ export default function Departments() {
           <ModalFooter>
             <button
               onClick={() => { setShowModal(false); setEditingDepartment(null); }}
-              className="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 rounded-xl"
+              className="px-4 py-2 text-sm border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 rounded-lg transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
-              className="px-4 py-2 bg-primary text-white font-medium rounded-xl hover:bg-primary-dark"
+              className="px-4 py-2 text-sm bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors"
             >
               {editingDepartment ? 'Update' : 'Create'}
             </button>
           </ModalFooter>
         </div>
-      </Modal>
+      </Drawer>
     </div>
   );
 }

@@ -6,7 +6,8 @@ import { useAuth } from '../context/AuthContext';
 import { isProcurementHead } from '@fossil/shared';
 import FilterSelect from '../components/FilterSelect';
 import PageHeader from '../components/PageHeader';
-import Modal, { ModalFooter } from '../components/Modal';
+import { ModalFooter } from '../components/Modal';
+import Drawer from '../components/Drawer';
 import { FormSteps, FormStepNav } from '../components/FormSteps';
 import { CategoryMultiSelect } from '../components/CategorySelect';
 import { getCategoryName } from '../lib/constants';
@@ -30,6 +31,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import Pagination from '../components/Pagination';
+import TableSkeleton from '../components/TableSkeleton';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 import {
   parseSupplierFile,
@@ -392,36 +394,33 @@ export default function Suppliers() {
 
       {/* Suppliers List */}
       <div>
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 text-primary animate-spin" />
-          </div>
-        ) : suppliers.length === 0 ? (
-          <div className="text-center py-12">
-            <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900">No suppliers found</h3>
-            <p className="text-gray-500 mt-1">Get started by adding your first supplier</p>
-          </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr>
-                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">
-                      Supplier
-                    </th>
-                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">
-                      Contact
-                    </th>
-                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">
-                      Vendor status
-                    </th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">
+                    Supplier
+                  </th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">
+                    Contact
+                  </th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">
+                    Vendor status
+                  </th>
+                  <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+            {loading ? (
+              <TableSkeleton cols={4} />
+            ) : suppliers.length === 0 ? (
+              <tbody><tr><td colSpan={4} className="text-center py-12 text-gray-500">
+                <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-lg font-medium text-gray-900">No suppliers found</p>
+                <p className="mt-1">Get started by adding your first supplier</p>
+              </td></tr></tbody>
+            ) : (
                 <tbody>
                   {suppliers.map((supplier: any) => {
                     const StatusIcon = statusIcons[supplier.status] || Clock;
@@ -484,24 +483,23 @@ export default function Suppliers() {
                     );
                   })}
                 </tbody>
-              </table>
-            </div>
+            )}
+          </table>
+        </div>
 
-            <Pagination
-            page={page}
-            pages={pagination.pages}
-            total={pagination.total}
-            onPageChange={setPage}
+        {!loading && <Pagination
+          page={page}
+          pages={pagination.pages}
+          total={pagination.total}
+          onPageChange={setPage}
           pageSize={limit}
           onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
-            itemLabel="suppliers"
-          />
-          </>
-        )}
+          itemLabel="suppliers"
+        />}
       </div>
 
-      {/* Add Supplier Modal */}
-      <Modal
+      {/* Add Supplier drawer */}
+      <Drawer
         isOpen={showAddModal}
         onClose={closeAddModal}
         title="Add New Supplier"
@@ -823,10 +821,10 @@ export default function Suppliers() {
             submitting={submitting}
           />
         </form>
-      </Modal>
+      </Drawer>
 
-      {/* Bulk Import Modal */}
-      <Modal
+      {/* Bulk Import drawer */}
+      <Drawer
         isOpen={showBulkImportModal}
         onClose={() => {
           if (!importing) {
@@ -973,9 +971,9 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
                           const issues = rowIssues(row);
                           return (
                             <tr key={i} className={issues.length > 0 ? 'bg-amber-50/50' : 'odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors'}>
-                              <td className="py-1 px-2 border border-gray-200 text-gray-400">{i + 1}</td>
+                              <td className="py-1 px-2 border-b border-gray-100 text-gray-400">{i + 1}</td>
                               {(['companyName', 'registrationNumber', 'contactPerson', 'email', 'phone', 'categories'] as (keyof SupplierImportRow)[]).map((f) => (
-                                <td key={f} className="py-1 px-1">
+                                <td key={f} className="py-1 px-1 border-b border-gray-100">
                                   <input
                                     value={row[f]}
                                     onChange={(e) => updateImportCell(i, f, e.target.value)}
@@ -1112,7 +1110,7 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
             </div>
           )}
         </div>
-      </Modal>
+      </Drawer>
 
     </div>
   );

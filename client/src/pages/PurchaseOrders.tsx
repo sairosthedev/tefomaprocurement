@@ -289,22 +289,24 @@ export default function PurchaseOrders() {
                             <button
                               onClick={() => handleSubmit(order._id)}
                               disabled={submitting === order._id}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium bg-primary text-white hover:bg-primary-dark rounded-lg transition-colors disabled:opacity-50"
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-primary text-white hover:bg-primary-dark rounded-lg transition-colors whitespace-nowrap disabled:opacity-50"
                             >
                               {submitting === order._id ? (
                                 <>
-                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  <Loader2 className="h-3 w-3 animate-spin" />
                                   Submitting...
                                 </>
                               ) : (
                                 <>
-                                  <Send className="h-4 w-4" />
+                                  <Send className="h-3 w-3" />
                                   Submit for Approval
                                 </>
                               )}
                             </button>
                           )}
                           <ViewButton
+                            size="xs"
+                            showIcon={false}
                             onClick={() => navigate(`/app/purchase-orders/${order._id}`)}
                           />
                         </div>

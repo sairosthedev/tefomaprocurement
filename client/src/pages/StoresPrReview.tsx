@@ -7,6 +7,7 @@ import { formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
+import TableSkeleton from '../components/TableSkeleton';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 import Tabs from '../components/Tabs';
 import StoresReviewedList from '../components/StoresReviewedList';
@@ -115,10 +116,6 @@ export default function StoresPrReview() {
 
       {tab === 'sent' ? (
         <StoresReviewedList />
-      ) : loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-      ) : items.length === 0 ? (
-        <p className="text-center text-gray-500 py-12">No requisitions awaiting stores review.</p>
       ) : (
         <>
           <div className="overflow-x-auto">
@@ -136,6 +133,11 @@ export default function StoresPrReview() {
                   <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
+              {loading ? (
+                <TableSkeleton cols={9} />
+              ) : items.length === 0 ? (
+                <tbody><tr><td colSpan={9} className="text-center text-gray-500 py-12">No requisitions awaiting stores review.</td></tr></tbody>
+              ) : (
               <tbody>
                 {items.map((pr) => {
                   const stage = storeStage(pr);
@@ -166,7 +168,7 @@ export default function StoresPrReview() {
                             <button
                               disabled={!!acting}
                               onClick={() => fulfillFromStock(pr._id)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-white hover:bg-primary-dark transition-colors disabled:opacity-50"
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors disabled:opacity-50"
                             >
                               {acting === `fulfill-${pr._id}` && <Loader2 className="h-3 w-3 animate-spin" />}
                               Fulfill from stock
@@ -176,7 +178,7 @@ export default function StoresPrReview() {
                               <button
                                 disabled={!!acting}
                                 onClick={() => forward(pr._id)}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded bg-primary text-white hover:bg-primary-dark disabled:opacity-50"
+                                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors disabled:opacity-50"
                               >
                                 {acting === pr._id && <Loader2 className="h-3 w-3 animate-spin" />}
                                 Forward to procurement
@@ -185,7 +187,7 @@ export default function StoresPrReview() {
                                 disabled={!!acting}
                                 onClick={() => autoProcess(pr._id)}
                                 title="Issue whatever is in stock and forward the rest"
-                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded border border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
                               >
                                 {acting === `auto-${pr._id}` && <Loader2 className="h-3 w-3 animate-spin" />}
                                 Auto-process
@@ -198,17 +200,18 @@ export default function StoresPrReview() {
                   );
                 })}
               </tbody>
+              )}
             </table>
           </div>
-          <Pagination
+          {!loading && <Pagination
             page={page}
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
-          pageSize={limit}
-          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+            pageSize={limit}
+            onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="requisitions"
-          />
+          />}
         </>
       )}
     </div>

@@ -12,8 +12,6 @@ import CancelWorkflowModal from '../components/CancelWorkflowModal';
 import { canCancelPurchaseOrder, purchaseOrderCancelApiBase } from '../lib/cancellationAccess';
 import { 
   ShoppingCart, 
-  Calendar, 
-  Building2,
   CheckCircle,
   XCircle,
   Ban,
@@ -21,8 +19,7 @@ import {
   Loader2,
   DollarSign,
   FileText,
-  Truck,
-  User
+  Truck
 } from 'lucide-react';
 
 const statusColors: any = {
@@ -197,6 +194,34 @@ export default function PurchaseOrderDetail() {
     );
   }
 
+  const shortDate = (value: any) => new Date(value).toLocaleDateString('en-ZA');
+  // Who it is with, what it is worth and where it came from. The number and
+  // status are in the header already.
+  const facts: Array<{ label: string; value: React.ReactNode; sub?: string }> = [
+    ...(po.supplier
+      ? [{ label: 'Supplier', value: po.supplier.companyName, sub: po.supplier.contactEmail || undefined }]
+      : []),
+    { label: 'Total', value: formatCurrency(po.totalAmount || 0, po.currency), sub: usdEquivalentLabel(po) || undefined },
+    { label: 'Date', value: shortDate(po.createdAt) },
+    ...(po.purchaseRequisition
+      ? [{
+          label: 'Requisition',
+          value: po.purchaseRequisition.requisitionNumber,
+          sub: po.purchaseRequisition.title
+        }]
+      : []),
+    ...(po.purchaseRequisition?.department
+      ? [{ label: 'Department', value: po.purchaseRequisition.department.name }]
+      : []),
+    ...(po.createdBy
+      ? [{
+          label: 'Created by',
+          value: `${po.createdBy.firstName} ${po.createdBy.lastName}`,
+          sub: po.createdBy.email || undefined
+        }]
+      : [])
+  ];
+
   return (
     <div className="p-8">
       <PageHeader
@@ -204,6 +229,7 @@ export default function PurchaseOrderDetail() {
         backLabel="Back to Purchase Orders"
         title="Purchase Order"
         subtitle={`#${po.poNumber}`}
+        bottomSpacing="mb-4"
         actions={
           <>
             <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[po.status] || 'bg-gray-100 text-gray-700'}`}>
@@ -277,8 +303,8 @@ export default function PurchaseOrderDetail() {
               type="button"
               onClick={handleDecision}
               disabled={deciding || (decision === 'reject' && !decisionComment.trim())}
-              className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50 ${
-                decision === 'reject' ? 'bg-red-600 hover:bg-red-700' : 'bg-primary hover:bg-primary-dark'
+              className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 ${
+                decision === 'reject' ? 'border border-red-200 text-red-700 hover:bg-red-50' : 'bg-primary text-white hover:bg-primary-dark'
               }`}
             >
               {deciding && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -307,72 +333,30 @@ export default function PurchaseOrderDetail() {
 
 
       {po.status === 'cancelled' && po.cancellationReason && (
-        <div className="mb-6 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-800">
+        <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-800">
           <strong>Cancellation reason:</strong> {po.cancellationReason}
         </div>
       )}
 
-      {/* Details */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
-        {/* Basic Info */}
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Purchase Order Information</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <label className="text-sm text-gray-500">PO Number</label>
-              <p className="text-sm font-medium text-gray-900 mt-1 font-mono break-all">{po.poNumber}</p>
+      <section className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-5">
+        <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-6 gap-y-3 px-5 py-4">
+          {facts.map((fact) => (
+            <div key={fact.label} className="min-w-0">
+              <dt className="text-[11px] uppercase tracking-wide text-gray-400">{fact.label}</dt>
+              <dd className="mt-0.5 text-sm font-medium text-gray-900 truncate" title={typeof fact.value === 'string' ? fact.value : undefined}>
+                {fact.value}
+              </dd>
+              {fact.sub && <dd className="text-xs text-gray-500 truncate" title={fact.sub}>{fact.sub}</dd>}
             </div>
-            <div>
-              <label className="text-sm text-gray-500">Status</label>
-              <p className="text-sm font-medium text-gray-900 mt-1">
-                {statusLabel(po.status)}
-              </p>
-            </div>
-            <div>
-              <label className="text-sm text-gray-500">Total Amount</label>
-              <p className="text-sm font-medium text-gray-900 mt-1">
-                {formatCurrency(po.totalAmount || 0, po.currency)}
-              </p>
-              {usdEquivalentLabel(po) && (
-                <p className="text-xs text-gray-500 mt-0.5">{usdEquivalentLabel(po)}</p>
-              )}
-            </div>
-            <div>
-              <label className="text-sm text-gray-500">Date</label>
-              <p className="text-sm font-medium text-gray-900 mt-1 flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                {new Date(po.createdAt).toLocaleDateString()}
-              </p>
-            </div>
-          </div>
-        </div>
+          ))}
+        </dl>
+      </section>
 
-        {/* Supplier Info */}
-        {po.supplier && (
-          <div className="border-t pt-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              Supplier Information
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-gray-500">Company Name</label>
-                <p className="text-sm font-medium text-gray-900 mt-1">{po.supplier.companyName}</p>
-              </div>
-              {po.supplier.contactEmail && (
-                <div>
-                  <label className="text-sm text-gray-500">Email</label>
-                  <p className="text-sm font-medium text-gray-900 mt-1">{po.supplier.contactEmail}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Items */}
-        {po.items && po.items.length > 0 && (
-          <div className="border-t pt-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Order Items</h3>
+      {/* Items */}
+      {po.items && po.items.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Order items</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm border-collapse">
                 <thead>
@@ -404,7 +388,7 @@ export default function PurchaseOrderDetail() {
                 </tbody>
                 <tfoot>
                   <tr className="bg-gray-50">
-                    <td colSpan={3} className="py-2.5 px-4 text-right font-semibold text-gray-900">
+                    <td colSpan={3} className="py-2 px-3 border-b border-gray-100 text-right font-semibold text-gray-900">
                       Total Amount:
                     </td>
                     <td className="py-2 px-3 border-b border-gray-100 text-right font-bold text-lg text-gray-900">
@@ -415,41 +399,8 @@ export default function PurchaseOrderDetail() {
               </table>
             </div>
           </div>
-        )}
-
-        {/* Related Requisition */}
-        {po.purchaseRequisition && (
-          <div className="border-t pt-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Related Requisition</h3>
-            <p className="text-sm text-gray-700">
-              <span className="font-medium">{po.purchaseRequisition.requisitionNumber}</span>
-              {' - '}
-              {po.purchaseRequisition.title}
-            </p>
-            {po.purchaseRequisition.department && (
-              <p className="text-xs text-gray-500 mt-1">
-                Department: {po.purchaseRequisition.department.name}
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Created By */}
-        {po.createdBy && (
-          <div className="border-t pt-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Created By
-            </h3>
-            <p className="text-sm text-gray-700">
-              {po.createdBy.firstName} {po.createdBy.lastName}
-            </p>
-            {po.createdBy.email && (
-              <p className="text-xs text-gray-500 mt-1">{po.createdBy.email}</p>
-            )}
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

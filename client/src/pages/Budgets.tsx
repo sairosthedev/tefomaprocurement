@@ -2,10 +2,11 @@
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { financeAPI } from '../lib/api';
-import { DollarSign, TrendingUp, AlertCircle, Loader2, PieChart } from 'lucide-react';
+import { DollarSign, TrendingUp, AlertCircle, PieChart } from 'lucide-react';
 import { formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
 import PageHeader from '../components/PageHeader';
+import TableSkeleton from '../components/TableSkeleton';
 import Modal, { ModalFooter } from '../components/Modal';
 
 export default function Budgets() {
@@ -91,13 +92,17 @@ export default function Budgets() {
     ? ((budgetData.committed / totalBudget) * 100).toFixed(1)
     : '0.0';
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 text-primary animate-spin" />
-      </div>
+  // While the figures load, each card keeps its shape with a placeholder bar.
+  const figure = (node: React.ReactNode, withSubline = false) =>
+    loading ? (
+      <>
+        <span className="block h-7 w-28 mt-1 rounded bg-gray-200 animate-pulse" />
+        {withSubline && <span className="block h-3 w-16 mt-1.5 rounded bg-gray-200 animate-pulse" />}
+      </>
+    ) : (
+      node
     );
-  }
+  const columnCount = canEditAllocations ? 7 : 6;
 
   return (
     <div className="p-8">
@@ -124,7 +129,7 @@ export default function Budgets() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Total Budget</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalBudget, currency)}</p>
+              {figure(<p className="text-2xl font-bold text-gray-900">{formatCurrency(totalBudget, currency)}</p>)}
             </div>
           </div>
         </div>
@@ -136,8 +141,10 @@ export default function Budgets() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Utilized (paid)</p>
-              <p className="text-2xl font-bold text-green-600">{formatCurrency(utilisedTotal, currency)}</p>
-              <p className="text-xs text-gray-400">{utilizationPercentage}% of total</p>
+              {figure(<>
+                <p className="text-2xl font-bold text-green-600">{formatCurrency(utilisedTotal, currency)}</p>
+                <p className="text-xs text-gray-400">{utilizationPercentage}% of total</p>
+              </>, true)}
             </div>
           </div>
         </div>
@@ -149,8 +156,10 @@ export default function Budgets() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Committed</p>
-              <p className="text-2xl font-bold text-amber-600">{formatCurrency(budgetData.committed, currency)}</p>
-              <p className="text-xs text-gray-400">{committedPercentage}% of total</p>
+              {figure(<>
+                <p className="text-2xl font-bold text-amber-600">{formatCurrency(budgetData.committed, currency)}</p>
+                <p className="text-xs text-gray-400">{committedPercentage}% of total</p>
+              </>, true)}
             </div>
           </div>
         </div>
@@ -162,14 +171,16 @@ export default function Budgets() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Available</p>
-              <p className={`text-2xl font-bold ${budgetData.available < 0 ? 'text-red-600' : 'text-purple-600'}`}>
-                {formatCurrency(budgetData.available, currency)}
-              </p>
-              <p className="text-xs text-gray-400">
-                {budgetData.available < 0
-                  ? 'Over allocation'
-                  : `${totalBudget > 0 ? ((budgetData.available / totalBudget) * 100).toFixed(1) : '0.0'}% remaining`}
-              </p>
+              {figure(<>
+                <p className={`text-2xl font-bold ${budgetData.available < 0 ? 'text-red-600' : 'text-purple-600'}`}>
+                  {formatCurrency(budgetData.available, currency)}
+                </p>
+                <p className="text-xs text-gray-400">
+                  {budgetData.available < 0
+                    ? 'Over allocation'
+                    : `${totalBudget > 0 ? ((budgetData.available / totalBudget) * 100).toFixed(1) : '0.0'}% remaining`}
+                </p>
+              </>, true)}
             </div>
           </div>
         </div>
@@ -192,16 +203,16 @@ export default function Budgets() {
         <div className="flex items-center gap-6 mt-4">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-green-500 rounded-full" />
-            <span className="text-sm text-gray-600">Utilized ({utilizationPercentage}%)</span>
+            <span className="text-sm text-gray-600">Utilized{!loading && ` (${utilizationPercentage}%)`}</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-amber-500 rounded-full" />
-            <span className="text-sm text-gray-600">Committed ({committedPercentage}%)</span>
+            <span className="text-sm text-gray-600">Committed{!loading && ` (${committedPercentage}%)`}</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-gray-200 rounded-full" />
             <span className="text-sm text-gray-600">
-              Available ({totalBudget > 0 ? ((budgetData.available / totalBudget) * 100).toFixed(1) : '0.0'}%)
+              Available{!loading && ` (${totalBudget > 0 ? ((budgetData.available / totalBudget) * 100).toFixed(1) : '0.0'}%)`}
             </span>
           </div>
         </div>
@@ -214,9 +225,6 @@ export default function Budgets() {
             <p className="text-xs text-gray-500">Click edit to set FY allocations</p>
           )}
         </div>
-        {budgetData.departments.length === 0 ? (
-          <p className="text-center text-gray-500 py-12">No departments configured yet.</p>
-        ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
@@ -230,6 +238,13 @@ export default function Budgets() {
                   {canEditAllocations && <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>}
                 </tr>
               </thead>
+              {loading ? (
+                <TableSkeleton cols={columnCount} />
+              ) : budgetData.departments.length === 0 ? (
+                <tbody><tr><td colSpan={columnCount} className="text-center text-gray-500 py-12">
+                  No departments configured yet.
+                </td></tr></tbody>
+              ) : (
               <tbody>
                 {budgetData.departments.map((dept: any) => (
                   <tr key={dept.departmentId} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
@@ -251,7 +266,7 @@ export default function Budgets() {
                     <td className="py-2 px-3 border-b border-gray-100 text-gray-600">{formatCurrency(dept.committed, dept.currency || currency)}</td>
                     {/* Overspend shows as a negative figure rather than being
                         floored at zero, which hid it entirely. */}
-                    <td className={`py-2 px-3 border border-gray-200 ${dept.available < 0 ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
+                    <td className={`py-2 px-3 border-b border-gray-100 ${dept.available < 0 ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
                       {formatCurrency(dept.available, dept.currency || currency)}
                     </td>
                     <td className="py-2 px-3 border-b border-gray-100">
@@ -281,9 +296,9 @@ export default function Budgets() {
                   </tr>
                 ))}
               </tbody>
+              )}
             </table>
           </div>
-        )}
       </div>
 
       <Modal
@@ -309,7 +324,7 @@ export default function Budgets() {
             <button
               type="button"
               onClick={() => setEditDept(null)}
-              className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-xl"
+              className="px-4 py-2 text-sm text-gray-700 font-medium hover:bg-gray-100 rounded-lg transition-colors"
             >
               Cancel
             </button>
@@ -317,7 +332,7 @@ export default function Budgets() {
               type="button"
               onClick={handleSaveAllocation}
               disabled={saving}
-              className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-xl hover:bg-primary-dark disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
             >
               {saving ? 'Saving…' : 'Save'}
             </button>

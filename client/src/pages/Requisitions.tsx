@@ -436,7 +436,7 @@ export default function Requisitions() {
                             <button
                               onClick={() => handleSubmit(req._id, req)}
                               disabled={submittingId === req._id || itemCountOf(req) === 0}
-                              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="flex items-center gap-1 px-2 py-1 text-xs bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               title={
                                 itemCountOf(req) === 0
                                   ? 'Add at least one item before submitting'
@@ -445,12 +445,12 @@ export default function Requisitions() {
                             >
                               {submittingId === req._id ? (
                                 <>
-                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  <Loader2 className="h-3 w-3 animate-spin" />
                                   <span>Submitting...</span>
                                 </>
                               ) : (
                                 <>
-                                  <Send className="h-4 w-4" />
+                                  <Send className="h-3 w-3" />
                                   <span>Submit</span>
                                 </>
                               )}
@@ -497,7 +497,7 @@ export default function Requisitions() {
                         {isProcurement && req.status === 'accepted' && (
                           <button
                             onClick={() => setRfqFor(req._id)}
-                            className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
+                            className="px-2 py-1 text-xs bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors whitespace-nowrap"
                           >
                             Create RFQ
                           </button>
@@ -624,12 +624,12 @@ export default function Requisitions() {
             <button
               onClick={handleAction}
               disabled={actionLoading || (!!budgetWarning && !budgetOverrideReason.trim())}
-              className={`flex-1 py-2.5 text-white rounded-xl font-medium ${
+              className={`flex-1 py-2.5 rounded-xl font-medium transition-colors ${
                 budgetWarning
-                  ? 'bg-red-600 hover:bg-red-700'
+                  ? 'border border-red-200 text-red-700 hover:bg-red-50'
                   : actionType === 'approve' || actionType === 'accept'
-                  ? 'bg-primary hover:bg-primary-dark'
-                  : 'bg-red-600 hover:bg-red-700'
+                  ? 'bg-primary text-white hover:bg-primary-dark'
+                  : 'border border-red-200 text-red-700 hover:bg-red-50'
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {actionLoading ? (

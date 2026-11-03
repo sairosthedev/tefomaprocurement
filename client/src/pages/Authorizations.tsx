@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 import { procurementAPI } from '../lib/api';
 import PageHeader from '../components/PageHeader';
-import { CheckCircle, Clock, Loader2, Layers, FileText } from 'lucide-react';
+import TableSkeleton from '../components/TableSkeleton';
+import { CheckCircle, Clock, Layers, FileText } from 'lucide-react';
 import { formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
 
@@ -98,19 +99,6 @@ export default function Authorizations() {
       </div>
 
       <div>
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 text-primary animate-spin" />
-          </div>
-        ) : items.length === 0 ? (
-          <div className="text-center py-12">
-            <CheckCircle className="h-12 w-12 text-green-300 mx-auto mb-4" />
-            <p className="text-gray-500 font-medium">Nothing awaiting authorization</p>
-            <p className="text-sm text-gray-400 mt-1">
-              Quotations appear here once procurement selects a winner
-            </p>
-          </div>
-        ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
@@ -123,6 +111,17 @@ export default function Authorizations() {
                   <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
+              {loading ? (
+                <TableSkeleton cols={6} />
+              ) : items.length === 0 ? (
+                <tbody><tr><td colSpan={6} className="text-center py-12">
+                  <CheckCircle className="h-12 w-12 text-green-300 mx-auto mb-4" />
+                  <p className="text-gray-500 font-medium">Nothing awaiting authorization</p>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Quotations appear here once procurement selects a winner
+                  </p>
+                </td></tr></tbody>
+              ) : (
               <tbody>
                 {items.map((item: any) => (
                   <tr key={`${item.rfqId}-${item.kind}`} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
@@ -167,14 +166,17 @@ export default function Authorizations() {
                           <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 w-fit">
                             You selected this
                           </span>
-                          <Link to={linkFor(item)} className="text-xs text-primary hover:underline">
+                          <Link
+                            to={linkFor(item)}
+                            className="inline-flex items-center w-fit px-2 py-1 text-xs border border-primary rounded bg-primary text-white font-medium hover:bg-primary-dark transition-colors"
+                          >
                             View
                           </Link>
                         </div>
                       ) : (
                         <Link
                           to={linkFor(item)}
-                          className="px-2 py-1 text-xs border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors"
+                          className="inline-flex items-center px-2 py-1 text-xs border border-primary rounded bg-primary text-white font-medium hover:bg-primary-dark transition-colors whitespace-nowrap"
                         >
                           Review
                         </Link>
@@ -183,9 +185,9 @@ export default function Authorizations() {
                   </tr>
                 ))}
               </tbody>
+              )}
             </table>
           </div>
-        )}
       </div>
     </div>
   );

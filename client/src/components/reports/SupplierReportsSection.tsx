@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { getCategoryName } from '@fossil/shared';
 import TableSkeleton from '../TableSkeleton';
+import FilterSelect from '../FilterSelect';
 import { ReportCard, ReportsTabRow, StatStrip, TOOLBAR_BUTTON, TOOLBAR_SELECT } from './ReportParts';
 import { formatCurrency } from '../../lib/constants';
 import { getCurrentSbuCurrency } from '../../lib/sbu';
@@ -254,13 +255,19 @@ export default function SupplierReportsSection({ tabs }: { tabs?: React.ReactNod
                     className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   />
                 </div>
-                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={TOOLBAR_SELECT}>
-                  <option value="">All statuses</option>
-                  <option value="active">Active</option>
-                  <option value="pending">Pending</option>
-                  <option value="dormant">Dormant</option>
-                  <option value="blacklisted">Blacklisted</option>
-                </select>
+                <FilterSelect
+                  size="sm"
+                  label="Status"
+                  options={[
+                    { value: '', label: 'All' },
+                    { value: 'active', label: 'Active' },
+                    { value: 'pending', label: 'Pending' },
+                    { value: 'dormant', label: 'Dormant' },
+                    { value: 'blacklisted', label: 'Blacklisted' }
+                  ]}
+                  value={statusFilter}
+                  onChange={setStatusFilter}
+                />
                 <button type="button" onClick={handleExport} disabled={exporting} className={`${TOOLBAR_BUTTON} disabled:opacity-50`}>
                   {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                   Export CSV

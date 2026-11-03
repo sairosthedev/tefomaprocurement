@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { adminAPI } from '../lib/api';
-import { Modal, ModalFooter } from '../components/Modal';
+import { ModalFooter } from '../components/Modal';
+import Drawer from '../components/Drawer';
 import { useToast } from '../components/Toast';
 import FilterSelect from '../components/FilterSelect';
 import PageHeader from '../components/PageHeader';
@@ -349,7 +350,7 @@ export default function Users() {
                         </button>
                         <button
                           onClick={() => handleDelete(user)}
-                          className="px-2 py-1 text-xs border border-red-200 rounded hover:bg-red-50 text-red-600"
+                          className="px-2 py-1 text-xs border border-red-200 rounded text-red-700 hover:bg-red-50 transition-colors"
                         >
                           Delete
                         </button>
@@ -372,8 +373,8 @@ export default function Users() {
         />}
       </div>
 
-      {/* Add/Edit User Modal */}
-      <Modal
+      {/* Add/Edit User drawer */}
+      <Drawer
         isOpen={showModal}
         onClose={() => { setShowModal(false); resetForm(); setEditingUser(null); }}
         title={editingUser ? 'Edit User' : 'Add New User'}
@@ -527,7 +528,7 @@ export default function Users() {
             </button>
           </ModalFooter>
         </form>
-      </Modal>
+      </Drawer>
     </div>
   );
 }

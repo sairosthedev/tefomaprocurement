@@ -346,6 +346,8 @@ export function SidebarLayout({ children }: any) {
     setOpenSection(sectionIsOpen(item) ? '' : item.name)
 
   const [collapsed, setCollapsed] = useState<boolean>(() => {
+    // A phone has no room for the full menu beside the page: start as icons.
+    if (typeof window !== 'undefined' && window.innerWidth < 768) return true
     try { return localStorage.getItem('sidebar-collapsed') === '1' } catch { return false }
   })
 

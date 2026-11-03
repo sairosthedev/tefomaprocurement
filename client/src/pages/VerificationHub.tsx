@@ -6,6 +6,7 @@ import { procurementAPI } from '../services/procurement.service'
 import { useToast } from '../components/Toast'
 import PageHeader, { PageStatCard } from '../components/PageHeader'
 import Pagination from '../components/Pagination'
+import FilterSelect from '../components/FilterSelect'
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination'
 import { useDebouncedValue } from '../lib/useDebouncedValue'
 
@@ -161,14 +162,14 @@ export default function VerificationHub() {
             <button
               type="button"
               onClick={() => setSelectedSection('')}
-              className={`px-4 py-2 rounded-xl text-sm font-medium border transition-colors ${!selectedSection ? 'bg-primary text-white border-primary' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${!selectedSection ? 'bg-primary text-white border-primary hover:bg-primary-dark' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
             >
               All Suppliers
             </button>
             <button
               type="button"
               onClick={handleExport}
-              className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
+              className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-dark transition-colors"
             >
               Export CSV
             </button>
@@ -196,16 +197,18 @@ export default function VerificationHub() {
                   placeholder="Search supplier name or code..."
                 />
               </div>
-              <select
+              <FilterSelect
+                size="sm"
+                label="Verification"
+                options={[
+                  { value: '', label: 'All' },
+                  { value: 'verified', label: 'Fully Verified' },
+                  { value: 'in_progress', label: 'In Progress' },
+                  { value: 'not_started', label: 'Not Started' }
+                ]}
                 value={verificationStatusFilter}
-                onChange={(e) => setVerificationStatusFilter(e.target.value)}
-                className="px-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              >
-                <option value="">All Verification Statuses</option>
-                <option value="verified">Fully Verified</option>
-                <option value="in_progress">In Progress</option>
-                <option value="not_started">Not Started</option>
-              </select>
+                onChange={setVerificationStatusFilter}
+              />
               <button onClick={fetchSuppliers} className="px-3 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors">
                 Refresh
               </button>
@@ -219,7 +222,7 @@ export default function VerificationHub() {
                 <p className="text-xs text-gray-500 mt-1">Filter suppliers by the KYS checklist section that still needs attention.</p>
               </div>
               {selectedSection && (
-                <button onClick={() => setSelectedSection('')} className="text-sm text-blue-600 hover:text-blue-700">
+                <button onClick={() => setSelectedSection('')} className="text-sm font-medium text-primary hover:underline">
                   Clear filter
                 </button>
               )}
@@ -231,7 +234,7 @@ export default function VerificationHub() {
                   <button
                     key={section}
                     onClick={() => setSelectedSection(active ? '' : section)}
-                    className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${active ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-blue-300 hover:text-blue-700'}`}
+                    className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${active ? 'bg-primary text-white border-primary' : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-primary/40 hover:text-primary'}`}
                   >
                     {section}
                   </button>
@@ -241,7 +244,17 @@ export default function VerificationHub() {
           </div>
 
           <div className="space-y-4">
-            {loading && <div className="text-center text-gray-500 py-16">Loading...</div>}
+            {loading && [0, 1, 2].map((i) => (
+              <div key={i} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm animate-pulse">
+                <div className="h-5 w-1/3 rounded bg-gray-200" />
+                <div className="mt-4 h-2 w-full rounded-full bg-gray-100" />
+                <div className="mt-4 flex gap-2">
+                  <div className="h-7 w-24 rounded-full bg-gray-100" />
+                  <div className="h-7 w-28 rounded-full bg-gray-100" />
+                  <div className="h-7 w-20 rounded-full bg-gray-100" />
+                </div>
+              </div>
+            ))}
             {!loading && filteredSuppliers.length === 0 && (
               <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-8 text-center text-gray-500">
                 No suppliers match the current filters.
@@ -293,7 +306,7 @@ export default function VerificationHub() {
                       <button
                         type="button"
                         onClick={() => navigate(`/app/suppliers/${supplierId}/kys`)}
-                        className="px-3 py-2 rounded-xl text-sm border border-gray-200 text-gray-700 bg-white hover:bg-gray-50"
+                        className="px-3 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 transition-colors"
                       >
                         Open KYS
                       </button>
@@ -301,7 +314,7 @@ export default function VerificationHub() {
                         type="button"
                         onClick={() => verifySupplier(supplier)}
                         disabled={isVerifying || completion.isComplete === false}
-                        className="px-3 py-2 rounded-xl text-sm text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:hover:bg-green-600"
+                        className="px-3 py-2 rounded-lg text-sm font-medium text-white bg-primary hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:hover:bg-primary"
                         title={completion.isComplete ? 'Verify and activate supplier' : 'Complete required KYS items first'}
                       >
                         {isVerifying ? 'Verifying...' : 'Verify Supplier'}
@@ -319,7 +332,7 @@ export default function VerificationHub() {
                         <button
                           key={section}
                           onClick={() => setSelectedSection(active ? '' : section)}
-                          className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${active ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-700 hover:border-blue-300'} ${isComplete ? 'opacity-80' : ''}`}
+                          className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${active ? 'bg-primary/10 border-primary/30 text-primary' : 'bg-gray-50 border-gray-200 text-gray-700 hover:border-primary/40'} ${isComplete ? 'opacity-80' : ''}`}
                           title={`${progress.complete}/${progress.total} checklist items complete in ${section}`}
                         >
                           {section} {progress.percent === 100 ? '• done' : `• ${progress.percent}%`}
@@ -332,15 +345,15 @@ export default function VerificationHub() {
             })}
           </div>
 
-          <Pagination
+          {!loading && <Pagination
             page={page}
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
-          pageSize={limit}
-          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+            pageSize={limit}
+            onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="suppliers"
-          />
+          />}
         </div>
 
         <aside className="space-y-4 sticky top-6">

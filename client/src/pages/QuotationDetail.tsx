@@ -318,7 +318,7 @@ export default function QuotationDetail() {
                 <button
                   type="button"
                   onClick={() => navigate(`/app/rfqs/${sealedInfo.rfqId}`)}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 border border-amber-300 text-amber-800 rounded-xl font-medium hover:bg-amber-100"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 border border-primary text-primary bg-white rounded-xl font-medium hover:bg-primary/5 transition-colors"
                 >
                   View RFQ
                 </button>
@@ -399,7 +399,7 @@ export default function QuotationDetail() {
                       ? 'Accept this quotation'
                       : 'Complete the selection and Head of Procurement authorization first'
                   }
-                  className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <CheckCircle className="h-4 w-4" />
                   Accept
@@ -407,14 +407,14 @@ export default function QuotationDetail() {
                 <button
                   onClick={() => setShowReviseModal(true)}
                   title="Ask the supplier to submit a revised (lower) price"
-                  className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium py-2.5 px-4 rounded-xl transition-colors"
+                  className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors"
                 >
                   <DollarSign className="h-4 w-4" />
                   Request Revision
                 </button>
                 <button
                   onClick={() => setShowRejectModal(true)}
-                  className="flex items-center gap-2 border border-red-200 text-red-700 hover:bg-red-50 font-medium py-2.5 px-4 rounded-xl transition-colors"
+                  className="flex items-center gap-2 border border-red-200 text-red-700 hover:bg-red-50 text-sm font-medium py-2 px-4 rounded-lg transition-colors"
                 >
                   <XCircle className="h-4 w-4" />
                   Reject
@@ -430,7 +430,7 @@ export default function QuotationDetail() {
             {isProcurement && quotation.status === 'accepted' && !quotation.existingPurchaseOrder && (
               <button
                 onClick={() => setShowCreatePOModal(true)}
-                className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium px-3 py-2 text-sm rounded-lg transition-colors"
+                className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium px-4 py-2 text-sm rounded-lg transition-colors"
               >
                 <ShoppingCart className="h-4 w-4" />
                 Create Purchase Order
@@ -439,7 +439,7 @@ export default function QuotationDetail() {
             {isProcurement && quotation.existingPurchaseOrder && (
               <a
                 href={`/app/purchase-orders/${quotation.existingPurchaseOrder._id}`}
-                className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium px-3 py-2 text-sm rounded-lg transition-colors"
+                className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-medium px-4 py-2 text-sm rounded-lg transition-colors"
               >
                 <ShoppingCart className="h-4 w-4" />
                 View Purchase Order
@@ -560,7 +560,7 @@ export default function QuotationDetail() {
                         type="button"
                         onClick={handleHodSelect}
                         disabled={authorizing || !c.minQuotationsMet}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
                       >
                         {authorizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCheck className="h-4 w-4" />}
                         Select this quotation
@@ -598,7 +598,7 @@ export default function QuotationDetail() {
                             ? 'Select this quotation first'
                             : 'Authorize as Head of Procurement'
                         }
-                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
                       >
                         {authorizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
                         Authorize as Head of Procurement
@@ -677,7 +677,7 @@ export default function QuotationDetail() {
                 </tbody>
                 <tfoot>
                   <tr className="bg-gray-50">
-                    <td colSpan={4} className="py-2.5 px-4 text-right font-semibold text-gray-900">
+                    <td colSpan={4} className="py-2 px-3 border-b border-gray-100 text-right font-semibold text-gray-900">
                       Total Amount:
                     </td>
                     <td className="py-2 px-3 border-b border-gray-100 text-right font-bold text-lg text-gray-900">

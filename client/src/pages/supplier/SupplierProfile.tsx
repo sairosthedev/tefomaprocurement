@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useToast } from '../../components/Toast';
 import api from '../../lib/api';
 import { 
@@ -7,6 +7,15 @@ import {
 } from 'lucide-react';
 import { PROVINCES, BANKS, SUPPLIER_CATEGORIES } from '../../lib/constants';
 import PageHeader from '../../components/PageHeader';
+
+/** Where a requested banking change stands, in the supplier's terms. */
+const BANK_CHANGE_STATUS: Record<string, string> = {
+  pending_verification: 'Waiting for our call-back to confirm the change',
+  pending_approval: 'Confirmed by phone; waiting for final approval',
+  approved: 'Approved: payments now go to the new account',
+  rejected: 'Not approved: payments still go to your previous account',
+  cancelled: 'Cancelled'
+};
 
 export default function SupplierProfile() {
   const { showToast } = useToast();
@@ -289,7 +298,7 @@ export default function SupplierProfile() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Physical Address</label>
               <input
                 type="text"
-                value={profile.address?.physical || ''}
+                value={profile.address?.street || profile.address?.physical || ''}
                 onChange={(e: any) => setProfile({ ...profile, address: { ...profile.address, street: e.target.value } })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
@@ -357,6 +366,14 @@ export default function SupplierProfile() {
           {profile.bankChangeRequest && (
             <div className="mb-6">
               <p className="text-sm font-medium text-gray-700 mb-1">Your latest banking change</p>
+              <p className="text-sm text-gray-600">
+                {BANK_CHANGE_STATUS[profile.bankChangeRequest.status] || profile.bankChangeRequest.status}
+                {profile.bankChangeRequest.requestedAt &&
+                  ` · requested ${new Date(profile.bankChangeRequest.requestedAt).toLocaleDateString('en-ZA')}`}
+              </p>
+              {profile.bankChangeRequest.rejectionReason && (
+                <p className="text-sm text-red-700 mt-1">Reason: {profile.bankChangeRequest.rejectionReason}</p>
+              )}
             </div>
           )}
           
@@ -409,9 +426,9 @@ export default function SupplierProfile() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-6 py-3 bg-primary text-white font-medium rounded-xl hover:bg-primary-dark transition-colors"
+            className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-medium rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50"
           >
-            {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save Changes
           </button>
         </div>

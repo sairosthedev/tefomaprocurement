@@ -517,7 +517,7 @@ const RFQForm = forwardRef<RFQFormHandle, {
                   </thead>
                   <tbody>
                     {requisition.items.map((item: any, index: any) => (
-                      <tr key={index} className="hover:bg-gray-50">
+                      <tr key={index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                         <td className="py-2 px-3 border-b border-gray-100 text-gray-500">{index + 1}</td>
                         <td className="py-2 px-3 border-b border-gray-100">
                           <span className="font-medium text-gray-900">{item.description}</span>
@@ -577,7 +577,7 @@ const RFQForm = forwardRef<RFQFormHandle, {
                   <button
                     type="button"
                     onClick={selectSuggested}
-                    className="shrink-0 text-xs font-medium text-amber-800 border border-amber-300 rounded-lg px-2.5 py-1.5 hover:bg-amber-100"
+                    className="shrink-0 text-xs font-medium bg-primary text-white rounded-lg px-2.5 py-1.5 hover:bg-primary-dark transition-colors"
                   >
                     Add {relatedCount} related
                   </button>
@@ -619,19 +619,16 @@ const RFQForm = forwardRef<RFQFormHandle, {
             {selectedSuppliers.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-4">
                 {selectedSuppliers.map((supplier: any) => (
-                  <div
+                  <button
                     key={supplier._id}
-                    className="flex items-center gap-2 bg-primary/10 text-primary px-3 py-1.5 rounded-full"
+                    type="button"
+                    onClick={() => toggleSupplier(supplier)}
+                    title="Remove from this RFQ"
+                    className="flex items-center gap-2 bg-primary/10 text-primary px-3 py-1.5 rounded-full hover:bg-primary/20 transition-colors"
                   >
                     <span className="text-sm font-medium">{supplier.companyName}</span>
-                    <button
-                      type="button"
-                      onClick={() => toggleSupplier(supplier)}
-                      className="hover:bg-primary/20 rounded-full p-0.5"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
+                    <X className="h-3.5 w-3.5" />
+                  </button>
                 ))}
               </div>
             )}

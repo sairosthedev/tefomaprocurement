@@ -13,6 +13,7 @@ import {
   type SupplierDraft
 } from '../components/supplier/SupplierProfileEditor';
 import {
+  Ban,
   CheckCircle,
   Clock,
   Loader2,
@@ -113,7 +114,7 @@ function VettingForm({ supplier, onSaved, showToast }: { supplier: any; onSaved:
           className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-none" />
       </div>
       <button onClick={save} disabled={saving}
-        className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50">
+        className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50">
         {saving ? 'Saving…' : 'Save vetting record'}
       </button>
     </div>
@@ -493,15 +494,15 @@ export default function SupplierDetails() {
               {supplier.status.charAt(0).toUpperCase() + supplier.status.slice(1)}
             </span>
             {canManage && (supplier.status === 'suspended' || supplier.status === 'dormant') && (
-              <button type="button" onClick={() => setPendingAction('reactivate')} className={`${actionButton} text-green-700 border-green-300 hover:bg-green-50`}>
+              <button type="button" onClick={() => setPendingAction('reactivate')} className={`${actionButton} bg-primary border-primary text-white hover:bg-primary-dark`}>
                 <CheckCircle className="h-4 w-4" />
                 Reactivate
               </button>
             )}
             {canManage && supplier.status === 'active' && (
               <>
-                <button type="button" onClick={() => setPendingAction('suspend')} className={`${actionButton} text-amber-700 border-amber-300 hover:bg-amber-50`}>
-                  <XCircle className="h-4 w-4" />
+                <button type="button" onClick={() => setPendingAction('suspend')} className={`${actionButton} text-gray-700 border-gray-300 hover:bg-gray-50`}>
+                  <Ban className="h-4 w-4" />
                   Suspend
                 </button>
                 <button type="button" onClick={() => setPendingAction('dormant')} className={`${actionButton} text-gray-700 border-gray-300 hover:bg-gray-50`}>
@@ -511,7 +512,7 @@ export default function SupplierDetails() {
               </>
             )}
             {canManage && supplier.status !== 'blacklisted' && (
-              <button type="button" onClick={() => setPendingAction('blacklist')} className={`${actionButton} text-red-700 border-red-300 hover:bg-red-50`}>
+              <button type="button" onClick={() => setPendingAction('blacklist')} className={`${actionButton} text-red-700 border-red-200 hover:bg-red-50`}>
                 <XCircle className="h-4 w-4" />
                 Blacklist
               </button>
@@ -680,7 +681,7 @@ export default function SupplierDetails() {
                       type="button"
                       onClick={() => verifyKys(true)}
                       disabled={kysSaving || !overrideReason.trim()}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
                     >
                       {kysSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
                       Confirm override
@@ -693,7 +694,7 @@ export default function SupplierDetails() {
                     type="button"
                     onClick={() => verifyKys(false)}
                     disabled={kysSaving || (!supplier.kysComplete && completion.ticked !== completion.keys.length)}
-                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50"
+                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
                   >
                     {kysSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                     Verify KYS & activate
@@ -702,7 +703,7 @@ export default function SupplierDetails() {
                     type="button"
                     onClick={() => setShowOverrideConfirm(true)}
                     disabled={kysSaving}
-                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-amber-800 border border-amber-300 rounded-lg hover:bg-amber-50 disabled:opacity-50"
+                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
                   >
                     Activate without KYS
                   </button>
@@ -834,8 +835,8 @@ export default function SupplierDetails() {
               type="button"
               onClick={confirmPendingAction}
               disabled={saving || (pendingAction === 'blacklist' && !actionReason.trim())}
-              className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50 ${
-                pendingAction === 'blacklist' ? 'bg-red-600 hover:bg-red-700' : 'bg-primary hover:bg-primary/90'
+              className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 ${
+                pendingAction === 'blacklist' ? 'border border-red-200 text-red-700 hover:bg-red-50' : 'bg-primary text-white hover:bg-primary-dark'
               }`}
             >
               {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}

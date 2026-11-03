@@ -9,6 +9,8 @@ import {
 import PageHeader from '../components/PageHeader';
 import ViewButton from '../components/ViewButton';
 import Modal, { ModalFooter } from '../components/Modal';
+import Drawer from '../components/Drawer';
+import TableSkeleton from '../components/TableSkeleton';
 import Pagination from '../components/Pagination';
 import { ItemSelect } from '../components/ItemSelect';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
@@ -319,17 +321,6 @@ export default function StoreRequisitions() {
 
       {/* List */}
       <div>
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 text-primary animate-spin" />
-          </div>
-        ) : requisitions.length === 0 ? (
-          <div className="text-center py-12">
-            <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">No store requisitions found</p>
-          </div>
-        ) : (
-          <>
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
@@ -343,6 +334,14 @@ export default function StoreRequisitions() {
                   <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
+              {loading ? (
+                <TableSkeleton cols={5} />
+              ) : requisitions.length === 0 ? (
+                <tbody><tr><td colSpan={5} className="text-center py-12 text-gray-500">
+                  <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <p>No store requisitions found</p>
+                </td></tr></tbody>
+              ) : (
               <tbody>
                 {requisitions.map((req: any) => (
                   <tr key={req._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
@@ -374,6 +373,8 @@ export default function StoreRequisitions() {
                     <td className="py-2 px-3 border-b border-gray-100">
                       <div className="flex items-center gap-2">
                         <ViewButton
+                          size="xs"
+                          showIcon={false}
                           onClick={() => { setSelectedRequisition(req); setShowViewModal(true); }}
                         />
                         {isStoresOfficer && req.status === 'pending' && (
@@ -383,7 +384,7 @@ export default function StoreRequisitions() {
                                 setSelectedRequisition(req);
                                 setShowApproveModal(true);
                               }}
-                              className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                              className="px-2 py-1 text-xs font-medium border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors"
                             >
                               Approve
                             </button>
@@ -392,7 +393,7 @@ export default function StoreRequisitions() {
                                 setSelectedRequisition(req);
                                 setShowRejectModal(true);
                               }}
-                              className="px-3 py-1.5 text-xs font-medium border border-red-200 text-red-700 rounded-lg hover:bg-red-50 transition-colors"
+                              className="px-2 py-1 text-xs font-medium border border-red-200 text-red-700 rounded hover:bg-red-50 transition-colors"
                             >
                               Reject
                             </button>
@@ -405,7 +406,7 @@ export default function StoreRequisitions() {
                               setCollectedBy({ name: '', idNumber: '', department: '', contactNumber: '' });
                               setShowIssueModal(true);
                             }}
-                            className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
+                            className="px-2 py-1 text-xs font-medium border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors whitespace-nowrap"
                           >
                             Issue Items
                           </button>
@@ -414,7 +415,7 @@ export default function StoreRequisitions() {
                           <button
                             onClick={() => handlePrintIssueNote(req)}
                             disabled={printingId === req._id}
-                            className="px-3 py-1.5 text-xs font-medium border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                            className="px-2 py-1 text-xs font-medium border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors disabled:opacity-50 whitespace-nowrap"
                           >
                             {printingId === req._id ? 'Opening…' : 'Issue Note'}
                           </button>
@@ -424,23 +425,22 @@ export default function StoreRequisitions() {
                   </tr>
                 ))}
               </tbody>
+              )}
             </table>
           </div>
-          <Pagination
+          {!loading && <Pagination
             page={page}
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
-          pageSize={limit}
-          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+            pageSize={limit}
+            onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="requisitions"
-          />
-          </>
-        )}
+          />}
       </div>
 
-      {/* Create Modal */}
-      <Modal
+      {/* Create drawer */}
+      <Drawer
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         title="Request from Store"
@@ -455,7 +455,7 @@ export default function StoreRequisitions() {
           }}
         >
         <div ref={createTopRef} className="scroll-mt-4" />
-        <FormSteps steps={CREATE_STEPS} current={createStep} onSelect={goToCreateStep} />
+        <FormSteps steps={CREATE_STEPS} current={createStep} onSelect={goToCreateStep} variant="track" />
         {createStep === 0 && (
         <div className="space-y-4">
           {formData.items.map((item: any, index: any) => (
@@ -576,9 +576,10 @@ export default function StoreRequisitions() {
           onCancel={() => setShowCreateModal(false)}
           finishLabel={creating ? 'Submitting...' : 'Submit Request'}
           submitting={creating}
+          size="sm"
         />
         </form>
-      </Modal>
+      </Drawer>
 
       {/* View Modal */}
       <Modal
@@ -677,14 +678,14 @@ export default function StoreRequisitions() {
                 setSelectedRequisition(null);
               }}
               disabled={actionLoading}
-              className="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 rounded-lg disabled:opacity-50"
+              className="px-4 py-2 text-sm text-gray-700 font-medium hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               onClick={handleApprove}
               disabled={actionLoading}
-              className="px-4 py-2 bg-primary text-white font-medium rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 text-sm bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {actionLoading ? (
                 <>
@@ -737,14 +738,14 @@ export default function StoreRequisitions() {
                 setSelectedRequisition(null);
               }}
               disabled={actionLoading}
-              className="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 rounded-lg disabled:opacity-50"
+              className="px-4 py-2 text-sm text-gray-700 font-medium hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               onClick={handleReject}
               disabled={actionLoading || !actionComment.trim()}
-              className="px-4 py-2 border border-red-200 text-red-700 font-medium rounded-xl hover:bg-red-50 transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 text-sm border border-red-200 text-red-700 font-medium rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {actionLoading ? (
                 <>
@@ -835,14 +836,14 @@ export default function StoreRequisitions() {
                 setSelectedRequisition(null);
               }}
               disabled={actionLoading}
-              className="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 rounded-lg disabled:opacity-50"
+              className="px-4 py-2 text-sm text-gray-700 font-medium hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               onClick={handleIssue}
               disabled={actionLoading}
-              className="px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 text-sm bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {actionLoading ? (
                 <>

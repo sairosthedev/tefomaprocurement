@@ -56,26 +56,24 @@ export default function MyKys() {
   const isActive = profile?.status === 'active';
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div className="p-8 max-w-3xl">
       <PageHeader
         title={`KYS Compliance — ${profile?.companyName}`}
         subtitle="Upload your Know-Your-Supplier documents. Your account is activated once Procurement verifies the mandatory documents."
+        bottomSpacing="mb-4"
       />
 
-
-      <div className="bg-white rounded-xl shadow p-6 mb-6">
-        <div
-          className={`mt-4 flex items-start gap-2 p-3 rounded-lg text-sm ${
-            isActive ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
-          }`}
-        >
-          {isActive ? <CheckCircle className="h-4 w-4 mt-0.5" /> : <AlertCircle className="h-4 w-4 mt-0.5" />}
-          <span>
-            {isActive
-              ? 'Your account is active and can be invited to RFQs.'
-              : `Pending verification — ${requiredUploaded}/${requiredReqs.length} mandatory documents uploaded.`}
-          </span>
-        </div>
+      <div
+        className={`mb-6 flex items-start gap-2 p-3 rounded-xl border text-sm ${
+          isActive ? 'bg-green-50 border-green-200 text-green-700' : 'bg-amber-50 border-amber-200 text-amber-700'
+        }`}
+      >
+        {isActive ? <CheckCircle className="h-4 w-4 mt-0.5 shrink-0" /> : <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />}
+        <span>
+          {isActive
+            ? 'Your account is active and can be invited to RFQs.'
+            : `Pending verification — ${requiredUploaded}/${requiredReqs.length} mandatory documents uploaded.`}
+        </span>
       </div>
 
       <KysDocuments documents={docs} onUpload={uploadDoc} onDelete={deleteDoc} />

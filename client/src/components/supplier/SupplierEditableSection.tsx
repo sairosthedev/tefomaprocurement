@@ -36,7 +36,7 @@ export default function SupplierEditableSection({
             <button
               type="button"
               onClick={onEdit}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/5"
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors"
             >
               <Pencil className="h-4 w-4" />
               Edit
@@ -72,7 +72,7 @@ export default function SupplierEditableSection({
           type="button"
           onClick={onSave}
           disabled={saving}
-          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           Save changes

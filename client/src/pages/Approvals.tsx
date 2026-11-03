@@ -11,6 +11,7 @@ import Modal, { ModalFooter } from '../components/Modal';
 import { formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
 import Pagination from '../components/Pagination';
+import TableSkeleton from '../components/TableSkeleton';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 /** High-value flag compares the USD equivalent, so it means the same in every SBU. */
@@ -245,18 +246,6 @@ export default function Approvals() {
 
       {/* Approvals List */}
       <div>
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 text-primary animate-spin" />
-          </div>
-        ) : pendingItems.length === 0 ? (
-          <div className="text-center py-12">
-            <CheckCircle className="h-12 w-12 text-green-300 mx-auto mb-4" />
-            <p className="text-gray-500 font-medium">No pending approvals</p>
-            <p className="text-sm text-gray-400 mt-1">All purchase orders are processed</p>
-          </div>
-        ) : (
-          <>
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
@@ -270,6 +259,15 @@ export default function Approvals() {
                   <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
+              {loading ? (
+                <TableSkeleton cols={7} />
+              ) : pendingItems.length === 0 ? (
+                <tbody><tr><td colSpan={7} className="text-center py-12">
+                  <CheckCircle className="h-12 w-12 text-green-300 mx-auto mb-4" />
+                  <p className="text-gray-500 font-medium">No pending approvals</p>
+                  <p className="text-sm text-gray-400 mt-1">All purchase orders are processed</p>
+                </td></tr></tbody>
+              ) : (
               <tbody>
                 {pendingItems.map((item: any) => (
                   <tr key={item._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
@@ -335,19 +333,18 @@ export default function Approvals() {
                   </tr>
                 ))}
               </tbody>
+              )}
             </table>
           </div>
-          <Pagination
+          {!loading && <Pagination
             page={page}
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
-          pageSize={limit}
-          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+            pageSize={limit}
+            onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="approvals"
-          />
-          </>
-        )}
+          />}
       </div>
 
       {/* Approval Modal */}
@@ -476,20 +473,20 @@ export default function Approvals() {
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot className="bg-gray-50 border-t border-gray-200">
+                  <tfoot className="bg-gray-50">
                     <tr>
-                      <td colSpan={3} className="py-2 px-3 text-sm font-medium text-right border border-gray-200">Subtotal:</td>
-                      <td className="py-2 px-3 text-sm font-medium border border-gray-200">{formatCurrency(selectedItem.subtotal || 0, selectedItem.currency)}</td>
+                      <td colSpan={3} className="py-2 px-3 text-sm font-medium text-right border-b border-gray-100">Subtotal:</td>
+                      <td className="py-2 px-3 text-sm font-medium border-b border-gray-100">{formatCurrency(selectedItem.subtotal || 0, selectedItem.currency)}</td>
                     </tr>
                     {selectedItem.vatAmount > 0 && (
                       <tr>
-                        <td colSpan={3} className="py-2 px-3 text-sm font-medium text-right border border-gray-200">VAT:</td>
-                        <td className="py-2 px-3 text-sm font-medium border border-gray-200">{formatCurrency(selectedItem.vatAmount || 0, selectedItem.currency)}</td>
+                        <td colSpan={3} className="py-2 px-3 text-sm font-medium text-right border-b border-gray-100">VAT:</td>
+                        <td className="py-2 px-3 text-sm font-medium border-b border-gray-100">{formatCurrency(selectedItem.vatAmount || 0, selectedItem.currency)}</td>
                       </tr>
                     )}
-                    <tr className="border-t border-gray-200">
-                      <td colSpan={3} className="py-2 px-3 text-sm font-bold text-right border border-gray-200">Total:</td>
-                      <td className="py-2 px-3 text-sm font-bold border border-gray-200">{formatCurrency(selectedItem.totalAmount || 0, selectedItem.currency)}</td>
+                    <tr>
+                      <td colSpan={3} className="py-2 px-3 text-sm font-bold text-right border-b border-gray-100">Total:</td>
+                      <td className="py-2 px-3 text-sm font-bold border-b border-gray-100">{formatCurrency(selectedItem.totalAmount || 0, selectedItem.currency)}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -537,7 +534,7 @@ export default function Approvals() {
             <ModalFooter>
               <button
                 onClick={() => { setShowModal(false); setComment(''); }}
-                className="px-4 py-2.5 text-gray-700 font-medium hover:bg-gray-100 rounded-xl transition-colors"
+                className="px-4 py-2 text-sm text-gray-700 font-medium hover:bg-gray-100 rounded-lg transition-colors"
                 disabled={actionLoading}
               >
                 Cancel
@@ -545,7 +542,7 @@ export default function Approvals() {
               <button
                 onClick={handleReject}
                 disabled={actionLoading}
-                className="flex items-center gap-2 px-4 py-2.5 border border-red-200 text-red-700 font-medium rounded-xl hover:bg-red-50 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 text-sm border border-red-200 text-red-700 font-medium rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
               >
                 <XCircle className="h-4 w-4" />
                 Reject
@@ -553,7 +550,7 @@ export default function Approvals() {
               <button
                 onClick={handleApprove}
                 disabled={actionLoading}
-                className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-medium rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 text-sm bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
               >
                 {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                 Approve

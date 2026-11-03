@@ -266,10 +266,10 @@ const InvoiceForm = forwardRef<InvoiceFormHandle, {
                     </thead>
                     <tbody>
                       {items.map((item, i) => (
-                        <tr key={i} className="hover:bg-gray-50">
+                        <tr key={i} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                           <td className="py-2 px-3 border-b border-gray-100">{item.description}</td>
-                          <td className="text-right py-2.5 px-4">{item.quantity}</td>
-                          <td className="text-right py-2.5 px-4">{formatCurrency(item.totalPrice, selectedCurrency)}</td>
+                          <td className="py-2 px-3 border-b border-gray-100 text-right">{item.quantity}</td>
+                          <td className="py-2 px-3 border-b border-gray-100 text-right">{formatCurrency(item.totalPrice, selectedCurrency)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -319,20 +319,20 @@ const InvoiceForm = forwardRef<InvoiceFormHandle, {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr className="hover:bg-gray-50">
+                    <tr className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                       <td className="py-2 px-3 border-b border-gray-100">Subtotal</td>
-                      <td className="text-right py-2.5 px-4">{formatCurrency(poSubtotal, selectedCurrency)}</td>
-                      <td className="text-right py-2.5 px-4">{formatCurrency(invoiceSubtotal, selectedCurrency)}</td>
+                      <td className="py-2 px-3 border-b border-gray-100 text-right">{formatCurrency(poSubtotal, selectedCurrency)}</td>
+                      <td className="py-2 px-3 border-b border-gray-100 text-right">{formatCurrency(invoiceSubtotal, selectedCurrency)}</td>
                     </tr>
-                    <tr className="hover:bg-gray-50">
+                    <tr className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                       <td className="py-2 px-3 border-b border-gray-100">VAT</td>
-                      <td className="text-right py-2.5 px-4">{formatCurrency(poVat, selectedCurrency)}</td>
-                      <td className="text-right py-2.5 px-4">{formatCurrency(Number(vatAmount) || 0, selectedCurrency)}</td>
+                      <td className="py-2 px-3 border-b border-gray-100 text-right">{formatCurrency(poVat, selectedCurrency)}</td>
+                      <td className="py-2 px-3 border-b border-gray-100 text-right">{formatCurrency(Number(vatAmount) || 0, selectedCurrency)}</td>
                     </tr>
-                    <tr className="hover:bg-gray-50 font-semibold">
+                    <tr className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors font-semibold">
                       <td className="py-2 px-3 border-b border-gray-100">Total</td>
-                      <td className="text-right py-2.5 px-4">{formatCurrency(poTotal, selectedCurrency)}</td>
-                      <td className="text-right py-2.5 px-4">{formatCurrency(invoiceTotal, selectedCurrency)}</td>
+                      <td className="py-2 px-3 border-b border-gray-100 text-right">{formatCurrency(poTotal, selectedCurrency)}</td>
+                      <td className="py-2 px-3 border-b border-gray-100 text-right">{formatCurrency(invoiceTotal, selectedCurrency)}</td>
                     </tr>
                   </tbody>
                 </table>

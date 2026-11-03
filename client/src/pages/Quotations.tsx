@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import ViewButton from '../components/ViewButton';
 import Pagination from '../components/Pagination';
+import TableSkeleton from '../components/TableSkeleton';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 import { useDebouncedValue } from '../lib/useDebouncedValue';
 
@@ -281,31 +282,28 @@ export default function Quotations() {
 
       {/* Quotations Table */}
       <div>
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 text-primary animate-spin" />
-          </div>
-        ) : quotations.length === 0 ? (
-          <div className="text-center py-12">
-            <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900">No quotations found</h3>
-            <p className="text-gray-500 mt-1">Quotations will appear here when suppliers respond to RFQs</p>
-          </div>
-        ) : (
-          <>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Quotation #</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">RFQ</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Supplier</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Total Amount</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Valid Until</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
-                  <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
-                </tr>
-              </thead>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Quotation #</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">RFQ</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Supplier</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Total Amount</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Valid Until</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+                <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
+              </tr>
+            </thead>
+            {loading ? (
+              <TableSkeleton cols={7} />
+            ) : quotations.length === 0 ? (
+              <tbody><tr><td colSpan={7} className="text-center py-12 text-gray-500">
+                <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-lg font-medium text-gray-900">No quotations found</p>
+                <p className="mt-1">Quotations will appear here when suppliers respond to RFQs</p>
+              </td></tr></tbody>
+            ) : (
               <tbody>
                 {quotations.map((quotation: any) => {
                   const StatusIcon = statusIcons[quotation.status] || DEFAULT_STATUS_ICON;
@@ -348,6 +346,8 @@ export default function Quotations() {
                       </td>
                       <td className="py-2 px-3 border-b border-gray-100 text-right">
                         <ViewButton
+                          size="xs"
+                          showIcon={false}
                           onClick={() => openQuotation(quotation)}
                           text={quotation.isSealed ? 'Sealed' : 'View'}
                         />
@@ -356,19 +356,18 @@ export default function Quotations() {
                   );
                 })}
               </tbody>
-            </table>
-          </div>
-          <Pagination
-            page={page}
-            pages={pagination.pages}
-            total={pagination.total}
-            onPageChange={setPage}
+            )}
+          </table>
+        </div>
+        {!loading && <Pagination
+          page={page}
+          pages={pagination.pages}
+          total={pagination.total}
+          onPageChange={setPage}
           pageSize={limit}
           onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
-            itemLabel="quotations"
-          />
-          </>
-        )}
+          itemLabel="quotations"
+        />}
       </div>
 
       {/* View Quotation Modal */}
@@ -485,28 +484,28 @@ export default function Quotations() {
                   </tbody>
                   <tfoot className="bg-gray-50">
                     <tr>
-                      <td colSpan={3} className="py-2 px-3 text-right font-semibold text-gray-700 border border-gray-200">
+                      <td colSpan={3} className="py-2 px-3 text-right font-semibold text-gray-700 border-b border-gray-100">
                         Subtotal:
                       </td>
-                      <td className="py-2 px-3 font-semibold text-gray-900 border border-gray-200">
+                      <td className="py-2 px-3 font-semibold text-gray-900 border-b border-gray-100">
                         {formatCurrency(selectedQuotation.subtotal, selectedQuotation.currency || getCurrentSbuCurrency())}
                       </td>
                     </tr>
                     {selectedQuotation.vatAmount > 0 && (
                       <tr>
-                        <td colSpan={3} className="py-2 px-3 text-right font-semibold text-gray-700 border border-gray-200">
+                        <td colSpan={3} className="py-2 px-3 text-right font-semibold text-gray-700 border-b border-gray-100">
                           VAT (15%):
                         </td>
-                        <td className="py-2 px-3 font-semibold text-gray-900 border border-gray-200">
+                        <td className="py-2 px-3 font-semibold text-gray-900 border-b border-gray-100">
                           {formatCurrency(selectedQuotation.vatAmount, selectedQuotation.currency || getCurrentSbuCurrency())}
                         </td>
                       </tr>
                     )}
                     <tr>
-                      <td colSpan={3} className="py-2 px-3 text-right font-bold text-gray-900 border border-gray-200">
+                      <td colSpan={3} className="py-2 px-3 text-right font-bold text-gray-900 border-b border-gray-100">
                         Total:
                       </td>
-                      <td className="py-2 px-3 text-lg font-bold text-primary border border-gray-200">
+                      <td className="py-2 px-3 text-lg font-bold text-primary border-b border-gray-100">
                         {formatCurrency(selectedQuotation.totalAmount, selectedQuotation.currency || getCurrentSbuCurrency())}
                       </td>
                     </tr>
@@ -530,7 +529,7 @@ export default function Quotations() {
                     setShowRejectModal(true);
                   }}
                   disabled={processing}
-                  className="px-4 py-2.5 border border-red-300 text-red-700 font-medium rounded-xl hover:bg-red-50 transition-colors disabled:opacity-50"
+                  className="px-4 py-2.5 border border-red-200 text-red-700 font-medium rounded-xl hover:bg-red-50 transition-colors disabled:opacity-50"
                 >
                   Reject
                 </button>
@@ -562,7 +561,7 @@ export default function Quotations() {
                       </div>
                       <button
                         onClick={() => window.location.href = '/app/purchase-orders'}
-                        className="px-4 py-2 text-sm font-medium text-green-700 bg-green-100 rounded-lg hover:bg-green-200 transition-colors"
+                        className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
                       >
                         View PO
                       </button>

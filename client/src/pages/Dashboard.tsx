@@ -207,48 +207,48 @@ export default function Dashboard() {
     const actions: any = {
       admin: [
         { label: 'Manage Users', icon: Users, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/users' },
-        { label: 'Supplier Compliance', icon: ShieldCheck, color: 'bg-red-50 hover:bg-red-100 text-red-700', href: '/app/suppliers/analytics/compliance' },
-        { label: 'Supplier Evaluations', icon: ClipboardList, color: 'bg-purple-50 hover:bg-purple-100 text-purple-700', href: '/app/suppliers/evaluations' },
-        { label: 'Audit Logs', icon: FileCheck, color: 'bg-gray-50 hover:bg-gray-100 text-gray-700', href: '/app/audit-logs' },
-        { label: 'Reports', icon: BarChart3, color: 'bg-blue-50 hover:bg-blue-100 text-blue-700', href: '/app/reports' }
+        { label: 'Supplier Compliance', icon: ShieldCheck, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/suppliers/analytics/compliance' },
+        { label: 'Supplier Evaluations', icon: ClipboardList, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/suppliers/evaluations' },
+        { label: 'Audit Logs', icon: FileCheck, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/audit-logs' },
+        { label: 'Reports', icon: BarChart3, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/reports' }
       ],
       procurement_officer: [
         { label: 'Create New RFQ', icon: FileSearch, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/rfqs' },
-        { label: 'Review Quotations', icon: FileText, color: 'bg-amber-50 hover:bg-amber-100 text-amber-700', href: '/app/quotations' },
-        { label: 'Manage Suppliers', icon: Users, color: 'bg-purple-50 hover:bg-purple-100 text-purple-700', href: '/app/suppliers' },
-        { label: 'Purchase Orders', icon: ShoppingCart, color: 'bg-green-50 hover:bg-green-100 text-green-700', href: '/app/purchase-orders' }
+        { label: 'Review Quotations', icon: FileText, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/quotations' },
+        { label: 'Manage Suppliers', icon: Users, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/suppliers' },
+        { label: 'Purchase Orders', icon: ShoppingCart, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/purchase-orders' }
       ],
       finance: [
-        { label: 'Pending Approvals', icon: Clock, color: 'bg-amber-50 hover:bg-amber-100 text-amber-700', href: '/app/approvals' },
+        { label: 'Pending Approvals', icon: Clock, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/approvals' },
         { label: 'Invoices', icon: FileText, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/invoices' },
-        { label: 'All Purchase Orders', icon: ShoppingCart, color: 'bg-green-50 hover:bg-green-100 text-green-700', href: '/app/purchase-orders' },
-        { label: 'View Reports', icon: TrendingUp, color: 'bg-blue-50 hover:bg-blue-100 text-blue-700', href: '/app/reports' }
+        { label: 'All Purchase Orders', icon: ShoppingCart, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/purchase-orders' },
+        { label: 'View Reports', icon: TrendingUp, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/reports' }
       ],
       coo: [
-        { label: 'Major PO Approvals', icon: Clock, color: 'bg-amber-50 hover:bg-amber-100 text-amber-700', href: '/app/approvals' },
-        { label: 'Suppliers', icon: Users, color: 'bg-purple-50 hover:bg-purple-100 text-purple-700', href: '/app/suppliers' },
-        { label: 'View Reports', icon: TrendingUp, color: 'bg-blue-50 hover:bg-blue-100 text-blue-700', href: '/app/reports' }
+        { label: 'Major PO Approvals', icon: Clock, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/approvals' },
+        { label: 'Suppliers', icon: Users, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/suppliers' },
+        { label: 'View Reports', icon: TrendingUp, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/reports' }
       ],
       stores_officer: [
         { label: 'View Inventory', icon: Package, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/inventory' },
-        { label: 'Pending Deliveries', icon: ShoppingCart, color: 'bg-amber-50 hover:bg-amber-100 text-amber-700', href: '/app/deliveries' },
-        { label: 'Stock Alerts', icon: AlertCircle, color: 'bg-red-50 hover:bg-red-100 text-red-700', href: '/app/inventory' }
+        { label: 'Pending Deliveries', icon: ShoppingCart, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/deliveries' },
+        { label: 'Stock Alerts', icon: AlertCircle, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/inventory' }
       ],
       department_head: [
-        { label: 'Pending Approvals', icon: Clock, color: 'bg-amber-50 hover:bg-amber-100 text-amber-700', href: '/app/approvals' },
+        { label: 'Pending Approvals', icon: Clock, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/approvals' },
         { label: 'Create Requisition', icon: FileText, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/requisitions?new=1' },
-        { label: 'Department Requisitions', icon: FileSearch, color: 'bg-blue-50 hover:bg-blue-100 text-blue-700', href: '/app/requisitions' },
-        { label: 'View Reports', icon: TrendingUp, color: 'bg-green-50 hover:bg-green-100 text-green-700', href: '/app/reports' }
+        { label: 'Department Requisitions', icon: FileSearch, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/requisitions' },
+        { label: 'View Reports', icon: TrendingUp, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/reports' }
       ],
       end_user: [
         { label: 'Create Requisition', icon: FileText, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/requisitions?new=1' },
-        { label: 'My Requisitions', icon: FileSearch, color: 'bg-blue-50 hover:bg-blue-100 text-blue-700', href: '/app/requisitions' }
+        { label: 'My Requisitions', icon: FileSearch, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/requisitions' }
       ],
       supplier: [
         { label: 'My RFQs', icon: FileSearch, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/my-rfqs' },
-        { label: 'My Purchase Orders', icon: ShoppingCart, color: 'bg-green-50 hover:bg-green-100 text-green-700', href: '/app/my-purchase-orders' },
-        { label: 'My Invoices', icon: DollarSign, color: 'bg-amber-50 hover:bg-amber-100 text-amber-700', href: '/app/my-invoices' },
-        { label: 'KYS Documents', icon: ShieldCheck, color: 'bg-blue-50 hover:bg-blue-100 text-blue-700', href: '/app/my-kys' }
+        { label: 'My Purchase Orders', icon: ShoppingCart, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/my-purchase-orders' },
+        { label: 'My Invoices', icon: DollarSign, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/my-invoices' },
+        { label: 'KYS Documents', icon: ShieldCheck, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/my-kys' }
       ]
     };
     // No fallback to another role's list: an unknown role gets no shortcuts
@@ -317,7 +317,7 @@ export default function Dashboard() {
         actions={
           <button
             onClick={fetchDashboardData}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
           >
             <RefreshCw className="h-4 w-4" />
             Refresh

@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { adminAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
-import Modal, { ModalFooter } from '../components/Modal';
-import { Building2, Edit, Loader2, MapPin, Plus, Trash2 } from 'lucide-react';
+import { ModalFooter } from '../components/Modal';
+import Drawer from '../components/Drawer';
+import TableSkeleton from '../components/TableSkeleton';
+import { MapPin, Plus } from 'lucide-react';
 import { PROVINCES } from '../lib/constants';
 
 const emptyForm = {
@@ -133,58 +135,73 @@ export default function Sites() {
         </button>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      ) : sites.length === 0 ? (
-        <div className="bg-white rounded-2xl p-12 text-center border border-gray-100">
-          <MapPin className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500">No sites configured yet.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sites.map((site) => (
-            <div key={site._id} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-primary/10 rounded-xl">
-                    <Building2 className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{site.name}</h3>
-                    <p className="text-xs font-mono text-gray-400">{site.code}</p>
-                  </div>
-                </div>
-                <div className="flex gap-1">
-                  <button type="button" onClick={() => openEdit(site)} className="p-2 text-gray-400 hover:text-primary rounded-lg">
-                    <Edit className="h-4 w-4" />
-                  </button>
-                  <button type="button" onClick={() => handleDelete(site._id)} className="p-2 text-gray-400 hover:text-red-500 rounded-lg">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2 text-xs">
-                <span className="px-2 py-1 rounded-full bg-gray-100 text-gray-700 uppercase">{site.type}</span>
-                <span className={`px-2 py-1 rounded-full ${site.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                  {site.status}
-                </span>
-                {site.hasLocalStore && (
-                  <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700">Local store</span>
-                )}
-              </div>
-              {site.address?.city && (
-                <p className="text-sm text-gray-500 mt-3">
-                  {[site.address.city, site.address.province].filter(Boolean).join(', ')}
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Code</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Name</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Type</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Location</th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
+            </tr>
+          </thead>
+          {loading ? (
+            <TableSkeleton cols={6} />
+          ) : sites.length === 0 ? (
+            <tbody><tr><td colSpan={6} className="text-center py-12 text-gray-500">
+              <MapPin className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+              <p>No sites configured yet.</p>
+            </td></tr></tbody>
+          ) : (
+            <tbody>
+              {sites.map((site) => (
+                <tr key={site._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                  <td className="py-2 px-3 border-b border-gray-100 font-mono text-xs text-gray-500">{site.code}</td>
+                  <td className="py-2 px-3 border-b border-gray-100 font-medium text-gray-900">{site.name}</td>
+                  <td className="py-2 px-3 border-b border-gray-100">
+                    <div className="flex flex-wrap gap-1.5 text-xs">
+                      <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 uppercase">{site.type}</span>
+                      {site.hasLocalStore && (
+                        <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Local store</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-2 px-3 border-b border-gray-100">
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${site.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                      {site.status}
+                    </span>
+                  </td>
+                  <td className="py-2 px-3 border-b border-gray-100 text-gray-600">
+                    {site.address?.city ? [site.address.city, site.address.province].filter(Boolean).join(', ') : '—'}
+                  </td>
+                  <td className="py-2 px-3 border-b border-gray-100 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={() => openEdit(site)}
+                        className="px-2 py-1 text-xs border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(site._id)}
+                        className="px-2 py-1 text-xs border border-red-200 rounded text-red-700 hover:bg-red-50 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          )}
+        </table>
+      </div>
 
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editing ? 'Edit site' : 'Add site'} size="lg">
+      <Drawer isOpen={showModal} onClose={() => setShowModal(false)} title={editing ? 'Edit site' : 'Add site'} size="lg">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -249,20 +266,20 @@ export default function Sites() {
             Has local store inventory
           </label>
           <ModalFooter>
-            <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-gray-700 rounded-xl hover:bg-gray-100">
+            <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
               Cancel
             </button>
             <button
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-xl hover:bg-primary-dark disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
             >
               {saving ? 'Saving…' : 'Save'}
             </button>
           </ModalFooter>
         </div>
-      </Modal>
+      </Drawer>
     </div>
   );
 }

@@ -13,7 +13,8 @@ import { useToast } from '../../components/Toast'
 import { useAuth } from '../../context/AuthContext'
 import PageHeader, { PageStatCard } from '../../components/PageHeader'
 import Pagination from '../../components/Pagination'
-import Modal from '../../components/Modal'
+import Drawer from '../../components/Drawer'
+import TableSkeleton from '../../components/TableSkeleton'
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination'
 import { FormSteps, FormStepNav } from '../../components/FormSteps'
 
@@ -220,7 +221,7 @@ export default function Evaluations() {
           <button
             type="button"
             onClick={() => navigate('/app/suppliers')}
-            className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
           >
             Back to Suppliers
           </button>
@@ -243,10 +244,10 @@ export default function Evaluations() {
             key={tab.key}
             type="button"
             onClick={() => setActiveTab(tab.key)}
-            className={`rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
+            className={`rounded-lg px-4 py-2 text-sm font-medium border transition-colors ${
               activeTab === tab.key
-                ? 'bg-primary text-white'
-                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                ? 'bg-primary border-primary text-white'
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
             }`}
           >
             {tab.label}
@@ -281,7 +282,7 @@ export default function Evaluations() {
                   <button
                     type="button"
                     onClick={() => openCreateModal(supplier)}
-                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark"
+                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary-dark transition-colors"
                   >
                     <Plus className="h-4 w-4" />
                     Evaluate
@@ -313,6 +314,13 @@ export default function Evaluations() {
                   <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Next review</th>
                 </tr>
               </thead>
+              {loading ? (
+                <TableSkeleton cols={7} />
+              ) : allEvaluations.length === 0 ? (
+                <tbody><tr><td colSpan={7} className="text-center py-10 text-gray-500">
+                  No evaluations recorded yet.
+                </td></tr></tbody>
+              ) : (
               <tbody>
                 {allEvaluations.map((evaluation) => (
                   <tr key={evaluation._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
@@ -335,14 +343,10 @@ export default function Evaluations() {
                   </tr>
                 ))}
               </tbody>
+              )}
             </table>
           </div>
-          {allEvaluations.length === 0 && (
-            <div className="px-5 py-10 text-center text-gray-500">
-              No evaluations recorded yet.
-            </div>
-          )}
-          <Pagination
+          {!loading && <Pagination
             page={allPage}
             pages={allPagination.pages}
             total={allPagination.total}
@@ -350,11 +354,11 @@ export default function Evaluations() {
             pageSize={limit}
             onPageSizeChange={(s) => { setLimit(s); setAllPage(1); }}
             itemLabel="evaluations"
-          />
+          />}
         </div>
       )}
 
-      <Modal
+      <Drawer
         isOpen={showCreateModal && !!selectedSupplier}
         onClose={closeCreateModal}
         title="Evaluate supplier"
@@ -474,7 +478,7 @@ export default function Evaluations() {
                 submitting={submitting}
               />
             </form>
-      </Modal>
+      </Drawer>
     </div>
   )
 }

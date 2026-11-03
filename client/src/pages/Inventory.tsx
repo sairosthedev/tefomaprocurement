@@ -8,7 +8,9 @@ import {
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import ViewButton from '../components/ViewButton';
-import Modal, { ModalFooter } from '../components/Modal';
+import Modal from '../components/Modal';
+import Drawer from '../components/Drawer';
+import TableSkeleton from '../components/TableSkeleton';
 import { CategorySelect } from '../components/CategorySelect';
 import { formatCurrency, UNITS_OF_MEASUREMENT, getCategoryName } from '../lib/constants';
 import Pagination from '../components/Pagination';
@@ -454,11 +456,11 @@ export default function Inventory() {
           onSubmit={handleSearchSubmit}
           className="flex flex-col sm:flex-row sm:items-center gap-3 md:ml-auto"
         >
-          <div className="relative w-full sm:w-64">
+          <div className="relative w-full sm:w-52">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by name, code, or description..."
+              placeholder="Search items..."
               value={searchTermInput}
               onChange={(e: any) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
@@ -484,17 +486,6 @@ export default function Inventory() {
 
       {/* Inventory Table */}
       <div>
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 text-primary animate-spin" />
-          </div>
-        ) : inventory.length === 0 ? (
-          <div className="text-center py-12">
-            <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">No items found</p>
-          </div>
-        ) : (
-          <>
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
@@ -509,6 +500,14 @@ export default function Inventory() {
                   <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
+              {loading ? (
+                <TableSkeleton cols={8} />
+              ) : inventory.length === 0 ? (
+                <tbody><tr><td colSpan={8} className="text-center py-12 text-gray-500">
+                  <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <p>No items found</p>
+                </td></tr></tbody>
+              ) : (
               <tbody>
                 {inventory.map((inv: any) => {
                   const item = inv.item || {};
@@ -517,7 +516,14 @@ export default function Inventory() {
                     issueContext && (inv.quantityOnHand || 0) >= issueContext.lineQty;
                   const isIssuing = issuingItemId === item._id;
                   return (
-                    <tr key={inv._id} className={`hover:bg-gray-50 ${isLowStock ? 'bg-red-50/50' : ''}`}>
+                    <tr
+                      key={inv._id}
+                      className={`transition-colors ${
+                        isLowStock
+                          ? 'bg-red-50/50 hover:bg-red-50'
+                          : 'odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07]'
+                      }`}
+                    >
                       <td className="py-2 px-3 border-b border-gray-100">
                         <span className="font-mono font-medium text-primary">
                           {item.code || `ITM-${inv._id.slice(-6).toUpperCase()}`}
@@ -566,7 +572,7 @@ export default function Inventory() {
                                   : `Need ${issueContext.lineQty} on hand (${inv.quantityOnHand || 0} available)`
                               }
                               onClick={() => issueForRequisition(inv)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-40 disabled:cursor-not-allowed"
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                             >
                               {isIssuing ? (
                                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -577,6 +583,8 @@ export default function Inventory() {
                             </button>
                           )}
                           <ViewButton
+                            size="xs"
+                            showIcon={false}
                             onClick={() => { setSelectedItem({ ...inv, item }); setShowViewModal(true); }}
                           />
                         </div>
@@ -585,23 +593,22 @@ export default function Inventory() {
                   );
                 })}
               </tbody>
+              )}
             </table>
           </div>
-          <Pagination
+          {!loading && <Pagination
             page={page}
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
-          pageSize={limit}
-          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+            pageSize={limit}
+            onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="items"
-          />
-          </>
-        )}
+          />}
       </div>
 
-      {/* Add Item Modal */}
-      <Modal
+      {/* Add Item drawer */}
+      <Drawer
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         title="Add Inventory Item"
@@ -616,7 +623,7 @@ export default function Inventory() {
           }}
         >
         <div ref={addTopRef} className="scroll-mt-4" />
-        <FormSteps steps={ADD_STEPS} current={addStep} onSelect={goToAddStep} />
+        <FormSteps steps={ADD_STEPS} current={addStep} onSelect={goToAddStep} variant="track" />
         <div className="space-y-4">
           {addStep === 0 && (
             <>
@@ -638,7 +645,7 @@ export default function Inventory() {
                     onChange={(code) => setFormData({ ...formData, category: code })}
                     placeholder="Select Category"
                     required
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    className="w-full flex items-center justify-between px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
                   />
                 </div>
               </div>
@@ -775,9 +782,10 @@ export default function Inventory() {
           onCancel={() => setShowAddModal(false)}
           finishLabel={adding ? 'Adding...' : 'Add Item'}
           submitting={adding}
+          size="sm"
         />
         </form>
-      </Modal>
+      </Drawer>
 
       {/* View Modal */}
       <Modal
@@ -827,14 +835,34 @@ export default function Inventory() {
         )}
       </Modal>
 
-      {/* Bulk Import Modal */}
-      <Modal
+      {/* Bulk Import drawer */}
+      <Drawer
         isOpen={showImportModal}
         onClose={resetImport}
         title="Bulk Import Inventory"
         size="xl"
+        footer={
+          <>
+            <button
+              onClick={resetImport}
+              className="px-3 py-[7px] text-sm border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              {importResult ? 'Close' : 'Cancel'}
+            </button>
+            {!importResult && (
+              <button
+                onClick={doImport}
+                disabled={importing || importRows.length === 0}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                Import {importRows.length > 0 ? `${importRows.length} rows` : ''}
+              </button>
+            )}
+          </>
+        }
       >
-        <FormSteps steps={IMPORT_STEPS} current={importResult ? 2 : importRows.length > 0 ? 1 : 0} />
+        <FormSteps steps={IMPORT_STEPS} current={importResult ? 2 : importRows.length > 0 ? 1 : 0} variant="track" />
         <div className="space-y-4">
           {!importResult && (
             <>
@@ -933,15 +961,21 @@ export default function Inventory() {
                 </div>
               </div>
               {importResult.results?.some((r: any) => r.status === 'failed') && (
-                <div className="border border-red-100 rounded-xl overflow-hidden max-h-40 overflow-y-auto">
-                  <table className="w-full text-xs border-collapse">
-                    <tbody className="divide-y divide-red-50">
+                <div className="overflow-x-auto max-h-40 overflow-y-auto">
+                  <table className="w-full text-sm border-collapse">
+                    <thead className="sticky top-0">
+                      <tr>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Row</th>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Problem</th>
+                      </tr>
+                    </thead>
+                    <tbody>
                       {importResult.results
                         .filter((r: any) => r.status === 'failed')
                         .map((r: any, i: number) => (
-                          <tr key={i} className="bg-red-50/40">
-                            <td className="py-1.5 px-3 text-gray-700">Row {r.row}: {r.name}</td>
-                            <td className="py-1.5 px-3 text-red-600">{r.message}</td>
+                          <tr key={i} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                            <td className="py-2 px-3 border-b border-gray-100 text-gray-700">Row {r.row}: {r.name}</td>
+                            <td className="py-2 px-3 border-b border-gray-100 text-red-600">{r.message}</td>
                           </tr>
                         ))}
                     </tbody>
@@ -951,26 +985,8 @@ export default function Inventory() {
             </div>
           )}
 
-          <ModalFooter>
-            <button
-              onClick={resetImport}
-              className="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 rounded-lg"
-            >
-              {importResult ? 'Close' : 'Cancel'}
-            </button>
-            {!importResult && (
-              <button
-                onClick={doImport}
-                disabled={importing || importRows.length === 0}
-                className="flex items-center gap-2 px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                Import {importRows.length > 0 ? `${importRows.length} rows` : ''}
-              </button>
-            )}
-          </ModalFooter>
         </div>
-      </Modal>
+      </Drawer>
     </div>
   );
 }

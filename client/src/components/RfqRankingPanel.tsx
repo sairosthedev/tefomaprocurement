@@ -302,7 +302,7 @@ export default function RfqRankingPanel({ rfqId, refreshKey, onViewQuotation }: 
                   <button
                     type="button"
                     onClick={() => onViewQuotation(r.quotationId)}
-                    className="mt-3 text-sm text-primary hover:underline"
+                    className="mt-3 block px-2 py-1 text-xs border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors"
                   >
                     View quotation
                   </button>
@@ -332,8 +332,8 @@ export default function RfqRankingPanel({ rfqId, refreshKey, onViewQuotation }: 
 
 function SectionHeading() {
   return (
-    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-      <Trophy className="h-5 w-5" />
+    <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+      <Trophy className="h-4 w-4 text-primary" />
       Response Ranking
     </h3>
   );

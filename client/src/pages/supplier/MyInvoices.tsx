@@ -6,9 +6,20 @@ import { getCurrentSbuCurrency } from '../../lib/sbu';
 import { useToast } from '../../components/Toast';
 import PageHeader from '../../components/PageHeader';
 import Pagination from '../../components/Pagination';
+import TableSkeleton from '../../components/TableSkeleton';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
-import { Loader2, Plus, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Receipt } from 'lucide-react';
 import { SubmitInvoiceDrawer } from '../../components/InvoiceForm';
+
+// Matches the staff Invoices list.
+const statusColors: Record<string, string> = {
+  submitted: 'bg-blue-100 text-blue-700',
+  variance: 'bg-amber-100 text-amber-700',
+  approved: 'bg-green-100 text-green-700',
+  rejected: 'bg-red-100 text-red-700',
+  paid: 'bg-emerald-100 text-emerald-700',
+  partially_paid: 'bg-cyan-100 text-cyan-700'
+};
 
 export default function MyInvoices() {
   const { showToast } = useToast();
@@ -17,7 +28,6 @@ export default function MyInvoices() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
-  const [openId, setOpenId] = useState<string | null>(null);
   // The submit drawer lives in the URL (?new=1, with ?po= for the order being
   // billed), so links from elsewhere can open it and Back closes it.
   const [searchParams, setSearchParams] = useSearchParams();
@@ -68,9 +78,10 @@ export default function MyInvoices() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-8">
       <PageHeader
         title="My Invoices"
+        subtitle="Submit and track your invoices"
         bottomSpacing="mb-4"
       />
 
@@ -85,59 +96,52 @@ export default function MyInvoices() {
         </button>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-      ) : invoices.length === 0 ? (
-        <p className="text-center text-gray-500 py-12">No invoices submitted yet.</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Invoice</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">PO</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Amount</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
-              </tr>
-            </thead>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Invoice</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">PO</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Amount</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+            </tr>
+          </thead>
+          {loading ? (
+            <TableSkeleton cols={4} />
+          ) : invoices.length === 0 ? (
+            <tbody>
+              <tr><td colSpan={4} className="text-center py-12 text-gray-500">
+                <Receipt className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                <p>No invoices submitted yet.</p>
+              </td></tr>
+            </tbody>
+          ) : (
             <tbody>
               {invoices.map((inv) => (
-                <React.Fragment key={inv._id}>
-                  <tr
-                    className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors cursor-pointer"
-                    onClick={() => setOpenId(openId === inv._id ? null : inv._id)}
-                  >
-                    <td className="py-2 px-3 border-b border-gray-100 font-medium">
-                      <span className="inline-flex items-center gap-1.5">
-                        {openId === inv._id ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
-                        {inv.invoiceNumber}
-                      </span>
-                    </td>
+                  <tr key={inv._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                    <td className="py-2 px-3 border-b border-gray-100 font-medium">{inv.invoiceNumber}</td>
                     <td className="py-2 px-3 border-b border-gray-100">{inv.purchaseOrder?.poNumber}</td>
                     <td className="py-2 px-3 border-b border-gray-100">{formatCurrency(inv.totalAmount, inv.currency || getCurrentSbuCurrency())}</td>
-                    <td className="py-2 px-3 border-b border-gray-100 capitalize">{inv.status.replace(/_/g, ' ')}</td>
+                    <td className="py-2 px-3 border-b border-gray-100">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[inv.status] || 'bg-gray-100 text-gray-700'}`}>
+                        {inv.status.replace(/_/g, ' ')}
+                      </span>
+                    </td>
                   </tr>
-                  {openId === inv._id && (
-                    <tr>
-                      <td colSpan={4} className="px-4 pb-4 bg-gray-50/60">
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
               ))}
             </tbody>
-          </table>
-          <Pagination
-            page={page}
-            pages={pagination.pages}
-            total={pagination.total}
-            onPageChange={setPage}
-          pageSize={limit}
-          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
-            itemLabel="invoices"
-          />
-        </div>
-      )}
+          )}
+        </table>
+      </div>
+      {!loading && <Pagination
+        page={page}
+        pages={pagination.pages}
+        total={pagination.total}
+        onPageChange={setPage}
+        pageSize={limit}
+        onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+        itemLabel="invoices"
+      />}
 
       <SubmitInvoiceDrawer
         isOpen={submitOpen}

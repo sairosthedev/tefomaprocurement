@@ -250,14 +250,14 @@ export default function Profile() {
               <button
                 type="button"
                 onClick={() => setShowPasswordSection(false)}
-                className="px-4 py-2 text-gray-700 font-medium hover:bg-gray-100 rounded-xl"
+                className="px-4 py-2 border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 rounded-xl transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-4 py-2 bg-primary text-white font-medium rounded-xl hover:bg-primary-dark"
+                className="px-4 py-2 bg-primary text-white font-medium rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50"
               >
                 Update Password
               </button>

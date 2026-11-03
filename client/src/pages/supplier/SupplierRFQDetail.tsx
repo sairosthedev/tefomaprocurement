@@ -4,6 +4,7 @@ import { useToast } from '../../components/Toast';
 import api from '../../lib/api';
 import { Clock, Loader2, PartyPopper, Send } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
+import FactsCard from '../../components/supplier/FactsCard';
 import { SubmitQuotationDrawer } from '../../components/QuotationForm';
 
 export default function SupplierRFQDetail() {
@@ -93,11 +94,12 @@ export default function SupplierRFQDetail() {
         backLabel="Back to My RFQs"
         title={rfq.title}
         subtitle={rfq.rfqNumber || `RFQ-${String(rfq._id).slice(-6).toUpperCase()}`}
+        bottomSpacing="mb-4"
         actions={
           canSubmit ? (
             <button
               onClick={openQuote}
-              className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-medium rounded-xl hover:bg-primary-dark"
+              className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
             >
               <Send className="h-4 w-4" />
               {rfq.revisionRequested ? 'Submit Revised Quote' : 'Submit Quote'}
@@ -106,9 +108,8 @@ export default function SupplierRFQDetail() {
         }
       />
 
-
       {rfq.revisionRequested && (
-        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
+        <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
           <Send className="h-6 w-6 text-amber-600" />
           <div>
             <p className="font-semibold text-amber-800">Price revision requested</p>
@@ -120,7 +121,7 @@ export default function SupplierRFQDetail() {
       )}
 
       {rfq.quotationStatus === 'accepted' && (
-        <div className="mb-6 bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3">
+        <div className="mb-4 bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3">
           <PartyPopper className="h-6 w-6 text-emerald-600" />
           <div>
             <p className="font-semibold text-emerald-800">Your quotation was accepted</p>
@@ -129,35 +130,38 @@ export default function SupplierRFQDetail() {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm text-gray-500">Submission deadline</p>
-            <p className="font-medium text-gray-900 flex items-center gap-2 mt-1">
-              <Clock className={`h-4 w-4 ${remaining.urgent ? 'text-red-500' : 'text-gray-400'}`} />
-              {new Date(rfq.submissionDeadline).toLocaleString('en-ZA')}
-            </p>
-            <p className={`text-sm mt-1 ${remaining.urgent ? 'text-red-600' : 'text-gray-500'}`}>
-              {remaining.text}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Status</p>
-            <p className="font-medium text-gray-900 mt-1 capitalize">
-              {rfq.hasSubmitted ? 'Submitted' : rfq.status}
-            </p>
-          </div>
-        </div>
+      <FactsCard
+        className="mb-5"
+        cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-7"
+        facts={[
+          {
+            label: 'Submission deadline',
+            value: (
+              <span className="inline-flex items-center gap-1.5">
+                <Clock className={`h-4 w-4 shrink-0 ${remaining.urgent ? 'text-red-500' : 'text-gray-400'}`} />
+                {new Date(rfq.submissionDeadline).toLocaleString('en-ZA')}
+              </span>
+            )
+          },
+          {
+            label: 'Time left',
+            value: <span className={remaining.urgent ? 'text-red-600' : ''}>{remaining.text}</span>
+          },
+          { label: 'Status', value: <span className="capitalize">{rfq.hasSubmitted ? 'Submitted' : rfq.status}</span> }
+        ]}
+      />
 
+      {/* Description, items and terms */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
         {rfq.description && (
           <div>
-            <p className="text-sm text-gray-500 mb-1">Description</p>
-            <p className="text-gray-900 whitespace-pre-wrap">{rfq.description}</p>
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">Description</h3>
+            <p className="text-sm text-gray-700 whitespace-pre-wrap">{rfq.description}</p>
           </div>
         )}
 
-        <div>
-          <p className="text-sm font-medium text-gray-700 mb-2">Items required</p>
+        <div className={rfq.description ? 'border-t border-gray-100 pt-4' : ''}>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Items required</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
@@ -183,9 +187,9 @@ export default function SupplierRFQDetail() {
         </div>
 
         {rfq.termsAndConditions && (
-          <div>
-            <p className="text-sm text-gray-500 mb-1">Terms & conditions</p>
-            <p className="text-sm text-gray-900 whitespace-pre-wrap">{rfq.termsAndConditions}</p>
+          <div className="border-t border-gray-100 pt-4">
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">Terms & conditions</h3>
+            <p className="text-sm text-gray-700 whitespace-pre-wrap">{rfq.termsAndConditions}</p>
           </div>
         )}
       </div>

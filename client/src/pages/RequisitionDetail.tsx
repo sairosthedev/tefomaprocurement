@@ -334,7 +334,7 @@ export default function RequisitionDetail() {
   const th = 'py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap';
 
   return (
-    <div className="p-6">
+    <div className="p-8">
       <PageHeader
         backTo="/app/requisitions"
         backLabel="Back to Requisitions"
@@ -356,7 +356,7 @@ export default function RequisitionDetail() {
                   submitting ||
                   (requisition.items || []).filter((item: any) => item.description?.trim()).length === 0
                 }
-                className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary-dark transition-colors flex items-center gap-2 disabled:opacity-50"
+                className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors flex items-center gap-2 disabled:opacity-50"
                 title={
                   (requisition.items || []).filter((item: any) => item.description?.trim()).length === 0
                     ? 'Add at least one item before submitting'
@@ -493,18 +493,20 @@ export default function RequisitionDetail() {
                               <button
                                 onClick={() => handleSaveQty(item)}
                                 disabled={savingQty}
-                                className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg disabled:opacity-50"
+                                className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
                                 title="Save"
                               >
-                                {savingQty ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                                {savingQty ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                                Save
                               </button>
                               <button
                                 onClick={cancelEditQty}
                                 disabled={savingQty}
-                                className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg disabled:opacity-50"
+                                className="inline-flex items-center gap-1 px-2 py-1 text-xs border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
                                 title="Cancel"
                               >
-                                <X className="h-3.5 w-3.5" />
+                                <X className="h-3 w-3" />
+                                Cancel
                               </button>
                             </div>
                           ) : (
@@ -513,10 +515,11 @@ export default function RequisitionDetail() {
                               {canEditItems && (
                                 <button
                                   onClick={() => startEditQty(item)}
-                                  className="p-1 text-gray-400 hover:text-primary hover:bg-gray-100 rounded transition-colors"
+                                  className="inline-flex items-center gap-1 px-2 py-1 text-xs border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                                   title="Edit quantity"
                                 >
-                                  <Pencil className="h-3.5 w-3.5" />
+                                  <Pencil className="h-3 w-3" />
+                                  Edit
                                 </button>
                               )}
                             </div>
@@ -532,13 +535,13 @@ export default function RequisitionDetail() {
                             <button
                               onClick={() => handleRemoveItem(item)}
                               disabled={removingItemId === item._id || items.length <= 1}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs border border-red-200 text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                               title={items.length <= 1 ? 'At least one item is required' : 'Remove this item'}
                             >
                               {removingItemId === item._id ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                <Loader2 className="h-3 w-3 animate-spin" />
                               ) : (
-                                <Trash2 className="h-3.5 w-3.5" />
+                                <Trash2 className="h-3 w-3" />
                               )}
                               Remove
                             </button>
@@ -653,7 +656,7 @@ export default function RequisitionDetail() {
                   {!requisition.itemsCollected && isDepartment && (
                     <button
                       onClick={() => navigate('/app/store-requisitions')}
-                      className="mt-3 py-2 px-4 bg-primary text-white text-sm font-medium rounded-xl hover:bg-primary-dark transition-colors inline-flex items-center gap-2"
+                      className="mt-3 py-2 px-4 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition-colors inline-flex items-center gap-2"
                     >
                       <Truck className="h-4 w-4" />
                       Request from Stores

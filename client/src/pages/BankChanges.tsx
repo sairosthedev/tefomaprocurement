@@ -3,6 +3,7 @@ import { procurementAPI } from '../services/procurement.service';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
 import FilterSelect from '../components/FilterSelect';
+import TableSkeleton from '../components/TableSkeleton';
 import { Loader2, ShieldCheck, ShieldX, Phone, AlertTriangle, Landmark } from 'lucide-react';
 
 /**
@@ -134,24 +135,50 @@ export default function BankChanges() {
       <PageHeader
         title="Supplier banking changes"
         subtitle="Payments to a supplier are held while a banking change is open. Verify by calling a number already on file, then have a second person approve."
+        bottomSpacing="mb-4"
       />
 
-      <div className="mb-6">
-        <FilterSelect
-          options={[
-            { value: 'open', label: 'Open' },
-            { value: 'approved', label: 'Approved' },
-            { value: 'rejected', label: 'Rejected' },
-            { value: 'all', label: 'All' }
-          ]}
-          value={statusFilter}
-          onChange={setStatusFilter}
-        />
+      <div className="mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 md:justify-end">
+          <FilterSelect
+            size="sm"
+            label="Status"
+            options={[
+              { value: 'open', label: 'Open' },
+              { value: 'approved', label: 'Approved' },
+              { value: 'rejected', label: 'Rejected' },
+              { value: 'all', label: 'All' }
+            ]}
+            value={statusFilter}
+            onChange={setStatusFilter}
+          />
+        </div>
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        // Placeholder cards in the shape of the real ones, so the page does
+        // not jump when the requests arrive.
+        <div className="space-y-4">
+          {[0, 1].map((n) => (
+            <div key={n} className="rounded-2xl bg-white border border-gray-200 shadow-sm p-5">
+              <div className="mb-4 space-y-2">
+                <div className="h-4 w-56 rounded bg-gray-200 animate-pulse" />
+                <div className="h-3 w-80 max-w-full rounded bg-gray-200 animate-pulse" />
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Field</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">From</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">To</th>
+                    </tr>
+                  </thead>
+                  <TableSkeleton cols={3} rows={3} />
+                </table>
+              </div>
+            </div>
+          ))}
         </div>
       ) : requests.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-10 text-center text-gray-500">
@@ -230,7 +257,7 @@ export default function BankChanges() {
                       <button
                         disabled={busy}
                         onClick={() => recordCallback(request)}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
                       >
                         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Phone className="h-4 w-4" />}
                         Record callback
@@ -240,7 +267,7 @@ export default function BankChanges() {
                       <button
                         disabled={busy}
                         onClick={() => approve(request)}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
                         title="Must be someone other than the requester and the caller"
                       >
                         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
@@ -250,7 +277,7 @@ export default function BankChanges() {
                     <button
                       disabled={busy}
                       onClick={() => reject(request)}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-red-700 border border-red-200 rounded-xl hover:bg-red-50 disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-red-700 border border-red-200 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
                     >
                       <ShieldX className="h-4 w-4" /> Reject
                     </button>

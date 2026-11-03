@@ -6,6 +6,7 @@ import { getCurrentSbuCurrency } from '../lib/sbu';
 import { useToast } from '../components/Toast';
 import { Loader2, Search, AlertTriangle, CheckCircle } from 'lucide-react';
 import ViewButton from '../components/ViewButton';
+import FilterSelect from '../components/FilterSelect';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import TableSkeleton from '../components/TableSkeleton';
@@ -65,7 +66,7 @@ export default function Invoices() {
         actions={
           <button
             onClick={() => navigate('/app/payments')}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+            className="px-3 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
           >
             Payments
           </button>
@@ -83,18 +84,20 @@ export default function Invoices() {
             className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
           />
         </div>
-        <select
+        <FilterSelect
+          size="sm"
+          label="Status"
+          options={[
+            { value: '', label: 'All' },
+            { value: 'submitted', label: 'Submitted' },
+            { value: 'variance', label: 'Variance' },
+            { value: 'approved', label: 'Approved' },
+            { value: 'paid', label: 'Paid' },
+            { value: 'rejected', label: 'Rejected' }
+          ]}
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-        >
-          <option value="">All statuses</option>
-          <option value="submitted">Submitted</option>
-          <option value="variance">Variance</option>
-          <option value="approved">Approved</option>
-          <option value="paid">Paid</option>
-          <option value="rejected">Rejected</option>
-        </select>
+          onChange={setStatusFilter}
+        />
       </div>
 
       <div className="overflow-x-auto">
@@ -107,7 +110,7 @@ export default function Invoices() {
               <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Amount</th>
               <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
               <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Match</th>
-              <th className="py-2.5 px-4 bg-primary border-b border-primary" />
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap" />
             </tr>
           </thead>
           {loading ? (
@@ -135,7 +138,7 @@ export default function Invoices() {
                     )}
                   </td>
                   <td className="py-2 px-3 border-b border-gray-100">
-                    <ViewButton onClick={() => navigate(`/app/invoices/${inv._id}`)} />
+                    <ViewButton size="xs" showIcon={false} onClick={() => navigate(`/app/invoices/${inv._id}`)} />
                   </td>
                 </tr>
               ))}

@@ -9,6 +9,7 @@ import { formatCurrency } from '../lib/constants';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import TableSkeleton from '../components/TableSkeleton';
+import FilterSelect from '../components/FilterSelect';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 import { useDebouncedValue } from '../lib/useDebouncedValue';
 
@@ -126,37 +127,41 @@ export default function StockMovements() {
       {/* Filters */}
       <div className="mb-4">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 md:justify-end">
-          <div className="relative w-full sm:w-64">
+          <div className="relative w-full sm:w-52">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by item name, code, or reference..."
+              placeholder="Search item or reference..."
               value={searchTermInput}
               onChange={(e: any) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
-          <select
+          <FilterSelect
+            size="sm"
+            label="Type"
+            options={[
+              { value: '', label: 'All' },
+              { value: 'stock-in', label: 'Stock In' },
+              { value: 'stock-out', label: 'Stock Out' },
+              { value: 'adjustment', label: 'Adjustment' },
+              { value: 'transfer', label: 'Transfer' }
+            ]}
             value={typeFilter}
-            onChange={(e: any) => setTypeFilter(e.target.value)}
-            className="px-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-          >
-            <option value="">All Types</option>
-            <option value="stock-in">Stock In</option>
-            <option value="stock-out">Stock Out</option>
-            <option value="adjustment">Adjustment</option>
-            <option value="transfer">Transfer</option>
-          </select>
-          <select
+            onChange={setTypeFilter}
+          />
+          <FilterSelect
+            size="sm"
+            label="Date"
+            options={[
+              { value: 'all', label: 'All Time' },
+              { value: 'today', label: 'Today' },
+              { value: 'week', label: 'This Week' },
+              { value: 'month', label: 'This Month' }
+            ]}
             value={dateRange}
-            onChange={(e: any) => setDateRange(e.target.value)}
-            className="px-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-          >
-            <option value="all">All Time</option>
-            <option value="today">Today</option>
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-          </select>
+            onChange={setDateRange}
+          />
         </div>
       </div>
 
@@ -189,7 +194,7 @@ export default function StockMovements() {
                   const Icon = typeInfo.icon;
                   return (
                     <tr key={movement._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
-                      <td className="py-2 px-3 border-b border-gray-100">
+                      <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${typeInfo.color}`}>
                           <Icon className="h-3.5 w-3.5" />
                           {typeInfo.label}
@@ -204,7 +209,7 @@ export default function StockMovements() {
                           {movement.quantity > 0 ? '+' : ''}{movement.quantity} {movement.unit}
                         </span>
                       </td>
-                      <td className="py-2 px-3 border-b border-gray-100">
+                      <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
                         <span className="font-mono text-primary">{movement.reference}</span>
                       </td>
                       <td className="py-2 px-3 border-b border-gray-100 text-gray-600">

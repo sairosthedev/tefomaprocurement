@@ -117,7 +117,8 @@ export default function QuoteLinePhotos({ attachments, onChange, onError }: Prop
                 type="button"
                 onClick={() => onChange(attachments.filter((_, idx) => idx !== i))}
                 className="absolute -top-1.5 -right-1.5 p-0.5 bg-white border border-gray-200 rounded-full text-gray-400 hover:text-red-500"
-                title="Remove"
+                aria-label={`Remove ${att.fileName || 'photo'}`}
+                title="Remove photo"
               >
                 <X className="h-3 w-3" />
               </button>

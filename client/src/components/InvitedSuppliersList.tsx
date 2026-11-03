@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Search, Users } from 'lucide-react';
 import Pagination from './Pagination';
+import FilterSelect from './FilterSelect';
 
 type ResponseFilter = 'all' | 'responded' | 'waiting';
 
-const th = 'text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border border-primary whitespace-nowrap';
-const td = 'py-2 px-3 border border-gray-200';
+const th = 'text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap';
+const td = 'py-2 px-3 border-b border-gray-100';
 
 /**
  * The suppliers asked to quote on an RFQ. An RFQ can invite hundreds, so this
@@ -53,26 +54,12 @@ export default function InvitedSuppliersList({
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-3">
-        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-          <Users className="h-5 w-5" />
+        <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+          <Users className="h-4 w-4 text-primary" />
           Invited Suppliers ({invitations.length})
         </h3>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:ml-auto">
-          <div className="inline-flex rounded-lg border border-gray-200 p-0.5 bg-white">
-            {filters.map((f) => (
-              <button
-                key={f.key}
-                type="button"
-                onClick={() => setFilter(f.key)}
-                className={`px-3 py-1 text-xs font-medium rounded-md whitespace-nowrap ${
-                  filter === f.key ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                {f.label} ({f.count})
-              </button>
-            ))}
-          </div>
-          <div className="relative w-full sm:w-56">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:ml-auto">
+          <div className="relative w-full sm:w-52">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
@@ -82,6 +69,13 @@ export default function InvitedSuppliersList({
               className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
+          <FilterSelect
+            size="sm"
+            label="Response"
+            options={filters.map((f) => ({ value: f.key === 'all' ? '' : f.key, label: f.label, count: f.count }))}
+            value={filter === 'all' ? '' : filter}
+            onChange={(v) => setFilter((v || 'all') as ResponseFilter)}
+          />
         </div>
       </div>
 
@@ -137,7 +131,7 @@ export default function InvitedSuppliersList({
                       <button
                         type="button"
                         onClick={() => onViewQuotation(inv.quotation._id)}
-                        className="px-3 py-1.5 text-xs font-medium rounded border border-primary text-primary hover:bg-primary/5"
+                        className="px-2 py-1 text-xs border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors"
                       >
                         View quotation
                       </button>

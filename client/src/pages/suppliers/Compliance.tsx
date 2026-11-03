@@ -68,7 +68,7 @@ export default function Compliance() {
           <button
             type="button"
             onClick={() => navigate('/app/suppliers')}
-            className="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
           >
             Back to Suppliers
           </button>
@@ -136,10 +136,10 @@ export default function Compliance() {
                               ? `/app/suppliers/${row._id}`
                               : `/app/suppliers/${row._id}?tab=documents`
                           )}
-                          className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:text-primary hover:border-primary/30"
+                          className="px-2 py-1 text-xs border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors"
                           title="Open supplier"
                         >
-                          <Eye className="h-4 w-4" />
+                          View
                         </button>
                       </div>
                     </div>
@@ -163,8 +163,8 @@ export default function Compliance() {
               pages={pagination.pages}
               total={pagination.total}
               onPageChange={setPage}
-          pageSize={limit}
-          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+              pageSize={limit}
+              onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
               itemLabel="suppliers"
             />
           </div>
@@ -199,7 +199,7 @@ export default function Compliance() {
             <button
               type="button"
               onClick={() => navigate('/app/suppliers?status=pending')}
-              className="mt-4 w-full rounded-xl bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary-dark"
+              className="mt-4 w-full rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary-dark transition-colors"
             >
               View pending suppliers
             </button>

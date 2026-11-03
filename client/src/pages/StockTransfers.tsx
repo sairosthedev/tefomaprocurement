@@ -3,7 +3,9 @@ import { storesAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
-import Modal from '../components/Modal';
+import Drawer from '../components/Drawer';
+import FilterSelect from '../components/FilterSelect';
+import TableSkeleton from '../components/TableSkeleton';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 import { FormSteps, FormStepNav } from '../components/FormSteps';
 import { ArrowLeftRight, Loader2, Plus, CheckCircle, Truck, PackageCheck } from 'lucide-react';
@@ -192,100 +194,127 @@ export default function StockTransfers() {
           <Plus className="h-4 w-4" />
           New transfer
         </button>
-        <select
-          value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-          className="md:ml-auto px-3 py-[7px] border border-gray-200 rounded-lg text-sm"
-        >
-          <option value="">All statuses</option>
-          <option value="pending">Pending</option>
-          <option value="approved">Approved</option>
-          <option value="in_transit">In transit</option>
-          <option value="received">Received</option>
-          <option value="partially_received">Partially received</option>
-        </select>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 md:ml-auto">
+          <FilterSelect
+            size="sm"
+            label="Status"
+            options={[
+              { value: '', label: 'All' },
+              { value: 'pending', label: 'Pending' },
+              { value: 'approved', label: 'Approved' },
+              { value: 'in_transit', label: 'In transit' },
+              { value: 'received', label: 'Received' },
+              { value: 'partially_received', label: 'Partially received' }
+            ]}
+            value={statusFilter}
+            onChange={(v) => { setStatusFilter(v); setPage(1); }}
+          />
+        </div>
       </div>
 
-      <div className="overflow-x-auto">
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : transfers.length === 0 ? (
-          <p className="text-center text-gray-500 py-12">No stock transfers yet.</p>
-        ) : (
-          <div className="divide-y divide-gray-100">
-            {transfers.map((transfer) => (
-              <div key={transfer._id} className="p-5">
-                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-3">
+      <div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Transfer</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Route</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Items</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Created</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
+              </tr>
+            </thead>
+            {loading ? (
+              <TableSkeleton cols={6} />
+            ) : transfers.length === 0 ? (
+              <tbody><tr><td colSpan={6} className="text-center text-gray-500 py-12">No stock transfers yet.</td></tr></tbody>
+            ) : (
+              <tbody>
+                {transfers.map((transfer) => (
+                  <tr key={transfer._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                    <td className="py-2.5 px-3 border-b border-gray-100 align-top whitespace-nowrap">
                       <span className="font-mono font-semibold text-primary">{transfer.transferNumber}</span>
+                    </td>
+                    <td className="py-2.5 px-3 border-b border-gray-100 align-top whitespace-nowrap">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${STATUS_COLORS[transfer.status] || 'bg-gray-100 text-gray-700'}`}>
                         {String(transfer.status).replace(/_/g, ' ')}
                       </span>
-                    </div>
-                    <p className="text-sm text-gray-600 mt-2 flex items-center gap-2">
-                      <ArrowLeftRight className="h-4 w-4 text-gray-400" />
-                      {transfer.fromSite?.name || transfer.fromSite?.code} → {transfer.toSite?.name || transfer.toSite?.code}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {transfer.items?.length || 0} line(s) · {new Date(transfer.createdAt).toLocaleDateString('en-ZA')}
-                    </p>
-                    <ul className="space-y-1 text-sm text-gray-600">
-                      {transfer.items?.slice(0, 3).map((line: any, i: number) => (
-                        <li key={i}>
-                          {line.item?.name || line.item?.code} × {line.quantityRequested}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="flex flex-wrap gap-2 shrink-0">
-                    {transfer.status === 'pending' && (
-                      <button
-                        type="button"
-                        disabled={acting === transfer._id}
-                        onClick={() => runAction(transfer._id, 'approve')}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
-                      >
-                        {acting === transfer._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                        Approve
-                      </button>
-                    )}
-                    {['pending', 'approved'].includes(transfer.status) && (
-                      <button
-                        type="button"
-                        disabled={acting === transfer._id}
-                        onClick={() => runAction(transfer._id, 'ship')}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
-                      >
-                        {acting === transfer._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4" />}
-                        Ship
-                      </button>
-                    )}
-                    {transfer.status === 'in_transit' && (
-                      <button
-                        type="button"
-                        disabled={acting === transfer._id}
-                        onClick={() => runAction(transfer._id, 'receive')}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
-                      >
-                        {acting === transfer._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
-                        Receive
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        <Pagination page={page} pages={pagination.pages} total={pagination.total} onPageChange={setPage}
+                    </td>
+                    <td className="py-2.5 px-3 border-b border-gray-100 align-top">
+                      <span className="flex items-center gap-2 text-gray-700">
+                        <ArrowLeftRight className="h-4 w-4 text-gray-400 shrink-0" />
+                        {transfer.fromSite?.name || transfer.fromSite?.code} → {transfer.toSite?.name || transfer.toSite?.code}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 border-b border-gray-100 align-top">
+                      <p className="text-gray-700">{transfer.items?.length || 0} line(s)</p>
+                      <ul className="mt-0.5 space-y-0.5 text-xs text-gray-500">
+                        {transfer.items?.slice(0, 3).map((line: any, i: number) => (
+                          <li key={i}>
+                            {line.item?.name || line.item?.code} × {line.quantityRequested}
+                          </li>
+                        ))}
+                      </ul>
+                    </td>
+                    <td className="py-2.5 px-3 border-b border-gray-100 align-top whitespace-nowrap text-gray-500">
+                      {new Date(transfer.createdAt).toLocaleDateString('en-ZA')}
+                    </td>
+                    <td className="py-2.5 px-3 border-b border-gray-100 align-top">
+                      <div className="flex flex-wrap gap-2">
+                        {transfer.status === 'pending' && (
+                          <button
+                            type="button"
+                            disabled={acting === transfer._id}
+                            onClick={() => runAction(transfer._id, 'approve')}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors disabled:opacity-50 whitespace-nowrap"
+                          >
+                            {acting === transfer._id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
+                            Approve
+                          </button>
+                        )}
+                        {['pending', 'approved'].includes(transfer.status) && (
+                          <button
+                            type="button"
+                            disabled={acting === transfer._id}
+                            onClick={() => runAction(transfer._id, 'ship')}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors disabled:opacity-50 whitespace-nowrap"
+                          >
+                            {acting === transfer._id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Truck className="h-3.5 w-3.5" />}
+                            Ship
+                          </button>
+                        )}
+                        {transfer.status === 'in_transit' && (
+                          <button
+                            type="button"
+                            disabled={acting === transfer._id}
+                            onClick={() => runAction(transfer._id, 'receive')}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors disabled:opacity-50 whitespace-nowrap"
+                          >
+                            {acting === transfer._id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PackageCheck className="h-3.5 w-3.5" />}
+                            Receive
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            )}
+          </table>
+        </div>
+        {!loading && <Pagination
+          page={page}
+          pages={pagination.pages}
+          total={pagination.total}
+          onPageChange={setPage}
           pageSize={limit}
-          onPageSizeChange={(s) => { setLimit(s); setPage(1); }} itemLabel="transfers" />
+          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+          itemLabel="transfers"
+        />}
       </div>
 
-      <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Create stock transfer" size="xl">
+      <Drawer isOpen={showCreate} onClose={() => setShowCreate(false)} title="Create stock transfer" size="lg">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -295,7 +324,7 @@ export default function StockTransfers() {
           }}
         >
         <div ref={createTopRef} className="scroll-mt-4" />
-        <FormSteps steps={CREATE_STEPS} current={createStep} onSelect={goToCreateStep} />
+        <FormSteps steps={CREATE_STEPS} current={createStep} onSelect={goToCreateStep} variant="track" />
         <div className="space-y-4">
           {createStep === 0 && (
             <>
@@ -409,7 +438,7 @@ export default function StockTransfers() {
                     <p className="font-medium text-gray-900">{siteLabel(toSiteId)}</p>
                   </div>
                 </div>
-                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                <div className="overflow-x-auto">
                   <table className="w-full text-sm border-collapse">
                     <thead>
                       <tr>
@@ -421,7 +450,7 @@ export default function StockTransfers() {
                       {lines
                         .filter((l) => l.itemId && l.quantity > 0)
                         .map((l, i) => (
-                          <tr key={i}>
+                          <tr key={i} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                             <td className="py-2 px-3 border-b border-gray-100">{itemLabel(l.itemId)}</td>
                             <td className="py-2 px-3 border-b border-gray-100">{l.quantity}</td>
                           </tr>
@@ -449,9 +478,10 @@ export default function StockTransfers() {
           onCancel={() => setShowCreate(false)}
           finishLabel={creating ? 'Creating…' : 'Create transfer'}
           submitting={creating}
+          size="sm"
         />
         </form>
-      </Modal>
+      </Drawer>
     </div>
   );
 }

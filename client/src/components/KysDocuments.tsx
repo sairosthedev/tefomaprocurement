@@ -231,8 +231,8 @@ export default function KysDocuments({
     const existing = byType(req.documentType);
     const busy = busyType === req.documentType;
     return (
-      <div key={req.documentType} className="flex items-center gap-3 p-3 border-b last:border-b-0">
-        <div className="flex-1 min-w-0">
+      <div key={req.documentType} className="flex flex-wrap items-center gap-3 p-3 border-b border-gray-100 last:border-b-0">
+        <div className="flex-1 min-w-[14rem]">
           <p className="text-sm font-medium text-gray-800 flex items-center gap-2">
             {req.label}
             {req.required ? (
@@ -301,25 +301,27 @@ export default function KysDocuments({
           )}
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
           {existing && (
             <button
               type="button"
               onClick={() => openViewer(existing)}
-              className="p-1.5 text-gray-500 hover:text-primary hover:bg-gray-100 rounded-lg"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border border-primary bg-primary text-white hover:bg-primary-dark"
               title="View"
             >
-              <Eye className="h-4 w-4" />
+              <Eye className="h-3.5 w-3.5" />
+              View
             </button>
           )}
           {existing && (
             <a
               href={existing.filePath}
               download={existing.fileName}
-              className="p-1.5 text-gray-500 hover:text-primary hover:bg-gray-100 rounded-lg"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border border-gray-300 text-gray-700 hover:bg-gray-50"
               title="Download"
             >
-              <Download className="h-4 w-4" />
+              <Download className="h-3.5 w-3.5" />
+              Download
             </a>
           )}
           {/* Verification is procurement opening the file and saying so —
@@ -331,20 +333,22 @@ export default function KysDocuments({
                   type="button"
                   onClick={() => handleVerify(existing, true)}
                   disabled={busy}
-                  className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border border-primary bg-primary text-white hover:bg-primary-dark disabled:opacity-50"
                   title="Verify this document"
                 >
-                  <ShieldCheck className="h-4 w-4" />
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Verify
                 </button>
               )}
               <button
                 type="button"
                 onClick={() => handleVerify(existing, false)}
                 disabled={busy}
-                className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50"
                 title={existing.verified ? 'Withdraw verification' : 'Reject this document'}
               >
-                <ShieldX className="h-4 w-4" />
+                <ShieldX className="h-3.5 w-3.5" />
+                {existing.verified ? 'Withdraw' : 'Reject'}
               </button>
             </>
           )}
@@ -353,10 +357,11 @@ export default function KysDocuments({
               type="button"
               onClick={() => handleDelete(existing)}
               disabled={busy}
-              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50"
               title="Remove"
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-3.5 w-3.5" />
+              Remove
             </button>
           )}
           {!readOnly && (
@@ -374,7 +379,7 @@ export default function KysDocuments({
                 type="button"
                 onClick={() => inputs.current[req.documentType]?.click()}
                 disabled={busy}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
                 {busy ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -399,7 +404,7 @@ export default function KysDocuments({
         className="bg-white rounded-xl shadow-xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b">
+        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-100">
           <div className="flex items-center gap-2 min-w-0">
             <FileText className="h-4 w-4 text-primary shrink-0" />
             <span className="text-sm font-medium text-gray-800 truncate">{viewer.doc.fileName}</span>
@@ -408,13 +413,14 @@ export default function KysDocuments({
             <a
               href={viewer.doc.filePath}
               download={viewer.doc.fileName}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border border-gray-300 text-gray-700 hover:bg-gray-50"
             >
               <Download className="h-3.5 w-3.5" /> Download
             </a>
             <button
               type="button"
               onClick={closeViewer}
+              aria-label="Close"
               className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg"
               title="Close"
             >
@@ -435,7 +441,7 @@ export default function KysDocuments({
               <a
                 href={viewer.doc.filePath}
                 download={viewer.doc.fileName}
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors"
               >
                 <Download className="h-4 w-4" /> Download to view
               </a>
@@ -449,9 +455,9 @@ export default function KysDocuments({
   if (includeTypes) {
     return (
       <>
-        <div className="bg-white rounded-xl shadow">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
           {title && (
-            <div className="px-4 py-3 border-b bg-gray-50 rounded-t-xl">
+            <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 rounded-t-2xl">
               <h3 className="text-sm font-semibold text-gray-700">{title}</h3>
             </div>
           )}
@@ -469,15 +475,15 @@ export default function KysDocuments({
   return (
     <>
       <div className="space-y-6">
-        <div className="bg-white rounded-xl shadow">
-          <div className="px-4 py-3 border-b bg-gray-50 rounded-t-xl">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+          <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 rounded-t-2xl">
             <h3 className="text-sm font-semibold text-gray-700">Mandatory documents</h3>
           </div>
           {mandatory.map(renderRow)}
         </div>
 
-        <div className="bg-white rounded-xl shadow">
-          <div className="px-4 py-3 border-b bg-gray-50 rounded-t-xl">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+          <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 rounded-t-2xl">
             <h3 className="text-sm font-semibold text-gray-700">Optional documents</h3>
           </div>
           {optional.map(renderRow)}

@@ -9,6 +9,7 @@ import {
 import PageHeader from '../components/PageHeader';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
+import FilterSelect from '../components/FilterSelect';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 
 const actionIcons: any = {
@@ -164,12 +165,15 @@ function StatCard({ icon: Icon, label, value, tone = 'text-gray-900', loading }:
 
 function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
-    <span className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-primary/5 text-primary text-xs font-medium border border-primary/15">
+    <button
+      type="button"
+      onClick={onRemove}
+      title="Remove this filter"
+      className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-primary/5 text-primary text-xs font-medium border border-primary/15 hover:bg-primary/10 transition-colors"
+    >
       {label}
-      <button type="button" onClick={onRemove} className="hover:bg-primary/10 rounded-full p-0.5">
-        <X className="h-3 w-3" />
-      </button>
-    </span>
+      <X className="h-3 w-3" />
+    </button>
   );
 }
 
@@ -434,7 +438,7 @@ export default function AuditLogs() {
               type="button"
               onClick={() => { fetchLogs(); fetchStats(); }}
               disabled={loading}
-              className="inline-flex items-center gap-2 px-4 py-2.5 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh
@@ -443,7 +447,7 @@ export default function AuditLogs() {
               type="button"
               onClick={exportCsv}
               disabled={exporting || logs.length === 0}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-xl hover:bg-primary/90 disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
             >
               {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
               Export CSV
@@ -453,7 +457,7 @@ export default function AuditLogs() {
               onClick={downloadEvidencePack}
               disabled={packing}
               title="Controls evidence for auditors, for the date range in the filters (default: last 12 months)"
-              className="inline-flex items-center gap-2 px-4 py-2.5 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
               {packing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
               Evidence pack
@@ -479,7 +483,7 @@ export default function AuditLogs() {
       {/* Filters */}
       <div className="mb-4">
         <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 md:justify-end">
-          <div className="relative w-full sm:w-64">
+          <div className="relative w-full sm:w-52">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
@@ -489,26 +493,26 @@ export default function AuditLogs() {
               className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
-          <select
+          <FilterSelect
+            size="sm"
+            label="Action"
+            options={[
+              { value: '', label: 'All' },
+              ...ACTION_OPTIONS.map((a) => ({ value: a, label: formatLabel(a) }))
+            ]}
             value={actionFilter}
-            onChange={(e: any) => setActionFilter(e.target.value)}
-            className="px-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-          >
-            <option value="">All Actions</option>
-            {ACTION_OPTIONS.map((a) => (
-              <option key={a} value={a}>{formatLabel(a)}</option>
-            ))}
-          </select>
-          <select
+            onChange={setActionFilter}
+          />
+          <FilterSelect
+            size="sm"
+            label="Entity"
+            options={[
+              { value: '', label: 'All' },
+              ...ENTITY_OPTIONS.map((e) => ({ value: e, label: formatEntity(e) }))
+            ]}
             value={entityFilter}
-            onChange={(e: any) => setEntityFilter(e.target.value)}
-            className="px-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-          >
-            <option value="">All Entities</option>
-            {ENTITY_OPTIONS.map((e) => (
-              <option key={e} value={e}>{formatEntity(e)}</option>
-            ))}
-          </select>
+            onChange={setEntityFilter}
+          />
           <button
             type="button"
             onClick={() => setShowFilters((v: any) => !v)}

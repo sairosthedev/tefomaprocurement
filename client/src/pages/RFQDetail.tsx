@@ -9,7 +9,6 @@ import EquipmentDetailsView from '../components/EquipmentDetailsView';
 import RfqRankingPanel from '../components/RfqRankingPanel';
 import InvitedSuppliersList from '../components/InvitedSuppliersList';
 import {
-  Calendar,
   Send,
   Loader2,
   XCircle,
@@ -141,6 +140,22 @@ export default function RFQDetail() {
     );
   }
 
+  const invitedCount = rfq.invitedSuppliers?.length || 0;
+  const itemCount = rfq.items?.length || 0;
+  // The number and status are in the header already; these are the rest of the
+  // RFQ at a glance.
+  const facts: Array<{ label: string; value: React.ReactNode; sub?: string }> = [
+    {
+      label: 'Submission deadline',
+      value: rfq.submissionDeadline ? new Date(rfq.submissionDeadline).toLocaleDateString('en-ZA') : '—'
+    },
+    ...(rfq.createdBy
+      ? [{ label: 'Created by', value: `${rfq.createdBy.firstName} ${rfq.createdBy.lastName}` }]
+      : []),
+    { label: 'Items', value: `${itemCount} ${itemCount === 1 ? 'item' : 'items'}` },
+    { label: 'Suppliers invited', value: `${invitedCount} ${invitedCount === 1 ? 'supplier' : 'suppliers'}` }
+  ];
+
   return (
     <div className="p-8">
       <PageHeader
@@ -148,6 +163,7 @@ export default function RFQDetail() {
         backLabel="Back to RFQs"
         title={rfq.title}
         subtitle={`#${rfq.rfqNumber}`}
+        bottomSpacing="mb-4"
         actions={
           <>
             <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[rfq.status]}`}>
@@ -157,7 +173,7 @@ export default function RFQDetail() {
               <button
                 onClick={handlePublish}
                 disabled={(rfq.items || []).filter((item: any) => item.description?.trim()).length === 0}
-                className="px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors flex items-center gap-2 disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2 disabled:opacity-50"
                 title={
                   (rfq.items || []).filter((item: any) => item.description?.trim()).length === 0
                     ? 'Add at least one item before publishing'
@@ -172,7 +188,7 @@ export default function RFQDetail() {
               <button
                 onClick={handleClose}
                 disabled={closing}
-                className="px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors flex items-center gap-2 disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2 disabled:opacity-50"
               >
                 {closing ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
                 Close RFQ & Reveal Bids
@@ -181,7 +197,7 @@ export default function RFQDetail() {
             {['closed', 'evaluating', 'awarded'].includes(rfq.status) && (
               <button
                 onClick={() => navigate(`/app/rfqs/${rfq._id}/award`)}
-                className="px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors flex items-center gap-2"
+                className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
                 title="Award each line to the best supplier (split across suppliers)"
               >
                 <Split className="h-4 w-4" />
@@ -192,73 +208,65 @@ export default function RFQDetail() {
         }
       />
 
+      <section className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-5">
+        <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 px-5 py-4">
+          {facts.map((fact) => (
+            <div key={fact.label} className="min-w-0">
+              <dt className="text-[11px] uppercase tracking-wide text-gray-400">{fact.label}</dt>
+              <dd className="mt-0.5 text-sm font-medium text-gray-900 truncate" title={typeof fact.value === 'string' ? fact.value : undefined}>
+                {fact.value}
+              </dd>
+              {fact.sub && <dd className="text-xs text-gray-500 truncate" title={fact.sub}>{fact.sub}</dd>}
+            </div>
+          ))}
+        </dl>
+      </section>
 
       {/* Details */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
-        {/* Basic Info */}
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">RFQ Information</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm text-gray-500">RFQ Number</label>
-              <p className="text-sm font-medium text-gray-900 mt-1">{rfq.rfqNumber}</p>
-            </div>
-            <div>
-              <label className="text-sm text-gray-500">Status</label>
-              <p className="text-sm font-medium text-gray-900 mt-1 capitalize">{rfq.status}</p>
-            </div>
-            <div>
-              <label className="text-sm text-gray-500">Submission Deadline</label>
-              <p className="text-sm font-medium text-gray-900 mt-1 flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                {new Date(rfq.submissionDeadline).toLocaleDateString()}
-              </p>
-            </div>
-            {rfq.createdBy && (
-              <div>
-                <label className="text-sm text-gray-500">Created By</label>
-                <p className="text-sm font-medium text-gray-900 mt-1">
-                  {rfq.createdBy.firstName} {rfq.createdBy.lastName}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-5">
         {/* Description */}
         {rfq.description && (
           <div>
-            <label className="text-sm text-gray-500">Description</label>
-            <p className="text-sm text-gray-900 mt-2">{rfq.description}</p>
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">Description</h3>
+            <p className="text-sm text-gray-700 whitespace-pre-line">{rfq.description}</p>
           </div>
         )}
 
         {/* Items */}
         {rfq.items && rfq.items.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Requested Items</h3>
-            <div className="space-y-3">
-              {rfq.items.map((item: any, index: any) => (
-                <div key={index} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">{item.description}</h4>
-                      {item.specifications && (
-                        <p className="text-sm text-gray-600 mt-1">{item.specifications}</p>
-                      )}
-                      <EquipmentDetailsView
-                        equipment={item.equipment}
-                        attachments={item.attachments}
-                      />
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-gray-900">
-                        {item.quantity} {item.unit}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Requested items</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap w-10">#</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Description</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Quantity</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Unit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rfq.items.map((item: any, index: any) => (
+                    <tr key={index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                      <td className="py-2 px-3 border-b border-gray-100 text-gray-500 align-top">{index + 1}</td>
+                      <td className="py-2 px-3 border-b border-gray-100 align-top">
+                        <p className="font-medium text-gray-900">{item.description}</p>
+                        {item.specifications && (
+                          <p className="text-xs text-gray-500 mt-0.5">{item.specifications}</p>
+                        )}
+                        <EquipmentDetailsView
+                          equipment={item.equipment}
+                          attachments={item.attachments}
+                          compact
+                        />
+                      </td>
+                      <td className="py-2 px-3 border-b border-gray-100 text-right font-medium text-gray-900 align-top">{item.quantity}</td>
+                      <td className="py-2 px-3 border-b border-gray-100 text-gray-600 align-top">{item.unit}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
@@ -297,7 +305,7 @@ export default function RFQDetail() {
         {/* Terms & Conditions */}
         {rfq.termsAndConditions && (
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Terms & Conditions</h3>
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">Terms & Conditions</h3>
             <p className="text-sm text-gray-700 whitespace-pre-line">{rfq.termsAndConditions}</p>
           </div>
         )}
@@ -305,7 +313,7 @@ export default function RFQDetail() {
         {/* Delivery Requirements */}
         {rfq.deliveryRequirements && (
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delivery Requirements</h3>
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">Delivery Requirements</h3>
             <p className="text-sm text-gray-700 whitespace-pre-line">{rfq.deliveryRequirements}</p>
           </div>
         )}
@@ -313,7 +321,7 @@ export default function RFQDetail() {
         {/* Payment Terms */}
         {rfq.paymentTerms && (
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Payment Terms</h3>
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">Payment Terms</h3>
             <p className="text-sm text-gray-700 whitespace-pre-line">{rfq.paymentTerms}</p>
           </div>
         )}

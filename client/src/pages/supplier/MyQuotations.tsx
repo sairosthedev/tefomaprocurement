@@ -1,11 +1,13 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { useToast } from '../../components/Toast';
 import api from '../../lib/api';
-import { FileText, Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { FileText, CheckCircle, XCircle, Clock } from 'lucide-react';
 import ViewButton from '../../components/ViewButton';
 import Modal from '../../components/Modal';
 import PageHeader from '../../components/PageHeader';
+import FactsCard from '../../components/supplier/FactsCard';
 import Pagination from '../../components/Pagination';
+import TableSkeleton from '../../components/TableSkeleton';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../../lib/pagination';
 import { formatCurrency } from '../../lib/constants';
 import { getCurrentSbuCurrency } from '../../lib/sbu';
@@ -115,108 +117,101 @@ export default function MyQuotations() {
       </div>
 
       {/* Quotations List */}
-      <div>
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 text-primary animate-spin" />
-          </div>
-        ) : quotations.length === 0 ? (
-          <div className="text-center py-12">
-            <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">No quotations submitted yet</p>
-          </div>
-        ) : (
-          <>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Quote #</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">RFQ</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Total Amount</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Submitted</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {quotations.map((quote: any) => (
-                  <tr key={quote._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
-                    <td className="py-2 px-3 border-b border-gray-100">
-                      <span className="font-mono font-medium text-primary">
-                        {quote.quotationNumber || `QT-${quote._id.slice(-6).toUpperCase()}`}
-                      </span>
-                    </td>
-                    <td className="py-2 px-3 border-b border-gray-100">
-                      <p className="font-medium text-gray-900">{quote.rfq?.title || 'N/A'}</p>
-                      <p className="text-xs text-gray-500 font-mono">{quote.rfq?.rfqNumber}</p>
-                    </td>
-                    <td className="py-2 px-3 border-b border-gray-100">
-                      <span className="font-semibold text-gray-900">
-                        {formatCurrency(quote.totalAmount, quote.currency || getCurrentSbuCurrency())}
-                      </span>
-                    </td>
-                    <td className="py-2 px-3 border-b border-gray-100 text-gray-500">
-                      {new Date(quote.createdAt).toLocaleDateString('en-ZA')}
-                    </td>
-                    <td className="py-2 px-3 border-b border-gray-100">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[quote.status] || statusColors.submitted}`}>
-                        {quote.status === 'accepted' ? 'Accepted' : (quote.status?.replace('_', ' ') || 'Submitted')}
-                      </span>
-                    </td>
-                    <td className="py-2 px-3 border-b border-gray-100">
-                      <button
-                        onClick={() => {
-                          setSelectedQuotation(quote);
-                          setShowViewModal(true);
-                          // Trigger confetti if accepted
-                          if (quote.status === 'accepted') {
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Quote #</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">RFQ</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Total Amount</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Submitted</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
+            </tr>
+          </thead>
+          {loading ? (
+            <TableSkeleton cols={6} />
+          ) : quotations.length === 0 ? (
+            <tbody>
+              <tr><td colSpan={6} className="text-center py-12 text-gray-500">
+                <FileText className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                <p>No quotations submitted yet</p>
+              </td></tr>
+            </tbody>
+          ) : (
+            <tbody>
+              {quotations.map((quote: any) => (
+                <tr key={quote._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                  <td className="py-2 px-3 border-b border-gray-100">
+                    <span className="font-mono font-medium text-primary">
+                      {quote.quotationNumber || `QT-${quote._id.slice(-6).toUpperCase()}`}
+                    </span>
+                  </td>
+                  <td className="py-2 px-3 border-b border-gray-100">
+                    <p className="font-medium text-gray-900">{quote.rfq?.title || 'N/A'}</p>
+                    <p className="text-xs text-gray-500 font-mono">{quote.rfq?.rfqNumber}</p>
+                  </td>
+                  <td className="py-2 px-3 border-b border-gray-100">
+                    <span className="font-semibold text-gray-900">
+                      {formatCurrency(quote.totalAmount, quote.currency || getCurrentSbuCurrency())}
+                    </span>
+                  </td>
+                  <td className="py-2 px-3 border-b border-gray-100 text-gray-500">
+                    {new Date(quote.createdAt).toLocaleDateString('en-ZA')}
+                  </td>
+                  <td className="py-2 px-3 border-b border-gray-100">
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[quote.status] || statusColors.submitted}`}>
+                      {quote.status === 'accepted' ? 'Accepted' : (quote.status?.replace('_', ' ') || 'Submitted')}
+                    </span>
+                  </td>
+                  <td className="py-2 px-3 border-b border-gray-100">
+                    <ViewButton
+                      onClick={() => {
+                        setSelectedQuotation(quote);
+                        setShowViewModal(true);
+                        // Trigger confetti if accepted
+                        if (quote.status === 'accepted') {
+                          setTimeout(() => {
+                            confetti({
+                              particleCount: 100,
+                              spread: 70,
+                              origin: { y: 0.6 }
+                            });
+                            // Second burst
                             setTimeout(() => {
                               confetti({
-                                particleCount: 100,
-                                spread: 70,
-                                origin: { y: 0.6 }
+                                particleCount: 50,
+                                angle: 60,
+                                spread: 55,
+                                origin: { x: 0 }
                               });
-                              // Second burst
-                              setTimeout(() => {
-                                confetti({
-                                  particleCount: 50,
-                                  angle: 60,
-                                  spread: 55,
-                                  origin: { x: 0 }
-                                });
-                                confetti({
-                                  particleCount: 50,
-                                  angle: 120,
-                                  spread: 55,
-                                  origin: { x: 1 }
-                                });
-                              }, 250);
-                            }, 300);
-                          }
-                        }}
-                        className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
-                      >
-                        View
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <Pagination
-            page={page}
-            pages={pagination.pages}
-            total={pagination.total}
-            onPageChange={setPage}
-          pageSize={limit}
-          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
-            itemLabel="quotations"
-          />
-          </>
-        )}
+                              confetti({
+                                particleCount: 50,
+                                angle: 120,
+                                spread: 55,
+                                origin: { x: 1 }
+                              });
+                            }, 250);
+                          }, 300);
+                        }
+                      }}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          )}
+        </table>
       </div>
+      {!loading && <Pagination
+        page={page}
+        pages={pagination.pages}
+        total={pagination.total}
+        onPageChange={setPage}
+        pageSize={limit}
+        onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+        itemLabel="quotations"
+      />}
 
       {/* View Modal */}
       <Modal
@@ -226,12 +221,10 @@ export default function MyQuotations() {
         size="xl"
       >
         {selectedQuotation && (
-          <div className="space-y-6">
-            <div>
-            </div>
+          <div className="space-y-5">
             {/* Accepted Celebration Banner */}
             {selectedQuotation.status === 'accepted' && (
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 mb-4">
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-green-100 rounded-lg">
                     <CheckCircle className="h-6 w-6 text-green-600" />
@@ -243,45 +236,41 @@ export default function MyQuotations() {
                 </div>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-gray-500">Quotation Number</label>
-                <p className="font-mono font-medium text-primary">
-                  {selectedQuotation.quotationNumber || `QT-${selectedQuotation._id.slice(-6).toUpperCase()}`}
-                </p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-500">Status</label>
-                <p>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[selectedQuotation.status] || statusColors.submitted}`}>
-                    {selectedQuotation.status === 'accepted' ? 'Accepted' : (selectedQuotation.status?.replace('_', ' ') || 'Submitted')}
-                  </span>
-                </p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-500">Total Amount</label>
-                <p className="text-xl font-bold text-gray-900">
-                  {formatCurrency(selectedQuotation.totalAmount, selectedQuotation.currency || getCurrentSbuCurrency())}
-                </p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-500">Delivery Time</label>
-                <p className="text-gray-900">{selectedQuotation.deliveryDays} days</p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-500">Payment Terms</label>
-                <p className="text-gray-900">{selectedQuotation.paymentTerms}</p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-500">Valid Until</label>
-                <p className="text-gray-900">
-                  {new Date(new Date(selectedQuotation.createdAt).getTime() + selectedQuotation.validityDays * 86400000).toLocaleDateString('en-ZA')}
-                </p>
-              </div>
-            </div>
+            <FactsCard
+              facts={[
+                {
+                  label: 'Quotation number',
+                  value: (
+                    <span className="font-mono text-primary">
+                      {selectedQuotation.quotationNumber || `QT-${selectedQuotation._id.slice(-6).toUpperCase()}`}
+                    </span>
+                  )
+                },
+                {
+                  label: 'Status',
+                  value: (
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${statusColors[selectedQuotation.status] || statusColors.submitted}`}>
+                      {selectedQuotation.status === 'accepted' ? 'Accepted' : (selectedQuotation.status?.replace('_', ' ') || 'Submitted')}
+                    </span>
+                  )
+                },
+                { label: 'Total amount', value: formatCurrency(selectedQuotation.totalAmount, selectedQuotation.currency || getCurrentSbuCurrency()) },
+                { label: 'Delivery time', value: selectedQuotation.deliveryPeriod != null ? `${selectedQuotation.deliveryPeriod} days` : '—' },
+                { label: 'Payment terms', value: selectedQuotation.paymentTerms },
+                {
+                  label: 'Valid until',
+                  // The quote stores its own expiry; older quotes derive it from the validity period.
+                  value: selectedQuotation.validUntil
+                    ? new Date(selectedQuotation.validUntil).toLocaleDateString('en-ZA')
+                    : selectedQuotation.validityPeriod
+                      ? new Date(new Date(selectedQuotation.createdAt).getTime() + selectedQuotation.validityPeriod * 86400000).toLocaleDateString('en-ZA')
+                      : '—'
+                }
+              ]}
+            />
 
             <div>
-              <label className="text-sm text-gray-500 mb-2 block">Items</label>
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Items</h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm border-collapse">
                   <thead>
@@ -314,9 +303,9 @@ export default function MyQuotations() {
             </div>
 
             {selectedQuotation.notes && (
-              <div>
-                <label className="text-sm text-gray-500">Notes</label>
-                <p className="text-gray-900 text-sm">{selectedQuotation.notes}</p>
+              <div className="border-t border-gray-100 pt-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">Notes</h3>
+                <p className="text-gray-700 text-sm">{selectedQuotation.notes}</p>
               </div>
             )}
           </div>

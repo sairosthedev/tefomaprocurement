@@ -8,6 +8,8 @@ import {
 import ViewButton from '../components/ViewButton';
 import PageHeader from '../components/PageHeader';
 import Modal, { ModalFooter } from '../components/Modal';
+import Drawer from '../components/Drawer';
+import TableSkeleton from '../components/TableSkeleton';
 import { formatCurrency } from '../lib/constants';
 import Pagination from '../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
@@ -349,7 +351,7 @@ export default function Deliveries() {
                 </div>
                 <button
                   onClick={() => openReceiveModal(po)}
-                  className="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark"
+                  className="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
                 >
                   Receive
                 </button>
@@ -361,11 +363,11 @@ export default function Deliveries() {
 
       {/* Search */}
       <div className="mb-4 flex md:justify-end">
-        <div className="relative w-full sm:w-64">
+        <div className="relative w-full sm:w-52">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Search GRV, PO or supplier..."
+            placeholder="Search deliveries..."
             value={searchTermInput}
             onChange={(e: any) => setSearchTerm(e.target.value)}
             className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
@@ -379,17 +381,6 @@ export default function Deliveries() {
           <h2 className="font-semibold text-gray-900">Recent Deliveries</h2>
         </div>
         
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 text-primary animate-spin" />
-          </div>
-        ) : deliveries.length === 0 ? (
-          <div className="text-center py-12">
-            <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">No deliveries recorded yet</p>
-          </div>
-        ) : (
-          <>
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
@@ -404,10 +395,18 @@ export default function Deliveries() {
                   <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
+              {loading ? (
+                <TableSkeleton cols={8} />
+              ) : deliveries.length === 0 ? (
+                <tbody><tr><td colSpan={8} className="text-center py-12 text-gray-500">
+                  <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <p>No deliveries recorded yet</p>
+                </td></tr></tbody>
+              ) : (
               <tbody>
                 {deliveries.map((delivery: any) => (
                   <tr key={delivery._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
-                    <td className="py-2 px-3 border-b border-gray-100">
+                    <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
                       {delivery.status === 'pending' ? (
                         <span className="text-yellow-600 italic">Awaiting GRV</span>
                       ) : (
@@ -416,7 +415,7 @@ export default function Deliveries() {
                         </span>
                       )}
                     </td>
-                    <td className="py-2 px-3 border-b border-gray-100">
+                    <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
                       <span className="font-mono text-gray-600">
                         {delivery.purchaseOrder?.poNumber || '-'}
                       </span>
@@ -429,15 +428,15 @@ export default function Deliveries() {
                         {delivery.deliveryNoteNumber || (delivery.status === 'pending' ? 'Not yet provided' : '-')}
                       </span>
                     </td>
-                    <td className="py-2 px-3 border-b border-gray-100">
+                    <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[delivery.status] || statusColors.received}`}>
                         {formatStatus(delivery.status)}
                       </span>
                     </td>
-                    <td className="py-2 px-3 border-b border-gray-100">
+                    <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
                       <span className="text-gray-600">{delivery.items?.length || 0} items</span>
                     </td>
-                    <td className="py-2 px-3 border-b border-gray-100 text-gray-500">
+                    <td className="py-2 px-3 border-b border-gray-100 text-gray-500 whitespace-nowrap">
                       {delivery.status === 'pending' && delivery.expectedDeliveryDate ? (
                         <span>Expected: {new Date(delivery.expectedDeliveryDate).toLocaleDateString('en-ZA')}</span>
                       ) : (
@@ -447,12 +446,14 @@ export default function Deliveries() {
                     <td className="py-2 px-3 border-b border-gray-100">
                       <div className="flex items-center gap-2">
                         <ViewButton
+                          size="xs"
+                          showIcon={false}
                           onClick={() => { setSelectedDelivery(delivery); setShowViewModal(true); }}
                         />
                         {canAcceptDelivery(delivery) && (
                           <button
                             onClick={() => openAcceptFlow(delivery)}
-                            className="px-2.5 py-1 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                            className="px-2 py-1 text-xs font-medium border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors"
                           >
                             Accept
                           </button>
@@ -462,7 +463,7 @@ export default function Deliveries() {
                             onClick={() => handlePrintGrv(delivery)}
                             disabled={printingId === delivery._id}
                             title="Print GRV"
-                            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-100 disabled:opacity-50"
+                            className="flex items-center gap-1 px-2 py-1 text-xs font-medium border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors disabled:opacity-50"
                           >
                             {printingId === delivery._id ? (
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -477,23 +478,22 @@ export default function Deliveries() {
                   </tr>
                 ))}
               </tbody>
+              )}
             </table>
           </div>
-          <Pagination
+          {!loading && <Pagination
             page={page}
             pages={pagination.pages}
             total={pagination.total}
             onPageChange={setPage}
-          pageSize={limit}
-          onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
+            pageSize={limit}
+            onPageSizeChange={(s) => { setLimit(s); setPage(1); }}
             itemLabel="deliveries"
-          />
-          </>
-        )}
+          />}
       </div>
 
-      {/* Receive Modal — one step per part of the paper GRV */}
-      <Modal
+      {/* Receive drawer — one step per part of the paper GRV */}
+      <Drawer
         isOpen={showReceiveModal}
         onClose={() => setShowReceiveModal(false)}
         title="Receive Goods"
@@ -509,7 +509,7 @@ export default function Deliveries() {
             }}
           >
             <div ref={receiveTopRef} className="scroll-mt-4" />
-            <FormSteps steps={RECEIVE_STEPS} current={receiveStep} onSelect={goToReceiveStep} />
+            <FormSteps steps={RECEIVE_STEPS} current={receiveStep} onSelect={goToReceiveStep} variant="track" />
             <div className="space-y-6">
             <div className="bg-gray-50 rounded-xl p-4">
               <div className="grid grid-cols-2 gap-4">
@@ -791,21 +791,21 @@ export default function Deliveries() {
                       </div>
                     )}
                   </div>
-                  <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <div className="overflow-x-auto">
                     <table className="w-full text-sm border-collapse">
                       <thead>
                         <tr>
-                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200">Item</th>
-                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200">Ordered</th>
-                          <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-200">Receiving now</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Item</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Ordered</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Receiving now</th>
                         </tr>
                       </thead>
                       <tbody>
                         {receiveData.items.map((item: any, index: any) => (
-                          <tr key={index}>
+                          <tr key={index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                             <td className="py-2 px-3 border-b border-gray-100">{item.description}</td>
                             <td className="py-2 px-3 border-b border-gray-100">{item.quantity} {item.unit}</td>
-                            <td className={`py-2.5 px-4 font-medium ${item.receivedQuantity > 0 ? 'text-green-700' : 'text-gray-400'}`}>
+                            <td className={`py-2 px-3 border-b border-gray-100 font-medium ${item.receivedQuantity > 0 ? 'text-green-700' : 'text-gray-400'}`}>
                               {item.receivedQuantity} {item.unit}
                             </td>
                           </tr>
@@ -828,10 +828,11 @@ export default function Deliveries() {
               onCancel={() => setShowReceiveModal(false)}
               finishLabel={isReceiving ? 'Processing...' : 'Confirm Receipt'}
               submitting={isReceiving}
+              size="sm"
             />
           </form>
         )}
-      </Modal>
+      </Drawer>
 
       {/* View Modal */}
       <Modal
@@ -967,9 +968,10 @@ export default function Deliveries() {
                     {selectedDelivery.items?.map((item: any, index: any) => (
                       <tr key={index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                         <td className="py-2 px-3 border-b border-gray-100">{item.description}</td>
-                        <td className="py-2 px-3 border-b border-gray-100">{item.orderedQuantity} {item.unit}</td>
+                        {/* Saved GRVs store quantityOrdered/quantityReceived; a just-created one is mapped to the short names. */}
+                        <td className="py-2 px-3 border-b border-gray-100">{item.orderedQuantity ?? item.quantityOrdered} {item.unit}</td>
                         <td className="py-2 px-3 border-b border-gray-100 font-medium text-green-600">
-                          {item.receivedQuantity} {item.unit}
+                          {item.receivedQuantity ?? item.quantityReceived} {item.unit}
                         </td>
                       </tr>
                     ))}
@@ -983,7 +985,7 @@ export default function Deliveries() {
                 <button
                   onClick={() => handlePrintGrv(selectedDelivery)}
                   disabled={printingId === selectedDelivery._id}
-                  className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-100 disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-2 text-sm border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
                   {printingId === selectedDelivery._id ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -1027,7 +1029,7 @@ export default function Deliveries() {
                   <button
                     onClick={handleAcceptDelivery}
                     disabled={isAccepting}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-medium rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50"
+                    className="flex items-center gap-2 px-4 py-2 text-sm bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
                   >
                     {isAccepting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                     Confirm {acceptStatus === 'rejected' ? 'Rejection' : 'Acceptance'}
