@@ -3,15 +3,13 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import api from '../lib/api';
-import {
-  BarChart3, TrendingUp, DollarSign, Package, Users,
-  FileText, Download, Calendar, Loader2, PieChart
-} from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
 import { formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
 import { canViewSupplierReports } from '../lib/reportAccess';
 import PageHeader from '../components/PageHeader';
 import SupplierReportsSection from '../components/reports/SupplierReportsSection';
+import { ReportCard, ReportsTabRow, StatStrip, TOOLBAR_BUTTON, TOOLBAR_SELECT } from '../components/reports/ReportParts';
 
 type ChartConfig = {
   id: string;
@@ -28,11 +26,11 @@ function BarChart({ data, valueFormatter }: { data: { label: string; value: numb
   const fmt = valueFormatter || ((v: number) => String(v));
 
   if (!data.length) {
-    return <p className="text-sm text-gray-400 text-center py-16">No data in this period</p>;
+    return <p className="text-sm text-gray-400 text-center py-10">No data in this period</p>;
   }
 
   return (
-    <div className="h-64 flex items-end gap-1.5 px-2">
+    <div className="h-56 flex items-end gap-1.5 px-2">
       {data.map((point) => (
         <div key={point.label} className="flex-1 min-w-0 flex flex-col items-center justify-end h-full group">
           <div
@@ -54,11 +52,11 @@ function HorizontalBars({ data, valueFormatter }: { data: { label: string; value
   const fmt = valueFormatter || ((v: number) => String(v));
 
   if (!data.length) {
-    return <p className="text-sm text-gray-400 text-center py-16">No data in this period</p>;
+    return <p className="text-sm text-gray-400 text-center py-10">No data in this period</p>;
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       {data.map((row) => (
         <div key={row.label}>
           <div className="flex justify-between text-sm mb-1">
@@ -77,57 +75,12 @@ function HorizontalBars({ data, valueFormatter }: { data: { label: string; value
   );
 }
 
-const ROLE_CARD_CONFIG: Record<string, { title: string; icon: typeof DollarSign; color: string; statKey?: string }[]> = {
-  department_head: [
-    { title: 'Department Spend', icon: DollarSign, color: 'bg-green-500', statKey: 'departmentRequisitions' },
-    { title: 'Items Requested', icon: Package, color: 'bg-blue-500', statKey: 'approvedRequisitions' },
-    { title: 'Requisition Status', icon: FileText, color: 'bg-amber-500', statKey: 'pendingApproval' },
-    { title: 'POs Pending Approval', icon: FileText, color: 'bg-purple-500', statKey: 'pendingPoApprovals' }
-  ],
-  procurement_officer: [
-    { title: 'Procurement Analytics', icon: TrendingUp, color: 'bg-primary', statKey: 'openRFQs' },
-    { title: 'Supplier Performance', icon: Users, color: 'bg-purple-500', statKey: 'activeSuppliers' },
-    { title: 'RFQ Statistics', icon: FileText, color: 'bg-blue-500', statKey: 'pendingQuotations' },
-    { title: 'PO Summary', icon: DollarSign, color: 'bg-green-500', statKey: 'purchaseOrders' }
-  ],
-  finance: [
-    { title: 'Spend by Department', icon: PieChart, color: 'bg-blue-500', statKey: 'totalPOs' },
-    { title: 'Spend by Supplier', icon: Users, color: 'bg-purple-500', statKey: 'approved' },
-    { title: 'Monthly Commitments', icon: Calendar, color: 'bg-amber-500', statKey: 'totalValue' },
-    { title: 'Budget Utilization', icon: DollarSign, color: 'bg-green-500', statKey: 'pendingApproval' }
-  ],
-  coo: [
-    { title: 'Total Spend Overview', icon: DollarSign, color: 'bg-green-500', statKey: 'pendingValue' },
-    { title: 'Top Suppliers', icon: Users, color: 'bg-purple-500', statKey: 'approved' },
-    { title: 'Department Spend', icon: PieChart, color: 'bg-blue-500', statKey: 'totalPOs' },
-    { title: 'Procurement Performance', icon: TrendingUp, color: 'bg-primary', statKey: 'pendingApproval' }
-  ],
-  stores_officer: [
-    { title: 'Stock Valuation', icon: DollarSign, color: 'bg-green-500', statKey: 'totalItems' },
-    { title: 'Fast-Moving Items', icon: TrendingUp, color: 'bg-blue-500', statKey: 'purchaseOrders' },
-    { title: 'Low Stock Items', icon: Package, color: 'bg-amber-500', statKey: 'lowStock' },
-    { title: 'Pending Deliveries', icon: BarChart3, color: 'bg-purple-500', statKey: 'pendingDeliveries' }
-  ],
-  end_user: [
-    { title: 'My Requisitions', icon: FileText, color: 'bg-primary', statKey: 'myRequisitions' },
-    { title: 'Drafts', icon: Package, color: 'bg-gray-500', statKey: 'drafts' },
-    { title: 'Awaiting Approval', icon: Calendar, color: 'bg-amber-500', statKey: 'pendingApproval' },
-    { title: 'Fulfilled', icon: TrendingUp, color: 'bg-green-500', statKey: 'fulfilled' }
-  ],
-  supplier: [
-    { title: 'My RFQs', icon: FileText, color: 'bg-blue-500', statKey: 'myRFQs' },
-    { title: 'My Quotations', icon: Package, color: 'bg-purple-500', statKey: 'myQuotations' },
-    { title: 'Submitted', icon: TrendingUp, color: 'bg-amber-500', statKey: 'submittedQuotations' },
-    { title: 'My Purchase Orders', icon: DollarSign, color: 'bg-green-500', statKey: 'myPOs' }
-  ]
-};
-
 function OverviewReportsSection({
-  userRole,
+  tabs,
   dateRange,
   onDateRangeChange
 }: {
-  userRole?: string;
+  tabs?: React.ReactNode;
   dateRange: string;
   onDateRangeChange: (value: string) => void;
 }) {
@@ -166,19 +119,6 @@ function OverviewReportsSection({
     return [];
   }, [reportData?.chartData]);
 
-  const summaryCards = useMemo(() => {
-    const config = ROLE_CARD_CONFIG[userRole || ''] || [
-      { title: 'Overview', icon: BarChart3, color: 'bg-primary', statKey: 'openRFQs' },
-      { title: 'Spend Analysis', icon: DollarSign, color: 'bg-green-500', statKey: 'purchaseOrders' },
-      { title: 'Performance', icon: TrendingUp, color: 'bg-blue-500', statKey: 'quotations' }
-    ];
-    const stats = reportData?.stats || {};
-    return config.map((card) => ({
-      ...card,
-      value: card.statKey && stats[card.statKey] ? stats[card.statKey].value : '—'
-    }));
-  }, [userRole, reportData?.stats]);
-
   const formatValue = (format: 'currency' | 'number', v: number) =>
     format === 'currency' ? formatCurrency(v, reportData?.currency || getCurrentSbuCurrency()) : String(v);
 
@@ -207,101 +147,58 @@ function OverviewReportsSection({
     URL.revokeObjectURL(url);
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[40vh]">
-        <Loader2 className="h-8 w-8 text-primary animate-spin" />
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-3">
-        <select
-          value={dateRange}
-          onChange={(e) => onDateRangeChange(e.target.value)}
-          className="px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
-        >
+    <div>
+      <ReportsTabRow tabs={tabs}>
+        <select value={dateRange} onChange={(e) => onDateRangeChange(e.target.value)} className={TOOLBAR_SELECT}>
           <option value="week">This Week</option>
           <option value="month">This Month</option>
           <option value="quarter">This Quarter</option>
           <option value="year">This Year</option>
         </select>
-        <button
-          type="button"
-          onClick={exportCsv}
-          className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
-        >
+        <button type="button" onClick={exportCsv} disabled={loading} className={`${TOOLBAR_BUTTON} disabled:opacity-50`}>
           <Download className="h-4 w-4" />
           Export
         </button>
-      </div>
+      </ReportsTabRow>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {summaryCards.map((report, index) => {
-          const Icon = report.icon;
-          return (
-            <div
-              key={index}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
-            >
-              <div className="flex items-center gap-4">
-                <div className={`${report.color} p-3 rounded-xl`}>
-                  <Icon className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">{report.title}</p>
-                  <p className="text-lg font-semibold text-gray-900">{report.value}</p>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {loading ? (
+        <div className="flex items-center justify-center min-h-[40vh]">
+          <Loader2 className="h-8 w-8 text-primary animate-spin" />
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {reportData?.stats && (
+            <StatStrip
+              stats={Object.entries(reportData.stats).map(([key, stat]: any) => ({
+                label: stat.label || key,
+                value: stat.value
+              }))}
+            />
+          )}
 
-      {reportData?.stats && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900 mb-6">Quick Summary</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {Object.entries(reportData.stats).map(([key, stat]: any) => (
-              <div key={key} className="text-center">
-                <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
-                <p className="text-sm text-gray-500 mt-1">{stat.label}</p>
-              </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {charts.map((chart) => (
+              <ReportCard
+                key={chart.id}
+                title={chart.title}
+                className={charts.length === 1 || chart.id === 'poDistribution' ? 'lg:col-span-2' : ''}
+              >
+                {chart.kind === 'bar' ? (
+                  <BarChart data={chart.data} valueFormatter={(v) => formatValue(chart.format, v)} />
+                ) : (
+                  <HorizontalBars data={chart.data} valueFormatter={(v) => formatValue(chart.format, v)} />
+                )}
+              </ReportCard>
             ))}
+            {charts.length === 0 && (
+              <p className="lg:col-span-2 bg-white rounded-2xl p-8 shadow-sm border border-gray-100 text-center text-sm text-gray-500">
+                No chart data for this period.
+              </p>
+            )}
           </div>
         </div>
       )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {charts.map((chart) => (
-          <div
-            key={chart.id}
-            className={`bg-white rounded-2xl p-6 shadow-sm border border-gray-100 ${
-              charts.length === 1 || chart.id === 'poDistribution' ? 'lg:col-span-2' : ''
-            }`}
-          >
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">{chart.title}</h3>
-            {chart.kind === 'bar' ? (
-              <BarChart
-                data={chart.data}
-                valueFormatter={(v) => formatValue(chart.format, v)}
-              />
-            ) : (
-              <HorizontalBars
-                data={chart.data}
-                valueFormatter={(v) => formatValue(chart.format, v)}
-              />
-            )}
-          </div>
-        ))}
-        {charts.length === 0 && (
-          <div className="lg:col-span-2 bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center text-gray-500">
-            No chart data for this period.
-          </div>
-        )}
-      </div>
     </div>
   );
 }
@@ -327,45 +224,39 @@ export default function Reports() {
   const subtitle =
     activeTab === 'suppliers'
       ? 'Supplier registry, spend, compliance, and evaluation insights.'
-      : 'Role-based insights, spend trends, and operational statistics.';
+      : 'Spend trends and operational statistics.';
+
+  // Shown only to those who see both tabs; each tab puts its own controls beside them.
+  const tabs = showSupplierReports ? (
+    <div className="flex gap-2">
+      {([
+        { id: 'overview' as const, label: 'Overview' },
+        { id: 'suppliers' as const, label: 'Suppliers' }
+      ]).map((tab) => (
+        <button
+          key={tab.id}
+          type="button"
+          onClick={() => setActiveTab(tab.id)}
+          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === tab.id
+              ? 'border-primary text-primary'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  ) : null;
 
   return (
     <div className="p-8">
-      <PageHeader
-        title="Reports & Analytics"
-        subtitle={subtitle}
-      />
-
-      {showSupplierReports && (
-        <div className="flex gap-2 mb-8 border-b border-gray-200">
-          {([
-            { id: 'overview' as const, label: 'Overview' },
-            { id: 'suppliers' as const, label: 'Suppliers' }
-          ]).map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                activeTab === tab.id
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      )}
+      <PageHeader title="Reports & Analytics" subtitle={subtitle} bottomSpacing="mb-4" />
 
       {activeTab === 'overview' ? (
-        <OverviewReportsSection
-          userRole={user?.role}
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-        />
+        <OverviewReportsSection tabs={tabs} dateRange={dateRange} onDateRangeChange={setDateRange} />
       ) : (
-        <SupplierReportsSection />
+        <SupplierReportsSection tabs={tabs} />
       )}
     </div>
   );
