@@ -237,12 +237,13 @@ export default function Quotations() {
       <PageHeader
         title="Quotations"
         subtitle="View and evaluate supplier quotations"
+        bottomSpacing="mb-4"
       />
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
-        <div className="flex flex-col md:flex-row md:items-center gap-4">
-          <div className="flex-1 relative">
+      <div className="mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 md:justify-end">
+          <div className="relative w-full sm:w-52">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
@@ -254,6 +255,7 @@ export default function Quotations() {
           </div>
           <FilterSelect
             label="Status"
+            size="sm"
             options={[
               { value: '', label: 'All' },
               { value: 'submitted', label: 'Received' },

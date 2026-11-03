@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Search } from 'lucide-react'
 import { KYS_CHECKLIST_ITEMS, computeKysCompletionForTier } from '@fossil/shared'
 import { procurementAPI } from '../services/procurement.service'
 import { useToast } from '../components/Toast'
@@ -183,27 +184,28 @@ export default function VerificationHub() {
 
       <div className="grid gap-6 xl:grid-cols-[1fr_320px] items-start">
         <div className="space-y-6">
-          <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-4 sm:p-5">
-            <div className="grid gap-3 lg:grid-cols-[1fr_220px_auto] lg:items-center">
-              <div className="relative">
+          <div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 md:justify-end">
+              <div className="relative w-full sm:w-52">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-4 text-sm outline-none focus:border-blue-400 focus:bg-white"
-                  placeholder="Search by supplier name or code..."
+                  className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  placeholder="Search supplier name or code..."
                 />
               </div>
               <select
                 value={verificationStatusFilter}
                 onChange={(e) => setVerificationStatusFilter(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3 text-sm outline-none focus:border-blue-400 focus:bg-white"
+                className="px-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
               >
                 <option value="">All Verification Statuses</option>
                 <option value="verified">Fully Verified</option>
                 <option value="in_progress">In Progress</option>
                 <option value="not_started">Not Started</option>
               </select>
-              <button onClick={fetchSuppliers} className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800">
+              <button onClick={fetchSuppliers} className="px-3 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors">
                 Refresh
               </button>
             </div>

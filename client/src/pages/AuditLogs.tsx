@@ -477,22 +477,22 @@ export default function AuditLogs() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-6">
-        <div className="flex flex-col md:flex-row gap-3">
-          <div className="flex-1 relative">
+      <div className="mb-4">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 md:justify-end">
+          <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search description, reference, user, IP address…"
+              placeholder="Search description, user, IP…"
               value={searchTerm}
               onChange={(e: any) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
           <select
             value={actionFilter}
             onChange={(e: any) => setActionFilter(e.target.value)}
-            className="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            className="px-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
           >
             <option value="">All Actions</option>
             {ACTION_OPTIONS.map((a) => (
@@ -502,7 +502,7 @@ export default function AuditLogs() {
           <select
             value={entityFilter}
             onChange={(e: any) => setEntityFilter(e.target.value)}
-            className="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            className="px-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
           >
             <option value="">All Entities</option>
             {ENTITY_OPTIONS.map((e) => (
@@ -512,7 +512,7 @@ export default function AuditLogs() {
           <button
             type="button"
             onClick={() => setShowFilters((v: any) => !v)}
-            className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl border transition-colors ${
+            className={`inline-flex items-center justify-center gap-1.5 px-3 py-[7px] text-sm font-medium rounded-lg border transition-colors ${
               showFilters || startDate || endDate
                 ? 'border-primary/30 text-primary bg-primary/5'
                 : 'border-gray-200 text-gray-600 hover:bg-gray-50'
@@ -524,14 +524,14 @@ export default function AuditLogs() {
         </div>
 
         {(showFilters || startDate || endDate) && (
-          <div className="flex flex-col sm:flex-row gap-4 mt-4 items-end">
+          <div className="flex flex-col sm:flex-row gap-3 mt-3 items-end md:justify-end">
             <div>
               <label className="block text-xs text-gray-500 mb-1">From</label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e: any) => setStartDate(e.target.value)}
-                className="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                className="px-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
             <div>
@@ -540,14 +540,14 @@ export default function AuditLogs() {
                 type="date"
                 value={endDate}
                 onChange={(e: any) => setEndDate(e.target.value)}
-                className="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                className="px-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
           </div>
         )}
 
         {activeFilters.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-gray-100">
+          <div className="flex flex-wrap items-center gap-2 mt-3 md:justify-end">
             {activeFilters.map((f) => (
               <FilterChip key={f.label} label={f.label} onRemove={f.clear} />
             ))}
