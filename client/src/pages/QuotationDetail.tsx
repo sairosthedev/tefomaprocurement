@@ -10,15 +10,11 @@ import PageHeader from '../components/PageHeader';
 import EquipmentDetailsView from '../components/EquipmentDetailsView';
 import { 
   FileText, 
-  Calendar, 
-  Building2,
   CheckCircle,
   XCircle,
   Clock,
   Loader2,
   DollarSign,
-  Mail,
-  Phone,
   ShoppingCart,
   Send,
   Package,
@@ -344,6 +340,42 @@ export default function QuotationDetail() {
     );
   }
 
+  const currency = quotation.currency || getCurrentSbuCurrency();
+  const shortDate = (value: any) => new Date(value).toLocaleDateString('en-ZA');
+  // Who quoted, against what, and on which terms. The number and status are in
+  // the header already, and terms the supplier left blank are left out.
+  const facts: Array<{ label: string; value: React.ReactNode; sub?: string }> = [
+    ...(quotation.supplier
+      ? [{
+          label: 'Supplier',
+          value: quotation.supplier.companyName,
+          sub: quotation.supplier.contactEmail || quotation.supplier.contactPhone
+        }]
+      : []),
+    ...(quotation.rfq
+      ? [{
+          label: 'RFQ',
+          value: (
+            <button type="button" onClick={() => navigate(`/app/rfqs/${quotation.rfq._id}`)} className="text-primary hover:underline">
+              {quotation.rfq.rfqNumber}
+            </button>
+          ),
+          sub: quotation.rfq.title || quotation.rfq.description
+        }]
+      : []),
+    { label: 'Total', value: formatCurrency(quotation.totalAmount || 0, currency) },
+    ...(quotation.deliveryPeriod ? [{ label: 'Delivery', value: `${quotation.deliveryPeriod} days` }] : []),
+    ...(quotation.paymentTerms ? [{ label: 'Payment terms', value: quotation.paymentTerms }] : []),
+    ...(quotation.validUntil ? [{ label: 'Valid until', value: shortDate(quotation.validUntil) }] : []),
+    ...(quotation.submittedAt || quotation.submittedBy
+      ? [{
+          label: 'Submitted',
+          value: quotation.submittedAt ? shortDate(quotation.submittedAt) : '—',
+          sub: quotation.submittedBy ? `${quotation.submittedBy.firstName} ${quotation.submittedBy.lastName}` : undefined
+        }]
+      : [])
+  ];
+
   return (
     <div className="p-8">
       <PageHeader
@@ -351,6 +383,7 @@ export default function QuotationDetail() {
         backLabel={backLabel}
         title="Quotation"
         subtitle={`#${quotation.quotationNumber}`}
+        bottomSpacing="mb-4"
         actions={
           <>
             <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[quotation.status]}`}>
@@ -416,6 +449,20 @@ export default function QuotationDetail() {
         }
       />
 
+
+      <section className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-5">
+        <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-7 gap-x-6 gap-y-3 px-5 py-4">
+          {facts.map((fact) => (
+            <div key={fact.label} className="min-w-0">
+              <dt className="text-[11px] uppercase tracking-wide text-gray-400">{fact.label}</dt>
+              <dd className="mt-0.5 text-sm font-medium text-gray-900 truncate" title={typeof fact.value === 'string' ? fact.value : undefined}>
+                {fact.value}
+              </dd>
+              {fact.sub && <dd className="text-xs text-gray-500 truncate" title={fact.sub}>{fact.sub}</dd>}
+            </div>
+          ))}
+        </dl>
+      </section>
 
       {/* Acceptance compliance workflow */}
       {quotation.compliance && quotation.status !== 'accepted' && quotation.status !== 'rejected' && (
@@ -574,91 +621,11 @@ export default function QuotationDetail() {
         })()
       )}
 
-      {/* Details */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
-        {/* Basic Info */}
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Quotation Information</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <label className="text-sm text-gray-500">Quotation Number</label>
-              <p className="text-sm font-medium text-gray-900 mt-1 font-mono break-all">{quotation.quotationNumber}</p>
-            </div>
-            <div>
-              <label className="text-sm text-gray-500">Status</label>
-              <p className="text-sm font-medium text-gray-900 mt-1 capitalize">
-                {quotation.status?.replace(/_/g, ' ')}
-              </p>
-            </div>
-            <div>
-              <label className="text-sm text-gray-500">Total Amount</label>
-              <p className="text-sm font-medium text-gray-900 mt-1">
-                {formatCurrency(quotation.totalAmount || 0, quotation.currency || getCurrentSbuCurrency())}
-              </p>
-            </div>
-            <div>
-              <label className="text-sm text-gray-500">Currency</label>
-              <p className="text-sm font-medium text-gray-900 mt-1">{quotation.currency || getCurrentSbuCurrency()}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Supplier Info */}
-        {quotation.supplier && (
-          <div className="border-t pt-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              Supplier Information
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-gray-500">Company Name</label>
-                <p className="text-sm font-medium text-gray-900 mt-1">{quotation.supplier.companyName}</p>
-              </div>
-              {quotation.supplier.contactEmail && (
-                <div>
-                  <label className="text-sm text-gray-500">Email</label>
-                  <p className="text-sm font-medium text-gray-900 mt-1 flex items-center gap-2">
-                    <Mail className="h-4 w-4" />
-                    {quotation.supplier.contactEmail}
-                  </p>
-                </div>
-              )}
-              {quotation.supplier.contactPhone && (
-                <div>
-                  <label className="text-sm text-gray-500">Phone</label>
-                  <p className="text-sm font-medium text-gray-900 mt-1 flex items-center gap-2">
-                    <Phone className="h-4 w-4" />
-                    {quotation.supplier.contactPhone}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* RFQ Info */}
-        {quotation.rfq && (
-          <div className="border-t pt-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Related RFQ</h3>
-            <p className="text-sm text-gray-700">
-              <span className="font-medium">{quotation.rfq.rfqNumber}</span>
-              {' - '}
-              {quotation.rfq.title || quotation.rfq.description}
-            </p>
-            {quotation.rfq.submissionDeadline && (
-              <p className="text-xs text-gray-500 mt-1 flex items-center gap-2">
-                <Calendar className="h-3 w-3" />
-                Submission Deadline: {new Date(quotation.rfq.submissionDeadline).toLocaleDateString()}
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Items */}
+      {/* Items and notes */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
         {quotation.items && quotation.items.length > 0 && (
-          <div className="border-t pt-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quoted Items</h3>
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Quoted items</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm border-collapse">
                 <thead>
@@ -723,28 +690,10 @@ export default function QuotationDetail() {
           </div>
         )}
 
-        {/* Submitted By */}
-        {quotation.submittedBy && (
-          <div className="border-t pt-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Submitted By</h3>
-            <p className="text-sm text-gray-700">
-              {quotation.submittedBy.firstName} {quotation.submittedBy.lastName}
-            </p>
-            {quotation.submittedBy.email && (
-              <p className="text-xs text-gray-500 mt-1">{quotation.submittedBy.email}</p>
-            )}
-            {quotation.submittedAt && (
-              <p className="text-xs text-gray-500 mt-1">
-                Submitted: {new Date(quotation.submittedAt).toLocaleString()}
-              </p>
-            )}
-          </div>
-        )}
-
         {/* Notes */}
         {quotation.notes && (
-          <div className="border-t pt-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Notes</h3>
+          <div className="border-t border-gray-100 pt-4">
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">Notes</h3>
             <p className="text-sm text-gray-700 whitespace-pre-line">{quotation.notes}</p>
           </div>
         )}
