@@ -11,6 +11,7 @@ import CancelWorkflowModal from '../components/CancelWorkflowModal';
 import EquipmentDetailsView from '../components/EquipmentDetailsView';
 import { canCancelRequisition, requisitionCancelApiBase } from '../lib/cancellationAccess';
 import { CreateRFQDrawer } from '../components/RFQForm';
+import { journeyStatus, journeySteps } from '../lib/requisitionJourney';
 import { 
   FileText,
   CheckCircle,
@@ -26,46 +27,20 @@ import {
   X
 } from 'lucide-react';
 
-const statusColors: any = {
-  draft: 'bg-gray-100 text-gray-700',
-  pending_hod: 'bg-amber-100 text-amber-700',
-  stores_review: 'bg-cyan-100 text-cyan-700',
-  fulfilled: 'bg-emerald-100 text-emerald-700',
-  pending_acceptance: 'bg-amber-100 text-amber-700',
-  accepted: 'bg-green-100 text-green-700',
-  rejected: 'bg-red-100 text-red-700',
-  sourcing: 'bg-blue-100 text-blue-700',
-  quoted: 'bg-indigo-100 text-indigo-700',
-  ordered: 'bg-purple-100 text-purple-700',
-  completed: 'bg-emerald-100 text-emerald-700',
-  cancelled: 'bg-gray-100 text-gray-500'
-};
-
-const statusLabels: any = {
-  draft: 'Draft',
-  pending_hod: 'Pending HOD Approval',
-  stores_review: 'Stores Review',
-  fulfilled: 'Fulfilled from Stock',
-  pending_acceptance: 'Pending Acceptance',
-  accepted: 'Accepted',
-  rejected: 'Rejected',
-  sourcing: 'Sourcing',
-  quoted: 'Quoted',
-  ordered: 'Ordered',
-  completed: 'Completed',
-  cancelled: 'Cancelled'
-};
-
 const poStatusStyles: Record<string, { label: string; className: string }> = {
+  draft: { label: 'Draft', className: 'bg-gray-100 text-gray-700' },
   pending_dept_hod: { label: 'Awaiting department head', className: 'bg-purple-100 text-purple-700' },
   pending_hod: { label: 'Awaiting department head', className: 'bg-purple-100 text-purple-700' },
   pending_proc_hod: { label: 'Awaiting Head of Procurement', className: 'bg-fuchsia-100 text-fuchsia-700' },
   pending_finance: { label: 'Awaiting Finance', className: 'bg-amber-100 text-amber-700' },
   pending_coo: { label: 'Awaiting COO', className: 'bg-indigo-100 text-indigo-700' },
-  pending_approvals: { label: '⏳ Pending Approvals', className: 'bg-blue-100 text-blue-700' },
-  approved: { label: '✅ Approved', className: 'bg-green-100 text-green-700' },
-  issued: { label: '📦 Issued', className: 'bg-blue-100 text-blue-700' },
-  rejected: { label: '❌ Rejected', className: 'bg-red-100 text-red-700' }
+  pending_approvals: { label: 'Pending approvals', className: 'bg-blue-100 text-blue-700' },
+  approved: { label: 'Approved', className: 'bg-green-100 text-green-700' },
+  issued: { label: 'Issued to supplier', className: 'bg-blue-100 text-blue-700' },
+  partially_received: { label: 'Partly received', className: 'bg-teal-100 text-teal-700' },
+  completed: { label: 'Fully received', className: 'bg-emerald-100 text-emerald-700' },
+  rejected: { label: 'Rejected', className: 'bg-red-100 text-red-700' },
+  cancelled: { label: 'Cancelled', className: 'bg-gray-100 text-gray-500' }
 };
 
 const rfqStatusLabels: Record<string, string> = {
@@ -86,6 +61,20 @@ const priorityColors: any = {
   medium: 'bg-blue-100 text-blue-600',
   high: 'bg-orange-100 text-orange-600',
   urgent: 'bg-red-100 text-red-600'
+};
+
+// "rfq_created" → "RFQ created", keeping the acronyms people actually say.
+const HISTORY_LABELS: Record<string, string> = {
+  hod_approved: 'Approved by department head',
+  forwarded_to_procurement: 'Forwarded to procurement',
+  rfq_created: 'RFQ created',
+  po_created: 'PO created'
+};
+const historyLabel = (action?: string): string => {
+  if (!action) return 'Updated';
+  if (HISTORY_LABELS[action]) return HISTORY_LABELS[action];
+  const text = action.replace(/_/g, ' ').replace(/\b(rfq|po|hod|grv)\b/gi, (m) => m.toUpperCase());
+  return text.charAt(0).toUpperCase() + text.slice(1);
 };
 
 export default function RequisitionDetail() {
@@ -303,8 +292,49 @@ export default function RequisitionDetail() {
     );
   }
 
+  const stage = journeyStatus(requisition);
+  const steps = journeySteps(requisition);
+  const currentStep = steps.findIndex((s) => !s.done);
+  const stopped = requisition.status === 'cancelled' || requisition.status === 'rejected';
+  const po = requisition.purchaseOrder;
+  const rfq = requisition.rfq;
+  const items = requisition.items || [];
+  const justification = requisition.justification || requisition.description;
+
+  // Only the facts this requisition actually has; empty optional fields would
+  // just be a row of dashes.
+  const facts: Array<{ label: string; value: React.ReactNode; sub?: string }> = [
+    { label: 'Raised', value: new Date(requisition.createdAt).toLocaleDateString('en-ZA') },
+    {
+      label: 'Requested by',
+      value: requisition.requestedBy
+        ? `${requisition.requestedBy.firstName} ${requisition.requestedBy.lastName}`
+        : '—',
+      sub: requisition.requestedBy?.email
+    },
+    { label: 'Department', value: requisition.department?.name || '—' },
+    {
+      label: 'Priority',
+      value: (
+        <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${priorityColors[requisition.priority] || priorityColors.medium}`}>
+          {requisition.priority || 'Medium'}
+        </span>
+      )
+    },
+    ...(requisition.requiredDate
+      ? [{ label: 'Required by', value: new Date(requisition.requiredDate).toLocaleDateString('en-ZA') }]
+      : []),
+    ...(requisition.estimatedTotal > 0
+      ? [{ label: 'Estimated value', value: formatCurrency(requisition.estimatedTotal, requisition.currency || getCurrentSbuCurrency()) }]
+      : []),
+    ...(requisition.workOrder ? [{ label: 'Work order', value: requisition.workOrder }] : []),
+    ...(requisition.storesIssueNumber ? [{ label: 'Stores issue no.', value: requisition.storesIssueNumber }] : [])
+  ];
+
+  const th = 'py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap';
+
   return (
-    <div className="p-8">
+    <div className="p-6">
       <PageHeader
         backTo="/app/requisitions"
         backLabel="Back to Requisitions"
@@ -313,8 +343,11 @@ export default function RequisitionDetail() {
         subtitle={`#${requisition.requisitionNumber || `REQ-${requisition._id?.slice(-6).toUpperCase()}`}`}
         actions={
           <>
-            <span className={`px-4 py-2 rounded-full text-sm font-medium ${statusColors[requisition.status]}`}>
-              {statusLabels[requisition.status] || requisition.status?.replace(/_/g, ' ').replace(/\b\w/g, (l: any) => l.toUpperCase())}
+            <span
+              className={`px-3 py-1.5 rounded-full text-sm font-medium ${stage.className}`}
+              title={stage.hint || undefined}
+            >
+              {stage.label}
             </span>
             {isOwner && requisition.status === 'draft' && (
               <button
@@ -323,7 +356,7 @@ export default function RequisitionDetail() {
                   submitting ||
                   (requisition.items || []).filter((item: any) => item.description?.trim()).length === 0
                 }
-                className="px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors flex items-center gap-2 disabled:opacity-50"
+                className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary-dark transition-colors flex items-center gap-2 disabled:opacity-50"
                 title={
                   (requisition.items || []).filter((item: any) => item.description?.trim()).length === 0
                     ? 'Add at least one item before submitting'
@@ -343,7 +376,7 @@ export default function RequisitionDetail() {
                 type="button"
                 onClick={() => setShowCancelModal(true)}
                 disabled={cancelling}
-                className="px-4 py-2.5 border border-red-200 text-red-700 rounded-xl font-medium hover:bg-red-50 transition-colors flex items-center gap-2 disabled:opacity-50"
+                className="px-4 py-2 border border-red-200 text-red-700 rounded-xl text-sm font-medium hover:bg-red-50 transition-colors flex items-center gap-2 disabled:opacity-50"
               >
                 <XCircle className="h-4 w-4" />
                 Cancel requisition
@@ -370,52 +403,84 @@ export default function RequisitionDetail() {
       />
 
       {requisition.status === 'cancelled' && requisition.cancellationReason && (
-        <div className="mb-6 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-800">
+        <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-800">
           <strong>Cancellation reason:</strong> {requisition.cancellationReason}
         </div>
       )}
 
-      {/* Main Content - Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Main Details */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Description */}
-          {(requisition.description || requisition.justification) && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Justification</h2>
-              <p className="text-sm text-gray-700 leading-relaxed">
-                {requisition.justification || requisition.description || 'No justification provided'}
-              </p>
+      {/* Summary — the requisition's facts, then where it has got to */}
+      <section className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-5">
+        <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-8 gap-x-6 gap-y-3 px-5 py-4">
+          {facts.map((fact) => (
+            <div key={fact.label} className="min-w-0">
+              <dt className="text-[11px] uppercase tracking-wide text-gray-400">{fact.label}</dt>
+              <dd className="mt-0.5 text-sm font-medium text-gray-900 truncate" title={typeof fact.value === 'string' ? fact.value : undefined}>
+                {fact.value}
+              </dd>
+              {fact.sub && <dd className="text-xs text-gray-500 truncate" title={fact.sub}>{fact.sub}</dd>}
             </div>
-          )}
+          ))}
+        </dl>
 
-          {/* Items */}
-          {requisition.items && requisition.items.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Line Items</h2>
+        <ol className="flex gap-1.5 px-5 pb-4 pt-3 border-t border-gray-100 overflow-x-auto scrollbar-none">
+          {steps.map((step, i) => {
+            const isCurrent = i === currentStep;
+            const bar = step.done
+              ? 'bg-emerald-500'
+              : isCurrent
+                ? stopped ? 'bg-red-400' : 'bg-primary'
+                : 'bg-gray-200';
+            return (
+              <li key={step.label} className="flex-1 min-w-[5.5rem]">
+                <div className={`h-1.5 rounded-full ${bar}`} />
+                <p className={`mt-2 text-xs font-medium flex items-center gap-1 ${
+                  step.done ? 'text-gray-900' : isCurrent ? (stopped ? 'text-red-600' : 'text-primary') : 'text-gray-400'
+                }`}>
+                  {step.done && <Check className="h-3 w-3 text-emerald-600 shrink-0" />}
+                  <span className="truncate">{isCurrent && stopped ? stage.label : step.label}</span>
+                </p>
+                {step.note && <p className="text-[11px] text-gray-400 truncate" title={step.note}>{step.note}</p>}
+              </li>
+            );
+          })}
+        </ol>
+      </section>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Left — what is being asked for, and how it is being bought */}
+        <div className="lg:col-span-2 space-y-5">
+          {items.length > 0 && (
+            <section className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3.5">
+                <h2 className="font-semibold text-gray-900">
+                  Line items <span className="ml-1 text-sm font-normal text-gray-400">{items.length}</span>
+                </h2>
                 {canEditItems && (
                   <span className="text-xs text-gray-400">
                     Remove any item you don't want purchased before approving.
                   </span>
                 )}
               </div>
+              {justification && (
+                <p className="px-5 pb-3 -mt-1 text-sm text-gray-600 leading-relaxed">
+                  <span className="font-medium text-gray-800">Justification: </span>
+                  {justification}
+                </p>
+              )}
               <div className="overflow-x-auto">
                 <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Package</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Details</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Units</th>
-                      <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Qty Req.</th>
-                      <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Qty Delivered</th>
-                      {canEditItems && (
-                        <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Action</th>
-                      )}
+                      <th className={`text-left ${th}`}>Package</th>
+                      <th className={`text-left ${th}`}>Details</th>
+                      <th className={`text-left ${th}`}>Units</th>
+                      <th className={`text-right ${th}`}>Qty Req.</th>
+                      <th className={`text-right ${th}`}>Qty Delivered</th>
+                      {canEditItems && <th className={`text-right ${th}`}>Action</th>}
                     </tr>
                   </thead>
                   <tbody>
-                    {requisition.items.map((item: any, index: any) => (
+                    {items.map((item: any, index: any) => (
                       <tr key={item._id || index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                         <td className="py-2 px-3 border-b border-gray-100 text-gray-600">{item.package || '—'}</td>
                         <td className="py-2 px-3 border-b border-gray-100">
@@ -432,7 +497,7 @@ export default function RequisitionDetail() {
                         <td className="py-2 px-3 border-b border-gray-100 text-gray-600">{item.unit}</td>
                         <td className="py-2 px-3 border-b border-gray-100 text-right">
                           {canEditItems && editingItemId === item._id ? (
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center justify-end gap-1.5">
                               <input
                                 type="number"
                                 min={1}
@@ -488,9 +553,9 @@ export default function RequisitionDetail() {
                           <td className="py-2 px-3 border-b border-gray-100 text-right">
                             <button
                               onClick={() => handleRemoveItem(item)}
-                              disabled={removingItemId === item._id || requisition.items.length <= 1}
+                              disabled={removingItemId === item._id || items.length <= 1}
                               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                              title={requisition.items.length <= 1 ? 'At least one item is required' : 'Remove this item'}
+                              title={items.length <= 1 ? 'At least one item is required' : 'Remove this item'}
                             >
                               {removingItemId === item._id ? (
                                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -506,362 +571,267 @@ export default function RequisitionDetail() {
                   </tbody>
                 </table>
               </div>
-            </div>
+            </section>
           )}
 
-          {/* Status History */}
-          {requisition.statusHistory && requisition.statusHistory.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Status History</h2>
-              {/* One line per entry so the history doesn't push the page into scrolling. */}
-              <div className="divide-y divide-gray-100">
-                {requisition.statusHistory.map((history: any, index: any) => (
-                  <div key={index} className="flex items-center gap-3 py-2">
-                    {history.action === 'accepted' ? (
-                      <CheckCircle className="h-4 w-4 shrink-0 text-green-500" />
-                    ) : history.action === 'rejected' ? (
-                      <XCircle className="h-4 w-4 shrink-0 text-red-500" />
-                    ) : (
-                      <Clock className="h-4 w-4 shrink-0 text-amber-500" />
-                    )}
-                    <p className="text-sm font-medium capitalize text-gray-900 whitespace-nowrap">
-                      {String(history.action || '').replace(/_/g, ' ')}
-                    </p>
-                    <p className="flex-1 min-w-0 truncate text-xs text-gray-500" title={history.comments}>
-                      {history.comments}
-                    </p>
-                    <p className="text-xs text-gray-400 whitespace-nowrap">
-                      {new Date(history.timestamp).toLocaleString('en-ZA')}
-                    </p>
+          {/* Sourcing, ordering and delivery, side by side */}
+          {(rfq || po || requisition.itemsDeliveredToStores) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {po && (
+                <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <h3 className="flex items-center gap-2 font-semibold text-gray-900">
+                      <ShoppingCart className="h-4 w-4 text-primary" />
+                      Purchase order
+                    </h3>
+                    <span className={`shrink-0 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      poStatusStyles[po.status]?.className || 'bg-gray-100 text-gray-700'
+                    }`}>
+                      {poStatusStyles[po.status]?.label || String(po.status).replace(/_/g, ' ')}
+                    </span>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right Column - Status Cards */}
-        <div className="space-y-6">
-          {/* Approvals — paper IR "Approved By" / "Authorised By" */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">Approvals</h3>
-            {/* IR header fields — mirrors the paper Internal Requisition form */}
-            <dl className="space-y-2.5 text-sm pb-4 mb-4 border-b border-gray-100">
-              <div className="flex items-start justify-between gap-3">
-                <dt className="text-gray-500">Date</dt>
-                <dd className="font-medium text-gray-900 text-right">
-                  {new Date(requisition.createdAt).toLocaleDateString('en-ZA')}
-                </dd>
-              </div>
-              <div className="flex items-start justify-between gap-3">
-                <dt className="text-gray-500">Requested by</dt>
-                <dd className="font-medium text-gray-900 text-right min-w-0">
-                  {requisition.requestedBy
-                    ? `${requisition.requestedBy.firstName} ${requisition.requestedBy.lastName}`
-                    : '—'}
-                  {requisition.requestedBy?.email && (
-                    <span className="block text-xs font-normal text-gray-500 break-all">{requisition.requestedBy.email}</span>
-                  )}
-                </dd>
-              </div>
-              <div className="flex items-start justify-between gap-3">
-                <dt className="text-gray-500">Department</dt>
-                <dd className="font-medium text-gray-900 text-right">{requisition.department?.name || '—'}</dd>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-gray-500">Priority</dt>
-                <dd>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${priorityColors[requisition.priority] || priorityColors.medium}`}>
-                    {requisition.priority || 'Medium'}
-                  </span>
-                </dd>
-              </div>
-              <div className="flex items-start justify-between gap-3">
-                <dt className="text-gray-500">Work order</dt>
-                <dd className="font-medium text-gray-900 text-right">{requisition.workOrder || '—'}</dd>
-              </div>
-              <div className="flex items-start justify-between gap-3">
-                <dt className="text-gray-500">Stores issue no.</dt>
-                <dd className="font-medium text-gray-900 text-right">{requisition.storesIssueNumber || '—'}</dd>
-              </div>
-            </dl>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-lg bg-gray-50">
-                <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-1">Approved By (HOD)</p>
-                {requisition.hodApprovedBy ? (
-                  <>
-                    <p className="text-sm font-medium text-gray-900">
-                      {requisition.hodApprovedBy.firstName} {requisition.hodApprovedBy.lastName}
-                    </p>
-                    {requisition.hodApprovedAt && (
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {new Date(requisition.hodApprovedAt).toLocaleDateString('en-ZA')}
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-sm text-amber-600">Pending</p>
-                )}
-              </div>
-              <div className="p-3 rounded-lg bg-gray-50">
-                <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-1">Authorised By (Stores / Procurement)</p>
-                {requisition.storesReviewedBy ? (
-                  <>
-                    <p className="text-sm font-medium text-gray-900">
-                      {requisition.storesReviewedBy.firstName} {requisition.storesReviewedBy.lastName}
-                    </p>
-                    {requisition.storesReviewedAt && (
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {new Date(requisition.storesReviewedAt).toLocaleDateString('en-ZA')}
-                      </p>
-                    )}
-                  </>
-                ) : requisition.processedBy ? (
-                  <p className="text-sm font-medium text-gray-900">
-                    {requisition.processedBy.firstName} {requisition.processedBy.lastName}
-                  </p>
-                ) : (
-                  <p className="text-sm text-gray-400">—</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Purchase Order Status */}
-          {requisition.purchaseOrder && (
-            <div className="bg-blue-50 rounded-2xl p-6 border border-blue-200">
-              <div className="flex items-center gap-2 mb-3">
-                <ShoppingCart className="h-5 w-5 text-blue-600" />
-                <h3 className="font-semibold text-blue-900">Purchase Order</h3>
-              </div>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="font-mono font-bold text-primary text-lg break-all">
-                    {requisition.purchaseOrder.poNumber}
-                  </p>
-                  <span className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-medium ${
-                    poStatusStyles[requisition.purchaseOrder.status]?.className || 'bg-amber-100 text-amber-700'
-                  }`}>
-                    {poStatusStyles[requisition.purchaseOrder.status]?.label || requisition.purchaseOrder.status}
-                  </span>
-                </div>
-                {(requisition.purchaseOrder.supplier?.companyName || typeof requisition.purchaseOrder.totalAmount === 'number') && (
-                  <div className="flex items-center justify-between gap-3 text-sm">
-                    <span className="text-blue-900">{requisition.purchaseOrder.supplier?.companyName || '—'}</span>
-                    {typeof requisition.purchaseOrder.totalAmount === 'number' && (
-                      <span className="font-semibold text-blue-900">
-                        {formatCurrency(requisition.purchaseOrder.totalAmount, requisition.purchaseOrder.currency || getCurrentSbuCurrency())}
+                  <p className="font-mono font-semibold text-primary break-all">{po.poNumber}</p>
+                  <div className="mt-1 flex items-center justify-between gap-3 text-sm">
+                    <span className="text-gray-600 truncate">{po.supplier?.companyName || '—'}</span>
+                    {typeof po.totalAmount === 'number' && (
+                      <span className="font-semibold text-gray-900 shrink-0">
+                        {formatCurrency(po.totalAmount, po.currency || getCurrentSbuCurrency())}
                       </span>
                     )}
                   </div>
-                )}
-                {SEQUENTIAL_PO_STATUSES.includes(requisition.purchaseOrder.status) && (() => {
-                  const po = requisition.purchaseOrder;
-                  const steps = [
-                    // New POs skip the department head; only older ones still wait on it.
-                    ...(po.status === 'pending_hod'
-                      ? [{ label: 'Department head', done: !!po.deptHodApproved }]
-                      : []),
-                    { label: 'Head of Procurement', done: !!po.procHodApproved },
-                    { label: 'Finance', done: !!po.financeApproved },
-                    // The COO step applies only when the server flagged the PO
-                    // (its USD limit converted at the stored FX rate).
-                    ...(po.requiresCooApproval
-                      ? [{ label: 'COO', done: !!po.cooApproved }]
-                      : [])
-                  ];
-                  const current = steps.find((s) => !s.done);
-                  return (
-                    <div className="bg-white rounded-lg p-3 border border-blue-100 space-y-2">
-                      <p className="text-xs font-medium text-gray-700">Approval Progress:</p>
-                      {steps.map((step) => (
-                        <div key={step.label} className="flex items-center justify-between">
-                          <span className={`text-xs ${step === current ? 'font-medium text-amber-700' : 'text-gray-700'}`}>
-                            {step.label}
-                          </span>
-                          {step.done ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <Clock className={`h-4 w-4 ${step === current ? 'text-amber-600' : 'text-gray-300'}`} />
-                          )}
-                        </div>
-                      ))}
-                      {current && (
-                        <p className="text-xs text-amber-700 italic pt-1">Awaiting {current.label}</p>
-                      )}
-                    </div>
-                  );
-                })()}
-                {requisition.purchaseOrder.status === 'pending_approvals' && (
-                  <div className="bg-white rounded-lg p-3 border border-blue-100 space-y-3">
-                    <p className="text-xs font-medium text-gray-700">Approval Progress:</p>
-                    <div className="space-y-2">
-                      <div className={`rounded-lg p-2.5 ${requisition.purchaseOrder.financeApproved ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-medium text-gray-700">Finance</span>
-                          {requisition.purchaseOrder.financeApproved ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <Clock className="h-4 w-4 text-amber-600" />
-                          )}
-                        </div>
-                        <p className={`text-xs ${requisition.purchaseOrder.financeApproved ? 'text-green-700' : 'text-amber-700'}`}>
-                          {requisition.purchaseOrder.financeApproved ? 'Approved' : 'Pending'}
-                        </p>
-                      </div>
-                      <div className={`rounded-lg p-2.5 ${requisition.purchaseOrder.cooApproved ? 'bg-green-50 border border-green-200' : 'bg-purple-50 border border-purple-200'}`}>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-medium text-gray-700">COO</span>
-                          {requisition.purchaseOrder.cooApproved ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <Clock className="h-4 w-4 text-purple-600" />
-                          )}
-                        </div>
-                        <p className={`text-xs ${requisition.purchaseOrder.cooApproved ? 'text-green-700' : 'text-purple-700'}`}>
-                          {requisition.purchaseOrder.cooApproved ? 'Approved' : 'Pending'}
-                        </p>
-                      </div>
-                    </div>
-                    {!requisition.purchaseOrder.financeApproved || !requisition.purchaseOrder.cooApproved ? (
-                      <p className="text-xs text-amber-700 mt-2 italic">
-                        ⏳ Awaiting approval from {!requisition.purchaseOrder.financeApproved && !requisition.purchaseOrder.cooApproved ? 'Finance and COO' : !requisition.purchaseOrder.financeApproved ? 'Finance' : 'COO'}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-green-700 mt-2 font-medium">
-                        ✓ All approvals complete
-                      </p>
-                    )}
-                  </div>
-                )}
-                {/* Requesters and department heads follow the order from this
-                    panel; the PO pages themselves are procurement's. */}
-                {isProcurement && (
-                  <a
-                    href={`/app/purchase-orders/${requisition.purchaseOrder._id}`}
-                    className="block w-full text-center py-2.5 px-4 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors"
-                  >
-                    View Purchase Order
-                  </a>
-                )}
-              </div>
-            </div>
-          )}
 
-          {/* Delivered to Stores */}
-          {requisition.itemsDeliveredToStores && (
-            <div className="bg-green-50 rounded-2xl p-6 border border-green-200">
-              <div className="flex items-center gap-2 mb-4">
-                <Truck className="h-5 w-5 text-green-600" />
-                <h3 className="font-semibold text-green-900">Items in Stores</h3>
-              </div>
-              {requisition.itemsCollected ? (
-                <div className="space-y-2">
-                  <span className="inline-block px-3 py-2 bg-emerald-100 text-emerald-700 font-medium rounded-lg text-sm">
-                    ✓ Items Collected
-                  </span>
-                  <p className="text-sm text-green-800">
-                    Your items have been collected from stores.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <p className="text-sm text-green-800">
-                    Your ordered items have been received and are available in stores.
-                    {!isDepartment && !isProcurement && ' Your department head requests them from stores.'}
+                  {(SEQUENTIAL_PO_STATUSES.includes(po.status) || po.status === 'pending_approvals') && (() => {
+                    const approvals = po.status === 'pending_approvals'
+                      // Legacy POs: finance and COO in parallel.
+                      ? [
+                          { label: 'Finance', done: !!po.financeApproved },
+                          { label: 'COO', done: !!po.cooApproved }
+                        ]
+                      : [
+                          // New POs skip the department head; only older ones still wait on it.
+                          ...(po.status === 'pending_hod' ? [{ label: 'Dept head', done: !!po.deptHodApproved }] : []),
+                          { label: 'Head of Procurement', done: !!po.procHodApproved },
+                          { label: 'Finance', done: !!po.financeApproved },
+                          // The COO step applies only when the server flagged the PO
+                          // (its USD limit converted at the stored FX rate).
+                          ...(po.requiresCooApproval ? [{ label: 'COO', done: !!po.cooApproved }] : [])
+                        ];
+                    const waiting = approvals.find((a) => !a.done);
+                    return (
+                      <div className="mt-3 pt-3 border-t border-gray-100">
+                        <div className="flex flex-wrap gap-1.5">
+                          {approvals.map((a) => (
+                            <span
+                              key={a.label}
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                                a.done
+                                  ? 'bg-emerald-50 text-emerald-700'
+                                  : a === waiting
+                                    ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
+                                    : 'bg-gray-100 text-gray-400'
+                              }`}
+                            >
+                              {a.done ? <CheckCircle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                              {a.label}
+                            </span>
+                          ))}
+                        </div>
+                        {waiting && <p className="mt-1.5 text-xs text-amber-700">Awaiting {waiting.label}</p>}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Requesters and department heads follow the order from this
+                      panel; the PO pages themselves are procurement's. */}
+                  {isProcurement && (
+                    <Link
+                      to={`/app/purchase-orders/${po._id}`}
+                      className="mt-3 inline-block text-sm font-medium text-primary hover:underline"
+                    >
+                      View purchase order →
+                    </Link>
+                  )}
+                </section>
+              )}
+
+              {requisition.itemsDeliveredToStores && (
+                <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <h3 className="flex items-center gap-2 font-semibold text-gray-900">
+                      <Truck className="h-4 w-4 text-emerald-600" />
+                      Stores
+                    </h3>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                      {requisition.itemsCollected ? 'Collected' : 'Ready to collect'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    {requisition.itemsCollected
+                      ? 'The items have been collected from stores.'
+                      : 'The ordered items have been received and are available in stores.'}
+                    {!requisition.itemsCollected && !isDepartment && !isProcurement && ' Your department head requests them from stores.'}
                   </p>
                   {/* Store requisitions are raised by the department head. */}
-                  {isDepartment && (
+                  {!requisition.itemsCollected && isDepartment && (
                     <button
                       onClick={() => navigate('/app/store-requisitions')}
-                      className="w-full py-2.5 px-4 bg-primary text-white text-sm font-medium rounded-xl hover:bg-primary-dark transition-colors flex items-center justify-center gap-2"
+                      className="mt-3 py-2 px-4 bg-primary text-white text-sm font-medium rounded-xl hover:bg-primary-dark transition-colors inline-flex items-center gap-2"
                     >
                       <Truck className="h-4 w-4" />
                       Request from Stores
                     </button>
                   )}
-                </div>
+                </section>
+              )}
+
+              {rfq && (
+                <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <h3 className="flex items-center gap-2 font-semibold text-gray-900">
+                      <FileText className="h-4 w-4 text-primary" />
+                      RFQ
+                    </h3>
+                    {rfq.sourcing?.status && (
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                        {rfqStatusLabels[rfq.sourcing.status] || rfq.sourcing.status}
+                      </span>
+                    )}
+                  </div>
+                  {/* Only procurement can open the RFQ pages; everyone else
+                      follows progress from the summary below. */}
+                  {isProcurement ? (
+                    <Link to={`/app/rfqs/${rfq._id}`} className="font-mono font-semibold text-primary hover:underline break-all">
+                      {rfq.rfqNumber}
+                    </Link>
+                  ) : (
+                    <p className="font-mono font-semibold text-primary break-all">{rfq.rfqNumber}</p>
+                  )}
+                  {(rfq.title || rfq.submissionDeadline) && (
+                    <p className="mt-1 text-sm text-gray-600 truncate">
+                      {[rfq.title, rfq.submissionDeadline && `Deadline ${new Date(rfq.submissionDeadline).toLocaleDateString('en-ZA')}`]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </p>
+                  )}
+                  {(() => {
+                    const sourcing = rfq.sourcing;
+                    if (!sourcing) return null;
+                    const lines = sourcing.lines;
+                    const winner = sourcing.winner;
+                    const progress: string[] = [
+                      `${sourcing.quotationCount} ${sourcing.quotationCount === 1 ? 'quote' : 'quotes'} received`
+                    ];
+                    if (sourcing.sealed) {
+                      progress.push('Bids stay sealed until the RFQ closes');
+                    } else if (lines) {
+                      progress.push(`${lines.awarded} of ${lines.total} lines awarded`);
+                      if (lines.awaitingAuthorization > 0) {
+                        progress.push(`${lines.awaitingAuthorization} awaiting Head of Procurement authorization`);
+                      }
+                      if (lines.authorized > 0) progress.push(`${lines.authorized} authorized`);
+                      if (lines.poGenerated > 0) progress.push(`${lines.poGenerated} on purchase orders`);
+                    } else if (winner) {
+                      progress.push(`Winner: ${winner.supplierName || winner.quotationNumber || 'supplier'}`);
+                      progress.push(
+                        sourcing.authorized
+                          ? 'Authorized by Head of Procurement'
+                          : 'Awaiting Head of Procurement authorization'
+                      );
+                    } else if (sourcing.quotationCount > 0 && sourcing.status !== 'cancelled') {
+                      progress.push('No winner selected yet');
+                    }
+                    return (
+                      <div className="mt-3 pt-3 border-t border-gray-100 space-y-1.5">
+                        <p className="text-xs text-gray-700">{progress.join(' · ')}</p>
+                        {winner?.justification && !lines && (
+                          <p className="text-xs text-gray-500 italic">“{winner.justification}”</p>
+                        )}
+                        {isProcurement && !sourcing.sealed && (lines || winner) && (
+                          <Link
+                            to={lines ? `/app/rfqs/${rfq._id}/award` : `/app/quotations/${winner.quotationId}`}
+                            className="inline-block text-xs font-medium text-primary hover:underline"
+                          >
+                            {lines ? 'Open award matrix →' : 'View selected quotation →'}
+                          </Link>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </section>
               )}
             </div>
           )}
+        </div>
 
-          {/* RFQ Info */}
-          {requisition.rfq && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <FileText className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold text-gray-900">Related RFQ</h3>
-              </div>
-              <div className="space-y-2">
-                {/* Only procurement can open the RFQ pages; everyone else
-                    follows progress from the summary below. */}
-                {isProcurement ? (
-                  <Link
-                    to={`/app/rfqs/${requisition.rfq._id}`}
-                    className="font-mono font-medium text-primary text-sm hover:underline"
-                  >
-                    {requisition.rfq.rfqNumber}
-                  </Link>
-                ) : (
-                  <p className="font-mono font-medium text-primary text-sm">
-                    {requisition.rfq.rfqNumber}
-                  </p>
-                )}
-                {requisition.rfq.title && (
-                  <p className="text-xs text-gray-600">{requisition.rfq.title}</p>
-                )}
-                {requisition.rfq.submissionDeadline && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Deadline: {new Date(requisition.rfq.submissionDeadline).toLocaleDateString()}
-                  </p>
-                )}
-                {(() => {
-                  const sourcing = requisition.rfq.sourcing;
-                  if (!sourcing) return null;
-                  const lines = sourcing.lines;
-                  const winner = sourcing.winner;
-                  const progress: string[] = [
-                    rfqStatusLabels[sourcing.status] || sourcing.status,
-                    `${sourcing.quotationCount} ${sourcing.quotationCount === 1 ? 'quote' : 'quotes'} received`
-                  ];
-                  if (sourcing.sealed) {
-                    progress.push('Bids stay sealed until the RFQ closes');
-                  } else if (lines) {
-                    progress.push(`${lines.awarded} of ${lines.total} lines awarded`);
-                    if (lines.awaitingAuthorization > 0) {
-                      progress.push(`${lines.awaitingAuthorization} awaiting Head of Procurement authorization`);
-                    }
-                    if (lines.authorized > 0) progress.push(`${lines.authorized} authorized`);
-                    if (lines.poGenerated > 0) progress.push(`${lines.poGenerated} on purchase orders`);
-                  } else if (winner) {
-                    progress.push(`Winner selected: ${winner.supplierName || winner.quotationNumber || 'supplier'}`);
-                    progress.push(
-                      sourcing.authorized
-                        ? 'Authorized by Head of Procurement'
-                        : 'Awaiting Head of Procurement authorization'
-                    );
-                  } else if (sourcing.quotationCount > 0 && sourcing.status !== 'cancelled') {
-                    progress.push('No winner selected yet');
-                  }
+        {/* Right — who signed it off, and what has happened */}
+        <div className="space-y-5">
+          <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <h3 className="font-semibold text-gray-900 mb-3">Sign-off</h3>
+            {/* The paper IR's "Approved By" / "Authorised By" boxes */}
+            <dl className="divide-y divide-gray-100">
+              {[
+                {
+                  label: 'Approved by (HOD)',
+                  person: requisition.hodApprovedBy,
+                  at: requisition.hodApprovedAt,
+                  empty: 'Pending'
+                },
+                {
+                  label: 'Authorised by (Stores / Procurement)',
+                  person: requisition.storesReviewedBy || requisition.processedBy,
+                  at: requisition.storesReviewedBy ? requisition.storesReviewedAt : undefined,
+                  empty: '—'
+                }
+              ].map((row) => (
+                <div key={row.label} className="flex items-start justify-between gap-3 py-2 first:pt-0 last:pb-0">
+                  <dt className="text-xs text-gray-500 pt-0.5">{row.label}</dt>
+                  <dd className="text-right">
+                    {row.person ? (
+                      <>
+                        <p className="text-sm font-medium text-gray-900">{row.person.firstName} {row.person.lastName}</p>
+                        {row.at && <p className="text-xs text-gray-400">{new Date(row.at).toLocaleDateString('en-ZA')}</p>}
+                      </>
+                    ) : (
+                      <p className={`text-sm ${row.empty === 'Pending' ? 'text-amber-600' : 'text-gray-400'}`}>{row.empty}</p>
+                    )}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+
+          {requisition.statusHistory?.length > 0 && (
+            <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+              <h3 className="font-semibold text-gray-900 mb-3">Activity</h3>
+              <ol className="relative">
+                {requisition.statusHistory.map((history: any, index: number) => {
+                  const last = index === requisition.statusHistory.length - 1;
+                  const tone =
+                    history.action === 'rejected' || history.action === 'cancelled'
+                      ? 'bg-red-500'
+                      : last
+                        ? 'bg-primary'
+                        : 'bg-emerald-500';
                   return (
-                    <div className="pt-2 mt-2 border-t border-gray-100 space-y-1.5">
-                      <p className="text-xs text-gray-700">{progress.join(' · ')}</p>
-                      {winner?.justification && !lines && (
-                        <p className="text-xs text-gray-500 italic">“{winner.justification}”</p>
+                    <li key={index} className="relative pl-5 pb-3 last:pb-0">
+                      {!last && <span className="absolute left-[4px] top-3 bottom-0 w-px bg-gray-200" />}
+                      <span className={`absolute left-0 top-1.5 h-2.5 w-2.5 rounded-full ring-2 ring-white ${tone}`} />
+                      <div className="flex items-baseline justify-between gap-2">
+                        <p className="text-sm font-medium text-gray-900">{historyLabel(history.action)}</p>
+                        <p className="text-[11px] text-gray-400 whitespace-nowrap">
+                          {new Date(history.timestamp).toLocaleString('en-ZA', {
+                            day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
+                      {history.comments && (
+                        <p className="text-xs text-gray-500 line-clamp-2" title={history.comments}>{history.comments}</p>
                       )}
-                      {isProcurement && !sourcing.sealed && (lines || winner) && (
-                        <Link
-                          to={lines ? `/app/rfqs/${requisition.rfq._id}/award` : `/app/quotations/${winner.quotationId}`}
-                          className="inline-block text-xs font-medium text-primary hover:underline"
-                        >
-                          {lines ? 'Open award matrix' : 'View selected quotation'}
-                        </Link>
-                      )}
-                    </div>
+                    </li>
                   );
-                })()}
-              </div>
-            </div>
+                })}
+              </ol>
+            </section>
           )}
         </div>
       </div>

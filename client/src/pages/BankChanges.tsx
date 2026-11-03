@@ -3,7 +3,6 @@ import { procurementAPI } from '../services/procurement.service';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
 import FilterSelect from '../components/FilterSelect';
-import { WorkflowStepper, type WorkflowStep } from '../components/WorkflowStepper';
 import { Loader2, ShieldCheck, ShieldX, Phone, AlertTriangle, Landmark } from 'lucide-react';
 
 /**
@@ -15,35 +14,6 @@ import { Loader2, ShieldCheck, ShieldX, Phone, AlertTriangle, Landmark } from 'l
  * approves. That sequence is the control against payment-redirection fraud.
  */
 const personName = (p: any) => (p ? `${p.firstName || ''} ${p.lastName || ''}`.trim() : undefined);
-
-/** Requested, verified by callback, approved by a second person, applied. */
-function bankChangeSteps(request: any): WorkflowStep[] {
-  const stopped = request.status === 'rejected' || request.status === 'cancelled';
-  const approved = request.status === 'approved';
-  const raw: Array<{ key: string; label: string; done: boolean; detail?: string }> = [
-    { key: 'requested', label: 'Requested', done: true, detail: personName(request.requestedBy) },
-    {
-      key: 'callback',
-      label: 'Callback verified',
-      done: Boolean(request.callback?.verifiedAt) || approved,
-      detail: personName(request.callback?.verifiedBy)
-    },
-    { key: 'approval', label: 'Second approval', done: approved, detail: personName(request.approvedBy) },
-    {
-      key: 'applied',
-      label: 'Applied, payments resume',
-      done: approved,
-      detail: request.appliedAt ? new Date(request.appliedAt).toLocaleDateString('en-ZA') : undefined
-    }
-  ];
-  const current = raw.findIndex((s) => !s.done);
-  return raw.map((s, i) => ({
-    key: s.key,
-    label: s.label,
-    detail: i === current && stopped ? (request.status === 'rejected' ? 'Rejected' : 'Cancelled') : s.detail,
-    state: i === current ? (stopped ? 'stopped' : 'current') : s.done ? 'done' : 'upcoming'
-  }));
-}
 
 export default function BankChanges() {
   const { showToast } = useToast();
@@ -214,8 +184,6 @@ export default function BankChanges() {
                     </span>
                   )}
                 </div>
-
-                <WorkflowStepper compact steps={bankChangeSteps(request)} />
 
                 <div className="overflow-x-auto mb-4">
                   <table className="w-full text-sm border-collapse">

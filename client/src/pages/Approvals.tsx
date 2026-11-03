@@ -8,8 +8,6 @@ import {
   DollarSign, FileText, AlertTriangle, Package, ShoppingCart
 } from 'lucide-react';
 import Modal, { ModalFooter } from '../components/Modal';
-import { WorkflowStepper } from '../components/WorkflowStepper';
-import { purchaseOrderSteps } from '../lib/purchaseOrderSteps';
 import { formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
 import Pagination from '../components/Pagination';
@@ -361,8 +359,6 @@ export default function Approvals() {
       >
         {selectedItem && (
           <div className="space-y-6">
-            <WorkflowStepper compact steps={purchaseOrderSteps(selectedItem)} />
-
             {/* PO Details */}
             <div className="grid grid-cols-2 gap-4">
               <div>

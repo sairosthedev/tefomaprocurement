@@ -16,37 +16,12 @@ import TableSkeleton from '../components/TableSkeleton';
 import { formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
+import {
+  journeyStatus,
+  REQUISITION_STATUS_COLORS as statusColors,
+  REQUISITION_STATUS_LABELS as statusLabels
+} from '../lib/requisitionJourney';
 import { isProcurementHead } from '@fossil/shared';
-
-const statusColors: any = {
-  draft: 'bg-gray-100 text-gray-700',
-  pending_hod: 'bg-amber-100 text-amber-700',
-  stores_review: 'bg-cyan-100 text-cyan-700',
-  fulfilled: 'bg-emerald-100 text-emerald-700',
-  pending_acceptance: 'bg-amber-100 text-amber-700',
-  accepted: 'bg-green-100 text-green-700',
-  rejected: 'bg-red-100 text-red-700',
-  sourcing: 'bg-blue-100 text-blue-700',
-  quoted: 'bg-indigo-100 text-indigo-700',
-  ordered: 'bg-purple-100 text-purple-700',
-  completed: 'bg-emerald-100 text-emerald-700',
-  cancelled: 'bg-gray-100 text-gray-500'
-};
-
-const statusLabels: any = {
-  draft: 'Draft',
-  pending_hod: 'Pending HOD Approval',
-  stores_review: 'Stores Review',
-  fulfilled: 'Fulfilled from Stock',
-  pending_acceptance: 'Pending Acceptance',
-  accepted: 'Accepted',
-  rejected: 'Rejected',
-  sourcing: 'Sourcing',
-  quoted: 'Quoted',
-  ordered: 'Ordered',
-  completed: 'Completed',
-  cancelled: 'Cancelled'
-};
 
 const priorityColors: any = {
   low: 'bg-gray-100 text-gray-600',
@@ -54,42 +29,6 @@ const priorityColors: any = {
   high: 'bg-orange-100 text-orange-600',
   urgent: 'bg-red-100 text-red-600'
 };
-
-// Where a requisition has got to, across the whole journey — requisition,
-// purchase order, delivery — as one label. The list shows only this; the PO
-// number, supplier and approval trail are on the requisition's own page.
-const PO_STAGE: Record<string, { label: string; className: string }> = {
-  draft: { label: 'PO drafted', className: 'bg-gray-100 text-gray-700' },
-  pending_hod: { label: 'PO with Dept Head', className: 'bg-amber-100 text-amber-700' },
-  pending_dept_hod: { label: 'PO with Dept Head', className: 'bg-amber-100 text-amber-700' },
-  pending_proc_hod: { label: 'PO with Head of Procurement', className: 'bg-amber-100 text-amber-700' },
-  pending_finance: { label: 'PO with Finance', className: 'bg-amber-100 text-amber-700' },
-  pending_coo: { label: 'PO with COO', className: 'bg-amber-100 text-amber-700' },
-  pending_approvals: { label: 'PO awaiting approval', className: 'bg-amber-100 text-amber-700' },
-  approved: { label: 'PO approved', className: 'bg-green-100 text-green-700' },
-  issued: { label: 'Ordered from supplier', className: 'bg-blue-100 text-blue-700' },
-  partially_received: { label: 'Partly delivered', className: 'bg-teal-100 text-teal-700' },
-  completed: { label: 'Delivered', className: 'bg-emerald-100 text-emerald-700' },
-  rejected: { label: 'PO rejected', className: 'bg-red-100 text-red-700' },
-  cancelled: { label: 'PO cancelled', className: 'bg-gray-100 text-gray-500' }
-};
-
-function journeyStatus(req: any): { label: string; className: string; hint?: string } {
-  const po = req.purchaseOrder;
-  const hint = po
-    ? [po.poNumber, po.supplier?.companyName].filter(Boolean).join(' · ')
-    : req.rfq?.rfqNumber;
-
-  if (req.itemsCollected) return { label: 'Collected', className: 'bg-emerald-100 text-emerald-700', hint };
-  if (req.itemsDeliveredToStores) return { label: 'Delivered to Stores', className: 'bg-green-100 text-green-700', hint };
-  if (po && PO_STAGE[po.status]) return { ...PO_STAGE[po.status], hint };
-  if (req.status === 'ordered') return { label: 'Awaiting PO', className: 'bg-amber-100 text-amber-700', hint };
-  return {
-    label: statusLabels[req.status] || req.status,
-    className: statusColors[req.status] || statusColors.draft,
-    hint
-  };
-}
 
 export default function Requisitions() {
   const { user } = useAuth();

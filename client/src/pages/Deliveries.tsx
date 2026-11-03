@@ -12,7 +12,6 @@ import { formatCurrency } from '../lib/constants';
 import Pagination from '../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 import { FormSteps, FormStepNav } from '../components/FormSteps';
-import { WorkflowStepper, NextStepCard, type WorkflowStep } from '../components/WorkflowStepper';
 
 const statusColors: any = {
   pending: 'bg-yellow-100 text-yellow-700',
@@ -33,45 +32,6 @@ const RECEIVE_STEPS = [
 const INSPECTED_STATUSES = ['inspected', 'accepted', 'partially_accepted', 'rejected'];
 
 /** A delivery from the supplier's notice to goods in stock. */
-function deliverySteps(delivery: any): WorkflowStep[] {
-  const status = delivery.status;
-  const received = status !== 'pending';
-  const inspected = INSPECTED_STATUSES.includes(status) || Boolean(delivery.inspectedAt);
-  const stocked = ['accepted', 'partially_accepted'].includes(status);
-  const raw = [
-    { key: 'po', label: 'Purchase order', done: true, detail: delivery.purchaseOrder?.poNumber },
-    {
-      key: 'received',
-      label: 'Goods received',
-      done: received,
-      detail: received
-        ? delivery.grvNumber
-        : delivery.expectedDeliveryDate
-          ? `Expected ${new Date(delivery.expectedDeliveryDate).toLocaleDateString('en-ZA')}`
-          : 'Awaiting delivery'
-    },
-    {
-      key: 'inspected',
-      label: 'Inspected',
-      done: inspected,
-      detail: delivery.inspectedByName || (delivery.inspectedBy ? `${delivery.inspectedBy.firstName} ${delivery.inspectedBy.lastName}` : undefined)
-    },
-    {
-      key: 'stock',
-      label: 'In stock',
-      done: stocked,
-      detail: status === 'partially_accepted' ? 'Partly accepted' : undefined
-    }
-  ];
-  const current = raw.findIndex((s) => !s.done);
-  return raw.map((s, i) => ({
-    key: s.key,
-    label: s.label,
-    detail: i === current && status === 'rejected' ? 'Rejected' : s.detail,
-    state: s.done ? 'done' : i === current ? (status === 'rejected' ? 'stopped' : 'current') : 'upcoming'
-  }));
-}
-
 const formatStatus = (status: any) => {
   return status?.replace('_', ' ').charAt(0).toUpperCase() + status?.replace('_', ' ').slice(1);
 };
@@ -879,51 +839,6 @@ export default function Deliveries() {
       >
         {selectedDelivery && (
           <div className="space-y-6">
-            <div>
-              <WorkflowStepper compact steps={deliverySteps(selectedDelivery)} />
-              {(() => {
-                const status = selectedDelivery.status;
-                if (status === 'pending') {
-                  const po = pendingPOs.find(
-                    (p: any) => String(p._id) === String(selectedDelivery.purchaseOrder?._id || selectedDelivery.purchaseOrder)
-                  );
-                  return (
-                    <NextStepCard
-                      title="Receive the goods when they arrive"
-                      description="Count them against the delivery note and record the GRV."
-                      action={
-                        po
-                          ? { label: 'Receive goods', onClick: () => { setShowViewModal(false); openReceiveModal(po); } }
-                          : undefined
-                      }
-                    />
-                  );
-                }
-                if (canAcceptDelivery(selectedDelivery)) {
-                  return (
-                    <NextStepCard
-                      title="Accept the goods into stock"
-                      description="Record the inspection decision at the bottom of this GRV."
-                    />
-                  );
-                }
-                if (canPrintGrv(selectedDelivery) && status !== 'rejected') {
-                  return (
-                    <NextStepCard
-                      title="Print the GRV for signature"
-                      description="The driver, receiving officer and inspector sign the printed copy."
-                      action={{
-                        label: printingId === selectedDelivery._id ? 'Opening...' : 'Print GRV',
-                        onClick: () => handlePrintGrv(selectedDelivery),
-                        disabled: printingId === selectedDelivery._id
-                      }}
-                    />
-                  );
-                }
-                return null;
-              })()}
-            </div>
-
             {selectedDelivery.status === 'pending' && (
               <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-200">
                 <div className="flex items-start gap-3">

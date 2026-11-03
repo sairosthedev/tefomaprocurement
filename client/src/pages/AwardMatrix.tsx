@@ -5,7 +5,6 @@ import { useAuth } from '../context/AuthContext';
 import { isProcurementHead } from '@fossil/shared';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
-import { WorkflowStepper, NextStepCard, type WorkflowStep } from '../components/WorkflowStepper';
 import { formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
 import { Loader2, CheckCircle, Circle, ShieldCheck, DollarSign, Package, RefreshCw, Send, Sparkles, AlertTriangle } from 'lucide-react';
@@ -136,36 +135,8 @@ export default function AwardMatrix() {
   const awardedLines = lines.filter((l) => l.status === 'awarded');
   const authorizedLines = awardedLines.filter((l) => l.fullyAuthorized || l.pmAuthorization?.by);
   const poLines = awardedLines.filter((l) => l.poGenerated);
-  const steps: WorkflowStep[] = (() => {
-    const raw = [
-      { key: 'rfq', label: 'Bids in', done: true, detail: `${quotedLines.length}/${lines.length} lines quoted`, to: canSelect ? `/app/rfqs/${id}` : undefined },
-      { key: 'awarded', label: 'Lines awarded', done: quotedLines.length > 0 && awardedLines.length === quotedLines.length, detail: `${awardedLines.length}/${quotedLines.length}` },
-      { key: 'authorized', label: 'Authorized', done: awardedLines.length > 0 && authorizedLines.length === awardedLines.length, detail: awardedLines.length ? `${authorizedLines.length}/${awardedLines.length}` : undefined },
-      { key: 'pos', label: 'POs generated', done: awardedLines.length > 0 && poLines.length === awardedLines.length, detail: awardedLines.length ? `${poLines.length}/${awardedLines.length}` : undefined }
-    ];
-    const current = raw.findIndex((s) => !s.done);
-    return raw.map((s, i) => ({ ...s, state: s.done ? 'done' : i === current ? 'current' : 'upcoming' }));
-  })();
   const pendingAuth = awardedLines.length - authorizedLines.length;
   const unawarded = quotedLines.length - awardedLines.length;
-  const allOrdered = awardedLines.length > 0 && poLines.length === awardedLines.length;
-  // The viewer's own step first, then what they are waiting on.
-  const next: { title: string; description?: string; waiting?: boolean; done?: boolean; action?: any } | null =
-    pendingAuth > 0 && canAuthorize
-      ? { title: `Authorize ${pendingAuth} awarded line${pendingAuth === 1 ? '' : 's'}`, description: 'Use Authorize on each line below.' }
-      : unawarded > 0 && canSelect
-      ? { title: 'Award each line', description: "Click a supplier's price on a line to award it to them, with a justification." }
-      : anyAwarded && canSelect
-      ? { title: 'Generate the purchase orders', description: 'One per supplier, for the authorized lines.', action: { label: busy ? 'Generating...' : 'Generate POs', onClick: generatePOs, disabled: busy } }
-      : pendingAuth > 0
-      ? { title: 'Head of Procurement authorization', description: `${pendingAuth} line(s) waiting.`, waiting: true }
-      : unawarded > 0
-      ? { title: 'Procurement to award the lines', waiting: true }
-      : anyAwarded
-      ? { title: 'Procurement to generate the purchase orders', waiting: true }
-      : allOrdered
-      ? { title: 'Purchase orders generated', done: true, description: 'Each one is submitted for approval from its own page.', action: canSelect ? { label: 'View purchase orders', to: '/app/purchase-orders' } : undefined }
-      : null;
 
   return (
     <div className="p-8">
@@ -176,9 +147,6 @@ export default function AwardMatrix() {
         title="Split Award — line by line"
         subtitle="Award each line to the best supplier, authorize, then generate a PO per supplier."
       />
-
-      <WorkflowStepper steps={steps} />
-      {next && <NextStepCard title={next.title} description={next.description} waiting={next.waiting} done={next.done} action={next.action} />}
 
       <div className="flex items-start gap-2 mb-4 p-3 bg-amber-50 border border-amber-100 rounded-xl text-sm text-amber-800">
         <Sparkles className="h-4 w-4 mt-0.5 shrink-0" />
