@@ -10,8 +10,6 @@ import PageHeader from '../components/PageHeader';
 import CancelWorkflowModal from '../components/CancelWorkflowModal';
 import EquipmentDetailsView from '../components/EquipmentDetailsView';
 import { canCancelRequisition, requisitionCancelApiBase } from '../lib/cancellationAccess';
-import { WorkflowStepper, NextStepCard } from '../components/WorkflowStepper';
-import { requisitionJourney } from '../lib/procurementJourney';
 import { CreateRFQDrawer } from '../components/RFQForm';
 import { 
   FileText,
@@ -370,42 +368,6 @@ export default function RequisitionDetail() {
         onClose={() => setCreatingRfq(false)}
         onSaved={handleRfqCreated}
       />
-
-      {(() => {
-        const { steps, next } = requisitionJourney(requisition, {
-          isOwner,
-          isDepartment,
-          isProcurement,
-          isProcurementHead: procHead,
-          isStores: user?.role === 'stores_officer'
-        });
-        const key = next?.action?.key;
-        return (
-          <>
-            <WorkflowStepper steps={steps} />
-            {/* A plain "Waiting on" note repeats what the stepper already shows; keep the card only when it has a button. */}
-            {next && (!next.waiting || next.action) && (
-              <NextStepCard
-                title={next.title}
-                description={next.description}
-                waiting={next.waiting}
-                action={
-                  next.action && {
-                    label: key === 'accept' && accepting ? 'Accepting...' : next.action.label,
-                    to: next.action.to,
-                    onClick:
-                      key === 'submit' ? handleSubmit
-                        : key === 'accept' ? handleAccept
-                        : key === 'createRfq' ? () => setCreatingRfq(true)
-                        : undefined,
-                    disabled: key === 'submit' ? submitting : key === 'accept' ? accepting : undefined
-                  }
-                }
-              />
-            )}
-          </>
-        );
-      })()}
 
       {requisition.status === 'cancelled' && requisition.cancellationReason && (
         <div className="mb-6 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-800">
