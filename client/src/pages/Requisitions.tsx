@@ -64,7 +64,6 @@ export default function Requisitions() {
   const createFormRef = useRef<RequisitionFormHandle>(null);
   // The accepted requisition the RFQ drawer is open on, if any.
   const [rfqFor, setRfqFor] = useState<string | null>(null);
-  const [viewFilter, setViewFilter] = useState<'all' | 'mine' | 'team'>('all');
 
   // The Head of Procurement works the procurement list. It also carries their
   // own department's requisitions at every stage (the API adds them), and on
@@ -84,11 +83,34 @@ export default function Requisitions() {
   // Department-side actions: everyone outside procurement, plus the Head of
   // Procurement on their own department's requisitions.
   const actsAsDepartment = (req: any) => !isProcurement || isOwnDept(req);
+  // A department head has two lists, from the menu: their team's, to approve
+  // (?view=team, the default), and their own (?view=mine).
+  const headView = isDeptHead && !isProcurement;
+  const viewFilter: 'all' | 'mine' | 'team' = headView
+    ? searchParams.get('view') === 'mine' ? 'mine' : 'team'
+    : 'all';
   const canCreate = !isProcurement || procHead;
-  // A department head's list mixes their own requisitions with their team's,
-  // so say whose each one is.
-  const showRequester = isProcurement || isDeptHead;
+  // Say whose each requisition is wherever the list is not just the user's own.
+  const showRequester = isProcurement || viewFilter === 'team';
   const createOpen = canCreate && searchParams.get('new') === '1';
+
+  // A head always lands on one of their two lists, so the menu shows which.
+  // Raising a requisition belongs with their own.
+  useEffect(() => {
+    if (!headView || searchParams.get('view')) return;
+    setSearchParams(
+      (params) => {
+        params.set('view', params.get('new') === '1' ? 'mine' : 'team');
+        return params;
+      },
+      { replace: true }
+    );
+  }, [headView, searchParams]);
+
+  // Switching list starts from the filter the link asks for, if any.
+  useEffect(() => {
+    setStatusFilter(searchParams.get('status') || '');
+  }, [viewFilter]);
 
   const openCreate = () => {
     setSearchParams((params) => {
@@ -254,13 +276,15 @@ export default function Requisitions() {
   return (
     <div className="p-8">
       <PageHeader
-        title={isProcurement ? 'Purchase Requisitions' : isDeptHead ? 'Department Requisitions' : 'My Requisitions'}
+        title={isProcurement ? 'Purchase Requisitions' : viewFilter === 'team' ? 'Team Requisitions' : 'My Requisitions'}
         subtitle={
           isProcurement
             ? 'Accept or reject requisitions from departments'
-            : isDeptHead
-              ? 'Requisitions you raised, and the ones your team raised for your approval'
-              : 'Track your purchase requests'
+            : viewFilter === 'team'
+              ? 'Raised by your team, for your approval'
+              : headView
+                ? 'Requisitions you raised'
+                : 'Track your purchase requests'
         }
         bottomSpacing="mb-4"
       />
@@ -268,7 +292,7 @@ export default function Requisitions() {
       {/* Filters */}
       <div className="mb-4">
         <div className="flex flex-col md:flex-row md:items-center gap-4">
-          {canCreate && (
+          {canCreate && viewFilter !== 'team' && (
             <button
               onClick={openCreate}
               className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors whitespace-nowrap shrink-0"
@@ -289,20 +313,6 @@ export default function Requisitions() {
                 className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
-            {/* HOD view: their own requisitions, their team's, or both */}
-            {isDeptHead && !isProcurement && (
-              <FilterSelect
-                label="Show"
-                size="sm"
-                options={[
-                  { value: '', label: 'All' },
-                  { value: 'mine', label: 'Raised by me' },
-                  { value: 'team', label: 'Raised by my team' }
-                ]}
-                value={viewFilter === 'all' ? '' : viewFilter}
-                onChange={(v) => setViewFilter((v || 'all') as 'all' | 'mine' | 'team')}
-              />
-            )}
             <FilterSelect
               label="Status"
               size="sm"
@@ -424,8 +434,8 @@ export default function Requisitions() {
                           </>
                         )}
 
-                        {/* HOD Approval Gate */}
-                        {isDeptHead && actsAsDepartment(req) && req.status === 'pending_hod' && (
+                        {/* HOD approval gate. Not on their own: a head cannot approve what they raised (the API refuses). */}
+                        {isDeptHead && actsAsDepartment(req) && req.status === 'pending_hod' && !isOwner(req) && (
                           <>
                             <button
                               onClick={() => openActionModal(req, 'approve')}

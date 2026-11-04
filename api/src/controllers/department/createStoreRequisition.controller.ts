@@ -20,42 +20,44 @@ const createStoreRequisition = async (req: Request, res: Response): Promise<any>
       });
     }
 
-    // Collecting an IR's delivered goods: link the two, so each shows the other.
-    let linkedRequisition: any = null;
-    if (purchaseRequisitionId) {
-      linkedRequisition = await PurchaseRequisition.findOne({ _id: purchaseRequisitionId, isDeleted: false })
-        .select('requisitionNumber department')
-        .lean();
-      if (!linkedRequisition) {
-        return res.status(404).json({ success: false, message: 'Requisition not found' });
-      }
-      if (!(await canActOnDepartment(req.user, linkedRequisition.department))) {
-        return res.status(403).json({
-          success: false,
-          message: 'You can only collect goods for your own department'
-        });
-      }
-      const open = await StoreRequisition.findOne({
-        purchaseRequisition: linkedRequisition._id,
-        status: { $in: OPEN_STATUSES },
-        isDeleted: false
-      })
-        .select('requisitionNumber')
-        .lean();
-      if (open) {
-        return res.status(409).json({
-          success: false,
-          message: `${open.requisitionNumber} is already with stores for ${linkedRequisition.requisitionNumber}`
-        });
-      }
+    // Store requisitions only collect an IR's delivered goods. Anything else
+    // from stores is asked for with an IR, which stores issue from stock or
+    // pass to procurement.
+    if (!purchaseRequisitionId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Raise a requisition instead. Stores issue it from stock, or pass it to procurement.'
+      });
     }
 
-    // Purpose is optional for store requisitions, use default if not provided
-    const requisitionPurpose =
-      purpose ||
-      (linkedRequisition
-        ? `Collect delivered items for ${linkedRequisition.requisitionNumber}`
-        : 'Stock request from department');
+    // Link the two, so each shows the other.
+    const linkedRequisition: any = await PurchaseRequisition.findOne({ _id: purchaseRequisitionId, isDeleted: false })
+      .select('requisitionNumber department')
+      .lean();
+    if (!linkedRequisition) {
+      return res.status(404).json({ success: false, message: 'Requisition not found' });
+    }
+    if (!(await canActOnDepartment(req.user, linkedRequisition.department))) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only collect goods for your own department'
+      });
+    }
+    const open = await StoreRequisition.findOne({
+      purchaseRequisition: linkedRequisition._id,
+      status: { $in: OPEN_STATUSES },
+      isDeleted: false
+    })
+      .select('requisitionNumber')
+      .lean();
+    if (open) {
+      return res.status(409).json({
+        success: false,
+        message: `${open.requisitionNumber} is already with stores for ${linkedRequisition.requisitionNumber}`
+      });
+    }
+
+    const requisitionPurpose = purpose || `Collect delivered items for ${linkedRequisition.requisitionNumber}`;
 
     // Process items - find or create Item records
     const processedItems: any[] = [];

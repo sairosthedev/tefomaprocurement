@@ -1,21 +1,18 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
-import api, { storesAPI, departmentAPI } from '../lib/api';
+import { storesAPI, departmentAPI } from '../lib/api';
 import { 
-  Plus, Search, Package, CheckCircle, XCircle, 
+  Search, Package, CheckCircle, XCircle, 
   Loader2, Clock, Truck, AlertCircle
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import ViewButton from '../components/ViewButton';
 import Modal, { ModalFooter } from '../components/Modal';
-import Drawer from '../components/Drawer';
 import TableSkeleton from '../components/TableSkeleton';
 import Pagination from '../components/Pagination';
-import { ItemSelect } from '../components/ItemSelect';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
-import { FormSteps, FormStepNav } from '../components/FormSteps';
 import { useDebouncedValue } from '../lib/useDebouncedValue';
 
 const statusColors: any = {
@@ -27,14 +24,6 @@ const statusColors: any = {
   'out-of-stock': 'bg-gray-100 text-gray-700'
 };
 
-const CREATE_STEPS = [
-  { label: 'Items', description: 'What you need from stores' },
-  { label: 'Review & submit', description: 'Check, then send to stores' }
-];
-
-const emptyItem = () => ({ itemId: '', itemCode: '', description: '', quantity: 1, catalogItem: null });
-
-
 export default function StoreRequisitions() {
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -45,7 +34,6 @@ export default function StoreRequisitions() {
   const [searchTermInput, setSearchTerm] = useState<any>(() => searchParams.get('search') || '');
   // The box shows what's typed; the list is fetched once typing pauses.
   const searchTerm = useDebouncedValue(searchTermInput);
-  const [showCreateModal, setShowCreateModal] = useState<any>(false);
   const [showViewModal, setShowViewModal] = useState<any>(false);
   const [showApproveModal, setShowApproveModal] = useState<any>(false);
   const [showRejectModal, setShowRejectModal] = useState<any>(false);
@@ -60,10 +48,6 @@ export default function StoreRequisitions() {
   const [selectedRequisition, setSelectedRequisition] = useState<any>(null);
   const [actionComment, setActionComment] = useState<any>('');
   const [actionLoading, setActionLoading] = useState<any>(false);
-  const [formData, setFormData] = useState<any>({ items: [emptyItem()] });
-  const [createStep, setCreateStep] = useState(0);
-  const [creating, setCreating] = useState(false);
-  const createTopRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
@@ -94,62 +78,6 @@ export default function StoreRequisitions() {
       showToast('Failed to fetch store requisitions', 'error');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const openCreateModal = () => {
-    setFormData({ items: [emptyItem()] });
-    setCreateStep(0);
-    setShowCreateModal(true);
-  };
-
-  const goToCreateStep = (step: number) => {
-    setCreateStep(step);
-    createTopRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
-  };
-
-  const nextCreateStep = () => {
-    if (!formData.items.some((item: any) => item.description.trim())) {
-      showToast('Please add at least one item', 'error');
-      return;
-    }
-    goToCreateStep(createStep + 1);
-  };
-
-  const handleCreate = async () => {
-    try {
-      const validItems = formData.items.filter((item: any) => item.description.trim());
-      if (validItems.length === 0) {
-        showToast('Please add at least one item', 'error');
-        goToCreateStep(0);
-        return;
-      }
-
-      setCreating(true);
-      // Send only what the API expects. catalogItem is view state — the link is
-      // carried by itemId, which lets the server use the picked item directly
-      // instead of re-matching it by name.
-      const res = await api.post('/department/store-requisitions', {
-        items: validItems.map((item: any) => ({
-          itemId: item.itemId || undefined,
-          itemCode: item.itemCode || undefined,
-          description: item.description,
-          quantity: item.quantity
-        }))
-      });
-      showToast('Store requisition submitted', 'success');
-      setShowCreateModal(false);
-      setFormData({ items: [emptyItem()] });
-      fetchRequisitions();
-      // Show the new request with where it goes next, rather than only the list.
-      if (res.data?.data?._id) {
-        setSelectedRequisition(res.data.data);
-        setShowViewModal(true);
-      }
-    } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to create requisition', 'error');
-    } finally {
-      setCreating(false);
     }
   };
 
@@ -272,25 +200,14 @@ export default function StoreRequisitions() {
     }
   };
 
-  const addItem = () => {
-    setFormData({
-      ...formData,
-      items: [...formData.items, emptyItem()]
-    });
-  };
-
-  const updateItem = (index: any, field: any, value: any) => {
-    const newItems = [...formData.items];
-    newItems[index][field] = value;
-    setFormData({ ...formData, items: newItems });
-  };
-
   return (
     <div className="p-8">
       <PageHeader
         title="Store Requisitions"
         subtitle={
-          isStoresOfficer ? 'Process department stock requests' : 'Request items from stores'
+          isStoresOfficer
+            ? 'Hand delivered goods over to the departments that ordered them'
+            : 'Collections of delivered goods, raised from your requisitions'
         }
         bottomSpacing="mb-4"
       />
@@ -298,17 +215,6 @@ export default function StoreRequisitions() {
       {/* Toolbar */}
       <div className="mb-4">
         <div className="flex flex-col md:flex-row md:items-center gap-4">
-          {!isStoresOfficer && (
-            <button
-              type="button"
-              onClick={openCreateModal}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors whitespace-nowrap shrink-0"
-            >
-              <Plus className="h-4 w-4" />
-              Request from Store
-            </button>
-          )}
-          {/* Pushed to the right edge, with or without the button beside it. */}
           <div className="relative w-full sm:w-52 md:ml-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
@@ -444,148 +350,6 @@ export default function StoreRequisitions() {
             itemLabel="requisitions"
           />}
       </div>
-
-      {/* Create drawer */}
-      <Drawer
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        title="Request from Store"
-        size="lg"
-      >
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            // Enter on the items step moves to the review rather than submitting.
-            if (createStep < CREATE_STEPS.length - 1) nextCreateStep();
-            else handleCreate();
-          }}
-        >
-        <div ref={createTopRef} className="scroll-mt-4" />
-        <FormSteps steps={CREATE_STEPS} current={createStep} onSelect={goToCreateStep} variant="track" />
-        {createStep === 0 && (
-        <div className="space-y-4">
-          {formData.items.map((item: any, index: any) => (
-            <div key={index} className="bg-gray-50 rounded-xl p-4">
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-2">
-                  <label className="block text-xs text-gray-500 mb-1">Item</label>
-                  {/* Picked from the stock catalogue so the line points at a real
-                      inventory item. Free text still works for something not yet
-                      carried, but then stores cannot match it against stock. */}
-                  <ItemSelect
-                    value={item.catalogItem || null}
-                    freeTextValue={item.description}
-                    onChange={(catalogItem) => {
-                      const newItems = [...formData.items];
-                      newItems[index] = {
-                        ...newItems[index],
-                        catalogItem,
-                        itemId: catalogItem?._id || '',
-                        itemCode: catalogItem?.code || '',
-                        description: catalogItem?.name || newItems[index].description
-                      };
-                      setFormData({ ...formData, items: newItems });
-                    }}
-                    onFreeText={(text) => {
-                      const newItems = [...formData.items];
-                      newItems[index] = {
-                        ...newItems[index],
-                        catalogItem: null,
-                        itemId: '',
-                        itemCode: '',
-                        description: text
-                      };
-                      setFormData({ ...formData, items: newItems });
-                    }}
-                    placeholder="Search stock catalog or type description…"
-                    className="w-full"
-                  />
-                  {item.catalogItem ? (
-                    <p className="text-xs text-emerald-600 mt-1">
-                      Linked to catalog · {item.catalogItem.quantityAvailable} available at your site
-                    </p>
-                  ) : (
-                    item.description?.trim() && (
-                      <p className="text-xs text-amber-600 mt-1">
-                        Not linked to a catalog item — stores will have to match this by hand.
-                      </p>
-                    )
-                  )}
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Quantity</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={item.quantity}
-                    onChange={(e: any) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
-
-          <button
-            type="button"
-            onClick={addItem}
-            className="w-full py-2 text-sm text-primary font-medium hover:bg-primary/5 rounded-lg"
-          >
-            + Add Another Item
-          </button>
-        </div>
-        )}
-
-        {createStep === 1 && (
-          <div className="space-y-3">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr>
-                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Item</th>
-                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Quantity</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {formData.items
-                    .filter((item: any) => item.description.trim())
-                    .map((item: any, index: number) => (
-                      <tr key={index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
-                        <td className="py-2 px-3 border-b border-gray-100">
-                          {item.description}
-                          {item.catalogItem ? (
-                            <span className="block text-xs text-emerald-600">
-                              {item.catalogItem.code ? `${item.catalogItem.code} · ` : ''}
-                              {item.catalogItem.quantityAvailable} available
-                            </span>
-                          ) : (
-                            <span className="block text-xs text-amber-600">Not linked to the catalog</span>
-                          )}
-                        </td>
-                        <td className="py-2 px-3 border-b border-gray-100">{item.quantity}</td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
-            <p className="text-xs text-gray-500">
-              Stores approve the request, then issue the items to whoever collects them.
-            </p>
-          </div>
-        )}
-
-        <FormStepNav
-          current={createStep}
-          total={CREATE_STEPS.length}
-          onBack={() => goToCreateStep(createStep - 1)}
-          onNext={nextCreateStep}
-          onCancel={() => setShowCreateModal(false)}
-          finishLabel={creating ? 'Submitting...' : 'Submit Request'}
-          submitting={creating}
-          size="sm"
-        />
-        </form>
-      </Drawer>
 
       {/* View Modal */}
       <Modal

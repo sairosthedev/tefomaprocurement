@@ -464,11 +464,16 @@ async function buildRoleStats(
     }
 
     case 'department_head': {
-      const [reqs, pendingPoApprovals] = await Promise.all([
+      const [reqs, pendingPoApprovals, pendingHodApproval] = await Promise.all([
         requisitionStatusCounts(deptRequisitionMatch(user)),
-        countDeptPendingPoApprovals(user)
+        countDeptPendingPoApprovals(user),
+        // A head cannot approve their own requisitions, so those are not theirs to act on.
+        PurchaseRequisition.countDocuments({
+          ...deptRequisitionMatch(user),
+          status: 'pending_hod',
+          requestedBy: { $ne: new mongoose.Types.ObjectId(String(user._id)) }
+        })
       ]);
-      const pendingHodApproval = reqs.of('pending_hod');
       const rejectedRequisitions = reqs.of('rejected');
 
       return {
@@ -488,9 +493,9 @@ async function buildRoleStats(
           pendingApproval: { value: pendingHodApproval, label: 'Awaiting My Approval' }
         },
         attentionItems: needsAttention([
-          { id: 'pending-hod', label: 'Requisitions awaiting your approval', count: pendingHodApproval, href: '/app/approvals', severity: 'high' },
+          { id: 'pending-hod', label: 'Requisitions awaiting your approval', count: pendingHodApproval, href: '/app/requisitions?view=team&status=pending_hod', severity: 'high' },
           { id: 'pending-po-hod', label: 'Purchase orders awaiting your approval', count: pendingPoApprovals, href: '/app/approvals', severity: 'medium' },
-          { id: 'rejected-reqs', label: 'Rejected requisitions in your department', count: rejectedRequisitions, href: '/app/requisitions?status=rejected', severity: 'medium' }
+          { id: 'rejected-reqs', label: 'Rejected requisitions in your department', count: rejectedRequisitions, href: '/app/requisitions?view=team&status=rejected', severity: 'medium' }
         ])
       };
     }

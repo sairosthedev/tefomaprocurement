@@ -9,7 +9,6 @@ import {
 } from '../../models/index.js';
 import { isProcurementHead } from '@fossil/shared';
 import { listPendingAuthorizations } from '../../services/pendingAuthorization.service.js';
-import { buildDepartmentFilter } from '../../lib/departmentScope.js';
 
 /**
  * Counts of work waiting on the signed-in user, for the sidebar badges.
@@ -103,6 +102,8 @@ async function countRequisitionsAwaitingHod(user: any): Promise<number> {
   return PurchaseRequisition.countDocuments({
     department: deptId,
     status: 'pending_hod',
+    // A head cannot approve their own; those wait on someone else.
+    requestedBy: { $ne: user._id },
     isDeleted: false
   });
 }
@@ -137,8 +138,9 @@ const getActionCounts = async (req: Request, res: Response): Promise<any> => {
         : accepting;
     } else if (role === 'department_head') {
       // For an HOD the actionable number is what awaits their approval, not
-      // every requisition their department has ever raised.
-      pending['/app/requisitions'] = countRequisitionsAwaitingHod(user);
+      // every requisition their department has ever raised. It belongs on the
+      // team's list, where those are.
+      pending['/app/requisitions?view=team'] = countRequisitionsAwaitingHod(user);
     }
 
     // ── Stores ──
@@ -160,17 +162,6 @@ const getActionCounts = async (req: Request, res: Response): Promise<any> => {
         status: 'pending',
         isDeleted: false
       }).exec();
-    }
-
-    if (role === 'department_head') {
-      // Mirrors department/getStoreRequisitions: only their own department's.
-      pending['/app/store-requisitions'] = buildDepartmentFilter(user).then((deptFilter) =>
-        StoreRequisition.countDocuments({
-          ...deptFilter,
-          status: 'pending',
-          isDeleted: false
-        }).exec()
-      );
     }
 
     // ── Sourcing ──

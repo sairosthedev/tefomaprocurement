@@ -133,10 +133,10 @@ export default function Dashboard() {
         { label: 'Stock Alerts', icon: AlertCircle, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/inventory' }
       ],
       department_head: [
-        { label: 'Requisitions to Approve', icon: Clock, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/requisitions?status=pending_hod' },
+        { label: 'Requisitions to Approve', icon: Clock, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/requisitions?view=team&status=pending_hod' },
         { label: 'PO Approvals', icon: ShoppingCart, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/approvals' },
-        { label: 'Create Requisition', icon: FileText, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/requisitions?new=1' },
-        { label: 'Department Requisitions', icon: FileSearch, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/requisitions' },
+        { label: 'Create Requisition', icon: FileText, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/requisitions?view=mine&new=1' },
+        { label: 'My Requisitions', icon: FileSearch, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/requisitions?view=mine' },
         { label: 'View Reports', icon: TrendingUp, color: 'bg-primary/5 hover:bg-primary/10 text-primary', href: '/app/reports' }
       ],
       end_user: [

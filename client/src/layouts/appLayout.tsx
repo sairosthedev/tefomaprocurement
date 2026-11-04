@@ -84,8 +84,8 @@ const roleNavigation: any = {
     { name: "Dashboard", href: "/app", icon: LayoutDashboard },
     { name: "Approvals", href: "/app/approvals", icon: CheckSquare },
     { name: "Requisitions", icon: ClipboardList, children: [
-      { name: "Department Requisitions", href: "/app/requisitions", icon: ClipboardList },
-      { name: "Store Requisitions", href: "/app/store-requisitions", icon: Package },
+      { name: "Team Requisitions", href: "/app/requisitions?view=team", icon: Users },
+      { name: "My Requisitions", href: "/app/requisitions?view=mine", icon: ClipboardList },
     ] },
     { name: "Reports", href: "/app/reports", icon: BarChart3 },
     { name: "Notifications", href: "/app/notifications", icon: Bell },
@@ -120,7 +120,6 @@ const roleNavigation: any = {
     ] },
     { name: "Sourcing", icon: ShoppingCart, children: [
       { name: "Requisitions", href: "/app/requisitions", icon: ClipboardList },
-      { name: "Store Requisitions", href: "/app/store-requisitions", icon: Package },
       { name: "RFQs", href: "/app/rfqs", icon: FileSearch },
       { name: "Quotations", href: "/app/quotations", icon: FileText },
       { name: "Purchase Orders", href: "/app/purchase-orders", icon: ShoppingCart },
@@ -321,10 +320,21 @@ export function SidebarLayout({ children }: any) {
 
   const profileHref = user?.role === 'supplier' ? '/app/supplier-profile' : '/app/profile'
 
-  const isHrefActive = (href?: string): boolean => {
+  // Whether the current page is under this link's path, whatever its query.
+  const isPathActive = (href?: string): boolean => {
     if (!href) return false
     if (href === '/app') return location.pathname === '/app'
-    return location.pathname.startsWith(href)
+    return location.pathname.startsWith(href.split('?')[0])
+  }
+
+  // The link itself is the current page. Two links to one page (a head's own
+  // and team requisitions) are told apart by their query.
+  const isHrefActive = (href?: string): boolean => {
+    if (!isPathActive(href)) return false
+    const query = href!.split('?')[1]
+    if (!query) return true
+    const current = new URLSearchParams(location.search)
+    return Array.from(new URLSearchParams(query)).every(([key, value]) => current.get(key) === value)
   }
 
   // Notifications keep their unread count; every other item shows whatever
@@ -339,7 +349,7 @@ export function SidebarLayout({ children }: any) {
 
   const sectionIsOpen = (item: any): boolean =>
     openSection === null
-      ? item.children.some((c: any) => isHrefActive(c.href))
+      ? item.children.some((c: any) => isPathActive(c.href))
       : openSection === item.name
 
   const toggleSection = (item: any) =>
@@ -417,7 +427,7 @@ export function SidebarLayout({ children }: any) {
 
               // A section: a header that opens its items in place.
               if (item.children && Array.isArray(item.children)) {
-                const anyChildActive = item.children.some((c: any) => isHrefActive(c.href))
+                const anyChildActive = item.children.some((c: any) => isPathActive(c.href))
                 const isOpen = sectionIsOpen(item)
                 const sectionBadge = item.children.reduce((sum: number, c: any) => sum + badgeFor(c.href), 0)
 
