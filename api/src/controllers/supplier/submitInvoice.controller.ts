@@ -1,9 +1,14 @@
 import type { Request, Response } from 'express';
 import { Invoice, PurchaseOrder, SupplierProfile } from '../../models/index.js';
-import { collectGrvEvidence, performThreeWayMatch } from '../../services/threeWayMatch.service.js';
+import {
+  collectGrvEvidence,
+  collectPriorBilling,
+  performThreeWayMatch
+} from '../../services/threeWayMatch.service.js';
 import { syncPurchaseOrderFinancials } from '../../services/purchaseOrderFinancials.service.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole } from '../../services/notification.service.js';
+import { escapeRegex } from '../../lib/regex.js';
 
 const submitInvoice = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -45,6 +50,27 @@ const submitInvoice = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
+    // A supplier's invoice number identifies one bill. The same number on a
+    // second live invoice is the classic duplicate-payment route, whichever PO
+    // it is raised against. Checked here rather than by a unique index because
+    // existing records may already collide.
+    const vendorNumber = vendorInvoiceNumber != null ? String(vendorInvoiceNumber).trim() : '';
+    if (vendorNumber) {
+      const duplicate = await Invoice.findOne({
+        supplier: profile._id,
+        isDeleted: false,
+        status: { $nin: ['rejected', 'cancelled'] },
+        // Trimmed and case-insensitive: "inv-001 " and "INV-001" are one bill.
+        vendorInvoiceNumber: { $regex: `^\\s*${escapeRegex(vendorNumber)}\\s*$`, $options: 'i' }
+      }).select('invoiceNumber');
+      if (duplicate) {
+        return res.status(409).json({
+          success: false,
+          message: `You have already submitted invoice number ${vendorNumber} (${duplicate.invoiceNumber}). Use a new invoice number, or ask finance to reject the earlier one first.`
+        });
+      }
+    }
+
     const invoiceItems = items.map((item: any, index: number) => ({
       description: item.description,
       quantity: Number(item.quantity),
@@ -53,12 +79,14 @@ const submitInvoice = async (req: Request, res: Response): Promise<any> => {
       poItemIndex: item.poItemIndex ?? index
     }));
 
-    const evidence = await collectGrvEvidence(po);
-    const matchResult = performThreeWayMatch(po, invoiceItems, evidence, Number(vatAmount) || 0);
+    // Matched against what was received less what other invoices on this PO
+    // have already billed.
+    const [evidence, prior] = await Promise.all([collectGrvEvidence(po), collectPriorBilling(po)]);
+    const matchResult = performThreeWayMatch(po, invoiceItems, evidence, Number(vatAmount) || 0, prior);
     const status = matchResult.matched ? 'submitted' : 'variance';
 
     const invoice = await Invoice.create({
-      vendorInvoiceNumber,
+      vendorInvoiceNumber: vendorNumber || undefined,
       purchaseOrder: po._id,
       supplier: profile._id,
       submittedBy: req.user!._id,

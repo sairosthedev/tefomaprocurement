@@ -1,6 +1,13 @@
 import type { Request, Response } from 'express';
 
 import { Quotation, SupplierProfile } from '../../models/index.js';
+import { supplierListQuery } from './getMyRFQs.controller.js';
+
+/** Every quotation status; a supplier sees all of their own quotations. */
+const QUOTATION_STATUSES = [
+  'draft', 'submitted', 'under_review', 'revision_requested',
+  'superseded', 'accepted', 'rejected', 'expired'
+];
 
 const getMyQuotations = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -13,17 +20,15 @@ const getMyQuotations = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    const { status, page = 1, limit = 20 } = req.query as Record<string, any>;
-    
-    const query: any = { 
-      supplier: profile._id,
-      isDeleted: false 
-    };
-    
-    if (status) query.status = status;
+    const { page, limit, skip, statuses, statusRequested } = supplierListQuery(req.query, QUOTATION_STATUSES);
 
-    const skip = (page - 1) * limit;
-    
+    const query: any = {
+      supplier: profile._id,
+      isDeleted: false
+    };
+    // Unfiltered, every quotation of theirs is listed, legacy statuses too.
+    if (statusRequested) query.status = { $in: statuses };
+
     const [quotations, total] = await Promise.all([
       Quotation.find(query)
         // The list shows each line's figures; the photos stay on the quote.
@@ -31,7 +36,7 @@ const getMyQuotations = async (req: Request, res: Response): Promise<any> => {
         .populate('rfq', 'rfqNumber title')
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(parseInt(limit)),
+        .limit(limit),
       Quotation.countDocuments(query)
     ]);
 
@@ -39,8 +44,8 @@ const getMyQuotations = async (req: Request, res: Response): Promise<any> => {
       success: true,
       data: quotations,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page,
+        limit,
         total,
         pages: Math.ceil(total / limit)
       }

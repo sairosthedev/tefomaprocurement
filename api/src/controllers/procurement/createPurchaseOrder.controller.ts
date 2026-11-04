@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 
 import { PurchaseOrder, Quotation, RFQ, PurchaseRequisition, Site } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
-import { notifySupplier, notifyUsersByRole } from '../../services/notification.service.js';
+import { notifyUsersByRole } from '../../services/notification.service.js';
 import { resolveSiteId } from '../../lib/siteScope.js';
 import { checkSupplierEligibility } from '../../services/supplierEligibility.service.js';
 
@@ -171,21 +171,11 @@ const createPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       req
     });
 
-    // Notify supplier
-    await notifySupplier(quotation.supplier._id || quotation.supplier, {
-      type: 'po_created',
-      title: 'New Purchase Order Created',
-      message: `A new Purchase Order ${po.poNumber} has been created and requires your acknowledgement.`,
-      entity: 'PurchaseOrder',
-      entityId: po._id,
-      relatedUser: req.user!._id,
-      metadata: { poNumber: po.poNumber, totalAmount: po.totalAmount, isSupplier: true }
-    });
-
-    // The purchase order is NOT emailed here. It is created as a draft, and
-    // Rev 9 clause 6.3.14 concerns sending the supplier an order they can act
-    // on — which only exists once the last required approval lands. Finance or
-    // the COO may still reject it. The send happens in those approval
+    // The supplier is neither notified nor emailed here. The order is a
+    // draft, which their portal does not show, and Rev 9 clause 6.3.14
+    // concerns sending the supplier an order they can act on — which only
+    // exists once the last required approval lands. Finance or the COO may
+    // still reject it. The notice and the send happen in those approval
     // controllers instead, via emailApprovedPurchaseOrderToSupplier().
 
     // Notify finance and COO for approval

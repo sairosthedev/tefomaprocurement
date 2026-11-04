@@ -7,17 +7,24 @@ import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
 import { formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
-import { Loader2, CheckCircle, Circle, ShieldCheck, DollarSign, Package, RefreshCw, Send, Sparkles, AlertTriangle } from 'lucide-react';
+import Modal from '../components/Modal';
+import { Loader2, CheckCircle, Circle, ShieldCheck, DollarSign, Package, RefreshCw, Send, Sparkles, AlertTriangle, Clock } from 'lucide-react';
 
 const bidPrice = (amount: number, currency?: string) =>
   formatCurrency(amount, currency || getCurrentSbuCurrency());
 
-const WAIVER_TYPES = [
-  { value: 'single_source', label: 'Single/sole source' },
-  { value: 'no_quotes', label: 'Insufficient quotations' },
-  { value: 'unique_product', label: 'Unique / proprietary' },
-  { value: 'custom_manufacture', label: 'Custom manufacture' },
-  { value: 'other', label: 'Other' }
+/** Reasons for waiving the three-quote rule on a line, as on QuotationDetail.
+ *  Values must match the RFQ waiverType enum on the API. */
+const WAIVER_TYPES: { value: string; label: string }[] = [
+  { value: 'single_source', label: 'Single/sole source — only one capable supplier' },
+  { value: 'no_quotes', label: 'Insufficient quotations received' },
+  { value: 'service_agreement', label: 'Existing service agreement' },
+  { value: 'approved_contract', label: 'Approved framework / contract' },
+  { value: 'unique_product', label: 'Unique / proprietary product' },
+  { value: 'custom_manufacture', label: 'Custom manufacture / bespoke item' },
+  { value: 'coo_directed', label: 'COO directed procurement' },
+  { value: 'coo_instruction', label: 'COO written instruction' },
+  { value: 'other', label: 'Other (state reason below)' }
 ];
 
 export default function AwardMatrix() {
@@ -33,6 +40,10 @@ export default function AwardMatrix() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [data, setData] = useState<any>(null);
+  // The line whose waiver is being approved, with the chosen type and reason.
+  const [waiverLine, setWaiverLine] = useState<any>(null);
+  const [waiverType, setWaiverType] = useState('');
+  const [waiverReason, setWaiverReason] = useState('');
 
   const load = async () => {
     try {
@@ -86,12 +97,22 @@ export default function AwardMatrix() {
     act(() => procurementAPI.pmAuthorizeLine(id, { rfqLineId: line.rfqLineId }), 'Line authorized');
 
   const waiveLine = (line: any) => {
-    const reason = window.prompt(`Waiver reason for "${line.description}" (fewer than 3 quotes):`);
-    if (!reason?.trim()) return;
-    act(
-      () => procurementAPI.waiveLine(id, { rfqLineId: line.rfqLineId, reason, waiverType: 'single_source' }),
-      'Line waiver approved'
-    );
+    setWaiverType('');
+    setWaiverReason('');
+    setWaiverLine(line);
+  };
+
+  const submitWaiver = () => {
+    if (!waiverLine || !waiverType || !waiverReason.trim()) return;
+    act(async () => {
+      await procurementAPI.waiveLine(id, {
+        rfqLineId: waiverLine.rfqLineId,
+        reason: waiverReason.trim(),
+        waiverType
+      });
+      // Closed only once it is approved, so a refusal leaves the entry to correct.
+      setWaiverLine(null);
+    }, 'Line waiver approved');
   };
 
   // The new orders are submitted for approval from their own pages, so go
@@ -119,6 +140,32 @@ export default function AwardMatrix() {
     return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
   if (!data) return null;
+
+  // While bids are sealed the API sends the lines without any bids, so there is
+  // nothing to compare or award yet.
+  if (data.sealed) {
+    return (
+      <div className="p-8 max-w-2xl">
+        <PageHeader
+          backTo={canSelect ? `/app/rfqs/${id}` : '/app'}
+          backLabel={canSelect ? 'Back to RFQ' : 'Back to Dashboard'}
+          title="Split Award — line by line"
+        />
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-8 text-center">
+          <Clock className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+          <p className="text-sm text-amber-800 mb-2">
+            Bids are sealed until the submission deadline passes or the RFQ is closed.
+          </p>
+          {data.submissionDeadline && (
+            <p className="text-sm text-gray-600">
+              {data.rfqNumber && <><span className="font-mono font-medium">{data.rfqNumber}</span> · </>}
+              Deadline: {new Date(data.submissionDeadline).toLocaleString('en-ZA')}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const lines: any[] = data.lines || [];
   // Distinct suppliers across all bids for the comparison columns.
@@ -279,6 +326,54 @@ export default function AwardMatrix() {
           </button>
         </div>
       )}
+
+      <Modal
+        isOpen={!!waiverLine}
+        onClose={() => !busy && setWaiverLine(null)}
+        title="Approve line waiver"
+        subtitle={waiverLine ? `${waiverLine.description} — fewer than 3 quotes` : undefined}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setWaiverLine(null)}
+              disabled={busy}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={submitWaiver}
+              disabled={busy || !waiverType || !waiverReason.trim()}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
+            >
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+              Approve waiver
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <select
+            value={waiverType}
+            onChange={(e: any) => setWaiverType(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+          >
+            <option value="">Select waiver type…</option>
+            {WAIVER_TYPES.map((w) => (
+              <option key={w.value} value={w.value}>{w.label}</option>
+            ))}
+          </select>
+          <textarea
+            value={waiverReason}
+            onChange={(e: any) => setWaiverReason(e.target.value)}
+            rows={3}
+            placeholder="Justification for waiving the 3-quotation requirement on this line..."
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </div>
+      </Modal>
     </div>
   );
 }

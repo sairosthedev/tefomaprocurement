@@ -48,6 +48,24 @@ export function maskBankNumbers<T>(value: T): T {
   return walk(value);
 }
 
+/**
+ * A banking change request with its account numbers masked. maskBankNumbers
+ * catches the `accountNumber` keys of the before/after snapshots, but the
+ * field-level diff holds the numbers under `from`/`to` beside a `field` label,
+ * so those are masked here by that label.
+ */
+export function maskBankChangeRequest<T>(request: T): T {
+  const masked: any = maskBankNumbers(request);
+  if (Array.isArray(masked?.changes)) {
+    masked.changes = masked.changes.map((change: any) =>
+      change && typeof change.field === 'string' && isAccountNumberKey(change.field)
+        ? { ...change, from: maskAccountNumber(change.from), to: maskAccountNumber(change.to) }
+        : change
+    );
+  }
+  return masked;
+}
+
 /** Roles that see full account numbers on a single supplier record. */
 const FULL_BANK_DETAIL_ROLES = new Set(['procurement_officer', 'finance', 'admin']);
 

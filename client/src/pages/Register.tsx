@@ -77,6 +77,11 @@ export default function Register() {
         showToast('Please fill in all required fields', 'error', 4000);
         return false;
       }
+      // Your profile's primary contact needs a phone number; the server refuses without one.
+      if (!formData.phone.trim()) {
+        showToast('Please enter a contact phone number', 'error', 4000);
+        return false;
+      }
       if (formData.password !== formData.confirmPassword) {
         showToast('Passwords do not match', 'error', 4000);
         return false;
@@ -140,7 +145,7 @@ export default function Register() {
         password: formData.password,
         firstName: formData.firstName,
         lastName: formData.lastName,
-        phone: formData.phone,
+        phone: formData.phone.trim(),
         role: 'supplier',
         companyDetails: {
           companyName: formData.companyName,
@@ -263,13 +268,14 @@ export default function Register() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
                 <input
                   type="tel"
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                  required
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">

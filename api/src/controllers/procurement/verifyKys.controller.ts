@@ -2,6 +2,8 @@ import type { Request, Response } from 'express';
 import { SupplierProfile } from '../../models/index.js';
 import { computeKysCompletionForTier } from '@fossil/shared';
 import { createAuditLog } from '../../middleware/index.js';
+import { transitionSupplierStatus } from '../../services/supplierEligibility.service.js';
+import { withoutDocumentFiles } from '../../services/supplierDocuments.service.js';
 
 const verifyKys = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -57,13 +59,15 @@ const verifyKys = async (req: Request, res: Response): Promise<any> => {
     }
 
     if (approveForActivation) {
-      supplier.status = 'active';
+      // Activation is what grants the right to be paid.
+      transitionSupplierStatus(
+        supplier,
+        'active',
+        req.user!._id,
+        overrideKys ? `KYS override: ${reason.trim()}` : 'KYS verified'
+      );
       supplier.approvedBy = req.user!._id;
       supplier.approvedAt = new Date();
-      // Activation is what grants the right to be paid.
-      supplier.transactability = 'spend_authorized';
-      supplier.transactabilityChangedBy = req.user!._id;
-      supplier.transactabilityChangedAt = new Date();
     }
 
     await supplier.save();
@@ -86,7 +90,7 @@ const verifyKys = async (req: Request, res: Response): Promise<any> => {
         : approveForActivation
           ? 'KYS verified and supplier activated'
           : 'KYS verified',
-      data: supplier
+      data: withoutDocumentFiles(supplier)
     });
   } catch (error) {
     console.error('Verify KYS error:', error);

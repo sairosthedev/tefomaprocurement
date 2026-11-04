@@ -1,4 +1,10 @@
+import {
+  KYS_DOCUMENT_REQUIREMENTS,
+  getChecklistKeyForDocType,
+  getRequiredChecklistKeys
+} from '@fossil/shared';
 import { SupplierProfile } from '../models/index.js';
+import { escapeRegex } from '../lib/regex.js';
 
 /**
  * Is a supplier eligible to transact right now?
@@ -42,6 +48,46 @@ const STAGE_VERB: Record<EligibilityStage, string> = {
   order: 'issued a purchase order'
 };
 
+/**
+ * What the gate reads. The document fields are type and expiry only — never
+ * the file bodies, which are stored inline and can run to megabytes.
+ */
+const ELIGIBILITY_FIELDS =
+  'companyName status kysComplete kysExempt isDeleted transactability expiredDocumentTypes tier ' +
+  'complianceDocuments.documentType complianceDocuments.expiryDate';
+
+/**
+ * The first document on file that the supplier's tier requires and that has
+ * passed its expiry date.
+ *
+ * The expiry job that unticks lapsed documents only runs on a long-lived
+ * server, so on a serverless deployment `kysComplete` can stay true after a
+ * tax clearance lapses. Reading the dates here makes the gate hold regardless.
+ * A supplier with no documents on file is unaffected: their KYS stands on the
+ * checklist, and is judged by the check above.
+ */
+export function findLapsedRequiredDocument(
+  supplier: any,
+  now: Date = new Date()
+): { documentType: string; label: string; expiryDate: Date } | undefined {
+  const docs: any[] = Array.isArray(supplier?.complianceDocuments) ? supplier.complianceDocuments : [];
+  if (docs.length === 0) return undefined;
+
+  const requiredKeys = new Set(getRequiredChecklistKeys(supplier.tier));
+  for (const doc of docs) {
+    if (!doc?.expiryDate) continue;
+    const expiry = new Date(doc.expiryDate);
+    if (Number.isNaN(expiry.getTime()) || expiry.getTime() > now.getTime()) continue;
+    const key = getChecklistKeyForDocType(doc.documentType);
+    if (!key || !requiredKeys.has(key)) continue;
+    const label =
+      KYS_DOCUMENT_REQUIREMENTS.find((r) => r.documentType === doc.documentType)?.label ||
+      String(doc.documentType).replace(/_/g, ' ');
+    return { documentType: doc.documentType, label, expiryDate: expiry };
+  }
+  return undefined;
+}
+
 /** Evaluate an already-loaded supplier document. */
 export function checkSupplierEligibility(
   supplier: any,
@@ -80,6 +126,18 @@ export function checkSupplierEligibility(
     };
   }
 
+  // An explicit KYS exemption covers documents too, as it always has.
+  if (stage !== 'invite' && !supplier.kysExempt) {
+    const lapsed = findLapsedRequiredDocument(supplier);
+    if (lapsed) {
+      return {
+        eligible: false,
+        reason: `${name}'s ${lapsed.label} expired on ${lapsed.expiryDate.toISOString().slice(0, 10)}, so they cannot be ${STAGE_VERB[stage]} until a current one is uploaded.`,
+        supplier
+      };
+    }
+  }
+
   // Transactability is tracked separately from lifecycle status: a prospective
   // supplier may be invited to quote, but only a spend-authorized one may be
   // awarded or issued a purchase order.
@@ -103,9 +161,7 @@ export async function checkSupplierIdEligibility(
   supplierId: any,
   stage: EligibilityStage
 ): Promise<EligibilityResult> {
-  const supplier = await SupplierProfile.findById(supplierId).select(
-    'companyName status kysComplete kysExempt isDeleted transactability expiredDocumentTypes'
-  );
+  const supplier = await SupplierProfile.findById(supplierId).select(ELIGIBILITY_FIELDS).lean();
   return checkSupplierEligibility(supplier, stage);
 }
 
@@ -120,7 +176,7 @@ export async function partitionEligibleSuppliers(
 ): Promise<{ eligible: any[]; ineligible: { supplierId: any; reason: string }[] }> {
   const suppliers = await SupplierProfile.find({
     _id: { $in: supplierIds }
-  }).select('companyName status kysComplete kysExempt isDeleted transactability expiredDocumentTypes');
+  }).select(ELIGIBILITY_FIELDS).lean();
 
   const byId = new Map(suppliers.map((s) => [String(s._id), s]));
   const eligible: any[] = [];
@@ -136,4 +192,88 @@ export async function partitionEligibleSuppliers(
   }
 
   return { eligible, ineligible };
+}
+
+export type SupplierStatus = 'pending' | 'active' | 'suspended' | 'blacklisted' | 'dormant';
+
+/**
+ * Move a supplier to a lifecycle status, keeping transactability in step and
+ * recording why. Mutates the supplier; the caller saves.
+ *
+ * Several routes moved `status` without touching transactability, so a
+ * supplier could read "Active" and still be refused at award for not being
+ * spend-authorized. Activation grants spend authorization exactly as
+ * approveSupplier does (only stamped when it changes); suspension,
+ * blacklisting, dormancy and return to pending withdraw it.
+ */
+export function transitionSupplierStatus(
+  supplier: any,
+  to: SupplierStatus,
+  by: unknown,
+  reason?: unknown
+): void {
+  const from = supplier.status;
+  const why = typeof reason === 'string' && reason.trim() ? reason.trim() : undefined;
+  supplier.status = to;
+
+  const transactability = to === 'active' ? 'spend_authorized' : 'none';
+  if (supplier.transactability !== transactability) {
+    supplier.transactability = transactability;
+    supplier.transactabilityChangedBy = by;
+    supplier.transactabilityChangedAt = new Date();
+  }
+
+  // Reasons live here rather than in `notes`, which is the supplier's own
+  // description of their services and was being overwritten.
+  supplier.statusHistory = [
+    ...(supplier.statusHistory || []),
+    { from, to, reason: why, by, at: new Date() }
+  ];
+}
+
+/**
+ * Registration numbers are typed by hand ("2024/123456-07", "2024/123 456 07"),
+ * so they are compared ignoring case, spaces and hyphens.
+ */
+export function normaliseRegistrationNumber(value: unknown): string {
+  return String(value ?? '').trim().toUpperCase().replace(/[\s-]+/g, '');
+}
+
+export const BLACKLISTED_COMPANY_MESSAGE = 'This company cannot be registered. Contact procurement.';
+export const DUPLICATE_COMPANY_MESSAGE = 'This company is already registered — sign in, or contact procurement.';
+
+/**
+ * Is a company with this registration number already on the register?
+ *
+ * Nothing used to stop a company registering twice — including one that had
+ * been blacklisted, which could simply sign up again under a new login.
+ * Returns the refusal to give, or null if the number is free. A blacklisted
+ * match gets a neutral message so the register's contents are not disclosed.
+ *
+ * No unique index: existing data may already hold duplicates, and the check
+ * has to tolerate formatting differences an index could not.
+ */
+export async function registrationConflict(
+  registrationNumber: unknown
+): Promise<{ blacklisted: boolean; message: string } | null> {
+  const wanted = normaliseRegistrationNumber(registrationNumber);
+  if (!wanted) return null;
+
+  // Match the same characters with any spaces or hyphens between them, then
+  // confirm in code — the pattern narrows, the normalised comparison decides.
+  const gap = String.raw`[\s-]*`;
+  const pattern = `^${gap}${wanted.split('').map(escapeRegex).join(gap)}${gap}$`;
+  const candidates = await SupplierProfile.find({
+    isDeleted: { $ne: true },
+    registrationNumber: { $regex: pattern, $options: 'i' }
+  })
+    .select('registrationNumber status')
+    .lean();
+
+  const matches = candidates.filter((c: any) => normaliseRegistrationNumber(c.registrationNumber) === wanted);
+  if (matches.length === 0) return null;
+  if (matches.some((c: any) => c.status === 'blacklisted')) {
+    return { blacklisted: true, message: BLACKLISTED_COMPANY_MESSAGE };
+  }
+  return { blacklisted: false, message: DUPLICATE_COMPANY_MESSAGE };
 }

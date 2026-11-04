@@ -1,6 +1,11 @@
 import type { Request, Response } from 'express';
 import { Invoice, PurchaseOrder } from '../../models/index.js';
-import { collectGrvEvidence, performThreeWayMatch } from '../../services/threeWayMatch.service.js';
+import {
+  collectGrvEvidence,
+  collectPriorBilling,
+  exceedsTolerance,
+  performThreeWayMatch
+} from '../../services/threeWayMatch.service.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { createNotification } from '../../services/notification.service.js';
 
@@ -24,8 +29,13 @@ const approveInvoice = async (req: Request, res: Response): Promise<any> => {
       return res.status(404).json({ success: false, message: 'Purchase order not found' });
     }
 
-    const evidence = await collectGrvEvidence(po);
-    const matchResult = performThreeWayMatch(po, invoice.items, evidence, invoice.vatAmount ?? 0);
+    // The other invoices on the PO, so goods already billed are not matched
+    // again by this one.
+    const [evidence, prior] = await Promise.all([
+      collectGrvEvidence(po),
+      collectPriorBilling(po, invoice._id)
+    ]);
+    const matchResult = performThreeWayMatch(po, invoice.items, evidence, invoice.vatAmount ?? 0, prior);
 
     // Hard gate: goods must be receipted by stores, and accepted, before
     // finance can approve payment. Not overridable — with nothing accepted onto
@@ -47,15 +57,27 @@ const approveInvoice = async (req: Request, res: Response): Promise<any> => {
     // Variances against a real GRV may be overridden, but only with a written
     // reason, which is retained on the invoice and in the audit log.
     const overrideReason = typeof forceApprove === 'string' ? forceApprove.trim() : '';
-    if (!matchResult.matched) {
+
+    // Whatever the match concluded, what finance has approved on this PO plus
+    // this invoice must not pay for more than stores received.
+    const approvedWithThis = prior.approvedTotal + matchResult.invoicedTotal;
+    const overBilled = exceedsTolerance(matchResult.receivedValue, approvedWithThis);
+    if (overBilled) {
+      matchResult.messages.push(
+        `Approved invoices on this purchase order with this one (${approvedWithThis.toFixed(2)}) exceed the received value (${matchResult.receivedValue.toFixed(2)})`
+      );
+    }
+
+    if (!matchResult.matched || overBilled) {
       if (!overrideReason) {
         invoice.status = 'variance';
         invoice.matchResult = matchResult;
         await invoice.save();
         return res.status(400).json({
           success: false,
-          message:
-            'Three-way match failed. To approve anyway, supply forceApprove with a written reason for the variance.',
+          message: !matchResult.matched
+            ? 'Three-way match failed. To approve anyway, supply forceApprove with a written reason for the variance.'
+            : `Approving this invoice would take the approved invoices on PO ${po.poNumber} past the value of the goods received. To approve anyway, supply forceApprove with a written reason.`,
           data: { matchResult }
         });
       }

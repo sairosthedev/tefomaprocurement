@@ -401,7 +401,7 @@ export default function MyRFQs() {
                         <td className="py-2 px-3 border-b border-gray-100">{index + 1}</td>
                         <td className="py-2 px-3 border-b border-gray-100 font-medium">{item.description}</td>
                         <td className="py-2 px-3 border-b border-gray-100">{item.quantity} {item.unit}</td>
-                        <td className="py-2 px-3 border-b border-gray-100 text-gray-500">{item.specification || '-'}</td>
+                        <td className="py-2 px-3 border-b border-gray-100 text-gray-500">{item.specifications || '-'}</td>
                       </tr>
                     ))}
                   </tbody>

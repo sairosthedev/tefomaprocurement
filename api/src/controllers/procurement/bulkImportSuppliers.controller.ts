@@ -1,8 +1,10 @@
 import type { Request, Response } from 'express';
+import crypto from 'crypto';
 
 import { isValidCategoryCode, mapLegacyCategory } from '@fossil/shared';
 import { User, SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { registrationConflict } from '../../services/supplierEligibility.service.js';
 
 const bulkImportSuppliers = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -115,8 +117,17 @@ const bulkImportSuppliers = async (req: Request, res: Response): Promise<any> =>
           continue;
         }
 
-        // Generate a temporary password
-        const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
+        // One company, one record: refuse a registration number already on
+        // the register, blacklisted or not. Rows run in order, so a company
+        // listed twice in the same file is caught by its own first row.
+        const conflict = await registrationConflict(registrationNumber);
+        if (conflict) {
+          results.failed.push({ companyName, email, reason: conflict.message });
+          continue;
+        }
+
+        // Temporary password from a cryptographic source, not Math.random.
+        const tempPassword = crypto.randomBytes(12).toString('base64url');
 
         // Create user account
         const user = await User.create({
@@ -187,11 +198,13 @@ const bulkImportSuppliers = async (req: Request, res: Response): Promise<any> =>
       }
     }
 
+    // 'create' — 'bulk_import' is not in the AuditLog action enum, and the
+    // validation failure was swallowed, so imports left no audit record at all.
     await createAuditLog({
-      action: 'bulk_import',
+      action: 'create',
       entity: 'SupplierProfile',
       user: req.user,
-      description: `Bulk imported ${results.success.length} suppliers (${results.failed.length} failed)`,
+      description: `Bulk import: created ${results.success.length} supplier(s), ${results.failed.length} row(s) failed`,
       newData: { successCount: results.success.length, failedCount: results.failed.length },
       req
     });

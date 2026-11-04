@@ -151,7 +151,10 @@ export async function loadRankingInputs(rfqId: any): Promise<RankingInputs> {
   const [quotes, performance] = await Promise.all([
     Quotation.populate(found, {
       path: 'supplier',
-      select: 'companyName status kysComplete kysExempt isDeleted transactability expiredDocumentTypes'
+      // tier and the documents' type and expiry let the award gate's lapsed-
+      // document check run here too, so the ranking never recommends a supplier
+      // acceptance would refuse.
+      select: 'companyName status kysComplete kysExempt isDeleted transactability expiredDocumentTypes tier complianceDocuments.documentType complianceDocuments.expiryDate'
     }),
     getSupplierPerformanceScores(Array.from(new Set(found.map((q: any) => idStr(q.supplier)))))
   ]);

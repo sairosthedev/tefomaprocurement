@@ -2,6 +2,8 @@ import type { Request, Response } from 'express';
 import { SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { createNotification } from '../../services/notification.service.js';
+import { transitionSupplierStatus } from '../../services/supplierEligibility.service.js';
+import { withoutDocumentFiles } from '../../services/supplierDocuments.service.js';
 
 /**
  * Lift a blacklisting.
@@ -43,13 +45,11 @@ const reinstateSupplier = async (req: Request, res: Response): Promise<any> => {
     const previousStatus = supplier.status;
     const previousReason = supplier.blacklistReason;
 
-    // Back to pending, never straight to active: re-approval goes through KYS.
-    supplier.status = 'pending';
-    supplier.transactability = 'none';
-    supplier.transactabilityChangedBy = req.user!._id;
-    supplier.transactabilityChangedAt = new Date();
-    // Keep blacklistReason/By/At as history; record the lifting in notes.
-    supplier.notes = `Blacklisting lifted ${new Date().toISOString().slice(0, 10)}: ${reason.trim()}`;
+    // Back to pending, never straight to active: re-approval goes through KYS,
+    // and transactability is withdrawn until then. blacklistReason/By/At stay
+    // as history; the lifting is recorded in the status history (it used to
+    // overwrite `notes`, the supplier's services description).
+    transitionSupplierStatus(supplier, 'pending', req.user!._id, `Blacklisting lifted: ${reason.trim()}`);
 
     await supplier.save();
 
@@ -80,7 +80,7 @@ const reinstateSupplier = async (req: Request, res: Response): Promise<any> => {
     res.status(200).json({
       success: true,
       message: 'Blacklisting lifted. The supplier is pending re-approval.',
-      data: supplier
+      data: withoutDocumentFiles(supplier)
     });
   } catch (error: any) {
     console.error('Reinstate supplier error:', error);

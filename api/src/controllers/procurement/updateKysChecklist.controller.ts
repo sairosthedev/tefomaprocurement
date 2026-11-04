@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { SupplierProfile } from '../../models/index.js';
 import { computeKysCompletionForTier } from '@fossil/shared';
 import { createAuditLog } from '../../middleware/index.js';
+import { withoutDocumentFiles } from '../../services/supplierDocuments.service.js';
 
 const updateKysChecklist = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -45,7 +46,7 @@ const updateKysChecklist = async (req: Request, res: Response): Promise<any> => 
     res.status(200).json({
       success: true,
       message: 'KYS checklist updated',
-      data: { supplier, completion }
+      data: { supplier: withoutDocumentFiles(supplier), completion }
     });
   } catch (error: any) {
     console.error('Update KYS error:', error);

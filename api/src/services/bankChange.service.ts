@@ -78,19 +78,45 @@ export async function getOpenBankChange(supplierId: any) {
   }).sort({ createdAt: -1 });
 }
 
+const digits = (s: unknown) => String(s ?? '').replace(/\D/g, '');
+
+/**
+ * The phone numbers held for a supplier: each contact person's and the login
+ * user's. These are the numbers a callback may be made to.
+ */
+export function contactNumbersOnFile(contactPersons: any[] | undefined, userPhone?: unknown): string[] {
+  return [...(contactPersons || []).map((c: any) => c?.phone), userPhone]
+    .map((n) => String(n ?? '').trim())
+    .filter((n) => digits(n).length > 0);
+}
+
+/** Whether two sets of phone numbers differ, ignoring formatting and order. */
+export function phoneNumbersDiffer(before: unknown[], after: unknown[]): boolean {
+  const key = (list: unknown[]) =>
+    [...new Set(list.map(digits).filter(Boolean))].sort().join(',');
+  return key(before) !== key(after);
+}
+
 /**
  * Whether `numberCalled` is a phone number already held for this supplier.
  * A callback to a number supplied in the change request itself verifies
  * nothing — it reaches whoever made the request.
+ *
+ * `onFileAtRequest` is the snapshot taken when the request was raised; when
+ * given, only those numbers count, so one added in the same save (or since)
+ * cannot be used. Requests from before the snapshot existed fall back to the
+ * numbers on the record now.
  */
-export function isKnownContactNumber(supplier: any, numberCalled: string): boolean {
-  const digits = (s: unknown) => String(s ?? '').replace(/\D/g, '');
+export function isKnownContactNumber(
+  supplier: any,
+  numberCalled: string,
+  onFileAtRequest?: string[] | null
+): boolean {
   const target = digits(numberCalled);
   if (!target) return false;
-  const onFile = [
-    ...(supplier.contactPersons || []).map((c: any) => c.phone),
-    supplier.user?.phone
-  ];
+  const onFile = Array.isArray(onFileAtRequest)
+    ? onFileAtRequest
+    : contactNumbersOnFile(supplier.contactPersons, supplier.user?.phone);
   // Compare on the last 9 digits so local/international formats still match.
   const tail = (s: string) => s.slice(-9);
   return onFile.some((n) => {

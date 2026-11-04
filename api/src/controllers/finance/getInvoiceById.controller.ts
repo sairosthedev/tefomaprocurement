@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { Invoice, Delivery } from '../../models/index.js';
 import {
+  collectPriorBilling,
   findReceiptedDeliveries,
   grvEvidenceFrom,
   performThreeWayMatch
@@ -44,10 +45,12 @@ const getInvoiceById = async (req: Request, res: Response): Promise<any> => {
     const po = invoice.purchaseOrder as any;
     const deliveries = po ? accepted : [];
 
-    // Match against the GRVs stores raised, so the preview finance sees is the
-    // same evidence the approval gate will apply.
+    // Match against the GRVs stores raised and what other invoices already
+    // billed, so the preview finance sees is the same evidence the approval
+    // gate will apply.
+    const prior = po ? await collectPriorBilling(po, invoice._id) : undefined;
     const freshMatch = po
-      ? performThreeWayMatch(po, invoice.items, grvEvidenceFrom(po, receipted), invoice.vatAmount ?? 0)
+      ? performThreeWayMatch(po, invoice.items, grvEvidenceFrom(po, receipted), invoice.vatAmount ?? 0, prior)
       : null;
 
     res.status(200).json({

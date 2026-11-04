@@ -77,6 +77,15 @@ export interface IComplianceDocument {
   notes?: string;
 }
 
+/** One lifecycle status change and why it was made. */
+export interface IStatusChange {
+  from?: string;
+  to: string;
+  reason?: string;
+  by?: mongoose.Types.ObjectId | any;
+  at: Date;
+}
+
 export interface ISupplierProfile extends Document {
   user: mongoose.Types.ObjectId | any;
   companyName: string;
@@ -139,6 +148,12 @@ export interface ISupplierProfile extends Document {
   blacklistedAt?: Date;
   approvedBy?: mongoose.Types.ObjectId | any;
   approvedAt?: Date;
+  /**
+   * Reasons given for suspensions, reactivations, approvals and liftings.
+   * These used to overwrite `notes`, which is the supplier's description of
+   * their services, so each status change erased it.
+   */
+  statusHistory?: IStatusChange[];
   notes?: string;
   website?: string;
   incorporationDate?: Date;
@@ -202,6 +217,14 @@ const ClientReferralSchema = new Schema<IClientReferral>({
   contactPhone: String,
   projectDescription: String
 }, { _id: true });
+
+const StatusChangeSchema = new Schema<IStatusChange>({
+  from: String,
+  to: { type: String, required: true },
+  reason: { type: String, trim: true },
+  by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  at: { type: Date, default: Date.now }
+}, { _id: false });
 
 const KysChecklistSchema = new Schema<IKysChecklist>({
   cr14Directors: Boolean,
@@ -326,6 +349,8 @@ const SupplierProfileSchema = new Schema<ISupplierProfile>({
     ref: 'User'
   },
   approvedAt: Date,
+  // No default: records without a status change carry no empty array.
+  statusHistory: { type: [StatusChangeSchema], default: undefined },
   notes: String,
   website: String,
   incorporationDate: Date,

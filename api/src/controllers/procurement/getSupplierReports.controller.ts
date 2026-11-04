@@ -11,9 +11,12 @@ const getSupplierReports = async (req: Request, res: Response): Promise<any> => 
     const limitNum = Math.min(Math.max(parseInt(String(limit), 10) || 20, 1), 100);
 
     const [suppliers, purchaseOrders, evaluations] = await Promise.all([
+      // `tier` because KYS progress is judged against it (without it every
+      // supplier was scored at full depth). Documents are only counted, so
+      // only their ids are read — never the inline file bodies.
       SupplierProfile.find({ isDeleted: false })
         .select(
-          'companyName status kysComplete kysExempt kysChecklist categories lastEvaluationAt nextEvaluationDue createdAt complianceDocuments registrationNumber'
+          'companyName status tier kysComplete kysExempt kysChecklist categories lastEvaluationAt nextEvaluationDue createdAt complianceDocuments._id registrationNumber'
         )
         .sort({ companyName: 1 })
         .lean(),

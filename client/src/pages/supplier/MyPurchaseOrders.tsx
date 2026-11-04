@@ -1,8 +1,8 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../components/Toast';
-import api from '../../lib/api';
-import { ShoppingCart, CheckCircle, Truck, Download } from 'lucide-react';
+import api, { supplierAPI } from '../../lib/api';
+import { ShoppingCart, CheckCircle, Truck, Download, Loader2 } from 'lucide-react';
 import ViewButton from '../../components/ViewButton';
 import Modal, { ModalFooter } from '../../components/Modal';
 import PageHeader from '../../components/PageHeader';
@@ -50,6 +50,8 @@ export default function MyPurchaseOrders() {
   const [pagination, setPagination] = useState(emptyPagination());
   // The order the invoice drawer is billing; null while it is closed.
   const [invoicingPoId, setInvoicingPoId] = useState<string | null>(null);
+  // The order whose PDF is being fetched.
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMyPurchaseOrders();
@@ -72,6 +74,35 @@ export default function MyPurchaseOrders() {
       showToast(error.response?.data?.message || 'Failed to load purchase orders', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // The PDF needs the session's token, so it is fetched and saved from a blob
+  // rather than linked to.
+  const handleDownloadPdf = async (po: any) => {
+    try {
+      setDownloadingId(po._id);
+      const res = await supplierAPI.printPurchaseOrder(po._id);
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${po.poNumber || 'purchase-order'}.pdf`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (error: any) {
+      // Errors on a blob request arrive as a Blob, not parsed JSON.
+      let message = 'Failed to download the purchase order';
+      const payload = error.response?.data;
+      if (payload instanceof Blob) {
+        try {
+          message = JSON.parse(await payload.text())?.message || message;
+        } catch {
+          /* keep default message */
+        }
+      }
+      showToast(message, 'error');
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -354,18 +385,25 @@ export default function MyPurchaseOrders() {
                 <div className="flex items-start gap-3">
                   <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
                   <div className="flex-1">
-                    <p className="font-medium text-green-800">Purchase Order Acknowledged</p>
+                    <p className="font-medium text-green-800">
+                      Purchase Order Acknowledged
+                      {selectedPO.acknowledgedAt && (
+                        <span className="font-normal text-green-700">
+                          {' '}on {new Date(selectedPO.acknowledgedAt).toLocaleDateString('en-ZA')}
+                        </span>
+                      )}
+                    </p>
                     <p className="text-sm text-green-700 mt-2">
                       <strong>Next Steps:</strong>
                     </p>
                     <ol className="text-sm text-green-700 mt-1 space-y-1 list-decimal list-inside ml-2">
                       <li>Prepare and deliver the goods to the delivery address specified below</li>
-                      <li>Stores will receive the goods and validate them against this PO</li>
-                      <li>Stores will create a GRV (Goods Received Voucher) in the system</li>
-                      <li>Your delivery will appear in <strong>"My Deliveries"</strong> once Stores has received and processed the goods</li>
+                      <li>Stores will receive the goods and check them against this PO</li>
+                      <li>Stores will record a GRV (Goods Received Voucher), and you will be told what was accepted or rejected</li>
+                      <li>Follow the delivery under <strong>"My Deliveries"</strong>, where it shows as pending until Stores receives the goods</li>
                     </ol>
                     <p className="text-xs text-green-600 mt-2 italic">
-                      Note: Deliveries are only created by Stores when they physically receive the goods. Acknowledging a PO does not create a delivery record.
+                      Note: Acknowledging this order created a pending delivery record for it. Stores completes that record with a GRV when the goods physically arrive.
                     </p>
                   </div>
                 </div>
@@ -405,8 +443,17 @@ export default function MyPurchaseOrders() {
             <div>
               <div className="flex items-center justify-between gap-3 mb-3">
                 <h3 className="text-sm font-semibold text-gray-900">Order items</h3>
-                <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
-                  <Download className="h-4 w-4" />
+                <button
+                  type="button"
+                  onClick={() => handleDownloadPdf(selectedPO)}
+                  disabled={downloadingId === selectedPO._id}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  {downloadingId === selectedPO._id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
                   Download PDF
                 </button>
               </div>

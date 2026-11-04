@@ -6,6 +6,26 @@ import { currentBaseCurrency } from '../../tenancy/sbuContext.js';
 import { notifyUsersByRole } from '../../services/notification.service.js';
 import { sanitiseAttachments } from '../../services/lineAttachments.service.js';
 
+/** A JSON number, or a numeric string from a form field; anything else is NaN. */
+const toNumber = (value: any): number =>
+  typeof value === 'number' ? value : typeof value === 'string' && value.trim() !== '' ? Number(value) : NaN;
+
+/** A term in whole days, at least one, or null when it is not one. */
+const toDays = (value: any): number | null => {
+  const n = toNumber(value);
+  return Number.isInteger(n) && n >= 1 ? n : null;
+};
+
+const optionalText = (value: any): string | undefined =>
+  typeof value === 'string' && value.trim() ? value.trim() : undefined;
+
+const isBlank = (value: any) => value === undefined || value === null || value === '';
+
+/** Supplier statuses that may quote. A pending supplier is invited deliberately
+ *  and completes KYS while the RFQ is open; award and PO still require active
+ *  (see supplierEligibility). */
+const QUOTING_STATUSES = ['active', 'pending'];
+
 const submitQuotation = async (req: Request, res: Response): Promise<any> => {
   try {
     const { 
@@ -26,7 +46,7 @@ const submitQuotation = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    if (profile.status !== 'active') {
+    if (!QUOTING_STATUSES.includes(profile.status)) {
       return res.status(403).json({
         success: false,
         message: 'Your supplier account is not active'
@@ -87,18 +107,88 @@ const submitQuotation = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    // Bind each quote line to the RFQ line it answers, so lines can be compared
-    // and awarded independently. Fall back to a description match when the client
-    // did not send rfqLineId (legacy quote forms).
+    const deliveryDays = toDays(deliveryPeriod);
+    if (deliveryDays === null) {
+      return res.status(400).json({
+        success: false,
+        message: 'Delivery period must be a whole number of days, at least 1'
+      });
+    }
+    const validityDays = isBlank(validityPeriod) ? 30 : toDays(validityPeriod);
+    if (validityDays === null) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validity period must be a whole number of days, at least 1'
+      });
+    }
+
+    // A quote may price some of the RFQ's lines, but not none of them.
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, message: 'Price at least one line of the RFQ' });
+    }
+
+    // Each stored line is built from the RFQ line it answers, taking from the
+    // request only what the supplier decides: price, VAT treatment, brand,
+    // notes and any alternative offered. The total is worked out here, never
+    // taken from the client. Lines are bound by rfqLineId, falling back to a
+    // description match when the client did not send one (legacy quote forms).
     const normalize = (s: string) => (s || '').toLowerCase().trim();
+    const rfqLines = new Map((rfq.items as any[]).map((rl) => [String(rl._id), rl]));
+    const quotedLines = new Set<string>();
     const boundItems: any[] = [];
-    for (const item of items) {
-      let rfqLineId = item.rfqLineId;
-      if (!rfqLineId) {
-        const match = rfq.items.find(
-          (rl: any) => normalize(rl.description) === normalize(item.description)
+    for (const [index, item] of (items as any[]).entries()) {
+      if (!item || typeof item !== 'object') {
+        return res.status(400).json({ success: false, message: `Line ${index + 1} is not a valid quote line` });
+      }
+
+      let rfqLine: any;
+      if (item.rfqLineId) {
+        rfqLine = rfqLines.get(String(item.rfqLineId));
+        if (!rfqLine) {
+          return res.status(400).json({ success: false, message: `Line ${index + 1} is not a line of this RFQ` });
+        }
+      } else {
+        // Two RFQ lines may share a description; take the first not yet quoted.
+        const matches = (rfq.items as any[]).filter(
+          (rl) => normalize(rl.description) === normalize(item.description)
         );
-        rfqLineId = match?._id;
+        rfqLine = matches.find((rl) => !quotedLines.has(String(rl._id))) || matches[0];
+      }
+      if (rfqLine) {
+        // Two prices for one line would leave the award to guess which one stands.
+        const key = String(rfqLine._id);
+        if (quotedLines.has(key)) {
+          return res.status(400).json({ success: false, message: `"${rfqLine.description}" is quoted more than once` });
+        }
+        quotedLines.add(key);
+      }
+
+      const description: string | undefined = rfqLine ? rfqLine.description : optionalText(item.description);
+      if (!description) {
+        return res.status(400).json({ success: false, message: `Line ${index + 1} needs a description` });
+      }
+
+      // Quantity is the RFQ's: a supplier prices what was asked for. Sending it
+      // is optional, but if sent it must match.
+      let quantity: number;
+      if (rfqLine) {
+        quantity = Number(rfqLine.quantity);
+        if (!isBlank(item.quantity) && toNumber(item.quantity) !== quantity) {
+          return res.status(400).json({
+            success: false,
+            message: `"${description}" must be quoted for the requested quantity of ${quantity}`
+          });
+        }
+      } else {
+        quantity = toNumber(item.quantity);
+        if (!Number.isFinite(quantity) || quantity <= 0) {
+          return res.status(400).json({ success: false, message: `"${description}" needs a quantity greater than 0` });
+        }
+      }
+
+      const unitPrice = toNumber(item.unitPrice);
+      if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+        return res.status(400).json({ success: false, message: `"${description}" needs a unit price greater than 0` });
       }
 
       // A supplier may offer an equivalent part — validate any data plate they attach.
@@ -108,28 +198,36 @@ const submitQuotation = async (req: Request, res: Response): Promise<any> => {
       }
 
       boundItems.push({
-        ...item,
-        rfqLineId,
+        rfqLineId: rfqLine?._id,
+        description,
+        specifications: rfqLine ? rfqLine.specifications : optionalText(item.specifications),
+        quantity,
+        unit: rfqLine ? rfqLine.unit : optionalText(item.unit),
+        unitPrice,
+        totalPrice: quantity * unitPrice,
+        vatIncluded: item.vatIncluded === true,
+        brand: optionalText(item.brand),
+        notes: optionalText(item.notes),
         isAlternative: Boolean(item.isAlternative),
-        alternativeDescription: item.alternativeDescription?.trim() || undefined,
-        alternativePartNumber: item.alternativePartNumber?.trim() || undefined,
+        alternativeDescription: optionalText(item.alternativeDescription),
+        alternativePartNumber: optionalText(item.alternativePartNumber),
         attachments: attachments.value
       });
     }
 
-    // Calculate totals
-    const subtotal = boundItems.reduce((sum: any, item: any) => sum + item.totalPrice, 0);
-    const vatAmount = boundItems.some((item: any) => !item.vatIncluded) ? subtotal * 0.15 : 0;
+    // VAT at 15% on VAT-exclusive lines only. A VAT-inclusive price already
+    // carries its VAT; taxing the whole subtotal charged those lines twice.
+    const subtotal = boundItems.reduce((sum: number, item: any) => sum + item.totalPrice, 0);
+    const vatableSubtotal = boundItems.reduce(
+      (sum: number, item: any) => (item.vatIncluded ? sum : sum + item.totalPrice),
+      0
+    );
+    const vatAmount = vatableSubtotal * 0.15;
     const totalAmount = subtotal + vatAmount;
 
-    // Generate quotation number
-    const count = await Quotation.countDocuments();
-    const year = new Date().getFullYear();
-    const quotationNumber = `QT-${year}-${String(count + 1).padStart(5, '0')}`;
-
-    const validityDays = validityPeriod || 30;
+    // The number comes from the model's counter hook (SBU-prefixed, atomic), as
+    // for purchase orders: a count-based number raced into duplicate keys.
     const quotation = await Quotation.create({
-      quotationNumber,
       rfq: rfqId,
       site: rfq.site,
       supplier: profile._id,
@@ -139,7 +237,7 @@ const submitQuotation = async (req: Request, res: Response): Promise<any> => {
       vatAmount,
       totalAmount,
       validityPeriod: validityDays,
-      deliveryPeriod,
+      deliveryPeriod: deliveryDays,
       paymentTerms,
       currency: currency || currentBaseCurrency(),
       notes,
@@ -177,7 +275,7 @@ const submitQuotation = async (req: Request, res: Response): Promise<any> => {
       entityId: quotation._id,
       user: req.user,
       description: `Submitted quotation ${quotation.quotationNumber} for RFQ ${rfq.rfqNumber}`,
-      newData: { totalAmount, deliveryPeriod },
+      newData: { totalAmount, deliveryPeriod: deliveryDays },
       req
     });
 

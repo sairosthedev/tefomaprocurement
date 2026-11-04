@@ -1,11 +1,26 @@
-import type { Request, Response } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import mongoose from 'mongoose';
 
 import { Invoice, PurchaseOrder, SupplierProfile } from '../../models/index.js';
+import { supplierListQuery } from './getMyRFQs.controller.js';
+
+/**
+ * The PO statuses a supplier sees. Drafts, orders still in approval and
+ * rejected ones have not been placed with them.
+ */
+export const SUPPLIER_VISIBLE_PO_STATUSES = ['approved', 'issued', 'partially_received', 'completed'];
+
+/** The supplier's acknowledgement on an order, if they have made one. */
+function acknowledgementBy(order: any, userId: unknown) {
+  return (order.approvalHistory || []).find(
+    (h: any) => h.action === 'acknowledged' && String(h.by) === String(userId)
+  );
+}
 
 const getMyPurchaseOrders = async (req: Request, res: Response): Promise<any> => {
   try {
     const profile = await SupplierProfile.findOne({ user: req.user!._id });
-    
+
     if (!profile) {
       return res.status(404).json({
         success: false,
@@ -13,36 +28,26 @@ const getMyPurchaseOrders = async (req: Request, res: Response): Promise<any> =>
       });
     }
 
-    const { status, page = 1, limit = 20 } = req.query as Record<string, any>;
-    
-    const query: any = { 
-      supplier: profile._id,
-      isDeleted: false
-    };
-    
-    // Show all POs except draft, pending, or rejected (suppliers should see approved/issued POs)
-    // This includes: approved, issued, partially_received, completed
-    if (!status) {
-      query.status = { $in: ['approved', 'issued', 'partially_received', 'completed'] };
-    } else {
-      query.status = status;
-    }
+    const { page, limit, skip, statuses } = supplierListQuery(req.query, SUPPLIER_VISIBLE_PO_STATUSES);
 
-    const skip = (page - 1) * limit;
-    
-    // Debug: Log the query to help troubleshoot
-    console.log('Supplier PO Query:', JSON.stringify(query, null, 2));
-    
+    const query: any = {
+      supplier: profile._id,
+      isDeleted: false,
+      status: { $in: statuses }
+    };
+
     const [orders, total] = await Promise.all([
       PurchaseOrder.find(query)
         .populate('quotation', 'quotationNumber currency')
+        // The approval trail is read only for the supplier's own
+        // acknowledgement, and is not sent on.
         .select('poNumber items subtotal vatAmount totalAmount currency status expectedDeliveryDate issuedAt createdAt paymentTerms deliveryAddress approvalHistory')
         .sort({ createdAt: -1, issuedAt: -1 })
         .skip(skip)
-        .limit(parseInt(limit)),
+        .limit(limit),
       PurchaseOrder.countDocuments(query)
     ]);
-    
+
     // The latest invoice on each order, so the supplier can see whether it has
     // been billed and paid without opening the invoices page.
     const invoices: any[] = await Invoice.find({
@@ -58,26 +63,23 @@ const getMyPurchaseOrders = async (req: Request, res: Response): Promise<any> =>
       if (!latestInvoice.has(key)) latestInvoice.set(key, { invoiceNumber: inv.invoiceNumber, status: inv.status });
     }
 
-    // Add acknowledgment status to each order
+    // Who approved the order, and when, is procurement's business; the
+    // supplier gets only whether (and when) they acknowledged it.
     const ordersWithAcknowledgment = orders.map(order => {
-      const orderObj: any = order.toObject();
+      const { approvalHistory: _history, ...orderObj }: any = order.toObject();
       orderObj.invoice = latestInvoice.get(String(order._id)) || null;
-      const isAcknowledged = order.approvalHistory?.some(
-        (h: any) => h.action === 'acknowledged' && String(h.by) === String((req.user as any)._id)
-      );
-      orderObj.isAcknowledged = isAcknowledged || false;
+      const acknowledgement = acknowledgementBy(order, req.user!._id);
+      orderObj.isAcknowledged = Boolean(acknowledgement);
+      orderObj.acknowledgedAt = acknowledgement?.timestamp || null;
       return orderObj;
     });
-    
-    // Debug: Log results
-    console.log(`Found ${orders.length} purchase orders for supplier ${profile._id}`);
 
     res.status(200).json({
       success: true,
       data: ordersWithAcknowledgment,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page,
+        limit,
         total,
         pages: Math.ceil(total / limit)
       }
@@ -88,6 +90,41 @@ const getMyPurchaseOrders = async (req: Request, res: Response): Promise<any> =>
       success: false,
       message: 'Server error'
     });
+  }
+};
+
+/**
+ * Route guard for the supplier's copy of a PO document: the order must be
+ * theirs and in a status they can see. The document itself is rendered by the
+ * procurement print controller, so it is the one the supplier was emailed.
+ */
+export const requireOwnVisiblePurchaseOrder = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<any> => {
+  try {
+    const { id } = req.params;
+    const profile = await SupplierProfile.findOne({ user: req.user!._id }).select('_id').lean();
+    const po =
+      profile && mongoose.isValidObjectId(id)
+        ? await PurchaseOrder.findOne({
+            _id: id,
+            supplier: profile._id,
+            isDeleted: false,
+            status: { $in: SUPPLIER_VISIBLE_PO_STATUSES }
+          })
+            .select('_id')
+            .lean()
+        : null;
+    // One answer for "not yours" and "not there", so ids cannot be probed.
+    if (!po) {
+      return res.status(404).json({ success: false, message: 'Purchase order not found' });
+    }
+    next();
+  } catch (error: any) {
+    console.error('Supplier PO access error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 

@@ -26,39 +26,62 @@ async function runAlertJobs(includeRetention: boolean): Promise<void> {
   if (includeRetention) await runRetentionJob();
 }
 
+export interface AlertRunSummary {
+  /** SBUs whose jobs completed ('default' when the registry is empty). */
+  completed: string[];
+  failed: string[];
+  includedRetention: boolean;
+  /** Set when the registry itself could not be read and nothing ran. */
+  error?: string;
+}
+
 /**
  * Jobs have no request to carry SBU context, so they walk the registry and run
  * each SBU's pass inside that SBU's context. One SBU failing must not stop the
  * rest — a single bad database would otherwise silence alerts group-wide.
+ *
+ * Shared by the in-process timer and the HTTP trigger (routes/internal), so a
+ * serverless deployment with no long-lived process runs exactly the same pass.
  */
-async function tick(): Promise<void> {
-  logger.debug('Running scheduled alert jobs…');
-
+export async function runAlertJobsForAllSbus(): Promise<AlertRunSummary> {
   const includeRetention = Date.now() - lastRetentionRun >= RETENTION_INTERVAL_MS;
   if (includeRetention) lastRetentionRun = Date.now();
+
+  const summary: AlertRunSummary = { completed: [], failed: [], includedRetention: includeRetention };
 
   let sbus: Awaited<ReturnType<typeof activeSbus>> = [];
   try {
     sbus = await activeSbus();
   } catch (error) {
     logger.error('Could not read the SBU registry; skipping this alert tick', error);
-    return;
+    summary.error = 'Could not read the SBU registry';
+    return summary;
   }
 
   if (sbus.length === 0) {
     // Registry not seeded yet: fall back to the single-tenant behaviour so
     // alerts keep working between deploying this and running seed:sbu-registry.
     await runAlertJobs(includeRetention);
-    return;
+    summary.completed.push('default');
+    return summary;
   }
 
   for (const sbu of sbus) {
     try {
       await runWithSbu(sbu, () => runAlertJobs(includeRetention));
+      summary.completed.push(sbu.code);
     } catch (error) {
       logger.error(`Alert jobs failed for SBU ${sbu.code}`, error);
+      summary.failed.push(sbu.code);
     }
   }
+
+  return summary;
+}
+
+async function tick(): Promise<void> {
+  logger.debug('Running scheduled alert jobs…');
+  await runAlertJobsForAllSbus();
 }
 
 export function startAlertScheduler(): void {

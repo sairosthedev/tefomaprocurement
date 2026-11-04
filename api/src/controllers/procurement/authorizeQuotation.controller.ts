@@ -52,9 +52,11 @@ const authorizeQuotation = async (req: Request, res: Response): Promise<any> => 
       });
     }
 
-    const quotation = await Quotation.findById(qid);
+    // Under a waiver the quotation is named in the request rather than taken
+    // from the selection, so it must be shown to belong to this RFQ.
+    const quotation = await Quotation.findOne({ _id: qid, rfq: rfq._id, isDeleted: false });
     if (!quotation) {
-      return res.status(404).json({ success: false, message: 'Quotation not found' });
+      return res.status(404).json({ success: false, message: 'Quotation not found for this RFQ' });
     }
 
     rfq.pmAuthorization = {

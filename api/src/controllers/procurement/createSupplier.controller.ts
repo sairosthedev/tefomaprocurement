@@ -1,9 +1,11 @@
 import type { Request, Response } from 'express';
+import crypto from 'crypto';
 
 import { isValidCategoryCode } from '@fossil/shared';
-import { User, SupplierProfile } from '../../models/index.js';
+import { User, SupplierProfile, Notification } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
-import { createNotification } from '../../services/notification.service.js';
+import { sendNotificationEmail } from '../../services/email.service.js';
+import { registrationConflict } from '../../services/supplierEligibility.service.js';
 import { getProductName } from '../../lib/branding.js';
 
 const createSupplier = async (req: Request, res: Response): Promise<any> => {
@@ -11,6 +13,7 @@ const createSupplier = async (req: Request, res: Response): Promise<any> => {
     const {
       companyName,
       tradingAs,
+      tradingName,
       registrationNumber,
       taxNumber,
       vatNumber,
@@ -49,55 +52,34 @@ const createSupplier = async (req: Request, res: Response): Promise<any> => {
     }
 
     // Normalize email
-    const normalizedEmail = email.toLowerCase().trim();
-    
+    const normalizedEmail = String(email).toLowerCase().trim();
+
     // Check if email already exists (excluding deleted users)
-    const existingUser = await User.findOne({ 
+    const existingUser = await User.findOne({
       email: normalizedEmail,
       isDeleted: { $ne: true }
     });
-    
+
     if (existingUser) {
-      console.log('Existing user found:', {
-        email: existingUser.email,
-        id: existingUser._id,
-        role: existingUser.role,
-        isDeleted: existingUser.isDeleted
-      });
       return res.status(400).json({
         success: false,
         message: `A user with email ${email} already exists`
       });
     }
 
-    // Also check if a supplier profile already exists with this email
-    const existingSupplier = await SupplierProfile.findOne({
-      email: normalizedEmail,
-      isDeleted: { $ne: true }
-    }).populate('user');
-    
-    if (existingSupplier) {
-      console.log('Existing supplier found:', {
-        email: (existingSupplier as any).email,
-        id: existingSupplier._id,
-        userId: existingSupplier.user?._id,
-        userDeleted: existingSupplier.user?.isDeleted
-      });
-      
-      // Only block if the associated user exists and is not deleted
-      if (existingSupplier.user && !existingSupplier.user.isDeleted) {
-        return res.status(400).json({
-          success: false,
-          message: `A supplier with email ${email} already exists`
-        });
-      }
+    // The same company must not be registered twice — least of all one that
+    // was blacklisted and is coming back under a new login. (This replaces a
+    // lookup by `email`, a field the profile does not have, so it never matched.)
+    const conflict = await registrationConflict(registrationNumber);
+    if (conflict) {
+      return res.status(409).json({ success: false, message: conflict.message });
     }
 
-    // Never fall back to a shared, guessable password: generate a random
-    // one-time credential instead. It is returned once so the officer can pass
-    // it on, and the supplier is told to log in and complete KYS.
-    const userPassword =
-      password || `${Math.random().toString(36).slice(-10)}A1!`;
+    // Never fall back to a shared, guessable password: when none is given,
+    // generate a random one-time credential. It is returned once so the
+    // officer can pass it on, and the supplier is told to log in and complete KYS.
+    const passwordGenerated = !password;
+    const userPassword: string = password || crypto.randomBytes(12).toString('base64url');
 
     // Validate password length
     if (userPassword.length < 6) {
@@ -118,34 +100,45 @@ const createSupplier = async (req: Request, res: Response): Promise<any> => {
       status: 'active'
     });
 
-    // Create supplier profile
-    const supplierProfile = await SupplierProfile.create({
-      user: user._id,
-      companyName,
-      tradingAs,
-      registrationNumber,
-      taxNumber,
-      vatNumber,
-      contactPerson: `${firstName} ${lastName}`,
-      email: normalizedEmail,
-      phone,
-      address: {
-        physical: physicalAddress,
-        city,
-        province,
-        postalCode
-      },
-      categories: categoryList,
-      bankDetails: {
-        bankName,
-        accountName: bankAccountName,
-        accountNumber: bankAccountNumber,
-        branchCode: bankBranchCode
-      },
-      // Supplier stays pending until KYS documents are
-      // collected and verified; only then can they be activated/invited.
-      status: 'pending'
-    });
+    // Create the profile with the schema's own field names: `tradingAs`,
+    // `contactPerson`, `email`, `phone` and `address.physical` are not on the
+    // schema, so strict mode silently dropped them. If this fails, the login
+    // created above is removed again rather than left orphaned.
+    let supplierProfile;
+    try {
+      supplierProfile = await SupplierProfile.create({
+        user: user._id,
+        companyName,
+        tradingName: tradingName || tradingAs || undefined,
+        registrationNumber,
+        taxNumber,
+        vatNumber,
+        // A contact person needs a phone number (the sub-schema requires one),
+        // and phone is optional on this form, so it is only recorded with one.
+        contactPersons: phone
+          ? [{ name: `${firstName} ${lastName}`.trim(), email: normalizedEmail, phone, isPrimary: true }]
+          : [],
+        address: {
+          street: physicalAddress,
+          city,
+          province,
+          postalCode
+        },
+        categories: categoryList,
+        bankDetails: {
+          bankName,
+          accountName: bankAccountName,
+          accountNumber: bankAccountNumber,
+          branchCode: bankBranchCode
+        },
+        // Supplier stays pending until KYS documents are
+        // collected and verified; only then can they be activated/invited.
+        status: 'pending'
+      });
+    } catch (profileErr) {
+      await User.deleteOne({ _id: user._id });
+      throw profileErr;
+    }
 
     await createAuditLog({
       action: 'create',
@@ -153,12 +146,15 @@ const createSupplier = async (req: Request, res: Response): Promise<any> => {
       entityId: supplierProfile._id,
       user: req.user,
       description: `Created new supplier: ${companyName}`,
-      newData: { companyName, email, categories },
+      newData: { companyName, email: normalizedEmail, categories },
       req
     });
 
-    // Create notification for the supplier
-    await createNotification({
+    // Welcome notification. The stored record never holds the password —
+    // notifications are readable in the app and kept for months — so the
+    // credentials are added only to the copy handed to the email template.
+    const metadata = { companyName, email: normalizedEmail };
+    const notification = await Notification.create({
       recipient: user._id,
       type: 'supplier_added',
       title: `Welcome to ${getProductName()}`,
@@ -166,15 +162,20 @@ const createSupplier = async (req: Request, res: Response): Promise<any> => {
       entity: 'SupplierProfile',
       entityId: supplierProfile._id,
       relatedUser: req.user!._id,
-      metadata: { 
-        companyName,
-        email: normalizedEmail,
-        password: userPassword 
-      }
+      metadata
+    }).catch((err: unknown) => {
+      console.error('Error creating supplier welcome notification:', err);
+      return null;
     });
 
-    // Send welcome email to supplier - will be sent via notification service automatically
-    // The notification service handles the email sending with the proper template
+    const emailCopy = {
+      ...(notification ? notification.toObject() : { type: 'supplier_added', entityId: supplierProfile._id }),
+      metadata: { ...metadata, password: userPassword }
+    };
+    // Not awaited, as before: email delivery must not hold up the response.
+    sendNotificationEmail(emailCopy, normalizedEmail).catch((err: unknown) => {
+      console.error('Failed to send supplier welcome email:', err);
+    });
 
     res.status(201).json({
       success: true,
@@ -182,9 +183,11 @@ const createSupplier = async (req: Request, res: Response): Promise<any> => {
       data: {
         id: supplierProfile._id,
         companyName: supplierProfile.companyName,
-        email: (supplierProfile as any).email,
+        email: normalizedEmail,
         status: supplierProfile.status,
-        password: userPassword // Return the password used
+        // Returned once so the creator can pass it on; it is not stored anywhere readable.
+        password: userPassword,
+        passwordGenerated
       }
     });
   } catch (error: any) {

@@ -645,6 +645,9 @@ export default function QuotationDetail() {
                         {item.specifications && (
                           <p className="text-xs text-gray-500 mt-1">{item.specifications}</p>
                         )}
+                        {item.brand && (
+                          <p className="text-xs text-gray-500 mt-1">Brand: {item.brand}</p>
+                        )}
                         {item.isAlternative && (
                           <div className="mt-1.5 p-2 bg-amber-50 border border-amber-200 rounded-lg">
                             <p className="text-xs font-medium text-amber-800">

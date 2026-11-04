@@ -22,6 +22,8 @@ export interface IMatchLineResult {
   quantityVariance: number;
   amountVariance: number;
   matched: boolean;
+  /** Quantity other invoices on the PO had already billed on this line. */
+  previouslyInvoicedQuantity?: number;
 }
 
 export interface IThreeWayMatchResult {
@@ -39,6 +41,9 @@ export interface IThreeWayMatchResult {
   lines: IMatchLineResult[];
   messages: string[];
   matchedAt?: Date;
+  /** VAT-exclusive value other invoices on the PO had already billed. */
+  previouslyInvoiced?: number;
+  previousInvoiceNumbers?: string[];
 }
 
 /** Record of a finance user approving an invoice despite a failed match. */
@@ -106,7 +111,8 @@ const MatchLineSchema = new Schema<IMatchLineResult>({
   invoicedLineTotal: Number,
   quantityVariance: Number,
   amountVariance: Number,
-  matched: Boolean
+  matched: Boolean,
+  previouslyInvoicedQuantity: Number
 }, { _id: false });
 
 const MatchResultSchema = new Schema<IThreeWayMatchResult>({
@@ -121,7 +127,10 @@ const MatchResultSchema = new Schema<IThreeWayMatchResult>({
   hasGrv: Boolean,
   lines: [MatchLineSchema],
   messages: [String],
-  matchedAt: Date
+  matchedAt: Date,
+  previouslyInvoiced: Number,
+  // Left unset rather than [] when nothing else billed the PO.
+  previousInvoiceNumbers: { type: [String], default: undefined }
 }, { _id: false });
 
 const VarianceOverrideSchema = new Schema<IVarianceOverride>({

@@ -1,10 +1,9 @@
 import type { Request, Response } from 'express';
 
-import { RFQ, SupplierProfile } from '../../models/index.js';
+import { RFQ } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
-import { notifySupplier } from '../../services/notification.service.js';
 import { hasEnteredLineItems } from '../../lib/lineItems.js';
-import { partitionEligibleSuppliers } from '../../services/supplierEligibility.service.js';
+import { announceOpenRfq, partitionRfqInvitees } from '../../services/rfqPublication.service.js';
 
 const publishRFQ = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -41,10 +40,8 @@ const publishRFQ = async (req: Request, res: Response): Promise<any> => {
 
     // Suppliers were validated when the draft was created, but that may have
     // been long ago — re-check before actually inviting anyone.
-    const { eligible, ineligible } = await partitionEligibleSuppliers(
-      rfq.invitedSuppliers.map((i: any) => i.supplier),
-      'invite'
-    );
+    const partition = await partitionRfqInvitees(rfq);
+    const { eligible, ineligible } = partition;
 
     if (eligible.length === 0) {
       return res.status(400).json({
@@ -54,28 +51,12 @@ const publishRFQ = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    const eligibleIds = new Set(eligible.map((id: any) => String(id)));
-
     rfq.status = 'open';
     rfq.publishedAt = new Date();
     await rfq.save();
 
     // Notify only the suppliers still eligible to quote.
-    for (const invitation of rfq.invitedSuppliers) {
-      if (!eligibleIds.has(String(invitation.supplier))) continue;
-      await notifySupplier(invitation.supplier, {
-        type: 'rfq_published',
-        title: 'New RFQ Published',
-        message: `A new RFQ ${rfq.rfqNumber} has been published. Submission deadline: ${new Date(rfq.submissionDeadline).toLocaleDateString()}`,
-        entity: 'RFQ',
-        entityId: rfq._id,
-        relatedUser: req.user!._id,
-        metadata: { 
-          deadline: rfq.submissionDeadline,
-          rfqNumber: rfq.rfqNumber
-        }
-      });
-    }
+    await announceOpenRfq(rfq, req.user!._id, partition);
 
     await createAuditLog({
       action: 'status_change',

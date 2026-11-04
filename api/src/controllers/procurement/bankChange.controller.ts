@@ -6,6 +6,7 @@ import {
   approverIsIndependent,
   isKnownContactNumber
 } from '../../services/bankChange.service.js';
+import { maskBankChangeRequest } from '../../lib/bankMasking.js';
 
 /**
  * Bank-detail change workflow: list → callback verification → approval.
@@ -15,25 +16,57 @@ import {
  * a second person who did neither of those things approves it.
  */
 
+const OPEN_STATUSES = ['pending_verification', 'pending_approval'];
+const REQUEST_STATUSES = [...OPEN_STATUSES, 'approved', 'rejected', 'cancelled'];
+const DEFAULT_LIST_LIMIT = 100;
+const MAX_LIST_LIMIT = 200;
+
 /** GET open (or filtered) banking change requests. */
 export const getBankChangeRequests = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { status = 'open' } = req.query as Record<string, any>;
+    const status = typeof req.query.status === 'string' ? req.query.status : 'open';
     const query: any = {};
     if (status === 'open') {
-      query.status = { $in: ['pending_verification', 'pending_approval'] };
-    } else if (status && status !== 'all') {
+      query.status = { $in: OPEN_STATUSES };
+    } else if (status !== 'all') {
+      // Only a known status: anything else would reach the query as given.
+      if (!REQUEST_STATUSES.includes(status)) {
+        return res.status(400).json({ success: false, message: `Unknown status: ${status}` });
+      }
       query.status = status;
     }
 
-    const requests = await SupplierBankChangeRequest.find(query)
-      .populate('supplier', 'companyName registrationNumber status')
-      .populate('requestedBy', 'firstName lastName email')
-      .populate('callback.verifiedBy', 'firstName lastName')
-      .populate('approvedBy', 'firstName lastName')
-      .sort({ createdAt: -1 });
+    const pageN = parseInt(String(req.query.page), 10);
+    const limitN = parseInt(String(req.query.limit), 10);
+    const page = pageN > 0 ? pageN : 1;
+    const limit = limitN > 0 ? Math.min(MAX_LIST_LIMIT, limitN) : DEFAULT_LIST_LIMIT;
 
-    res.status(200).json({ success: true, data: requests });
+    const [requests, total] = await Promise.all([
+      SupplierBankChangeRequest.find(query)
+        // The supporting document's file is not needed to list the request.
+        .select('-supportingDocument.fileData')
+        .populate('supplier', 'companyName registrationNumber status')
+        .populate('requestedBy', 'firstName lastName email')
+        .populate('callback.verifiedBy', 'firstName lastName')
+        .populate('approvedBy', 'firstName lastName')
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      SupplierBankChangeRequest.countDocuments(query)
+    ]);
+
+    // An open request shows its account numbers in full: that is what the
+    // callback confirms. Once closed, there is nothing left to verify, so the
+    // history shows only enough to tell accounts apart.
+    const data = requests.map((request) =>
+      OPEN_STATUSES.includes(request.status) ? request : maskBankChangeRequest(request)
+    );
+
+    res.status(200).json({
+      success: true,
+      data,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) }
+    });
   } catch (error: any) {
     console.error('Get bank change requests error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
@@ -70,19 +103,30 @@ export const verifyBankChangeCallback = async (req: Request, res: Response): Pro
       });
     }
 
+    // Whoever raised the change cannot also be the one who confirms it.
+    if (String(request.requestedBy) === String(req.user!._id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'You raised this banking change, so someone else must make the callback to verify it.'
+      });
+    }
+
     const supplier = await SupplierProfile.findById(request.supplier).populate('user', 'phone');
     if (!supplier) {
       return res.status(404).json({ success: false, message: 'Supplier not found' });
     }
 
-    if (!isKnownContactNumber(supplier, numberCalled)) {
+    // Checked against the numbers on file when the change was requested, so
+    // a number added with the change, or since, does not count.
+    const numberOnFile = isKnownContactNumber(supplier, numberCalled, request.contactNumbersOnFile);
+    if (!numberOnFile) {
       // Allowed only as a deliberate, reasoned exception — it is the single
       // most important property of the control.
       if (!overrideNumberCheck || !overrideReason?.trim()) {
         return res.status(400).json({
           success: false,
           message:
-            'The number called is not on file for this supplier. Call a number already held on the supplier record, or supply overrideNumberCheck with an overrideReason.'
+            'The number called is not on file for this supplier: it must be one held on the supplier record before this change was requested. Call one of those, or supply overrideNumberCheck with an overrideReason.'
         });
       }
     }
@@ -105,7 +149,7 @@ export const verifyBankChangeCallback = async (req: Request, res: Response): Pro
       entityId: request._id,
       user: req.user,
       description: `Callback verification recorded for ${supplier.companyName} banking change (called ${numberCalled}, confirmed by ${confirmedBy})`,
-      newData: { numberCalled, confirmedBy, numberOnFile: isKnownContactNumber(supplier, numberCalled) },
+      newData: { numberCalled, confirmedBy, numberOnFile },
       req
     });
 

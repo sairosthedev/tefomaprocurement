@@ -84,6 +84,38 @@ const acceptQuotation = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
+    // Everyone else still in the running is told the RFQ went elsewhere. Their
+    // quotations are left as they are: this is notice, not a rejection, and it
+    // names neither the winner nor the price.
+    const others = await Quotation.find({
+      rfq: rfq._id,
+      _id: { $ne: quotation._id },
+      isDeleted: false,
+      status: { $in: ['submitted', 'under_review', 'revision_requested'] }
+    }).select('supplier quotationNumber');
+    const winnerId = String(quotation.supplier);
+    const told = new Set<string>([winnerId]);
+    await Promise.all(
+      others
+        .filter((q) => {
+          const supplierId = String(q.supplier);
+          if (told.has(supplierId)) return false;
+          told.add(supplierId);
+          return true;
+        })
+        .map((q) =>
+          notifySupplier(q.supplier, {
+            type: 'quotation_rejected',
+            title: 'Quotation not selected',
+            message: `Your quotation ${q.quotationNumber} for RFQ ${rfq.rfqNumber} was not selected. The RFQ has been awarded to another supplier.`,
+            entity: 'Quotation',
+            entityId: q._id,
+            relatedUser: req.user!._id,
+            metadata: { rfqNumber: rfq.rfqNumber, quotationNumber: q.quotationNumber }
+          })
+        )
+    );
+
     res.status(200).json({
       success: true,
       message: 'Quotation accepted successfully',

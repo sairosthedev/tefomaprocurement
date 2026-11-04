@@ -2,16 +2,28 @@ import type { Request, Response } from 'express';
 
 import { SupplierProfile } from '../../models/index.js';
 import { maskBankNumbers } from '../../lib/bankMasking.js';
+import { escapeRegex } from '../../lib/regex.js';
+import { WITHOUT_DOCUMENT_FILES } from '../../services/supplierDocuments.service.js';
+
+/**
+ * A query parameter as a plain string. `?status[$ne]=x` arrives as an object
+ * and would otherwise be passed into the Mongo filter as an operator.
+ */
+const asString = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
 
 const getSuppliers = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { status, search, category, categories, kys, view, page = 1, limit = 20 } = req.query as Record<string, any>;
+    const { categories, page = 1, limit = 20 } = req.query as Record<string, any>;
+    const status = asString(req.query.status);
+    const search = asString(req.query.search);
+    const category = asString(req.query.category);
+    const kys = asString(req.query.kys);
     // `view=picker`: only what a supplier picker shows (the RFQ form asks for
     // hundreds at once, and the full profile is over a kilobyte each).
-    const picker = view === 'picker';
-    
+    const picker = asString(req.query.view) === 'picker';
+
     const query: any = { isDeleted: false };
-    
+
     if (status) query.status = status;
     if (kys === 'pending') {
       query.kysComplete = false;
@@ -22,18 +34,22 @@ const getSuppliers = async (req: Request, res: Response): Promise<any> => {
     // `category` matches a single code; `categories` matches any of several codes
     // (comma-separated string or array) — used to find suppliers for an RFQ's items.
     if (categories) {
-      const codes = Array.isArray(categories)
-        ? categories
-        : String(categories).split(',').map((c) => c.trim()).filter(Boolean);
+      const codes = (Array.isArray(categories) ? categories : String(categories).split(','))
+        .filter((c: unknown) => typeof c === 'string')
+        .map((c: string) => c.trim())
+        .filter(Boolean);
       if (codes.length > 0) query.categories = { $in: codes };
     } else if (category) {
       query.categories = category;
     }
     if (search) {
+      // Escaped: a search for "Smith (Pvt)" is a literal string, not a pattern,
+      // and an unbalanced "(" used to fail the whole request.
+      const pattern = escapeRegex(search);
       query.$or = [
-        { companyName: { $regex: search, $options: 'i' } },
-        { tradingName: { $regex: search, $options: 'i' } },
-        { registrationNumber: { $regex: search, $options: 'i' } }
+        { companyName: { $regex: pattern, $options: 'i' } },
+        { tradingName: { $regex: pattern, $options: 'i' } },
+        { registrationNumber: { $regex: pattern, $options: 'i' } }
       ];
     }
 
@@ -53,6 +69,7 @@ const getSuppliers = async (req: Request, res: Response): Promise<any> => {
             .limit(limitNum)
             .lean()
         : SupplierProfile.find(query)
+            .select(WITHOUT_DOCUMENT_FILES)
             .populate('user', 'email firstName lastName phone')
             .sort({ createdAt: -1 })
             .skip(skip)

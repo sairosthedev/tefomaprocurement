@@ -3,11 +3,48 @@ import { isValidCategoryCode } from '@fossil/shared';
 import { User, SupplierProfile, SupplierBankChangeRequest } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole } from '../../services/notification.service.js';
+import { sendEmailNotification } from '../../services/email.service.js';
+import { brandSubject, getProductName } from '../../lib/branding.js';
+import { emailPaths } from '../../lib/emailLinks.js';
 import {
+  contactNumbersOnFile,
   diffBankDetails,
   hasOpenBankChange,
+  phoneNumbersDiffer,
   requiresApproval
 } from '../../services/bankChange.service.js';
+
+// The values SupplierProfile accepts for the vetting record (Rev 9 clauses 5.5 and 6.2.1).
+const VETTING_STATUSES = ['not_started', 'in_progress', 'passed', 'failed'];
+const ONBOARDING_METHODS = ['newspaper', 'direct_application', 'referral', 'existing', 'other'];
+
+/**
+ * Tell both addresses that a supplier's sign-in email was changed by staff.
+ * The old address is the one that matters: if the change was not genuine, it
+ * is the only place the real supplier will hear about it.
+ */
+async function notifySignInEmailChanged(companyName: string, oldEmail: string, newEmail: string, changedBy: any) {
+  const product = getProductName();
+  const by = [changedBy?.firstName, changedBy?.lastName].filter(Boolean).join(' ') || 'procurement';
+  await Promise.allSettled([
+    sendEmailNotification({
+      emailTo: oldEmail,
+      subject: brandSubject('Your sign-in email was changed'),
+      headingText: 'Sign-in email changed',
+      subText: `The email address used to sign in to ${product} for ${companyName} was changed from ${oldEmail} to ${newEmail} by ${by}. This address will no longer receive sign-in codes or notifications.`,
+      subSubText: 'If you did not ask for this change, contact procurement immediately.'
+    }),
+    sendEmailNotification({
+      emailTo: newEmail,
+      subject: brandSubject('Your sign-in email was changed'),
+      headingText: 'Sign-in email changed',
+      subText: `This address is now used to sign in to ${product} for ${companyName}, replacing ${oldEmail}. The change was made by ${by}.`,
+      subSubText: 'If you did not expect this, contact procurement.',
+      actionButtonText: 'Sign in',
+      actionButtonLink: emailPaths.supplierLogin()
+    })
+  ]);
+}
 
 const updateSupplier = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -44,7 +81,32 @@ const updateSupplier = async (req: Request, res: Response): Promise<any> => {
       return res.status(404).json({ success: false, message: 'Supplier not found' });
     }
 
-    const previousData = supplier.toObject();
+    // Without the document bodies: they are megabytes of base64 each, and the
+    // audit entry is about the profile fields.
+    const { complianceDocuments: _documents, ...previousData } = supplier.toObject();
+
+    // The supplier's login, read up front: a clashing email or a held phone
+    // change is refused before anything is saved, and its phone is one of the
+    // numbers a banking-change callback may be made to.
+    const supplierUser = supplier.user ? await User.findById(supplier.user) : null;
+    const userEdit = userUpdates && typeof userUpdates === 'object' && supplierUser ? userUpdates : null;
+    const numbersBefore = contactNumbersOnFile(supplier.contactPersons, supplierUser?.phone);
+
+    let normalizedEmail: string | undefined;
+    if (userEdit?.email) {
+      normalizedEmail = String(userEdit.email).toLowerCase().trim();
+      const existing = await User.findOne({
+        email: normalizedEmail,
+        _id: { $ne: supplierUser!._id },
+        isDeleted: { $ne: true }
+      });
+      if (existing) {
+        return res.status(400).json({
+          success: false,
+          message: `A user with email ${userEdit.email} already exists`
+        });
+      }
+    }
 
     if (companyName !== undefined) supplier.companyName = String(companyName).trim();
     if (tradingName !== undefined) supplier.tradingName = String(tradingName).trim();
@@ -132,6 +194,20 @@ const updateSupplier = async (req: Request, res: Response): Promise<any> => {
       supplier.contactPersons = mapped;
     }
 
+    // While a banking change awaits its callback, the numbers that callback
+    // will be made to stay as they are.
+    const numbersAfter = contactNumbersOnFile(
+      supplier.contactPersons,
+      userEdit && userEdit.phone !== undefined ? userEdit.phone : supplierUser?.phone
+    );
+    if (phoneNumbersDiffer(numbersBefore, numbersAfter) && (await hasOpenBankChange(supplier._id))) {
+      return res.status(409).json({
+        success: false,
+        message:
+          'Contact phone numbers cannot be changed while a banking change for this supplier is awaiting verification and approval. Resolve it under Bank changes first.'
+      });
+    }
+
     if (clientReferrals !== undefined) {
       if (!Array.isArray(clientReferrals)) {
         return res.status(400).json({ success: false, message: 'clientReferrals must be an array' });
@@ -152,7 +228,14 @@ const updateSupplier = async (req: Request, res: Response): Promise<any> => {
       }
     }
 
-    if (vettingStatus !== undefined) supplier.vettingStatus = vettingStatus;
+    // Checked here so a bad value is a 400, not a validation error on save.
+    if (vettingStatus && !VETTING_STATUSES.includes(vettingStatus)) {
+      return res.status(400).json({ success: false, message: `Vetting status must be one of: ${VETTING_STATUSES.join(', ')}` });
+    }
+    if (onboardingMethod && !ONBOARDING_METHODS.includes(onboardingMethod)) {
+      return res.status(400).json({ success: false, message: `Onboarding method must be one of: ${ONBOARDING_METHODS.join(', ')}` });
+    }
+    if (vettingStatus !== undefined) supplier.vettingStatus = vettingStatus || 'not_started';
     if (siteVisitDate !== undefined) supplier.siteVisitDate = siteVisitDate ? new Date(siteVisitDate) : undefined;
     if (siteVisitBy !== undefined) supplier.siteVisitBy = siteVisitBy ? String(siteVisitBy).trim() : undefined;
     if (siteVisitNotes !== undefined) supplier.siteVisitNotes = siteVisitNotes ? String(siteVisitNotes).trim() : undefined;
@@ -171,6 +254,8 @@ const updateSupplier = async (req: Request, res: Response): Promise<any> => {
         previousDetails: supplier.bankDetails || {},
         requestedDetails: bankDetails,
         changes: bankFieldChanges,
+        // Before this save: a number added in it does not count for the callback.
+        contactNumbersOnFile: numbersBefore,
         status: 'pending_verification'
       });
 
@@ -198,32 +283,34 @@ const updateSupplier = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    if (userUpdates && typeof userUpdates === 'object' && supplier.user) {
-      const user = await User.findById(supplier.user);
-      if (user) {
-        if (userUpdates.email) {
-          const normalizedEmail = String(userUpdates.email).toLowerCase().trim();
-          const existing = await User.findOne({
-            email: normalizedEmail,
-            _id: { $ne: user._id },
-            isDeleted: { $ne: true }
-          });
-          if (existing) {
-            return res.status(400).json({
-              success: false,
-              message: `A user with email ${userUpdates.email} already exists`
-            });
-          }
-          user.email = normalizedEmail;
-        }
-        if (userUpdates.phone !== undefined) user.phone = userUpdates.phone;
-        if (userUpdates.firstName !== undefined) user.firstName = String(userUpdates.firstName).trim();
-        if (userUpdates.lastName !== undefined) user.lastName = String(userUpdates.lastName).trim();
-        await user.save();
+    if (userEdit && supplierUser) {
+      const previousEmail = supplierUser.email;
+      if (normalizedEmail) supplierUser.email = normalizedEmail;
+      if (userEdit.phone !== undefined) supplierUser.phone = userEdit.phone;
+      if (userEdit.firstName !== undefined) supplierUser.firstName = String(userEdit.firstName).trim();
+      if (userEdit.lastName !== undefined) supplierUser.lastName = String(userEdit.lastName).trim();
+      await supplierUser.save();
+
+      // The sign-in email decides where OTP codes go, so a staff change to it
+      // is told to both addresses and recorded on its own, naming both.
+      if (normalizedEmail && normalizedEmail !== previousEmail) {
+        await createAuditLog({
+          action: 'update',
+          entity: 'User',
+          entityId: supplierUser._id,
+          entityLabel: supplier.companyName,
+          user: req.user,
+          description: `Changed the sign-in email for supplier ${supplier.companyName} from ${previousEmail} to ${normalizedEmail}`,
+          previousData: { email: previousEmail },
+          newData: { email: normalizedEmail },
+          req
+        });
+        await notifySignInEmailChanged(supplier.companyName, previousEmail, normalizedEmail, req.user);
       }
     }
 
     const updated = await SupplierProfile.findById(id)
+      .select('-complianceDocuments.filePath')
       .populate('user', 'email firstName lastName phone status')
       .populate('approvedBy', 'firstName lastName')
       .populate('blacklistedBy', 'firstName lastName');

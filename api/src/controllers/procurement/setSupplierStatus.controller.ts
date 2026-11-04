@@ -3,6 +3,8 @@ import type { Request, Response } from 'express';
 import { SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { createNotification } from '../../services/notification.service.js';
+import { transitionSupplierStatus } from '../../services/supplierEligibility.service.js';
+import { withoutDocumentFiles } from '../../services/supplierDocuments.service.js';
 
 type TargetStatus = 'active' | 'suspended' | 'dormant';
 
@@ -50,8 +52,10 @@ const setSupplierStatus = async (req: Request, res: Response): Promise<any> => {
     }
 
     const previousStatus = supplier.status;
-    supplier.status = status;
-    if (reason) supplier.notes = reason;
+    // Keeps transactability in step — reactivation restores spend
+    // authorization, suspension and dormancy withdraw it — and records the
+    // reason in the status history rather than over the supplier's notes.
+    transitionSupplierStatus(supplier, status, req.user!._id, reason);
     if (status === 'active') {
       supplier.approvedBy = req.user!._id;
       supplier.approvedAt = new Date();
@@ -72,7 +76,7 @@ const setSupplierStatus = async (req: Request, res: Response): Promise<any> => {
       user: req.user,
       description: `${labels[status]} supplier: ${supplier.companyName}${reason ? `. Reason: ${reason}` : ''}`,
       previousData: { status: previousStatus },
-      newData: { status },
+      newData: { status, transactability: supplier.transactability },
       req
     });
 
@@ -97,7 +101,7 @@ const setSupplierStatus = async (req: Request, res: Response): Promise<any> => {
     res.status(200).json({
       success: true,
       message: `Supplier ${labels[status].toLowerCase()} successfully`,
-      data: supplier
+      data: withoutDocumentFiles(supplier)
     });
   } catch (error: any) {
     console.error('Set supplier status error:', error);

@@ -3,6 +3,7 @@ import jwt, { type SignOptions } from 'jsonwebtoken';
 import { isValidCategoryCode } from '@fossil/shared';
 import { User, SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { registrationConflict } from '../../services/supplierEligibility.service.js';
 import { getJwtSecret, getJwtExpiry } from '../../config/secrets.js';
 
 const register = async (req: Request, res: Response): Promise<any> => {
@@ -29,6 +30,17 @@ const register = async (req: Request, res: Response): Promise<any> => {
       return res.status(400).json({
         success: false,
         message: 'Email, password, first name, and last name are required'
+      });
+    }
+
+    // The profile's primary contact requires a phone number. Checked here,
+    // before anything is created: failing at the profile step used to leave a
+    // login behind with no supplier attached.
+    const contactPhone = typeof phone === 'string' ? phone.trim() : '';
+    if (!contactPhone) {
+      return res.status(400).json({
+        success: false,
+        message: 'A contact phone number is required'
       });
     }
 
@@ -65,44 +77,58 @@ const register = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
+    // A company registers once. A blacklisted one gets a neutral refusal
+    // rather than a fresh account under a new login.
+    const conflict = await registrationConflict(profileData.registrationNumber);
+    if (conflict) {
+      return res.status(409).json({ success: false, message: conflict.message });
+    }
+
     const user = await User.create({
       email: normalizedEmail,
       password,
       firstName,
       lastName,
       role: userRole,
-      phone,
+      phone: contactPhone,
       status: 'active'
     });
 
     const accountName = profileData.bankDetails?.accountName
       || `${firstName} ${lastName}`.trim();
 
-    await SupplierProfile.create({
-      user: user._id,
-      companyName: profileData.companyName,
-      tradingName: profileData.tradingName,
-      registrationNumber: profileData.registrationNumber,
-      vatNumber: profileData.vatNumber,
-      address: profileData.address,
-      contactPersons: [{
-        name: `${firstName} ${lastName}`,
-        email: normalizedEmail,
-        phone: phone || '',
-        isPrimary: true
-      }],
-      bankDetails: profileData.bankDetails
-        ? {
-            bankName: profileData.bankDetails.bankName,
-            accountName,
-            accountNumber: profileData.bankDetails.accountNumber,
-            branchCode: profileData.bankDetails.branchCode,
-            accountType: profileData.bankDetails.accountType
-          }
-        : undefined,
-      categories: Array.isArray(profileData.categories) ? profileData.categories : [],
-      status: 'pending'
-    });
+    // If the profile cannot be created, remove the login just made so the
+    // person can register again rather than being told the email is taken.
+    try {
+      await SupplierProfile.create({
+        user: user._id,
+        companyName: profileData.companyName,
+        tradingName: profileData.tradingName,
+        registrationNumber: profileData.registrationNumber,
+        vatNumber: profileData.vatNumber,
+        address: profileData.address,
+        contactPersons: [{
+          name: `${firstName} ${lastName}`,
+          email: normalizedEmail,
+          phone: contactPhone,
+          isPrimary: true
+        }],
+        bankDetails: profileData.bankDetails
+          ? {
+              bankName: profileData.bankDetails.bankName,
+              accountName,
+              accountNumber: profileData.bankDetails.accountNumber,
+              branchCode: profileData.bankDetails.branchCode,
+              accountType: profileData.bankDetails.accountType
+            }
+          : undefined,
+        categories: Array.isArray(profileData.categories) ? profileData.categories : [],
+        status: 'pending'
+      });
+    } catch (profileErr) {
+      await User.deleteOne({ _id: user._id });
+      throw profileErr;
+    }
 
     const token = jwt.sign(
       { id: user._id, role: user.role },

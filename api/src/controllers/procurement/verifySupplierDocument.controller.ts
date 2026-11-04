@@ -3,6 +3,8 @@ import { computeKysCompletionForTier, getChecklistKeyForDocType } from '@fossil/
 import { SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifySupplier } from '../../services/notification.service.js';
+import { isExpired } from '../../services/documentExpiry.service.js';
+import { withoutFileBody } from '../../services/supplierDocuments.service.js';
 
 /**
  * Verify or reject a single uploaded compliance document.
@@ -37,6 +39,15 @@ export const verifySupplierDocument = async (req: Request, res: Response): Promi
     const doc = supplier.complianceDocuments?.find((d: any) => d._id?.toString() === docId);
     if (!doc) {
       return res.status(404).json({ success: false, message: 'Document not found' });
+    }
+
+    // Verifying a lapsed document would re-tick the checklist item the expiry
+    // job just unticked. It can still be rejected.
+    if (!isRejection && isExpired(doc)) {
+      return res.status(400).json({
+        success: false,
+        message: `This document expired on ${new Date(doc.expiryDate!).toISOString().slice(0, 10)}. Ask the supplier for a current one, or reject it.`
+      });
     }
 
     const checklistKey = getChecklistKeyForDocType(doc.documentType);
@@ -95,7 +106,7 @@ export const verifySupplierDocument = async (req: Request, res: Response): Promi
     res.status(200).json({
       success: true,
       message: isRejection ? 'Document rejected' : 'Document verified',
-      data: { document: doc, completion }
+      data: { document: withoutFileBody(doc), completion }
     });
   } catch (error: any) {
     console.error('Verify supplier document error:', error);

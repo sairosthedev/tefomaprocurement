@@ -1,10 +1,57 @@
 import { useEffect, useState } from 'react';
 import { supplierAPI } from '../../lib/api';
-import { KYS_DOCUMENT_REQUIREMENTS } from '@fossil/shared';
 import { useToast } from '../../components/Toast';
 import KysDocuments from '../../components/KysDocuments';
+import { documentTypeLabel, requiredDocumentTypesForTier } from '../../components/supplier/kysRequirements';
 import PageHeader from '../../components/PageHeader';
 import { Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+
+/**
+ * What the banner says, from the supplier's actual standing rather than its
+ * status alone: "active" with lapsed or missing KYS is not "can be awarded".
+ */
+function kysBanner(profile: any, docs: any[], requiredTypes: string[]): { ok: boolean; text: string } {
+  const uploaded = requiredTypes.filter((t) => docs.some((d: any) => d.documentType === t)).length;
+  const progress = `${uploaded}/${requiredTypes.length} documents required for your account uploaded.`;
+
+  const now = Date.now();
+  const expiredRequired = docs.filter(
+    (d: any) => d.expiryDate && new Date(d.expiryDate).getTime() <= now && requiredTypes.includes(d.documentType)
+  );
+
+  switch (profile?.status) {
+    case 'blacklisted':
+    case 'suspended':
+    case 'dormant':
+      return { ok: false, text: `Your account is ${profile.status}. Contact procurement for help.` };
+    case 'pending':
+      return { ok: false, text: `Pending verification — ${progress}` };
+  }
+
+  // Active from here on. An exemption covers documents, as it does on the server.
+  if (!profile?.kysExempt && expiredRequired.length > 0) {
+    const list = expiredRequired
+      .map((d: any) => `${documentTypeLabel(d.documentType)} (expired ${new Date(d.expiryDate).toLocaleDateString('en-ZA')})`)
+      .join(', ');
+    return {
+      ok: false,
+      text: `Your account is active, but ${list} must be replaced before you can be awarded new work. You can still be invited to quote.`
+    };
+  }
+  if (!profile?.kysComplete && !profile?.kysExempt) {
+    return {
+      ok: false,
+      text: `Your account is active and can be invited to quote, but your KYS is incomplete, so you cannot be awarded work yet. ${progress}`
+    };
+  }
+  if (profile?.transactability !== 'spend_authorized') {
+    return {
+      ok: false,
+      text: 'Your account is active and can be invited to quote. Procurement has not yet authorised it for awards.'
+    };
+  }
+  return { ok: true, text: 'Your account is active and verified: you can be invited to RFQs and awarded work.' };
+}
 
 export default function MyKys() {
   const { showToast } = useToast();
@@ -37,6 +84,12 @@ export default function MyKys() {
     await load();
   };
 
+  // The profile carries document details only; the file is fetched on open.
+  const fetchFile = async (doc: any): Promise<Blob> => {
+    const res = await supplierAPI.getKysDocumentFile(doc._id);
+    return res.data;
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-20">
@@ -46,14 +99,9 @@ export default function MyKys() {
   }
 
   const docs = profile?.complianceDocuments || [];
-  const requiredReqs = KYS_DOCUMENT_REQUIREMENTS.filter((r) => r.required);
-  const requiredUploaded = requiredReqs.filter((r) =>
-    docs.some((d: any) => d.documentType === r.documentType)
-  ).length;
-  const requiredVerified = requiredReqs.filter((r) =>
-    docs.some((d: any) => d.documentType === r.documentType && d.verified)
-  ).length;
-  const isActive = profile?.status === 'active';
+  // Required depth follows the supplier's tier, not the full list.
+  const requiredTypes = requiredDocumentTypesForTier(profile?.tier);
+  const banner = kysBanner(profile, docs, requiredTypes);
 
   return (
     <div className="p-8 max-w-3xl">
@@ -65,18 +113,20 @@ export default function MyKys() {
 
       <div
         className={`mb-6 flex items-start gap-2 p-3 rounded-xl border text-sm ${
-          isActive ? 'bg-green-50 border-green-200 text-green-700' : 'bg-amber-50 border-amber-200 text-amber-700'
+          banner.ok ? 'bg-green-50 border-green-200 text-green-700' : 'bg-amber-50 border-amber-200 text-amber-700'
         }`}
       >
-        {isActive ? <CheckCircle className="h-4 w-4 mt-0.5 shrink-0" /> : <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />}
-        <span>
-          {isActive
-            ? 'Your account is active and can be invited to RFQs.'
-            : `Pending verification — ${requiredUploaded}/${requiredReqs.length} mandatory documents uploaded.`}
-        </span>
+        {banner.ok ? <CheckCircle className="h-4 w-4 mt-0.5 shrink-0" /> : <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />}
+        <span>{banner.text}</span>
       </div>
 
-      <KysDocuments documents={docs} onUpload={uploadDoc} onDelete={deleteDoc} />
+      <KysDocuments
+        documents={docs}
+        onUpload={uploadDoc}
+        onDelete={deleteDoc}
+        fetchFile={fetchFile}
+        requiredTypes={requiredTypes}
+      />
     </div>
   );
 }

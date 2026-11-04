@@ -46,6 +46,9 @@ export const procurementAPI: any = {
   verifyKys: (id: any, data?: any) => http.put(`/procurement/suppliers/${id}/kys/verify`, data),
   uploadSupplierDocument: (id: any, data: any) => http.post(`/procurement/suppliers/${id}/documents`, data),
   deleteSupplierDocument: (id: any, docId: any) => http.delete(`/procurement/suppliers/${id}/documents/${docId}`),
+  // The file itself, fetched when opened — supplier reads carry no file bodies.
+  getSupplierDocumentFile: (id: any, docId: any) =>
+    http.get(`/procurement/suppliers/${id}/documents/${docId}/file`, { responseType: 'blob' }),
   getSupplierEvaluations: (id: any) => http.get(`/procurement/suppliers/${id}/evaluations`),
   createSupplierEvaluation: (id: any, data: any) => http.post(`/procurement/suppliers/${id}/evaluations`, data),
   secApproveEvaluation: (id: any, data: any) => http.put(`/procurement/evaluations/${id}/sec-approve`, data),

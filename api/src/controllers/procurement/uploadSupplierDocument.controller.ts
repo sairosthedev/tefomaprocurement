@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
-import { addComplianceDocument } from '../../services/supplierDocuments.service.js';
+import { addComplianceDocument, withoutDocumentFiles } from '../../services/supplierDocuments.service.js';
 
 const uploadSupplierDocument = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -32,7 +32,7 @@ const uploadSupplierDocument = async (req: Request, res: Response): Promise<any>
     res.status(200).json({
       success: true,
       message: 'Document uploaded',
-      data: supplier
+      data: withoutDocumentFiles(supplier)
     });
   } catch (error: any) {
     console.error('Upload supplier document error:', error);

@@ -5,8 +5,9 @@ import {
   Building2, Mail, Phone, MapPin, FileText, 
   Save, Loader2, Upload, CheckCircle, AlertCircle, Shield
 } from 'lucide-react';
-import { PROVINCES, BANKS, SUPPLIER_CATEGORIES } from '../../lib/constants';
+import { PROVINCES, BANKS } from '../../lib/constants';
 import PageHeader from '../../components/PageHeader';
+import { CategoryMultiSelect } from '../../components/CategorySelect';
 
 /** Where a requested banking change stands, in the supplier's terms. */
 const BANK_CHANGE_STATUS: Record<string, string> = {
@@ -24,6 +25,9 @@ export default function SupplierProfile() {
   // Banking is only submitted when actually touched: any change raises a
   // verification-and-approval request rather than saving straight through.
   const [bankDirty, setBankDirty] = useState(false);
+  // Categories are sent only when edited, so a profile still holding older
+  // free-text values (which the server rejects) can save its other sections.
+  const [categoriesDirty, setCategoriesDirty] = useState(false);
   const [profile, setProfile] = useState<any>({
     companyName: '',
     // Schema field is `tradingName`; `tradingAs` was silently discarded.
@@ -77,13 +81,14 @@ export default function SupplierProfile() {
       const payload: any = {
         tradingName: profile.tradingName,
         address: profile.address,
-        contactPersons: profile.contactPersons,
-        categories: profile.categories
+        contactPersons: profile.contactPersons
       };
+      if (categoriesDirty) payload.categories = profile.categories;
       if (bankDirty) payload.bankDetails = profile.bankDetails;
 
       const response = await api.put('/supplier/profile', payload);
       if (response.data.success) {
+        setCategoriesDirty(false);
         if (response.data.bankChangePending) {
           setBankDirty(false);
           fetchProfile(true);
@@ -99,15 +104,6 @@ export default function SupplierProfile() {
       showToast(error.response?.data?.message || 'Failed to update profile', 'error');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleCategoryChange = (category: any) => {
-    const current = profile.categories || [];
-    if (current.includes(category)) {
-      setProfile({ ...profile, categories: current.filter((c: any) => c !== category) });
-    } else {
-      setProfile({ ...profile, categories: [...current, category] });
     }
   };
 
@@ -335,26 +331,18 @@ export default function SupplierProfile() {
             Service Categories
           </h2>
           
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {SUPPLIER_CATEGORIES.map((category: any) => (
-              <label
-                key={category}
-                className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${
-                  profile.categories?.includes(category)
-                    ? 'bg-primary/5 border-primary text-primary'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={profile.categories?.includes(category)}
-                  onChange={() => handleCategoryChange(category)}
-                  className="sr-only"
-                />
-                <span className="text-sm font-medium">{category}</span>
-              </label>
-            ))}
-          </div>
+          {/* The same picker as registration and Add Supplier: categories are
+              stored as codes, which the old name grid never matched, so nothing
+              showed as ticked and any tick made the save fail. */}
+          <CategoryMultiSelect
+            value={Array.isArray(profile.categories) ? profile.categories : []}
+            onChange={(codes) => {
+              setCategoriesDirty(true);
+              setProfile({ ...profile, categories: codes });
+            }}
+            placeholder="Select the categories you supply…"
+          />
+          <p className="text-xs text-gray-400 mt-2">Used to match you to RFQs in these categories.</p>
         </div>
 
         {/* Bank Details */}

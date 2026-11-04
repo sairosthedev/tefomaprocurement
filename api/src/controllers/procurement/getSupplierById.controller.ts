@@ -2,12 +2,16 @@ import type { Request, Response } from 'express';
 
 import { SupplierProfile } from '../../models/index.js';
 import { canSeeFullBankDetails, maskBankNumbers } from '../../lib/bankMasking.js';
+import { WITHOUT_DOCUMENT_FILES } from '../../services/supplierDocuments.service.js';
 
 const getSupplierById = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
 
+    // Document metadata only; the viewer fetches a file when it is opened
+    // (GET .../documents/:docId/file).
     const supplier = await SupplierProfile.findById(id)
+      .select(WITHOUT_DOCUMENT_FILES)
       .populate('user', 'email firstName lastName phone status')
       .populate('approvedBy', 'firstName lastName')
       .populate('blacklistedBy', 'firstName lastName');

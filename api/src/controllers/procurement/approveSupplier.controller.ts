@@ -4,6 +4,8 @@ import { computeKysCompletionForTier } from '@fossil/shared';
 import { SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { createNotification } from '../../services/notification.service.js';
+import { transitionSupplierStatus } from '../../services/supplierEligibility.service.js';
+import { withoutDocumentFiles } from '../../services/supplierDocuments.service.js';
 
 const approveSupplier = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -51,12 +53,16 @@ const approveSupplier = async (req: Request, res: Response): Promise<any> => {
     }
 
     const previousStatus = supplier.status;
-    supplier.status = 'active';
+    // Activation grants spend authorization. The approver's notes go to the
+    // status history, not `notes` (the supplier's services description).
+    transitionSupplierStatus(
+      supplier,
+      'active',
+      req.user!._id,
+      overrideKys ? `KYS override: ${reason.trim()}` : notes
+    );
     supplier.approvedBy = req.user!._id;
     supplier.approvedAt = new Date();
-    supplier.transactability = 'spend_authorized';
-    supplier.transactabilityChangedBy = req.user!._id;
-    supplier.transactabilityChangedAt = new Date();
 
     if (!overrideKys) {
       supplier.kysComplete = true;
@@ -65,8 +71,6 @@ const approveSupplier = async (req: Request, res: Response): Promise<any> => {
         supplier.kysChecklist.verifiedAt = new Date();
       }
     }
-
-    if (notes) supplier.notes = notes;
 
     await supplier.save();
 
@@ -96,7 +100,7 @@ const approveSupplier = async (req: Request, res: Response): Promise<any> => {
         entity: 'SupplierProfile',
         entityId: supplier._id,
         relatedUser: req.user!._id,
-        metadata: { companyName: supplier.companyName, notes: supplier.notes || undefined }
+        metadata: { companyName: supplier.companyName, notes: notes || undefined }
       });
     }
 
@@ -105,7 +109,7 @@ const approveSupplier = async (req: Request, res: Response): Promise<any> => {
       message: overrideKys
         ? 'Supplier activated without KYS (override applied)'
         : 'Supplier approved successfully',
-      data: supplier
+      data: withoutDocumentFiles(supplier)
     });
   } catch (error: any) {
     console.error('Approve supplier error:', error);

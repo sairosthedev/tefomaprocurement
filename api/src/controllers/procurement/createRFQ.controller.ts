@@ -5,6 +5,7 @@ import { createAuditLog } from '../../middleware/index.js';
 import { resolveSiteId } from '../../lib/siteScope.js';
 import { hasEnteredLineItems } from '../../lib/lineItems.js';
 import { proposeInvitationsForRequisition } from '../../services/supplierInvitation.service.js';
+import { announceOpenRfq } from '../../services/rfqPublication.service.js';
 
 /**
  * Requisition statuses from which sourcing may legitimately begin (BR-4).
@@ -189,6 +190,11 @@ const createRFQ = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
+    // Created already open is a publish in one step, so the invitees are told
+    // here; publishRFQ does the same for a draft and refuses anything not draft,
+    // so nobody is notified twice.
+    const announced = rfqStatus === 'open' ? await announceOpenRfq(rfq, req.user!._id) : null;
+
     await createAuditLog({
       action: 'create',
       entity: 'RFQ',
@@ -197,7 +203,10 @@ const createRFQ = async (req: Request, res: Response): Promise<any> => {
       description:
         `Created RFQ: ${rfq.rfqNumber} - ${title}` +
         (autoInvited ? ` (${suppliers.length} supplier(s) invited automatically by category match)` : ''),
-      newData: { title, supplierCount: suppliers.length, submissionDeadline, autoInvited },
+      newData: {
+        title, supplierCount: suppliers.length, submissionDeadline, autoInvited,
+        ...(announced ? { notified: announced.eligible.length } : {})
+      },
       req
     });
 

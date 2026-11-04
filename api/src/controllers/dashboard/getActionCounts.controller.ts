@@ -6,10 +6,12 @@ import {
   Quotation,
   StoreRequisition,
   Invoice,
-  Delivery
+  Delivery,
+  SupplierProfile
 } from '../../models/index.js';
 import { isProcurementHead } from '@fossil/shared';
 import { listPendingAuthorizations } from '../../services/pendingAuthorization.service.js';
+import { countRfqsAwaitingQuote } from './getStats.controller.js';
 
 /**
  * Counts of work waiting on the signed-in user, for the sidebar badges.
@@ -215,6 +217,28 @@ const getActionCounts = async (req: Request, res: Response): Promise<any> => {
         status: { $in: ['submitted', 'variance'] },
         isDeleted: false
       }).exec();
+    }
+
+    // ── Supplier ──
+    if (role === 'supplier') {
+      const profile = SupplierProfile.findOne({ user: user._id, isDeleted: false }).select('_id').lean().exec();
+
+      // Open RFQs they have not quoted yet: the dashboard's "awaiting your
+      // quotation" item.
+      pending['/app/my-rfqs'] = profile.then((p) => (p ? countRfqsAwaitingQuote(p._id) : 0));
+
+      // Orders showing the Acknowledge button on supplier/getMyPurchaseOrders:
+      // approved or issued, and not acknowledged by this user.
+      pending['/app/my-purchase-orders'] = profile.then((p) =>
+        p
+          ? PurchaseOrder.countDocuments({
+              supplier: p._id,
+              status: { $in: ['approved', 'issued'] },
+              isDeleted: false,
+              $nor: [{ approvalHistory: { $elemMatch: { action: 'acknowledged', by: user._id } } }]
+            }).exec()
+          : 0
+      );
     }
 
     const hrefs = Object.keys(pending);

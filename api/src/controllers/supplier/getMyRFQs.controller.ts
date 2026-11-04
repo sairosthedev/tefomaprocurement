@@ -2,6 +2,36 @@ import type { Request, Response } from 'express';
 
 import { RFQ, SupplierProfile, Quotation } from '../../models/index.js';
 
+/** The RFQ statuses a supplier's list shows; drafts have not been sent to them. */
+export const SUPPLIER_LISTED_RFQ_STATUSES = ['open', 'closed', 'evaluating', 'awarded'];
+
+const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 100;
+
+/**
+ * Paging and status filter for the supplier's own lists. Query values can
+ * arrive as arrays or objects, so only strings are read; a requested status
+ * is narrowed to the ones the supplier may see (none matching means an empty
+ * list, never an unfiltered one); and the page size is capped.
+ */
+export function supplierListQuery(query: Request['query'], visible: readonly string[]) {
+  const text = (v: unknown) => (typeof v === 'string' ? v : '');
+  const pageN = parseInt(text(query.page), 10);
+  const limitN = parseInt(text(query.limit), 10);
+  const page = pageN > 0 ? pageN : 1;
+  const limit = limitN > 0 ? Math.min(MAX_PAGE_SIZE, limitN) : DEFAULT_PAGE_SIZE;
+  const requested = text(query.status).split(',').map((s) => s.trim()).filter(Boolean);
+  const statuses = requested.length ? visible.filter((s) => requested.includes(s)) : [...visible];
+  return {
+    page,
+    limit,
+    skip: (page - 1) * limit,
+    statuses,
+    /** Whether a status was asked for, for lists that otherwise apply none. */
+    statusRequested: requested.length > 0
+  };
+}
+
 const getMyRFQs = async (req: Request, res: Response): Promise<any> => {
   try {
     const profile = await SupplierProfile.findOne({ user: req.user!._id });
@@ -13,18 +43,14 @@ const getMyRFQs = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    const { status, page = 1, limit = 20 } = req.query as Record<string, any>;
-    
-    const query: any = { 
+    const { page, limit, skip, statuses } = supplierListQuery(req.query, SUPPLIER_LISTED_RFQ_STATUSES);
+
+    const query: any = {
       isDeleted: false,
       'invitedSuppliers.supplier': profile._id,
-      status: { $in: ['open', 'closed', 'evaluating', 'awarded'] }
+      status: { $in: statuses }
     };
-    
-    if (status) query.status = status;
 
-    const skip = (page - 1) * limit;
-    
     const [rfqs, total] = await Promise.all([
       RFQ.find(query)
         // Only this supplier's own invitation: the rest of the list (and the
@@ -47,7 +73,7 @@ const getMyRFQs = async (req: Request, res: Response): Promise<any> => {
         .populate('invitedSuppliers.quotation', 'status quotationNumber')
         .sort({ publishedAt: -1, createdAt: -1 })
         .skip(skip)
-        .limit(parseInt(limit)),
+        .limit(limit),
       RFQ.countDocuments(query)
     ]);
 
@@ -87,8 +113,8 @@ const getMyRFQs = async (req: Request, res: Response): Promise<any> => {
       success: true,
       data: rfqsWithStatus,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page,
+        limit,
         total,
         pages: Math.ceil(total / limit)
       }

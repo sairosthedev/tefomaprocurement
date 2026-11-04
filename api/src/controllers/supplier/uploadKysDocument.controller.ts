@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
-import { addComplianceDocument } from '../../services/supplierDocuments.service.js';
+import { addComplianceDocument, withoutDocumentFiles } from '../../services/supplierDocuments.service.js';
 import { notifyUsersByRole } from '../../services/notification.service.js';
 
 const uploadKysDocument = async (req: Request, res: Response): Promise<any> => {
@@ -38,7 +38,7 @@ const uploadKysDocument = async (req: Request, res: Response): Promise<any> => {
       relatedUser: req.user!._id
     });
 
-    res.status(200).json({ success: true, message: 'Document uploaded', data: supplier });
+    res.status(200).json({ success: true, message: 'Document uploaded', data: withoutDocumentFiles(supplier) });
   } catch (error: any) {
     console.error('Supplier upload KYS document error:', error);
     res.status(500).json({ success: false, message: error.message || 'Server error' });

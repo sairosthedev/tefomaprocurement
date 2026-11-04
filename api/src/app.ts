@@ -5,6 +5,7 @@ import connectToDatabase from './config/db.js';
 import { corsOptions, applyCorsHeaders } from './config/cors.js';
 import { sbuContextMiddleware } from './middleware/sbuContext.middleware.js';
 import sbuDirectoryRoutes from './routes/sbuDirectory.route.js';
+import internalRoutes from './routes/internal.route.js';
 import { getAppEnv } from './config/env.js';
 import routes from './routes/index.js';
 import { notFoundHandler, errorHandler } from './middleware/index.js';
@@ -59,6 +60,8 @@ export function createApp(): Express {
   // The business-unit directory is served before the context middleware: it is
   // what the login page reads to offer a choice, so there is no SBU yet.
   app.use('/api/sbus', sbuDirectoryRoutes);
+  // Scheduler-triggered jobs walk every SBU themselves (secret-protected).
+  app.use('/api/internal', internalRoutes);
 
   // Everything else under /api runs inside one SBU's context. /health stays
   // outside it so deploy health checks work before any SBU exists.

@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { SUPPLIER_TIERS, computeKysCompletionForTier, getNextReviewDate, getReviewIntervalMonths } from '@fossil/shared';
 import { SupplierProfile, PurchaseOrder } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { withoutDocumentFiles } from '../../services/supplierDocuments.service.js';
 
 const VALID_TIERS = SUPPLIER_TIERS.map((t) => t.key).filter((k) => k !== 'unclassified');
 
@@ -79,7 +80,7 @@ export const setSupplierTier = async (req: Request, res: Response): Promise<any>
     res.status(200).json({
       success: true,
       message: `Supplier classified as ${tier}. Reviewed every ${getReviewIntervalMonths(tier)} month(s).`,
-      data: { supplier, completion, reviewIntervalMonths: getReviewIntervalMonths(tier) }
+      data: { supplier: withoutDocumentFiles(supplier), completion, reviewIntervalMonths: getReviewIntervalMonths(tier) }
     });
   } catch (error: any) {
     console.error('Set supplier tier error:', error);

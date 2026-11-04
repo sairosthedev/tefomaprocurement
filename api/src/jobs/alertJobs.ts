@@ -1,3 +1,4 @@
+import { getChecklistKeyForDocType } from '@fossil/shared';
 import { Inventory, RFQ, Notification, SupplierProfile } from '../models/index.js';
 import { notifyUsersByRole, notifySupplier } from '../services/notification.service.js';
 import { applyExpiryToKys, scanDocumentExpiry } from '../services/documentExpiry.service.js';
@@ -179,11 +180,19 @@ export async function runRfqDeadlineAlertJob(): Promise<number> {
 export async function runDocumentExpiryAlertJob(): Promise<number> {
   const now = new Date();
 
+  // Type and expiry only: the file bodies are stored inline and every
+  // supplier with a dated document would otherwise be loaded in full. `tier`
+  // is needed because completeness is judged against it — without it the
+  // recompute below fell back to full depth and could fail a tactical supplier
+  // on items their tier never required.
   const suppliers = await SupplierProfile.find({
     isDeleted: false,
     status: { $in: ['active', 'pending'] },
     'complianceDocuments.expiryDate': { $exists: true }
-  }).select('companyName user complianceDocuments kysChecklist kysComplete expiredDocumentTypes hasExpiredDocuments');
+  }).select(
+    'companyName user tier kysChecklist kysComplete expiredDocumentTypes hasExpiredDocuments ' +
+      'complianceDocuments._id complianceDocuments.documentType complianceDocuments.expiryDate'
+  );
 
   let sent = 0;
 
@@ -224,9 +233,20 @@ export async function runDocumentExpiryAlertJob(): Promise<number> {
     }
 
     // Lapsed: untick the checklist and recompute KYS completeness.
-    const { newlyExpired, kysCompleteChanged } = applyExpiryToKys(supplier as any, now);
+    const { expiredTypes, newlyExpired, kysCompleteChanged } = applyExpiryToKys(supplier as any, now);
     if (newlyExpired.length > 0 || kysCompleteChanged) {
-      await supplier.save();
+      // Write only the fields the expiry touched. The documents were loaded
+      // without their files, so a full save() must never be allowed near them.
+      const set: Record<string, unknown> = {
+        expiredDocumentTypes: expiredTypes,
+        hasExpiredDocuments: expiredTypes.length > 0,
+        kysComplete: supplier.kysComplete
+      };
+      for (const documentType of expiredTypes) {
+        const checklistKey = getChecklistKeyForDocType(documentType);
+        if (checklistKey) set[`kysChecklist.${checklistKey}`] = false;
+      }
+      await SupplierProfile.updateOne({ _id: supplier._id }, { $set: set });
     }
 
     for (const documentType of newlyExpired) {

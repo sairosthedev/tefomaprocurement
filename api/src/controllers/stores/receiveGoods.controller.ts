@@ -5,6 +5,56 @@ import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole, notifySupplier, notifyUsersByDepartment, createNotification } from '../../services/notification.service.js';
 import { resolveSiteId, findOrCreateInventory } from '../../lib/siteScope.js';
 
+/** What stores accepted and rejected on one GRV, told to the supplier. */
+function receiptNoticeForSupplier(po: any, delivery: any, allReceived: boolean, receivedBy: unknown) {
+  const lines = (delivery.items || []).map((line: any) => {
+    const poItem = line.poItem ? (po.items as any).id(line.poItem) : null;
+    const received = Number(line.quantityReceived) || 0;
+    const rejected = Math.min(received, Number(line.quantityRejected) || 0);
+    return {
+      description: line.description || poItem?.description || 'Item',
+      received,
+      accepted: received - rejected,
+      rejected,
+      reason: line.rejectionReason || (line.condition && line.condition !== 'good' ? line.condition : undefined)
+    };
+  });
+  const rejectedLines = lines.filter((l: any) => l.rejected > 0);
+  const grv = delivery.grvNumber ? ` (GRV ${delivery.grvNumber})` : '';
+
+  const accepted = lines
+    .filter((l: any) => l.received > 0)
+    .map((l: any) => `${l.description}: ${l.accepted} of ${l.received} accepted`)
+    .join('; ');
+  const rejected = rejectedLines
+    .map((l: any) => `${l.description}: ${l.rejected} rejected${l.reason ? ` (${l.reason})` : ''}`)
+    .join('; ');
+  const deadline = delivery.returnDeadline
+    ? ` Please collect rejected or faulty goods by ${new Date(delivery.returnDeadline).toLocaleDateString('en-ZA')}.`
+    : '';
+  const outstanding = allReceived ? ' The order is now fully received.' : ' The rest of the order is still outstanding.';
+
+  return {
+    type: rejectedLines.length > 0 ? 'delivery_rejected' : 'delivery_accepted',
+    title: rejectedLines.length > 0 ? 'Delivery received with rejections' : 'Delivery received',
+    message:
+      `Stores received your delivery for Purchase Order ${po.poNumber}${grv}. ${accepted ? `${accepted}.` : 'Nothing was accepted.'}` +
+      (rejected ? ` Rejected — ${rejected}.${deadline}` : deadline) +
+      outstanding,
+    entity: 'Delivery',
+    entityId: delivery._id,
+    relatedUser: receivedBy,
+    metadata: {
+      poNumber: po.poNumber,
+      grvNumber: delivery.grvNumber,
+      isSupplier: true,
+      isPartialDelivery: !allReceived,
+      returnDeadline: delivery.returnDeadline,
+      lines
+    }
+  };
+}
+
 const receiveGoods = async (req: Request, res: Response): Promise<any> => {
   try {
     const {
@@ -273,19 +323,13 @@ const receiveGoods = async (req: Request, res: Response): Promise<any> => {
           metadata: { poNumber: po.poNumber, grvNumber: delivery.grvNumber }
         });
       }
+    }
 
-      // Notify supplier that delivery was received
-      if (po.supplier) {
-        await notifySupplier(po.supplier, {
-          type: 'goods_received',
-          title: 'Delivery Received',
-          message: `Your delivery for Purchase Order ${po.poNumber} has been received and accepted.`,
-          entity: 'Delivery',
-          entityId: delivery._id,
-          relatedUser: req.user!._id,
-          metadata: { poNumber: po.poNumber, grvNumber: delivery.grvNumber }
-        });
-      }
+    // The supplier hears about every GRV, not only the one that completes the
+    // order: a partial delivery tells them what is still owed, and rejected
+    // goods are theirs to collect, by the return deadline where there is one.
+    if (po.supplier) {
+      await notifySupplier(po.supplier, receiptNoticeForSupplier(po, delivery, allReceived, req.user!._id));
     }
 
     // Notify procurement about goods received

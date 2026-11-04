@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import { Quotation, RFQ } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifySupplier } from '../../services/notification.service.js';
+import { canSeeBids } from '../../lib/rfqVisibility.js';
 
 const rejectQuotation = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -21,6 +22,20 @@ const rejectQuotation = async (req: Request, res: Response): Promise<any> => {
       return res.status(404).json({
         success: false,
         message: 'Quotation not found'
+      });
+    }
+
+    // Sealed bids, as on getQuotationById: a bid nobody may open yet cannot be
+    // judged, and the reply would carry its prices.
+    if (!canSeeBids(req.user, quotation.rfq)) {
+      const rfq = quotation.rfq as any;
+      return res.status(403).json({
+        success: false,
+        sealed: true,
+        rfqId: rfq?._id,
+        rfqNumber: rfq?.rfqNumber,
+        submissionDeadline: rfq?.submissionDeadline,
+        message: 'Bids are sealed until the submission deadline passes or the RFQ is closed.'
       });
     }
 

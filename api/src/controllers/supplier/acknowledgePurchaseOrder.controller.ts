@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 
 import { PurchaseOrder, SupplierProfile, Delivery } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { createNotification, notifyUsersByRole } from '../../services/notification.service.js';
 
 const acknowledgePurchaseOrder = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -118,8 +119,10 @@ const acknowledgePurchaseOrder = async (req: Request, res: Response): Promise<an
       });
     }
 
+    // 'update', not 'acknowledge': the audit log only accepts its listed
+    // actions, and this entry was being dropped.
     await createAuditLog({
-      action: 'acknowledge',
+      action: 'update',
       entity: 'PurchaseOrder',
       entityId: po._id,
       user: req.user,
@@ -127,6 +130,26 @@ const acknowledgePurchaseOrder = async (req: Request, res: Response): Promise<an
       newData: { acknowledged: true },
       req
     });
+
+    // The buyer who raised the order hears that the supplier has it and when
+    // they expect to deliver; with no buyer on record, procurement does.
+    const deliverBy = expectedDeliveryDate || po.expectedDeliveryDate;
+    const acknowledgedNotice = {
+      type: 'po_created',
+      title: 'Purchase order acknowledged',
+      message: `${profile.companyName} acknowledged Purchase Order ${po.poNumber}${
+        deliverBy ? ` and expects to deliver by ${new Date(deliverBy).toLocaleDateString('en-ZA')}` : ''
+      }${deliveryNoteNumber ? ` (delivery note ${deliveryNoteNumber})` : ''}.`,
+      entity: 'PurchaseOrder',
+      entityId: po._id,
+      relatedUser: req.user!._id,
+      metadata: { poNumber: po.poNumber, acknowledged: true }
+    };
+    if (po.createdBy) {
+      await createNotification({ ...acknowledgedNotice, recipient: po.createdBy });
+    } else {
+      await notifyUsersByRole('procurement_officer', acknowledgedNotice);
+    }
 
     res.status(200).json({
       success: true,

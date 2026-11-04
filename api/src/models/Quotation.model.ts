@@ -24,6 +24,10 @@ export interface IQuotationItem {
   unitPrice: number;
   totalPrice: number;
   vatIncluded: boolean;
+  /** The make the supplier is quoting, typed per line on the quotation form. */
+  brand?: string;
+  /** The supplier's own remark on this line. */
+  notes?: string;
   /** Set when the supplier is offering an equivalent rather than the exact
    *  part requested — procurement must be able to see what they'd receive. */
   isAlternative?: boolean;
@@ -106,6 +110,8 @@ const QuotationItemSchema = new Schema<IQuotationItem>({
     type: Boolean,
     default: false
   },
+  brand: { type: String, trim: true },
+  notes: { type: String, trim: true },
   isAlternative: { type: Boolean, default: false },
   alternativeDescription: { type: String, trim: true },
   alternativePartNumber: { type: String, trim: true },

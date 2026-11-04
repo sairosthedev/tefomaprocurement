@@ -2,7 +2,8 @@ import type { Request, Response } from 'express';
 import { RFQ } from '../../models/index.js';
 import { QUOTATION_WAIVER_TYPES } from '../../models/RFQ.model.js';
 import { createAuditLog } from '../../middleware/index.js';
-import { isProcurementHead } from '@fossil/shared';
+import { isProcurementHead, MIN_QUOTATIONS_REQUIRED } from '@fossil/shared';
+import { countSubmittedQuotations } from '../../services/quotationCompliance.service.js';
 
 /** Waiver when fewer than 3 quotations */
 const approveQuotationWaiver = async (req: Request, res: Response): Promise<any> => {
@@ -38,6 +39,27 @@ const approveQuotationWaiver = async (req: Request, res: Response): Promise<any>
         success: false,
         message: 'Only the COO or the Head of Procurement can approve a waiver'
       });
+    }
+
+    // Once the RFQ is awarded or cancelled, the basis it was decided on is a
+    // record, so neither granting nor revoking a waiver may rewrite it.
+    if (rfq.status === 'cancelled' || rfq.status === 'awarded') {
+      return res.status(400).json({
+        success: false,
+        message: `This RFQ is ${rfq.status}; its quotation waiver can no longer be changed`
+      });
+    }
+
+    // A waiver excepts the RFQ from the three-quote rule, so it is refused when
+    // the rule is met. Counted exactly as meetsMinimumQuotations counts.
+    if (approve !== false) {
+      const count = await countSubmittedQuotations(String(rfq._id));
+      if (count >= MIN_QUOTATIONS_REQUIRED) {
+        return res.status(400).json({
+          success: false,
+          message: `This RFQ has ${count} quotations, which meets the minimum of ${MIN_QUOTATIONS_REQUIRED}; no waiver is needed`
+        });
+      }
     }
 
     rfq.quotationWaiver = {

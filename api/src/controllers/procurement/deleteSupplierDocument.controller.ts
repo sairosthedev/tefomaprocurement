@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { computeKysCompletionForTier, getChecklistKeyForDocType } from '@fossil/shared';
 import { SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { withoutDocumentFiles } from '../../services/supplierDocuments.service.js';
 
 const deleteSupplierDocument = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -54,7 +55,7 @@ const deleteSupplierDocument = async (req: Request, res: Response): Promise<any>
       req
     });
 
-    res.status(200).json({ success: true, message: 'Document removed', data: supplier });
+    res.status(200).json({ success: true, message: 'Document removed', data: withoutDocumentFiles(supplier) });
   } catch (error: any) {
     console.error('Delete supplier document error:', error);
     res.status(500).json({ success: false, message: error.message || 'Server error' });

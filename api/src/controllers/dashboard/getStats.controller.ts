@@ -221,19 +221,48 @@ async function genericStats(): Promise<Record<string, unknown>> {
   };
 }
 
-/** A supplier's own RFQs, quotations and orders. */
+/**
+ * Open RFQs, before their deadline, that the supplier was invited to and has
+ * not quoted. A quote counts if it would stop a fresh submission (see
+ * supplier/submitQuotation): a revision request asks for a new one, and a
+ * superseded quote has been replaced. Shared with the sidebar badge.
+ */
+export async function countRfqsAwaitingQuote(supplierId: unknown): Promise<number> {
+  const quotedRfqIds = await Quotation.distinct('rfq', {
+    supplier: supplierId,
+    isDeleted: false,
+    status: { $nin: ['superseded', 'revision_requested'] }
+  });
+  return RFQ.countDocuments({
+    invitedSuppliers: { $elemMatch: { supplier: supplierId } },
+    status: 'open',
+    submissionDeadline: { $gt: new Date() },
+    _id: { $nin: quotedRfqIds },
+    isDeleted: false
+  });
+}
+
+/**
+ * A supplier's own RFQs, quotations and orders. Each mirrors the supplier page
+ * it stands for: drafts and orders still in approval have not been sent to
+ * the supplier, so counting them pointed at work they could not find.
+ */
 async function supplierCounts(supplierId: unknown) {
-  const [myQuotations, myPOs, myRFQs, submittedQuotations] = await Promise.all([
+  const [myQuotations, myPOs, myRFQs, rfqsAwaitingQuote, submittedQuotations] = await Promise.all([
     Quotation.countDocuments({ supplier: supplierId, isDeleted: false }),
-    PurchaseOrder.countDocuments({ supplier: supplierId, isDeleted: false }),
+    // The statuses supplier/getMyPurchaseOrders lists.
+    PurchaseOrder.countDocuments({ supplier: supplierId, status: { $in: PO_APPROVED_STATUSES }, isDeleted: false }),
+    // The statuses supplier/getMyRFQs lists.
     RFQ.countDocuments({
       invitedSuppliers: { $elemMatch: { supplier: supplierId } },
-      status: { $in: ['draft', 'open'] },
+      status: { $in: ['open', 'closed', 'evaluating', 'awarded'] },
       isDeleted: false
     }),
+    // Still open to a quote from them, and not yet quoted.
+    countRfqsAwaitingQuote(supplierId),
     Quotation.countDocuments({ supplier: supplierId, status: 'submitted', isDeleted: false })
   ]);
-  return { myQuotations, myPOs, myRFQs, submittedQuotations };
+  return { myQuotations, myPOs, myRFQs, rfqsAwaitingQuote, submittedQuotations };
 }
 
 async function buildRoleStats(
@@ -587,7 +616,7 @@ async function buildRoleStats(
           myRFQs: { value: mine.myRFQs, label: 'My RFQs' }
         },
         attentionItems: needsAttention([
-          { id: 'open-rfqs-supplier', label: 'Open RFQs awaiting your quotation', count: mine.myRFQs, href: '/app/my-rfqs', severity: 'high' }
+          { id: 'open-rfqs-supplier', label: 'Open RFQs awaiting your quotation', count: mine.rfqsAwaitingQuote, href: '/app/my-rfqs', severity: 'high' }
         ])
       };
     }

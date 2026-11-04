@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import mongoose from 'mongoose';
 
 import { PurchaseOrder, Quotation, RFQ, SupplierProfile } from '../../models/index.js';
 
@@ -17,11 +18,23 @@ const getRFQById = async (req: Request, res: Response): Promise<any> => {
     // The RFQ (with only this supplier's own invitation: the others, and who
     // has responded, are not theirs to see), their latest quote, and any order
     // placed from it, all at once.
+    // A malformed id cannot be an RFQ of theirs; without this the lookup
+    // throws and answers with a 500.
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(404).json({
+        success: false,
+        message: 'RFQ not found or you are not invited to this RFQ'
+      });
+    }
+
     const [rfq, quotation, acceptedOrder]: any[] = await Promise.all([
       RFQ.findOne({
         _id: id,
         isDeleted: false,
-        'invitedSuppliers.supplier': profile._id
+        'invitedSuppliers.supplier': profile._id,
+        // A draft has not been sent to anyone, even if suppliers are already
+        // listed on it.
+        status: { $ne: 'draft' }
       })
         .select({
           rfqNumber: 1,

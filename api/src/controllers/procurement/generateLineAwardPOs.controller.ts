@@ -1,9 +1,10 @@
 import type { Request, Response } from 'express';
 import { PurchaseOrder, Quotation, RFQ, PurchaseRequisition, Site } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
-import { notifySupplier, notifyUsersByRole } from '../../services/notification.service.js';
+import { notifyUsersByRole } from '../../services/notification.service.js';
 import { resolveSiteId } from '../../lib/siteScope.js';
 import { collectLineBids, lineFullyAuthorized, lineIdStr } from '../../services/lineAward.service.js';
+import { checkSupplierEligibility } from '../../services/supplierEligibility.service.js';
 
 /**
  * Generate one Purchase Order per winning supplier from an RFQ's per-line award
@@ -47,6 +48,20 @@ const generateLineAwardPOs = async (req: Request, res: Response): Promise<any> =
       byQuotation.get(key)!.push(la);
     }
 
+    // Load every winning quotation before raising anything. A PO commits company
+    // money, so each supplier is re-checked here even though its lines were
+    // authorized; one refusal stops the run before any order exists.
+    const winners: { quotation: any; lines: any[] }[] = [];
+    for (const [quotationId, lines] of byQuotation.entries()) {
+      const quotation = await Quotation.findById(quotationId).populate('supplier');
+      if (!quotation) continue;
+      const eligibility = checkSupplierEligibility(quotation.supplier, 'order');
+      if (!eligibility.eligible) {
+        return res.status(400).json({ success: false, message: eligibility.reason });
+      }
+      winners.push({ quotation, lines });
+    }
+
     // Resolve requisition + delivery site once.
     let purchaseRequisitionId: any = rfq.purchaseRequisition || null;
     let requisitionSiteId: any = null;
@@ -62,10 +77,7 @@ const generateLineAwardPOs = async (req: Request, res: Response): Promise<any> =
     }
 
     const created: any[] = [];
-    for (const [quotationId, lines] of byQuotation.entries()) {
-      const quotation = await Quotation.findById(quotationId).populate('supplier');
-      if (!quotation) continue;
-
+    for (const { quotation, lines } of winners) {
       // Build PO items from the awarded lines, matching each to this quote's line.
       const poItems = lines.map((la: any) => {
         const qItem = (quotation.items as any[]).find(
@@ -116,13 +128,8 @@ const generateLineAwardPOs = async (req: Request, res: Response): Promise<any> =
         la.purchaseOrder = po._id;
       }
 
-      await notifySupplier(quotation.supplier._id || quotation.supplier, {
-        type: 'po_created',
-        title: 'New Purchase Order Created',
-        message: `Purchase Order ${po.poNumber} has been created from RFQ ${rfq.rfqNumber} and requires your acknowledgement.`,
-        entity: 'PurchaseOrder', entityId: po._id, relatedUser: req.user!._id,
-        metadata: { poNumber: po.poNumber, totalAmount: po.totalAmount, isSupplier: true }
-      });
+      // The supplier is told when the draft clears its approvals, not now:
+      // their portal does not show drafts.
 
       created.push({ poId: po._id, poNumber: po.poNumber, supplier: quotation.supplier.companyName, totalAmount });
     }

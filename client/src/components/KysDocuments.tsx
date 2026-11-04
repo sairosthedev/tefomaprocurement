@@ -27,7 +27,8 @@ export interface KysDocument {
   _id?: string;
   documentType: string;
   fileName: string;
-  filePath: string;
+  /** No longer sent by supplier reads; the file is fetched when opened. */
+  filePath?: string;
   mimeType?: string;
   verified?: boolean;
   verifiedAt?: string;
@@ -56,7 +57,7 @@ function readFileAsDataUrl(file: File): Promise<string> {
 /** Best-effort MIME type for a stored document. */
 function resolveMimeType(doc: KysDocument): string {
   if (doc.mimeType) return doc.mimeType;
-  const fromData = doc.filePath.startsWith('data:')
+  const fromData = doc.filePath?.startsWith('data:')
     ? doc.filePath.match(/data:(.*?);/)?.[1]
     : undefined;
   if (fromData) return fromData;
@@ -86,6 +87,23 @@ function toObjectUrl(filePath: string, type: string): string {
   return URL.createObjectURL(new Blob([bytes], { type }));
 }
 
+const revokeIfBlob = (url?: string) => {
+  if (url && url.startsWith('blob:')) URL.revokeObjectURL(url);
+};
+
+/** The API's message from a failed blob request (the body arrives as a Blob too). */
+async function blobErrorMessage(error: any, fallback: string): Promise<string> {
+  const data = error?.response?.data;
+  if (data instanceof Blob) {
+    try {
+      return JSON.parse(await data.text())?.message || fallback;
+    } catch {
+      return fallback;
+    }
+  }
+  return data?.message || fallback;
+}
+
 /**
  * Renders the KYS document requirements (mandatory + optional) with
  * per-item upload / view / remove. Used by both procurement (on behalf of a
@@ -96,6 +114,8 @@ export default function KysDocuments({
   onUpload,
   onDelete,
   onVerify,
+  fetchFile,
+  requiredTypes,
   readOnly = false,
   includeTypes,
   title
@@ -111,6 +131,14 @@ export default function KysDocuments({
   onDelete?: (doc: KysDocument) => Promise<void>;
   /** Supplied by procurement screens to verify or reject a document. */
   onVerify?: (doc: KysDocument, verified: boolean, notes?: string) => Promise<void>;
+  /**
+   * Loads one document's file. Supplier reads no longer carry the file bodies
+   * (they made the record too large to send), so View and Download fetch the
+   * file they need when clicked.
+   */
+  fetchFile?: (doc: KysDocument) => Promise<Blob>;
+  /** Document types required for this supplier's tier; defaults to the full required set. */
+  requiredTypes?: string[];
   readOnly?: boolean;
   /** When provided, render only these document types as a single list (used by the step wizard). */
   includeTypes?: string[];
@@ -119,32 +147,78 @@ export default function KysDocuments({
 }) {
   const { showToast } = useToast();
   const [busyType, setBusyType] = useState<string | null>(null);
-  const [viewer, setViewer] = useState<{ doc: KysDocument; url: string; type: string } | null>(null);
+  const [downloading, setDownloading] = useState<string | null>(null);
+  const [viewer, setViewer] = useState<{ doc: KysDocument; url: string; type: string; loading?: boolean } | null>(null);
+  // Bumped on every open/close, so a file that arrives after the viewer was
+  // closed (or another document opened) is discarded rather than shown.
+  const viewRequest = useRef(0);
   // Expiry date staged per document type before the file is chosen.
   const [expiryDrafts, setExpiryDrafts] = useState<Record<string, string>>({});
   const inputs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const byType = (t: string) => documents?.find((d) => d.documentType === t);
+  const isRequired = (req: (typeof KYS_DOCUMENT_REQUIREMENTS)[number]) =>
+    requiredTypes ? requiredTypes.includes(req.documentType) : req.required;
 
-  const openViewer = (doc: KysDocument) => {
-    const type = resolveMimeType(doc);
+  /** An object URL for the document's file, fetched from the API when possible. */
+  const loadFile = async (doc: KysDocument): Promise<{ url: string; type: string }> => {
+    if (fetchFile && doc._id) {
+      const blob = await fetchFile(doc);
+      return { url: URL.createObjectURL(blob), type: blob.type || resolveMimeType(doc) };
+    }
+    // Older responses still carried the file inline.
+    if (doc.filePath) {
+      const type = resolveMimeType(doc);
+      return { url: toObjectUrl(doc.filePath, type), type };
+    }
+    throw new Error('This document has no file to open');
+  };
+
+  const openViewer = async (doc: KysDocument) => {
+    const request = ++viewRequest.current;
+    setViewer({ doc, url: '', type: resolveMimeType(doc), loading: true });
     try {
-      setViewer({ doc, url: toObjectUrl(doc.filePath, type), type });
-    } catch {
-      showToast('Could not open this document', 'error');
+      const { url, type } = await loadFile(doc);
+      if (request !== viewRequest.current) {
+        revokeIfBlob(url);
+        return;
+      }
+      setViewer({ doc, url, type });
+    } catch (error) {
+      if (request !== viewRequest.current) return;
+      setViewer(null);
+      showToast(await blobErrorMessage(error, 'Could not open this document'), 'error');
     }
   };
 
   const closeViewer = () => {
-    if (viewer && viewer.url.startsWith('blob:')) URL.revokeObjectURL(viewer.url);
+    viewRequest.current++;
+    revokeIfBlob(viewer?.url);
     setViewer(null);
+  };
+
+  const downloadDoc = async (doc: KysDocument) => {
+    try {
+      setDownloading(doc.documentType);
+      const { url } = await loadFile(doc);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = doc.fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      // Give the browser time to start the download before releasing the URL.
+      setTimeout(() => revokeIfBlob(url), 30_000);
+    } catch (error) {
+      showToast(await blobErrorMessage(error, 'Download failed'), 'error');
+    } finally {
+      setDownloading(null);
+    }
   };
 
   // Revoke any outstanding object URL on unmount.
   useEffect(() => {
-    return () => {
-      if (viewer && viewer.url.startsWith('blob:')) URL.revokeObjectURL(viewer.url);
-    };
+    return () => revokeIfBlob(viewer?.url);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewer?.url]);
 
@@ -221,8 +295,8 @@ export default function KysDocuments({
     }
   };
 
-  const mandatory = KYS_DOCUMENT_REQUIREMENTS.filter((r) => r.required);
-  const optional = KYS_DOCUMENT_REQUIREMENTS.filter((r) => !r.required);
+  const mandatory = KYS_DOCUMENT_REQUIREMENTS.filter(isRequired);
+  const optional = KYS_DOCUMENT_REQUIREMENTS.filter((r) => !isRequired(r));
   const subset = includeTypes
     ? KYS_DOCUMENT_REQUIREMENTS.filter((r) => includeTypes.includes(r.documentType))
     : [];
@@ -235,7 +309,7 @@ export default function KysDocuments({
         <div className="flex-1 min-w-[14rem]">
           <p className="text-sm font-medium text-gray-800 flex items-center gap-2">
             {req.label}
-            {req.required ? (
+            {isRequired(req) ? (
               <span className="text-[10px] font-semibold text-red-500">REQUIRED</span>
             ) : (
               <span className="text-[10px] font-semibold text-gray-400">OPTIONAL</span>
@@ -314,15 +388,20 @@ export default function KysDocuments({
             </button>
           )}
           {existing && (
-            <a
-              href={existing.filePath}
-              download={existing.fileName}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border border-gray-300 text-gray-700 hover:bg-gray-50"
+            <button
+              type="button"
+              onClick={() => downloadDoc(existing)}
+              disabled={downloading === req.documentType}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               title="Download"
             >
-              <Download className="h-3.5 w-3.5" />
+              {downloading === req.documentType ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Download className="h-3.5 w-3.5" />
+              )}
               Download
-            </a>
+            </button>
           )}
           {/* Verification is procurement opening the file and saying so —
               uploading one is not verification. */}
@@ -410,13 +489,15 @@ export default function KysDocuments({
             <span className="text-sm font-medium text-gray-800 truncate">{viewer.doc.fileName}</span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <a
-              href={viewer.doc.filePath}
-              download={viewer.doc.fileName}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border border-gray-300 text-gray-700 hover:bg-gray-50"
-            >
-              <Download className="h-3.5 w-3.5" /> Download
-            </a>
+            {!viewer.loading && (
+              <a
+                href={viewer.url}
+                download={viewer.doc.fileName}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                <Download className="h-3.5 w-3.5" /> Download
+              </a>
+            )}
             <button
               type="button"
               onClick={closeViewer}
@@ -429,7 +510,9 @@ export default function KysDocuments({
           </div>
         </div>
         <div className="flex-1 bg-gray-100 overflow-auto flex items-center justify-center">
-          {viewer.type.startsWith('image/') ? (
+          {viewer.loading ? (
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          ) : viewer.type.startsWith('image/') ? (
             <img src={viewer.url} alt={viewer.doc.fileName} className="max-h-full max-w-full object-contain" />
           ) : viewer.type === 'application/pdf' ? (
             <iframe src={viewer.url} title={viewer.doc.fileName} className="w-full h-full" />
@@ -439,7 +522,7 @@ export default function KysDocuments({
               <p className="text-sm text-gray-600 mb-1">This file type can't be previewed in the browser.</p>
               <p className="text-xs text-gray-400 mb-4">{viewer.doc.fileName}</p>
               <a
-                href={viewer.doc.filePath}
+                href={viewer.url}
                 download={viewer.doc.fileName}
                 className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors"
               >

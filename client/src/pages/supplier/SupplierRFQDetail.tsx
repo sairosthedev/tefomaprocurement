@@ -147,7 +147,8 @@ export default function SupplierRFQDetail() {
             label: 'Time left',
             value: <span className={remaining.urgent ? 'text-red-600' : ''}>{remaining.text}</span>
           },
-          { label: 'Status', value: <span className="capitalize">{rfq.hasSubmitted ? 'Submitted' : rfq.status}</span> }
+          { label: 'Status', value: <span className="capitalize">{rfq.hasSubmitted ? 'Submitted' : rfq.status}</span> },
+          ...(rfq.paymentTerms ? [{ label: 'Payment terms', value: rfq.paymentTerms }] : [])
         ]}
       />
 
@@ -178,13 +179,20 @@ export default function SupplierRFQDetail() {
                     <td className="py-2 px-3 border-b border-gray-100">{index + 1}</td>
                     <td className="py-2 px-3 border-b border-gray-100 font-medium">{item.description}</td>
                     <td className="py-2 px-3 border-b border-gray-100">{item.quantity} {item.unit}</td>
-                    <td className="py-2 px-3 border-b border-gray-100 text-gray-500">{item.specification || '—'}</td>
+                    <td className="py-2 px-3 border-b border-gray-100 text-gray-500">{item.specifications || '—'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         </div>
+
+        {rfq.deliveryRequirements && (
+          <div className="border-t border-gray-100 pt-4">
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">Delivery requirements</h3>
+            <p className="text-sm text-gray-700 whitespace-pre-wrap">{rfq.deliveryRequirements}</p>
+          </div>
+        )}
 
         {rfq.termsAndConditions && (
           <div className="border-t border-gray-100 pt-4">

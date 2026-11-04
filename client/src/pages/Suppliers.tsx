@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { isProcurementHead } from '@fossil/shared';
 import FilterSelect from '../components/FilterSelect';
 import PageHeader from '../components/PageHeader';
-import { ModalFooter } from '../components/Modal';
+import Modal, { ModalFooter } from '../components/Modal';
 import Drawer from '../components/Drawer';
 import { FormSteps, FormStepNav } from '../components/FormSteps';
 import { CategoryMultiSelect } from '../components/CategorySelect';
@@ -24,6 +24,7 @@ import {
   Users,
   Eye,
   EyeOff,
+  Copy,
   Upload,
   FileText,
   FileSpreadsheet,
@@ -73,7 +74,8 @@ const EMPTY_SUPPLIER_FORM = {
   firstName: '',
   lastName: '',
   email: '',
-  password: 'password',
+  // Blank means the server generates a random one; there is no shared default.
+  password: '',
   phone: '',
   physicalAddress: '',
   city: '',
@@ -143,16 +145,45 @@ export default function Suppliers() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
+  // A generated login, shown to the creator once after Add Supplier.
+  const [createdCredentials, setCreatedCredentials] = useState<{
+    id: string;
+    companyName: string;
+    email: string;
+    password: string;
+  } | null>(null);
+
+  // One effect for filters and paging. With a separate "reset to page 1"
+  // effect, a filter change on page 3 fetched twice: once with the stale page,
+  // then again after the reset.
+  const filterKey = JSON.stringify([search, statusFilter]);
+  const lastFilterKey = useRef(filterKey);
+  // StrictMode mounts effects twice in development; the repeat of a request
+  // that is already in flight is skipped rather than sent again.
+  const inFlightKey = useRef<string | null>(null);
+  const requestSeq = useRef(0);
 
   useEffect(() => {
-    setPage(1);
-  }, [search, statusFilter]);
-
-  useEffect(() => {
-    fetchSuppliers();
-  }, [page, limit, search, statusFilter]);
+    if (lastFilterKey.current !== filterKey) {
+      lastFilterKey.current = filterKey;
+      if (page !== 1) {
+        setPage(1);
+        return;
+      }
+    }
+    const key = JSON.stringify([filterKey, page, limit]);
+    if (inFlightKey.current === key) return;
+    inFlightKey.current = key;
+    fetchSuppliers().finally(() => {
+      if (inFlightKey.current === key) inFlightKey.current = null;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, limit, filterKey]);
 
   const fetchSuppliers = async () => {
+    // Only the latest request may update the list, so a slow earlier response
+    // cannot overwrite a newer one.
+    const seq = ++requestSeq.current;
     try {
       setLoading(true);
       const response = await procurementAPI.getSuppliers({ 
@@ -161,12 +192,15 @@ export default function Suppliers() {
         page,
         limit
       });
+      if (seq !== requestSeq.current) return;
       setSuppliers(response.data.data);
       setPagination(parsePagination(response.data.pagination));
     } catch (error: any) {
+      if (seq !== requestSeq.current) return;
       console.error('Error fetching suppliers:', error);
+      showToast(error.response?.data?.message || 'Could not load suppliers', 'error');
     } finally {
-      setLoading(false);
+      if (seq === requestSeq.current) setLoading(false);
     }
   };
 
@@ -200,8 +234,9 @@ export default function Suppliers() {
       showToast('Company name, email, first name, last name, and registration number are required', 'error');
       return false;
     }
-    if (!formData.password || formData.password.length < 6) {
-      showToast('Password must be at least 6 characters', 'error');
+    // Optional: left blank, the server generates one.
+    if (formData.password && formData.password.length < 6) {
+      showToast('Password must be at least 6 characters, or leave it blank to generate one', 'error');
       return false;
     }
     return true;
@@ -243,7 +278,19 @@ export default function Suppliers() {
         setFormData(EMPTY_SUPPLIER_FORM);
         setShowPassword(false);
         setAddStep(0);
-        const newId = response.data.data?.id;
+        const created = response.data.data;
+        const newId = created?.id;
+        // A generated password exists nowhere else the creator can see, so it
+        // is shown once before moving on.
+        if (newId && created?.passwordGenerated && created?.password) {
+          setCreatedCredentials({
+            id: String(newId),
+            companyName: created.companyName,
+            email: created.email,
+            password: created.password
+          });
+          return;
+        }
         if (newId) {
           // KYS is the new supplier's next step.
           navigate(`/app/suppliers/${newId}?tab=documents`);
@@ -579,7 +626,7 @@ export default function Suppliers() {
 
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
-                Password <span className="text-red-500">*</span>
+                Password
               </label>
               <div className="relative">
                 <input
@@ -587,6 +634,8 @@ export default function Suppliers() {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
+                  autoComplete="new-password"
+                  placeholder="Leave blank to generate one"
                   className="w-full px-3 py-2 pr-10 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                 />
                 <button
@@ -597,7 +646,7 @@ export default function Suppliers() {
                   {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                 </button>
               </div>
-              <p className="text-xs text-gray-500 mt-0.5">Default: "password"</p>
+              <p className="text-xs text-gray-500 mt-0.5">Leave blank to generate one. It is shown to you once and emailed to the supplier.</p>
             </div>
           </div>
           )}
@@ -1111,6 +1160,70 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
           )}
         </div>
       </Drawer>
+
+      {/* Generated login — shown once, then on to the new supplier's KYS */}
+      <Modal
+        isOpen={!!createdCredentials}
+        onClose={() => {
+          const id = createdCredentials?.id;
+          setCreatedCredentials(null);
+          if (id) navigate(`/app/suppliers/${id}?tab=documents`);
+        }}
+        title="Supplier created"
+        subtitle={createdCredentials?.companyName}
+        footer={
+          <button
+            type="button"
+            onClick={() => {
+              const id = createdCredentials?.id;
+              setCreatedCredentials(null);
+              if (id) navigate(`/app/suppliers/${id}?tab=documents`);
+            }}
+            className="px-4 py-2 bg-primary hover:bg-primary-dark text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            Continue to KYS
+          </button>
+        }
+      >
+        {createdCredentials && (
+          <div className="space-y-3 text-sm">
+            <p className="text-gray-600">
+              A password was generated for this supplier. It has been emailed to them; this is the only time it is shown here.
+            </p>
+            <dl className="rounded-xl border border-gray-200 divide-y divide-gray-100">
+              <div className="flex items-center justify-between gap-3 px-3 py-2">
+                <dt className="text-gray-500">Email</dt>
+                <dd className="font-medium text-gray-900 break-all">{createdCredentials.email}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3 px-3 py-2">
+                <dt className="text-gray-500">Password</dt>
+                <dd className="flex items-center gap-2">
+                  <code className="font-mono text-gray-900 break-all">{createdCredentials.password}</code>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Clipboard access needs a secure context; fall back to selecting it.
+                      if (!navigator.clipboard) {
+                        showToast('Could not copy — select it instead', 'error');
+                        return;
+                      }
+                      navigator.clipboard.writeText(createdCredentials.password)
+                        .then(() => showToast('Password copied', 'success'))
+                        .catch(() => showToast('Could not copy — select it instead', 'error'));
+                    }}
+                    className="p-1 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded"
+                    aria-label="Copy password"
+                    title="Copy password"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                </dd>
+              </div>
+            </dl>
+            <p className="text-xs text-gray-500">Ask the supplier to change it after their first sign-in.</p>
+          </div>
+        )}
+      </Modal>
 
     </div>
   );

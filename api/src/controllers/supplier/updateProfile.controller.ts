@@ -6,8 +6,11 @@ import { notifyUsersByRole } from '../../services/notification.service.js';
 import {
   diffBankDetails,
   requiresApproval,
-  hasOpenBankChange
+  hasOpenBankChange,
+  contactNumbersOnFile,
+  phoneNumbersDiffer
 } from '../../services/bankChange.service.js';
+import { supplierSafeProfile } from './getMyProfile.controller.js';
 
 /**
  * Supplier self-service profile update.
@@ -58,7 +61,28 @@ const updateProfile = async (req: Request, res: Response): Promise<any> => {
       return res.status(400).json({ success: false, message: 'contactPersons must be an array' });
     }
 
-    const previousData = { ...profile.toObject() };
+    // The numbers on file before this save: the only ones a banking-change
+    // callback may be made to.
+    const userPhone = (req.user as any)?.phone;
+    const numbersBefore = contactNumbersOnFile(profile.contactPersons, userPhone);
+
+    // While a banking change awaits its callback, the numbers that callback
+    // will be made to stay as they are.
+    if (
+      contactPersons !== undefined &&
+      phoneNumbersDiffer(numbersBefore, contactNumbersOnFile(contactPersons, userPhone)) &&
+      (await hasOpenBankChange(profile._id))
+    ) {
+      return res.status(409).json({
+        success: false,
+        message:
+          'Contact phone numbers cannot be changed while a banking change is awaiting verification and approval. Save your other changes without the new number, or contact procurement.'
+      });
+    }
+
+    // Without the document files: they are not changed here, and would bloat
+    // the audit entry by megabytes.
+    const { complianceDocuments: _documents, ...previousData } = profile.toObject();
     const changes: { field: string; from?: string; to?: string }[] = [];
 
     if (tradingName !== undefined && tradingName !== profile.tradingName) {
@@ -109,6 +133,7 @@ const updateProfile = async (req: Request, res: Response): Promise<any> => {
           previousDetails: profile.bankDetails || {},
           requestedDetails: bankDetails,
           changes: bankFieldChanges,
+          contactNumbersOnFile: numbersBefore,
           status: 'pending_verification'
         });
 
@@ -157,7 +182,7 @@ const updateProfile = async (req: Request, res: Response): Promise<any> => {
 
     res.status(200).json({
       success: true,
-      data: profile,
+      data: supplierSafeProfile(profile),
       message: bankChangeRequest
         ? 'Profile updated. Your banking change needs verification and approval before it takes effect.'
         : undefined,

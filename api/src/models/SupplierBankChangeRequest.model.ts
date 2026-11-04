@@ -57,6 +57,13 @@ export interface ISupplierBankChangeRequest extends Document {
     uploadedAt: Date;
   };
   status: 'pending_verification' | 'pending_approval' | 'approved' | 'rejected' | 'cancelled';
+  /**
+   * The supplier's phone numbers as they stood before the save that raised
+   * this request. The callback must be made to one of these: a number added
+   * in the same save, or since, reaches whoever made the request. Absent on
+   * requests raised before it was recorded.
+   */
+  contactNumbersOnFile?: string[];
   callback?: ICallbackVerification;
   /** Approver must differ from whoever requested and whoever called back. */
   approvedBy?: mongoose.Types.ObjectId | any;
@@ -109,6 +116,8 @@ const SupplierBankChangeRequestSchema = new Schema<ISupplierBankChangeRequest>({
     default: 'pending_verification',
     index: true
   },
+  // No default, so older requests are told apart from ones with no numbers.
+  contactNumbersOnFile: { type: [String], default: undefined },
   callback: {
     numberCalled: String,
     confirmedBy: String,

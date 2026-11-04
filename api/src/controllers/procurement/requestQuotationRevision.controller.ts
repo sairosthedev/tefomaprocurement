@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { Quotation, RFQ } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifySupplier } from '../../services/notification.service.js';
+import { canSeeBids } from '../../lib/rfqVisibility.js';
 
 /**
  * Procurement requests a revised (usually lower) price from a supplier. The
@@ -22,6 +23,20 @@ const requestQuotationRevision = async (req: Request, res: Response): Promise<an
     const quotation = await Quotation.findById(id).populate('rfq');
     if (!quotation || quotation.isDeleted) {
       return res.status(404).json({ success: false, message: 'Quotation not found' });
+    }
+
+    // Sealed bids, as on getQuotationById: asking for a better price on a bid
+    // nobody may open yet means reading it, and the reply would carry its prices.
+    if (!canSeeBids(req.user, quotation.rfq)) {
+      const sealedRfq = quotation.rfq as any;
+      return res.status(403).json({
+        success: false,
+        sealed: true,
+        rfqId: sealedRfq?._id,
+        rfqNumber: sealedRfq?.rfqNumber,
+        submissionDeadline: sealedRfq?.submissionDeadline,
+        message: 'Bids are sealed until the submission deadline passes or the RFQ is closed.'
+      });
     }
 
     if (!['submitted', 'under_review'].includes(quotation.status)) {

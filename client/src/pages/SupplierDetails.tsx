@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
-import api, { procurementAPI } from '../lib/api';
+import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import Tabs from '../components/Tabs';
 import KysDocuments from '../components/KysDocuments';
+import { requiredDocumentTypesForTier } from '../components/supplier/kysRequirements';
 import { KYS_CHECKLIST_ITEMS, getRequiredChecklistKeys, isProcurementHead } from '@fossil/shared';
 import SupplierEditableSection from '../components/supplier/SupplierEditableSection';
 import {
@@ -54,7 +55,8 @@ function VettingForm({ supplier, onSaved, showToast }: { supplier: any; onSaved:
   const save = async () => {
     setSaving(true);
     try {
-      const { data } = await api.put(`/suppliers/${supplier._id}`, {
+      // `/suppliers/:id` does not exist; the record is updated under /procurement.
+      const { data } = await procurementAPI.updateSupplier(supplier._id, {
         vettingStatus: form.vettingStatus || undefined,
         siteVisitDate: form.siteVisitDate || undefined,
         siteVisitBy: form.siteVisitBy.trim() || undefined,
@@ -64,8 +66,8 @@ function VettingForm({ supplier, onSaved, showToast }: { supplier: any; onSaved:
       });
       onSaved(data.data);
       showToast('Vetting record saved', 'success');
-    } catch {
-      showToast('Failed to save vetting record', 'error');
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to save vetting record', 'error');
     } finally {
       setSaving(false);
     }
@@ -339,7 +341,7 @@ export default function SupplierDetails() {
   const verifyKys = async (overrideKys = false) => {
     if (!supplier) return;
     if (!canRunKysActivation) {
-      showToast('This supplier is already active.', 'error');
+      showToast(isBlacklisted ? 'Lift the blacklisting first.' : 'This supplier is already active.', 'error');
       return;
     }
     if (overrideKys && !overrideReason.trim()) {
@@ -406,11 +408,33 @@ export default function SupplierDetails() {
     }
   };
 
+  // Returns the supplier to pending; re-approval then goes through KYS.
+  const runReinstate = async () => {
+    if (!supplier) return;
+    if (!actionReason.trim()) {
+      showToast('A reason is required to lift a blacklisting', 'error');
+      return;
+    }
+    try {
+      setSaving(true);
+      const res = await procurementAPI.reinstateSupplier(supplier._id, { reason: actionReason.trim() });
+      showToast(res.data.message || 'Blacklisting lifted', 'success');
+      refreshSupplier(res.data.data);
+      setPendingAction(null);
+      setActionReason('');
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Failed to lift the blacklisting', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const confirmPendingAction = () => {
     if (pendingAction === 'suspend') return runSetStatus('suspended');
     if (pendingAction === 'reactivate') return runSetStatus('active');
     if (pendingAction === 'dormant') return runSetStatus('dormant');
     if (pendingAction === 'blacklist') return runBlacklist();
+    if (pendingAction === 'reinstate') return runReinstate();
   };
 
   const closePendingAction = () => {
@@ -428,7 +452,10 @@ export default function SupplierDetails() {
     : supplier?.kysComplete
       ? 'Verified'
       : 'Pending';
-  const canRunKysActivation = supplier?.status !== 'active';
+  // A blacklisted supplier must have the blacklisting lifted first; the API
+  // refuses KYS verification for them, so the button is not offered.
+  const isBlacklisted = supplier?.status === 'blacklisted';
+  const canRunKysActivation = supplier?.status !== 'active' && !isBlacklisted;
   const directorCount = Array.isArray(supplier?.contactPersons) ? supplier.contactPersons.length : 0;
   const referenceCount = Array.isArray(supplier?.clientReferrals) ? supplier.clientReferrals.length : 0;
   const tabs = [
@@ -471,6 +498,16 @@ export default function SupplierDetails() {
   const facts: Array<{ label: string; value: React.ReactNode; sub?: string }> = [
     { label: 'KYS', value: kysLabel, sub: `${completion.ticked}/${completion.keys.length} required checks` },
     { label: 'Diligence tier', value: <span className="capitalize">{supplier.tier || 'Unclassified'}</span> },
+    // Separate from status: only a spend-authorised supplier can be awarded or sent a PO.
+    {
+      label: 'Spend authorisation',
+      value: supplier.transactability === 'spend_authorized'
+        ? 'Authorised'
+        : supplier.transactability === 'prospective' ? 'Prospective' : 'Not authorised',
+      sub: supplier.transactability === 'spend_authorized'
+        ? 'Can be awarded and paid'
+        : supplier.transactability === 'prospective' ? 'May quote, not be awarded' : 'Cannot be awarded'
+    },
     {
       label: 'Performance',
       value: performanceScore,
@@ -488,7 +525,7 @@ export default function SupplierDetails() {
         backTo="/app/suppliers"
         backLabel="Back to suppliers"
         title={supplier.companyName}
-        subtitle={supplier.tradingAs ? `Trading as ${supplier.tradingAs}` : undefined}
+        subtitle={(supplier.tradingName || supplier.tradingAs) ? `Trading as ${supplier.tradingName || supplier.tradingAs}` : undefined}
         bottomSpacing="mb-4"
         actions={
           <>
@@ -518,6 +555,12 @@ export default function SupplierDetails() {
               <button type="button" onClick={() => setPendingAction('blacklist')} className={`${actionButton} text-red-700 border-red-200 hover:bg-red-50`}>
                 <XCircle className="h-4 w-4" />
                 Blacklist
+              </button>
+            )}
+            {canManage && isBlacklisted && (
+              <button type="button" onClick={() => setPendingAction('reinstate')} className={`${actionButton} text-gray-700 border-gray-300 hover:bg-gray-50`}>
+                <CheckCircle className="h-4 w-4" />
+                Lift blacklisting
               </button>
             )}
           </>
@@ -568,7 +611,7 @@ export default function SupplierDetails() {
           const DOC_STEPS = [
             { label: 'Documents', done: checklistDocuments.length > 0 },
             { label: 'Checklist', done: completion.isComplete },
-            { label: 'Verify', done: !canRunKysActivation }
+            { label: 'Verify', done: supplier.status === 'active' }
           ];
           return (
             <div className="space-y-6">
@@ -612,6 +655,8 @@ export default function SupplierDetails() {
               {docStep === 0 && (
                 <KysDocuments
                   documents={checklistDocuments}
+                  fetchFile={async (doc) => (await procurementAPI.getSupplierDocumentFile(supplier._id, doc._id)).data}
+                  requiredTypes={requiredDocumentTypesForTier(supplier.tier)}
                   readOnly={!canManage}
                   onUpload={uploadDoc}
                   onDelete={deleteDoc}
@@ -696,7 +741,11 @@ export default function SupplierDetails() {
                       </div>
                       <span className="text-xs text-gray-500 tabular-nums shrink-0">{completion.ticked}/{completion.keys.length} required</span>
                     </div>
-                    {!canRunKysActivation ? (
+                    {isBlacklisted ? (
+                      <p className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">
+                        Supplier is blacklisted — lift the blacklisting before verifying KYS.
+                      </p>
+                    ) : !canRunKysActivation ? (
                       <p className="rounded-lg border border-green-100 bg-green-50 px-3 py-2 text-sm text-green-700">
                         Supplier is active — KYS verification is locked.
                       </p>
@@ -862,7 +911,8 @@ export default function SupplierDetails() {
           pendingAction === 'suspend' ? 'Suspend this supplier?'
             : pendingAction === 'reactivate' ? 'Reactivate this supplier?'
               : pendingAction === 'dormant' ? 'Mark this supplier as dormant?'
-                : 'Blacklist this supplier?'
+                : pendingAction === 'reinstate' ? 'Lift this blacklisting?'
+                  : 'Blacklist this supplier?'
         }
         subtitle={supplier.companyName}
         footer={
@@ -878,7 +928,7 @@ export default function SupplierDetails() {
             <button
               type="button"
               onClick={confirmPendingAction}
-              disabled={saving || (pendingAction === 'blacklist' && !actionReason.trim())}
+              disabled={saving || ((pendingAction === 'blacklist' || pendingAction === 'reinstate') && !actionReason.trim())}
               className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 ${
                 pendingAction === 'blacklist' ? 'border border-red-200 text-red-700 hover:bg-red-50' : 'bg-primary text-white hover:bg-primary-dark'
               }`}
@@ -889,14 +939,25 @@ export default function SupplierDetails() {
           </>
         }
       >
-        {pendingAction === 'suspend' || pendingAction === 'blacklist' ? (
-          <textarea
-            value={actionReason}
-            onChange={(e) => setActionReason(e.target.value)}
-            rows={3}
-            placeholder={pendingAction === 'blacklist' ? 'Reason for blacklisting (required)' : 'Reason for suspension (required)'}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
+        {pendingAction === 'suspend' || pendingAction === 'blacklist' || pendingAction === 'reinstate' ? (
+          <>
+            {pendingAction === 'reinstate' && (
+              <p className="text-sm text-gray-600 mb-3">
+                The supplier returns to pending and must be re-approved through KYS before they can be awarded work.
+              </p>
+            )}
+            <textarea
+              value={actionReason}
+              onChange={(e) => setActionReason(e.target.value)}
+              rows={3}
+              placeholder={
+                pendingAction === 'blacklist' ? 'Reason for blacklisting (required)'
+                  : pendingAction === 'reinstate' ? 'Reason for lifting the blacklisting (required)'
+                    : 'Reason for suspension (required)'
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </>
         ) : (
           <p className="text-sm text-gray-600">
             {pendingAction === 'reactivate'

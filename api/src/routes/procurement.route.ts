@@ -2,6 +2,7 @@ import express from 'express';
 import type { RequestHandler } from 'express';
 import { isProcurementHead } from '@fossil/shared';
 import controllers from '../controllers/index.js';
+import getSupplierDocumentFile from '../controllers/procurement/getSupplierDocumentFile.controller.js';
 import { protect, authorizeProcurement, adminReadOnly } from '../middleware/index.js';
 
 const { procurement, department } = controllers;
@@ -63,6 +64,12 @@ router.get('/suppliers', canReadSourcing, procurement.getSuppliers);
 router.get(`/suppliers/${SUPPLIER_ID}`, canReadSourcing, procurement.getSupplierById);
 router.get(`/suppliers/${SUPPLIER_ID}/tier-suggestion`, canReadSourcing, procurement.getSupplierTierSuggestion);
 router.get(`/suppliers/${SUPPLIER_ID}/evaluations`, canReadSourcing, procurement.getSupplierEvaluations);
+// One document's file, fetched when opened: supplier reads carry no file bodies.
+router.get(
+  `/suppliers/${SUPPLIER_ID}/documents/:docId([0-9a-fA-F]{24})/file`,
+  canReadSourcing,
+  getSupplierDocumentFile
+);
 router.get('/quotations/:id', canReadSourcing, procurement.getQuotationById);
 router.get('/rfqs/:id/line-awards', canReadSourcing, procurement.getLineAwardMatrix);
 

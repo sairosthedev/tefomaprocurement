@@ -2,13 +2,16 @@ import type { Request, Response } from 'express';
 import { getNextReviewDate } from '@fossil/shared';
 import { SupplierEvaluation, SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { transitionSupplierStatus } from '../../services/supplierEligibility.service.js';
+import { WITHOUT_DOCUMENT_FILES } from '../../services/supplierDocuments.service.js';
 
 const secApproveEvaluation = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
     const { approved, secNotes } = req.body;
 
-    const evaluation = await SupplierEvaluation.findById(id).populate('supplier');
+    // The evaluation is returned with its supplier, so leave out file bodies.
+    const evaluation = await SupplierEvaluation.findById(id).populate('supplier', WITHOUT_DOCUMENT_FILES);
     if (!evaluation || evaluation.isDeleted) {
       return res.status(404).json({ success: false, message: 'Evaluation not found' });
     }
@@ -38,9 +41,11 @@ const secApproveEvaluation = async (req: Request, res: Response): Promise<any> =
         supplier.lastEvaluationAt = new Date();
         supplier.nextEvaluationDue = due;
         // A passing evaluation is not a substitute for KYS. Activation here is
-        // held to the same gate as approveSupplier and setSupplierStatus.
+        // held to the same gate as approveSupplier and setSupplierStatus, and
+        // grants spend authorization the same way — without it the supplier
+        // read "Active" but was refused at every award.
         if (supplier.status === 'pending' && (supplier.kysComplete || supplier.kysExempt)) {
-          supplier.status = 'active';
+          transitionSupplierStatus(supplier, 'active', req.user!._id, 'Activated on approval of supplier evaluation');
         }
         await supplier.save();
       }

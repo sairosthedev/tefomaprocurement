@@ -45,6 +45,10 @@ const createSupplierEvaluation = async (req: Request, res: Response): Promise<an
     // one, and a uniform cadence is what made the review backlog unworkable.
     const nextReviewDue = getNextReviewDate(supplier.tier);
 
+    // The client sends notes inside `scores`; older callers sent them at the
+    // top level. Spreading an undefined top-level value used to erase them.
+    const notes = (scores as any).otherNotes ?? otherNotes;
+
     // The evaluator does not approve their own evaluation. It enters the
     // review chain at pending_hod (Rev 9 clause 5.6: HOD review, then SEC
     // sign-off), which is what makes hodReviewEvaluation and
@@ -53,7 +57,7 @@ const createSupplierEvaluation = async (req: Request, res: Response): Promise<an
     const evaluation = await SupplierEvaluation.create({
       supplier: supplier._id,
       evaluationType: evaluationType || 'initial',
-      scores: { ...scores, otherNotes },
+      scores: { ...scores, otherNotes: notes },
       recommendation,
       evaluatedBy: req.user!._id,
       status: 'pending_hod',

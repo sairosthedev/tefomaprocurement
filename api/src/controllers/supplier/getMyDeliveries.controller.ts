@@ -1,6 +1,10 @@
 import type { Request, Response } from 'express';
 
 import { Delivery, SupplierProfile } from '../../models/index.js';
+import { supplierListQuery } from './getMyRFQs.controller.js';
+
+/** Every delivery status; a supplier sees all deliveries against their orders. */
+const DELIVERY_STATUSES = ['pending', 'received', 'inspected', 'accepted', 'partially_accepted', 'rejected'];
 
 const getMyDeliveries = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -13,24 +17,21 @@ const getMyDeliveries = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    const { status, page = 1, limit = 20 } = req.query as Record<string, any>;
-    
-    const query: any = { 
+    const { page, limit, skip, statuses, statusRequested } = supplierListQuery(req.query, DELIVERY_STATUSES);
+
+    const query: any = {
       supplier: profile._id,
       isDeleted: false
     };
-    
-    if (status) query.status = status;
+    if (statusRequested) query.status = { $in: statuses };
 
-    const skip = (page - 1) * limit;
-    
     const [deliveries, total] = await Promise.all([
       Delivery.find(query)
         .populate('purchaseOrder', 'poNumber expectedDeliveryDate')
         .populate('receivedBy', 'firstName lastName')
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(parseInt(limit)),
+        .limit(limit),
       Delivery.countDocuments(query)
     ]);
 
@@ -38,8 +39,8 @@ const getMyDeliveries = async (req: Request, res: Response): Promise<any> => {
       success: true,
       data: deliveries,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page,
+        limit,
         total,
         pages: Math.ceil(total / limit)
       }
