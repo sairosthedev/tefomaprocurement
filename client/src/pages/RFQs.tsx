@@ -50,13 +50,14 @@ export default function RFQs() {
   const [searchInput, setSearch] = useState<any>('');
   // The box shows what's typed; the list is fetched once typing pauses.
   const search = useDebouncedValue(searchInput);
-  const [statusFilter, setStatusFilter] = useState<any>('');
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
-  const [pagination, setPagination] = useState(emptyPagination());
   // The create drawer lives in the URL (?new=1, with ?requisition= when it is
   // raised from one), so links from elsewhere can open it and Back closes it.
   const [searchParams, setSearchParams] = useSearchParams();
+  // Links can open the list already filtered, e.g. ?status=open from the dashboard.
+  const [statusFilter, setStatusFilter] = useState<any>(searchParams.get('status') || '');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
+  const [pagination, setPagination] = useState(emptyPagination());
   const createOpen = searchParams.get('new') === '1';
   const createFromRequisition = searchParams.get('requisition');
 

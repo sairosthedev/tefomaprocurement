@@ -170,7 +170,8 @@ async function loadRecentActivity() {
 const count = {
   activeSuppliers: () => SupplierProfile.countDocuments({ status: 'active', isDeleted: false }),
   totalRFQs: () => RFQ.countDocuments({ isDeleted: false }),
-  openRFQs: () => RFQ.countDocuments({ status: { $in: ['draft', 'open'] }, isDeleted: false }),
+  // Drafts have not gone to suppliers yet, so they are not counted as open.
+  openRFQs: () => RFQ.countDocuments({ status: 'open', isDeleted: false }),
   totalQuotations: () => Quotation.countDocuments({ isDeleted: false }),
   pendingQuotations: () => Quotation.countDocuments({ status: 'submitted', isDeleted: false }),
   totalPOs: () => PurchaseOrder.countDocuments({ isDeleted: false }),
@@ -376,7 +377,7 @@ async function buildRoleStats(
         attentionItems: needsAttention([
           { id: 'pending-acceptance', label: 'Requisitions awaiting acceptance', count: pendingAcceptance, href: '/app/requisitions', severity: 'high' },
           { id: 'pending-quotations', label: 'Quotations awaiting evaluation', count: pendingQuotations, href: '/app/quotations', severity: 'medium' },
-          { id: 'open-rfqs', label: 'Open RFQs collecting quotations', count: openRFQs, href: '/app/rfqs', severity: 'low' }
+          { id: 'open-rfqs', label: 'Open RFQs collecting quotations', count: openRFQs, href: '/app/rfqs?status=open', severity: 'low' }
         ])
       };
     }
