@@ -23,7 +23,7 @@ import {
 } from '../lib/requisitionJourney';
 import { isProcurementHead } from '@fossil/shared';
 import { useDebouncedValue } from '../lib/useDebouncedValue';
-import { OPEN_STORE_REQUISITION, requestDeliveredItems, storeRequisitionStatusLabel } from '../lib/collectFromStores';
+import { OPEN_STORE_REQUISITION, requestDeliveredItems } from '../lib/collectFromStores';
 
 const priorityColors: any = {
   low: 'bg-gray-100 text-gray-600',
@@ -393,15 +393,6 @@ export default function Requisitions() {
                           </span>
                         );
                       })()}
-                      {/* The store requisition raised to collect the goods, until they are collected. */}
-                      {actsAsDepartment(req) && !req.itemsCollected && OPEN_STORE_REQUISITION.includes(req.storeRequisition?.status) && (
-                        <span
-                          className="ml-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700"
-                          title={req.storeRequisition.requisitionNumber}
-                        >
-                          {req.storeRequisition.requisitionNumber} · {storeRequisitionStatusLabel[req.storeRequisition.status]}
-                        </span>
-                      )}
                     </td>
                     <td className="py-2.5 px-3 border-b border-gray-100 align-top">
                       <div className="flex items-center justify-end gap-2">
