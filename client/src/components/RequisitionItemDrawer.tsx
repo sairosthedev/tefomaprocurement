@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useToast } from './Toast';
-import { UNITS_OF_MEASUREMENT, formatCurrency } from '../lib/constants';
+import { UNITS_OF_MEASUREMENT, PACKAGE_TYPES, formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
 import { ItemSelect, type CatalogItem } from './ItemSelect';
 import EquipmentDetailsPanel from './EquipmentDetailsPanel';
@@ -128,13 +128,16 @@ export default function RequisitionItemDrawer({ item, onClose, onSubmit }: {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Package</label>
-          <input
-            type="text"
+          <select
             value={draft.package}
             onChange={(e) => update({ package: e.target.value })}
-            placeholder="e.g. Box, Carton, Roll"
-            className={inputClass}
-          />
+            className={`${inputClass} bg-white`}
+          >
+            <option value="">— Select —</option>
+            {PACKAGE_TYPES.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
           <p className="text-xs text-gray-400 mt-1">The container or pack form the item comes in.</p>
         </div>
         <div>

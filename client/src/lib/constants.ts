@@ -16,6 +16,7 @@ import {
   isValidCategoryCode,
   UNITS_OF_MEASUREMENT,
   UNIT_OPTIONS,
+  PACKAGE_TYPES,
   USER_ROLE_OPTIONS
 } from '@fossil/shared';
 
@@ -36,7 +37,8 @@ export {
   getCategoryByCode,
   isValidCategoryCode,
   UNITS_OF_MEASUREMENT,
-  UNIT_OPTIONS
+  UNIT_OPTIONS,
+  PACKAGE_TYPES
 };
 
 // Back-compat aliases (lowercase names previously exported from this module).

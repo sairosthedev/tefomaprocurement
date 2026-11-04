@@ -20,6 +20,27 @@ export const SUPPLIER_CATEGORIES: readonly string[] = Object.freeze([
   'Other'
 ]);
 
+export const PACKAGE_TYPES: readonly string[] = Object.freeze([
+  'Box',
+  'Carton',
+  'Bag',
+  'Drum',
+  'Pallet',
+  'Crate',
+  'Roll',
+  'Ream',
+  'Bundle',
+  'Sack',
+  'Tin',
+  'Bottle',
+  'Can',
+  'Tube',
+  'Sachet',
+  'Dozen',
+  'Set',
+  'Other'
+]);
+
 export const UNITS_OF_MEASUREMENT: readonly string[] = Object.freeze([
   'Each',
   'Pack',
