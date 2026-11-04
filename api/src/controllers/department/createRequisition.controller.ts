@@ -8,6 +8,7 @@ import {
 } from '../../services/inventoryAvailability.service.js';
 import { hasEnteredLineItems } from '../../lib/lineItems.js';
 import { sanitiseEquipment, sanitiseAttachments } from '../../services/lineAttachments.service.js';
+import { submitRequisitionForApproval } from '../../services/requisitionApproval.service.js';
 
 const createRequisition = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -105,7 +106,9 @@ const createRequisition = async (req: Request, res: Response): Promise<any> => {
       priority: mappedPriority,
       requiredDate: requiredDate ? new Date(requiredDate) : undefined,
       notes,
-      status: status === 'pending' ? 'pending_hod' : 'draft'
+      // Created as a draft either way; submitting is the same step as
+      // submitting a saved draft, below.
+      status: 'draft'
     });
 
     await createAuditLog({
@@ -117,6 +120,13 @@ const createRequisition = async (req: Request, res: Response): Promise<any> => {
       newData: { title, itemCount: processedItems.length, priority: mappedPriority },
       req
     });
+
+    // Submitted from the form: the budget check, the notifications, and for a
+    // head's own request the department approval, exactly as for a draft.
+    if (isSubmitting) {
+      const { requisition: submitted, message, budgetCheck } = await submitRequisitionForApproval(requisition, req);
+      return res.status(201).json({ success: true, message, data: submitted, budgetCheck });
+    }
 
     res.status(201).json({
       success: true,
