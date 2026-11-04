@@ -147,6 +147,7 @@ export default function SupplierDetails() {
   const [saving, setSaving] = useState(false);
   const [kysSaving, setKysSaving] = useState(false);
   const [tab, setTab] = useState('overview');
+  const [docStep, setDocStep] = useState(0);
   const [pendingAction, setPendingAction] = useState<any>(null);
   const [actionReason, setActionReason] = useState('');
   const [overrideReason, setOverrideReason] = useState('');
@@ -197,6 +198,7 @@ export default function SupplierDetails() {
   const handleTabChange = (nextTab: string) => {
     setProfileEditing(false);
     setTab(nextTab);
+    if (nextTab === 'documents') setDocStep(0);
   };
 
   const startProfileEdit = () => {
@@ -562,11 +564,52 @@ export default function SupplierDetails() {
           />
         )}
 
-        {tab === 'documents' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">Compliance documents</h3>
+        {tab === 'documents' && (() => {
+          const DOC_STEPS = [
+            { label: 'Documents', done: checklistDocuments.length > 0 },
+            { label: 'Checklist', done: completion.isComplete },
+            { label: 'Verify', done: !canRunKysActivation }
+          ];
+          return (
+            <div className="space-y-6">
+              {/* Horizontal step nav */}
+              <nav className="flex items-center">
+                {DOC_STEPS.map((step, i) => {
+                  const active = i === docStep;
+                  const past = i < docStep;
+                  return (
+                    <React.Fragment key={step.label}>
+                      <button
+                        type="button"
+                        onClick={() => setDocStep(i)}
+                        className="flex items-center gap-2 shrink-0"
+                      >
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center ring-2 transition-colors ${
+                          step.done
+                            ? 'bg-primary ring-primary'
+                            : active
+                              ? 'bg-white ring-primary'
+                              : 'bg-white ring-gray-200'
+                        }`}>
+                          {step.done
+                            ? <Check className="h-3.5 w-3.5 text-white" />
+                            : <span className={`text-[11px] font-bold ${active ? 'text-primary' : 'text-gray-400'}`}>{i + 1}</span>
+                          }
+                        </div>
+                        <span className={`text-sm font-medium ${active ? 'text-primary' : step.done || past ? 'text-gray-500' : 'text-gray-400'}`}>
+                          {step.label}
+                        </span>
+                      </button>
+                      {i < DOC_STEPS.length - 1 && (
+                        <div className={`flex-1 h-px mx-3 ${past || step.done ? 'bg-primary/40' : 'bg-gray-200'}`} />
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </nav>
+
+              {/* Step 1 — compliance document uploads */}
+              {docStep === 0 && (
                 <KysDocuments
                   documents={checklistDocuments}
                   readOnly={!canManage}
@@ -575,14 +618,21 @@ export default function SupplierDetails() {
                   onVerify={verifyDoc}
                   title="Required and optional documents"
                 />
-              </div>
+              )}
 
-              <div>
-                <div className="flex items-center justify-between gap-4 mb-3">
-                  <h3 className="text-sm font-semibold text-gray-900">KYS checklist</h3>
-                  <span className="text-xs text-gray-500">{completion.ticked}/{completion.keys.length} required complete</span>
-                </div>
+              {/* Step 2 — KYS checklist */}
+              {docStep === 1 && (
                 <div className="space-y-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-sm font-semibold text-gray-900">KYS checklist</p>
+                    <div className="flex items-center gap-3">
+                      <div className="w-32 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-primary rounded-full transition-all"
+                          style={{ width: `${completion.keys.length ? (completion.ticked / completion.keys.length) * 100 : 0}%` }} />
+                      </div>
+                      <span className="text-xs text-gray-500 tabular-nums">{completion.ticked}/{completion.keys.length}</span>
+                    </div>
+                  </div>
                   {checklistSections.map(({ section, items }) => (
                     <div key={section} className="rounded-xl border border-gray-200 overflow-hidden">
                       <div className="bg-gray-50 px-4 py-2 flex items-center justify-between">
@@ -592,12 +642,7 @@ export default function SupplierDetails() {
                       <div className="divide-y divide-gray-100">
                         {items.map((item) => (
                           <label key={item.key} className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-gray-50">
-                            <input
-                              type="checkbox"
-                              checked={!!checklist[item.key]}
-                              onChange={() => toggleCheck(item.key)}
-                              disabled={kysSaving || !canManage}
-                            />
+                            <input type="checkbox" checked={!!checklist[item.key]} onChange={() => toggleCheck(item.key)} disabled={kysSaving || !canManage} />
                             <p className="flex-1 text-sm text-gray-900">{item.label}</p>
                             <span className="text-xs text-gray-400">{item.required ? 'Required' : 'Optional'}</span>
                             {checklist[item.key] && <CheckCircle className="h-4 w-4 text-green-600 shrink-0" />}
@@ -607,149 +652,110 @@ export default function SupplierDetails() {
                     </div>
                   ))}
                 </div>
+              )}
+
+              {/* Step 3 — assign tier + verify */}
+              {docStep === 2 && (
+                <div className="max-w-sm space-y-6">
+                  {/* Tier */}
+                  <div className={`${panel} space-y-3`}>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-gray-900">Diligence tier</p>
+                      {supplier.tier && <span className="text-xs font-medium text-primary capitalize">{supplier.tier}</span>}
+                    </div>
+                    <p className="text-xs text-gray-400">Sets how many KYS items are required. Unclassified is treated as full depth.</p>
+                    {canManage && (
+                      <div className="flex flex-wrap gap-2">
+                        {['critical', 'strategic', 'tactical', 'transactional'].map((t) => (
+                          <button key={t} type="button" disabled={tierSaving || supplier.tier === t} onClick={() => assignTier(t)}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-lg border capitalize transition-colors ${
+                              supplier.tier === t ? 'bg-primary text-white border-primary' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                            } disabled:opacity-50`}>
+                            {t}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {tierSuggestion && supplier.tier !== tierSuggestion.suggested && (
+                      <p className="text-xs text-amber-700">
+                        Suggested: <span className="font-medium capitalize">{tierSuggestion.suggested}</span> — {tierSuggestion.rationale}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Activate */}
+                  <div className={`${panel} space-y-3`}>
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4 text-primary" />
+                      <p className="text-sm font-semibold text-gray-900">Verify KYS &amp; activate</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-primary rounded-full"
+                          style={{ width: `${completion.keys.length ? (completion.ticked / completion.keys.length) * 100 : 0}%` }} />
+                      </div>
+                      <span className="text-xs text-gray-500 tabular-nums shrink-0">{completion.ticked}/{completion.keys.length} required</span>
+                    </div>
+                    {!canRunKysActivation ? (
+                      <p className="rounded-lg border border-green-100 bg-green-50 px-3 py-2 text-sm text-green-700">
+                        Supplier is active — KYS verification is locked.
+                      </p>
+                    ) : !canManage ? (
+                      <p className="text-sm text-gray-400">Managed by procurement</p>
+                    ) : showOverrideConfirm ? (
+                      <div className="space-y-3">
+                        <textarea value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)}
+                          rows={3} placeholder="Reason for KYS override (required)"
+                          className="w-full px-3 py-2 border border-amber-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-200 resize-none" />
+                        <div className="flex gap-2">
+                          <button type="button" disabled={kysSaving}
+                            onClick={() => { setShowOverrideConfirm(false); setOverrideReason(''); }}
+                            className="flex-1 px-3 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50">
+                            Cancel
+                          </button>
+                          <button type="button" disabled={kysSaving || !overrideReason.trim()} onClick={() => verifyKys(true)}
+                            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark disabled:opacity-50">
+                            {kysSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                            Confirm
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <button type="button" onClick={() => verifyKys(false)}
+                          disabled={kysSaving || (!supplier.kysComplete && completion.ticked !== completion.keys.length)}
+                          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50">
+                          {kysSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                          Verify KYS &amp; activate
+                        </button>
+                        <button type="button" onClick={() => setShowOverrideConfirm(true)} disabled={kysSaving}
+                          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
+                          Activate without KYS
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Prev / Next */}
+              <div className="flex justify-between pt-2 border-t border-gray-100">
+                {docStep > 0 ? (
+                  <button type="button" onClick={() => setDocStep((s) => s - 1)}
+                    className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                    Back
+                  </button>
+                ) : <div />}
+                {docStep < 2 && (
+                  <button type="button" onClick={() => setDocStep((s) => s + 1)}
+                    className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors">
+                    Next
+                  </button>
+                )}
               </div>
             </div>
-
-            <aside className={`${panel} h-fit lg:sticky lg:top-6 text-sm`}>
-              <div className="flex items-center gap-2 mb-5">
-                <ShieldCheck className="h-4 w-4 text-primary" />
-                <p className="font-semibold text-gray-900">Verification</p>
-              </div>
-
-              {/* KYS stepper */}
-              <ol className="space-y-0">
-                {/* Step 1 — Assign tier */}
-                {(() => {
-                  const done = !!supplier.tier;
-                  return (
-                    <li className="relative pb-6">
-                      <div className={`absolute left-3 top-7 bottom-0 w-px ${done ? 'bg-primary/40' : 'bg-gray-200'}`} />
-                      <div className="flex gap-3">
-                        <div className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center ring-2 ${done ? 'bg-primary ring-primary' : 'bg-white ring-gray-300'}`}>
-                          {done ? <Check className="h-3.5 w-3.5 text-white" /> : <span className="text-[11px] font-bold text-gray-400">1</span>}
-                        </div>
-                        <div className="flex-1 min-w-0 pt-0.5">
-                          <p className={`font-medium ${done ? 'text-gray-400' : 'text-gray-900'}`}>Assign diligence tier</p>
-                          {done ? (
-                            <p className="text-xs text-primary font-medium capitalize mt-0.5">{supplier.tier}</p>
-                          ) : (
-                            <p className="text-xs text-gray-400 mt-0.5">Sets how many KYS items are required</p>
-                          )}
-                          {canManage && !done && (
-                            <div className="flex flex-wrap gap-1.5 mt-2">
-                              {['critical', 'strategic', 'tactical', 'transactional'].map((t) => (
-                                <button key={t} type="button" disabled={tierSaving} onClick={() => assignTier(t)}
-                                  className="text-[11px] px-2 py-1 rounded-lg border capitalize bg-white text-gray-700 border-gray-200 hover:bg-gray-50 disabled:opacity-50">
-                                  {t}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                          {canManage && done && (
-                            <div className="flex flex-wrap gap-1.5 mt-2">
-                              {['critical', 'strategic', 'tactical', 'transactional'].map((t) => (
-                                <button key={t} type="button" disabled={tierSaving || supplier.tier === t} onClick={() => assignTier(t)}
-                                  className={`text-[11px] px-2 py-1 rounded-lg border capitalize ${supplier.tier === t ? 'bg-primary text-white border-primary' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'} disabled:opacity-50`}>
-                                  {t}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                          {tierSuggestion && supplier.tier !== tierSuggestion.suggested && (
-                            <p className="text-[11px] text-amber-700 mt-1.5">
-                              Suggested: <span className="font-medium capitalize">{tierSuggestion.suggested}</span> — {tierSuggestion.rationale}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })()}
-
-                {/* Step 2 — KYS checklist */}
-                {(() => {
-                  const done = completion.isComplete;
-                  return (
-                    <li className="relative pb-6">
-                      <div className={`absolute left-3 top-7 bottom-0 w-px ${done ? 'bg-primary/40' : 'bg-gray-200'}`} />
-                      <div className="flex gap-3">
-                        <div className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center ring-2 ${done ? 'bg-primary ring-primary' : 'bg-white ring-gray-300'}`}>
-                          {done ? <Check className="h-3.5 w-3.5 text-white" /> : <span className="text-[11px] font-bold text-gray-400">2</span>}
-                        </div>
-                        <div className="flex-1 min-w-0 pt-0.5">
-                          <p className={`font-medium ${done ? 'text-gray-400' : 'text-gray-900'}`}>KYS checklist</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-primary rounded-full transition-all"
-                                style={{ width: `${completion.keys.length ? (completion.ticked / completion.keys.length) * 100 : 0}%` }} />
-                            </div>
-                            <span className="text-xs text-gray-500 tabular-nums shrink-0">{completion.ticked}/{completion.keys.length}</span>
-                          </div>
-                          {!done && completion.missing.length > 0 && (
-                            <p className="text-xs text-gray-400 mt-0.5">{completion.missing.length} item{completion.missing.length !== 1 ? 's' : ''} remaining</p>
-                          )}
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })()}
-
-                {/* Step 3 — Verify & activate */}
-                {(() => {
-                  const done = !canRunKysActivation;
-                  return (
-                    <li className="relative">
-                      <div className="flex gap-3">
-                        <div className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center ring-2 ${done ? 'bg-primary ring-primary' : 'bg-white ring-gray-300'}`}>
-                          {done ? <Check className="h-3.5 w-3.5 text-white" /> : <span className="text-[11px] font-bold text-gray-400">3</span>}
-                        </div>
-                        <div className="flex-1 min-w-0 pt-0.5">
-                          <p className={`font-medium ${done ? 'text-gray-400' : 'text-gray-900'}`}>Verify KYS &amp; activate</p>
-                          {done ? (
-                            <p className="text-xs text-emerald-600 font-medium mt-0.5">Supplier is active</p>
-                          ) : !canManage ? (
-                            <p className="text-xs text-gray-400 mt-0.5">Managed by procurement</p>
-                          ) : showOverrideConfirm ? (
-                            <div className="mt-2 space-y-2">
-                              <textarea value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)}
-                                rows={3} placeholder="Reason for KYS override (required)"
-                                className="w-full px-3 py-2 border border-amber-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-amber-200 resize-none" />
-                              <div className="flex gap-2">
-                                <button type="button" disabled={kysSaving}
-                                  onClick={() => { setShowOverrideConfirm(false); setOverrideReason(''); }}
-                                  className="flex-1 px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50">
-                                  Cancel
-                                </button>
-                                <button type="button" disabled={kysSaving || !overrideReason.trim()} onClick={() => verifyKys(true)}
-                                  className="flex-1 inline-flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-primary rounded-lg hover:bg-primary-dark disabled:opacity-50">
-                                  {kysSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
-                                  Confirm
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="mt-2 space-y-1.5">
-                              <button type="button" onClick={() => verifyKys(false)}
-                                disabled={kysSaving || (!supplier.kysComplete && completion.ticked !== completion.keys.length)}
-                                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50">
-                                {kysSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
-                                Verify KYS &amp; activate
-                              </button>
-                              <button type="button" onClick={() => setShowOverrideConfirm(true)} disabled={kysSaving}
-                                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
-                                Activate without KYS
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })()}
-              </ol>
-            </aside>
-          </div>
-        )}
+          );
+        })()}
 
         {tab === 'vetting' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
