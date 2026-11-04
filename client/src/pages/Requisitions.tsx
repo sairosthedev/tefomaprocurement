@@ -41,7 +41,11 @@ export default function Requisitions() {
   const [searchTermInput, setSearchTerm] = useState<any>('');
   // The box shows what's typed; the list is fetched once typing pauses.
   const searchTerm = useDebouncedValue(searchTermInput);
-  const [statusFilter, setStatusFilter] = useState<any>('');
+  // The create drawer lives in the URL (?new=1), so links from elsewhere can
+  // open it and the browser's Back button closes it. Links can also arrive
+  // already filtered (?status=draft, from the dashboard).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [statusFilter, setStatusFilter] = useState<any>(() => searchParams.get('status') || '');
   const [selectedRequisition, setSelectedRequisition] = useState<any>(null);
   const [showActionModal, setShowActionModal] = useState<any>(false);
   const [actionType, setActionType] = useState<any>(''); // 'accept' or 'reject'
@@ -57,9 +61,6 @@ export default function Requisitions() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
-  // The create drawer lives in the URL (?new=1), so links from elsewhere can
-  // open it and the browser's Back button closes it.
-  const [searchParams, setSearchParams] = useSearchParams();
   const createFormRef = useRef<RequisitionFormHandle>(null);
   // The accepted requisition the RFQ drawer is open on, if any.
   const [rfqFor, setRfqFor] = useState<string | null>(null);

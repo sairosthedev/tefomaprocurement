@@ -6,6 +6,9 @@ import { buildRoleReportCharts } from '../../lib/reportAnalytics.js';
 import { resolveUserDepartmentIds } from '../../lib/departmentScope.js';
 import { currentBaseCurrency } from '../../tenancy/sbuContext.js';
 
+/** How long a requester's rejected requisition stays under "Needs attention". */
+const RECENT_REJECTION_DAYS = 14;
+
 /*
  * Every number on the dashboard is an independent query, and each one costs a
  * full database round trip. Awaited one after another they made this the
@@ -493,9 +496,18 @@ async function buildRoleStats(
     }
 
     case 'end_user': {
-      const [reqs, openRFQs] = await Promise.all([
-        requisitionStatusCounts({ requestedBy: new mongoose.Types.ObjectId(String(user._id)), isDeleted: false }),
-        count.openRFQs()
+      const requestedBy = new mongoose.Types.ObjectId(String(user._id));
+      const [reqs, openRFQs, recentlyRejected] = await Promise.all([
+        requisitionStatusCounts({ requestedBy, isDeleted: false }),
+        count.openRFQs(),
+        // A rejection is news for a while, not a task forever: it cannot be
+        // resubmitted, only read and, if still needed, raised again.
+        PurchaseRequisition.countDocuments({
+          requestedBy,
+          status: 'rejected',
+          isDeleted: false,
+          updatedAt: { $gte: new Date(Date.now() - RECENT_REJECTION_DAYS * 24 * 60 * 60 * 1000) }
+        })
       ]);
       const drafts = reqs.of('draft');
       const pendingHod = reqs.of('pending_hod');
@@ -514,10 +526,11 @@ async function buildRoleStats(
           completedRequisitions: { value: reqs.of('fulfilled', 'completed'), label: 'Completed' },
           openRFQs: { value: openRFQs, label: 'Active RFQs' }
         },
+        // Only what the requester has to do something about. Requisitions
+        // waiting on the department head are on the stat card above.
         attentionItems: needsAttention([
-          { id: 'rejected-mine', label: 'Your rejected requisitions — need resubmission', count: rejected, href: '/app/requisitions', severity: 'high' },
-          { id: 'drafts-mine', label: 'Draft requisitions not yet submitted', count: drafts, href: '/app/requisitions', severity: 'medium' },
-          { id: 'pending-hod-mine', label: 'Awaiting HOD approval', count: pendingHod, href: '/app/requisitions', severity: 'low' }
+          { id: 'drafts-mine', label: 'Drafts not yet submitted', count: drafts, href: '/app/requisitions?status=draft', severity: 'medium' },
+          { id: 'rejected-mine', label: `Rejected in the last ${RECENT_REJECTION_DAYS} days — see why`, count: recentlyRejected, href: '/app/requisitions?status=rejected', severity: 'medium' }
         ])
       };
     }

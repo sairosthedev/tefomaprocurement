@@ -56,6 +56,7 @@ export default function Dashboard() {
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [additionalStats, setAdditionalStats] = useState<any>({});
   const [attentionItems, setAttentionItems] = useState<any[]>([]);
+  const attentionTotal = attentionItems.reduce((sum: number, item: any) => sum + (Number(item.count) || 0), 0);
   const [loading, setLoading] = useState<any>(true);
   const [error, setError] = useState<any>(null);
 
@@ -288,7 +289,8 @@ export default function Dashboard() {
               <h2 className="text-lg font-semibold text-gray-900">Needs attention</h2>
               {attentionItems.length > 0 && (
                 <span className="text-xs font-medium text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full">
-                  {attentionItems.length} item{attentionItems.length === 1 ? '' : 's'}
+                  {/* The total across the rows, so it agrees with the numbers below. */}
+                  {attentionTotal} item{attentionTotal === 1 ? '' : 's'}
                 </span>
               )}
             </div>
