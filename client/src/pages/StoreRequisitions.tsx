@@ -14,15 +14,44 @@ import TableSkeleton from '../components/TableSkeleton';
 import Pagination from '../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 import { useDebouncedValue } from '../lib/useDebouncedValue';
+import FilterSelect from '../components/FilterSelect';
 
-const statusColors: any = {
-  pending: 'bg-amber-100 text-amber-700',
-  approved: 'bg-green-100 text-green-700',
-  issued: 'bg-blue-100 text-blue-700',
-  rejected: 'bg-red-100 text-red-700',
-  partial: 'bg-purple-100 text-purple-700',
-  'out-of-stock': 'bg-gray-100 text-gray-700'
+/**
+ * Where a store requisition stands, in the words of the hand-over: a new
+ * request, ready (stock checked, requester told to come), then collected.
+ */
+const STATUS: Record<string, { label: string; cls: string }> = {
+  draft: { label: 'Draft', cls: 'bg-gray-100 text-gray-600' },
+  pending: { label: 'New request', cls: 'bg-amber-100 text-amber-700' },
+  approved: { label: 'Ready to collect', cls: 'bg-blue-100 text-blue-700' },
+  partially_issued: { label: 'Part collected', cls: 'bg-purple-100 text-purple-700' },
+  issued: { label: 'Collected', cls: 'bg-green-100 text-green-700' },
+  rejected: { label: 'Rejected', cls: 'bg-red-100 text-red-700' },
+  cancelled: { label: 'Cancelled', cls: 'bg-gray-100 text-gray-600' }
 };
+
+const STATUS_FILTERS = [
+  { value: '', label: 'All' },
+  { value: 'pending', label: 'New requests' },
+  { value: 'approved', label: 'Ready to collect' },
+  { value: 'partially_issued', label: 'Part collected' },
+  { value: 'issued', label: 'Collected' },
+  { value: 'rejected', label: 'Rejected' }
+];
+
+const itemName = (line: any): string => line.item?.name || line.item?.description || line.description || 'Item';
+
+/** "Office chair × 10", and how many more lines there are. */
+function ItemsSummary({ items }: { items: any[] }) {
+  if (!items?.length) return <span className="text-gray-400">—</span>;
+  const [first, ...rest] = items;
+  return (
+    <span className="text-gray-900">
+      {itemName(first)} <span className="text-gray-500">× {first.quantityRequested}</span>
+      {rest.length > 0 && <span className="block text-xs text-gray-500">+{rest.length} more</span>}
+    </span>
+  );
+}
 
 export default function StoreRequisitions() {
   const { user } = useAuth();
@@ -48,26 +77,33 @@ export default function StoreRequisitions() {
   const [selectedRequisition, setSelectedRequisition] = useState<any>(null);
   const [actionComment, setActionComment] = useState<any>('');
   const [actionLoading, setActionLoading] = useState<any>(false);
+  const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
 
   const isStoresOfficer = user?.role === 'stores_officer';
+  // To the department, a new request is simply with stores.
+  const statusOf = (status: string) =>
+    status === 'pending' && !isStoresOfficer
+      ? { ...STATUS.pending, label: 'With stores' }
+      : STATUS[status] || { label: status, cls: 'bg-gray-100 text-gray-600' };
 
   useEffect(() => {
     setPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, statusFilter]);
 
   useEffect(() => {
     fetchRequisitions();
-  }, [page, limit, searchTerm]);
+  }, [page, limit, searchTerm, statusFilter]);
 
   const fetchRequisitions = async () => {
     try {
       setLoading(true);
-      const response = isStoresOfficer 
-        ? await storesAPI.getStoreRequisitions({ search: searchTerm, page, limit })
-        : await departmentAPI.getStoreRequisitions({ search: searchTerm, page, limit });
+      const params = { search: searchTerm, status: statusFilter || undefined, page, limit };
+      const response = isStoresOfficer
+        ? await storesAPI.getStoreRequisitions(params)
+        : await departmentAPI.getStoreRequisitions(params);
       
       if (response.data.success) {
         setRequisitions(response.data.data || []);
@@ -89,16 +125,13 @@ export default function StoreRequisitions() {
       await storesAPI.approveStoreRequisition(selectedRequisition._id, { 
         comments: actionComment.trim() || undefined 
       });
-      showToast('Store requisition approved — record who is collecting', 'success');
+      showToast(`${selectedRequisition.requisitionNumber} is ready. The requester has been told to come and collect it.`, 'success');
       setShowApproveModal(false);
       setActionComment('');
+      setSelectedRequisition(null);
       fetchRequisitions();
-      // Issuing is the next step for the same officer, so open it straight away.
-      setSelectedRequisition({ ...selectedRequisition, status: 'approved' });
-      setCollectedBy({ name: '', idNumber: '', department: '', contactNumber: '' });
-      setShowIssueModal(true);
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to approve requisition', 'error');
+      showToast(error.response?.data?.message || 'Could not mark it ready', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -148,7 +181,7 @@ export default function StoreRequisitions() {
             }
           : undefined
       });
-      showToast('Items issued successfully', 'success');
+      showToast('Handed over. Print the issue note for them to sign.', 'success');
       setShowIssueModal(false);
       setCollectedBy({ name: '', idNumber: '', department: '', contactNumber: '' });
       fetchRequisitions();
@@ -170,7 +203,7 @@ export default function StoreRequisitions() {
       });
       setShowViewModal(true);
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to issue items', 'error');
+      showToast(error.response?.data?.message || 'Could not hand the items over', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -206,16 +239,16 @@ export default function StoreRequisitions() {
         title="Store Requisitions"
         subtitle={
           isStoresOfficer
-            ? 'Hand delivered goods over to the departments that ordered them'
-            : 'Collections of delivered goods, raised from your requisitions'
+            ? 'Requests to collect items from stores. Mark each one ready when the items are set aside, then hand them over when someone comes for them.'
+            : 'Your requests to collect items from stores'
         }
         bottomSpacing="mb-4"
       />
 
       {/* Toolbar */}
       <div className="mb-4">
-        <div className="flex flex-col md:flex-row md:items-center gap-4">
-          <div className="relative w-full sm:w-52 md:ml-auto">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-end">
+          <div className="relative w-full sm:w-52">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
@@ -225,6 +258,13 @@ export default function StoreRequisitions() {
               className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
+          <FilterSelect
+            label="Status"
+            size="sm"
+            options={STATUS_FILTERS}
+            value={statusFilter}
+            onChange={setStatusFilter}
+          />
         </div>
       </div>
 
@@ -234,21 +274,20 @@ export default function StoreRequisitions() {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">SR #</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">
-                    {isStoresOfficer ? 'Requested By' : 'Items'}
-                  </th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Request</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Items</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Requested by</th>
                   <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
                   <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Date</th>
                   <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               {loading ? (
-                <TableSkeleton cols={5} />
+                <TableSkeleton cols={6} />
               ) : requisitions.length === 0 ? (
-                <tbody><tr><td colSpan={5} className="text-center py-12 text-gray-500">
+                <tbody><tr><td colSpan={6} className="text-center py-12 text-gray-500">
                   <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <p>No store requisitions found</p>
+                  <p>{statusFilter ? 'Nothing with this status' : 'No store requisitions yet'}</p>
                 </td></tr></tbody>
               ) : (
               <tbody>
@@ -258,32 +297,30 @@ export default function StoreRequisitions() {
                       <span className="font-mono text-sm font-medium text-primary">
                         {req.requisitionNumber || `SR-${req._id.slice(-6).toUpperCase()}`}
                       </span>
-                      {req.purchaseRequisition?.requisitionNumber && (
-                        <span className="block text-xs text-gray-500">for {req.purchaseRequisition.requisitionNumber}</span>
-                      )}
-                    </td>
-                    <td className="py-2 px-3 border-b border-gray-100">
-                      {isStoresOfficer ? (
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {req.requestedBy?.firstName} {req.requestedBy?.lastName}
-                          </p>
-                          <p className="text-sm text-gray-500">{req.department?.name}</p>
-                        </div>
-                      ) : (
-                        <span className="text-sm text-gray-600">{req.items?.length || 0} items</span>
-                      )}
-                    </td>
-                    <td className="py-2 px-3 border-b border-gray-100">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[req.status] || statusColors.pending}`}>
-                        {req.status || 'Pending'}
+                      {/* Collections name the IR they are for; older stock requests have none. */}
+                      <span className="block text-xs text-gray-500">
+                        {req.purchaseRequisition?.requisitionNumber ? `for ${req.purchaseRequisition.requisitionNumber}` : 'Stock request'}
                       </span>
                     </td>
-                    <td className="py-2 px-3 border-b border-gray-100 text-gray-500">
+                    <td className="py-2 px-3 border-b border-gray-100">
+                      <ItemsSummary items={req.items} />
+                    </td>
+                    <td className="py-2 px-3 border-b border-gray-100">
+                      <p className="text-gray-900 whitespace-nowrap">
+                        {req.requestedBy?.firstName} {req.requestedBy?.lastName}
+                      </p>
+                      <p className="text-xs text-gray-500">{req.department?.name}</p>
+                    </td>
+                    <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusOf(req.status).cls}`}>
+                        {statusOf(req.status).label}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 border-b border-gray-100 text-gray-500 whitespace-nowrap">
                       {new Date(req.createdAt).toLocaleDateString('en-ZA')}
                     </td>
                     <td className="py-2 px-3 border-b border-gray-100">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 whitespace-nowrap">
                         <ViewButton
                           size="xs"
                           showIcon={false}
@@ -296,9 +333,10 @@ export default function StoreRequisitions() {
                                 setSelectedRequisition(req);
                                 setShowApproveModal(true);
                               }}
-                              className="px-2 py-1 text-xs font-medium border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors"
+                              title="The items are set aside: tell the requester to come and collect"
+                              className="px-2 py-1 text-xs font-medium border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors whitespace-nowrap"
                             >
-                              Approve
+                              Mark ready
                             </button>
                             <button
                               onClick={() => {
@@ -320,7 +358,7 @@ export default function StoreRequisitions() {
                             }}
                             className="px-2 py-1 text-xs font-medium border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors whitespace-nowrap"
                           >
-                            Issue Items
+                            Hand over
                           </button>
                         )}
                         {['partially_issued', 'issued'].includes(req.status) && (
@@ -355,7 +393,7 @@ export default function StoreRequisitions() {
       <Modal
         isOpen={showViewModal}
         onClose={() => setShowViewModal(false)}
-        title="Requisition Details"
+        title={selectedRequisition?.requisitionNumber || 'Store requisition'}
         size="lg"
       >
         {selectedRequisition && (
@@ -373,8 +411,8 @@ export default function StoreRequisitions() {
               <div>
                 <label className="text-sm text-gray-500">Status</label>
                 <p>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${statusColors[selectedRequisition.status]}`}>
-                    {selectedRequisition.status}
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusOf(selectedRequisition.status).cls}`}>
+                    {statusOf(selectedRequisition.status).label}
                   </span>
                 </p>
               </div>
@@ -443,21 +481,22 @@ export default function StoreRequisitions() {
           setActionComment('');
           setSelectedRequisition(null);
         }}
-        title="Approve Store Requisition"
+        title="Ready for collection"
       >
         <div className="space-y-4">
           <p className="text-sm text-gray-600">
-            Are you sure you want to approve this store requisition? This will allow the items to be issued.
+            Stock is checked at this store, and {selectedRequisition?.requestedBy?.firstName || 'the requester'} is
+            told to come and collect. Hand the items over when they arrive.
           </p>
           
           <div>
-            <label className="block text-sm text-gray-700 mb-2">Comments (optional)</label>
+            <label className="block text-sm text-gray-700 mb-2">Note to the requester (optional)</label>
             <textarea
               value={actionComment}
               onChange={(e: any) => setActionComment(e.target.value)}
               rows={3}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              placeholder="Add any comments about this approval..."
+              placeholder="e.g. Collect from the main store after 2pm"
             />
           </div>
 
@@ -481,12 +520,12 @@ export default function StoreRequisitions() {
               {actionLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Approving...
+                  Saving...
                 </>
               ) : (
                 <>
                   <CheckCircle className="h-4 w-4" />
-                  Approve
+                  Mark ready
                 </>
               )}
             </button>
@@ -562,7 +601,7 @@ export default function StoreRequisitions() {
           setCollectedBy({ name: '', idNumber: '', department: '', contactNumber: '' });
           setSelectedRequisition(null);
         }}
-        title="Issue Stock"
+        title="Hand over"
         size="lg"
       >
         <div className="space-y-4">
@@ -639,10 +678,10 @@ export default function StoreRequisitions() {
               {actionLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Issuing...
+                  Handing over...
                 </>
               ) : (
-                'Issue Items'
+                'Hand over'
               )}
             </button>
           </ModalFooter>

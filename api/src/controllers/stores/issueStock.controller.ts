@@ -89,7 +89,11 @@ const issueStock = async (req: Request, res: Response): Promise<any> => {
       }
     }
 
-    // Process each item
+    // Every line is checked before any stock moves. Checking as it went, a
+    // short second line was refused after the first had already left stock,
+    // and the requisition never recorded that first issue.
+    const lines: Array<{ reqItem: any; inventory: any; quantityToIssue: number }> = [];
+    const neededByInventory = new Map<string, number>();
     for (const issueItem of itemsToIssue) {
       const reqItem = (requisition.items as any).id(issueItem.itemId);
       if (!reqItem) {
@@ -101,25 +105,36 @@ const issueStock = async (req: Request, res: Response): Promise<any> => {
         await reqItem.populate('item');
       }
 
-      const inventory = await findOrCreateInventory(reqItem.item._id, requisition.site);
-
       // Calculate quantity to issue
       const quantityToIssue = issueItem.quantity || (reqItem.quantityRequested - (reqItem.quantityIssued || 0));
-      
       if (quantityToIssue <= 0) {
         continue; // Skip if nothing to issue
       }
 
-      // Recalculate quantityAvailable
-      inventory.quantityAvailable = inventory.quantityOnHand - inventory.quantityReserved;
+      const inventory = await findOrCreateInventory(reqItem.item._id, requisition.site);
+      const key = inventory._id.toString();
+      neededByInventory.set(key, (neededByInventory.get(key) || 0) + quantityToIssue);
+      lines.push({ reqItem, inventory, quantityToIssue });
+    }
 
-      if (inventory.quantityAvailable < quantityToIssue) {
-        return res.status(400).json({
-          success: false,
-          message: `Insufficient stock for item: ${reqItem.item.name || reqItem.item.description || 'Unknown'}. Available: ${inventory.quantityAvailable}, Requested: ${quantityToIssue}`
-        });
+    // One entry per stock item, with the total all its lines need.
+    const short = new Map<string, string>();
+    for (const { reqItem, inventory } of lines) {
+      const key = inventory._id.toString();
+      const available = Math.max(0, inventory.quantityOnHand - (inventory.quantityReserved || 0));
+      const needed = neededByInventory.get(key)!;
+      if (available < needed && !short.has(key)) {
+        short.set(key, `${reqItem.item.name || reqItem.item.description || 'Unknown'} (need ${needed}, have ${available})`);
       }
+    }
+    if (short.size > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Not enough stock here for: ${Array.from(short.values()).join(', ')}. Nothing was issued.`
+      });
+    }
 
+    for (const { reqItem, inventory, quantityToIssue } of lines) {
       // Update inventory
       const previousQty = inventory.quantityOnHand;
       inventory.quantityOnHand -= quantityToIssue;

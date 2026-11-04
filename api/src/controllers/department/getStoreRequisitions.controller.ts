@@ -27,7 +27,7 @@ const getStoreRequisitions = async (req: Request, res: Response): Promise<any> =
         .populate('requestedBy', 'firstName lastName')
         .populate('department', 'name')
         .populate('purchaseRequisition', 'requisitionNumber title')
-        .populate('items.item', 'code description unit')
+        .populate('items.item', 'code name description unit')
         .populate('approvedBy', 'firstName lastName')
         .populate('issuedBy', 'firstName lastName')
         .sort({ createdAt: -1 })

@@ -26,15 +26,16 @@ const approveStoreRequisition = async (req: Request, res: Response): Promise<any
       });
     }
 
-    // Check inventory availability for each item
+    // Marking it ready tells the requester to come and collect, so the stock
+    // has to be at this store: the one the goods will be handed over from.
     const availabilityCheck = [];
     
     for (const reqItem of requisition.items) {
-      const inventory = await Inventory.findOne({ item: reqItem.item._id });
+      const inventory = await Inventory.findOne({ item: reqItem.item._id, site: requisition.site, isDeleted: false });
       if (!inventory) {
         return res.status(400).json({
           success: false,
-          message: `Inventory not found for item: ${reqItem.item.name || reqItem.item.description}`
+          message: `${reqItem.item.name || reqItem.item.description} is not stocked at this store`
         });
       }
       
@@ -80,8 +81,8 @@ const approveStoreRequisition = async (req: Request, res: Response): Promise<any
     await createNotification({
       recipient: requisition.requestedBy,
       type: 'store_requisition_approved',
-      title: 'Store Requisition Approved',
-      message: `Your store requisition ${requisition.requisitionNumber} has been approved and is ready for issuance.`,
+      title: 'Ready to collect',
+      message: `Your store requisition ${requisition.requisitionNumber} is ready. Come to stores to collect it.`,
       entity: 'StoreRequisition',
       entityId: requisition._id,
       relatedUser: req.user!._id
