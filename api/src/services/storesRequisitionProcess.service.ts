@@ -1,3 +1,4 @@
+import { isValidCategoryCode } from '@fossil/shared';
 import { PurchaseRequisition, Item, Inventory, StoreTransaction } from '../models/index.js';
 import { createNotification, notifyUsersByRole } from './notification.service.js';
 import { resolveSiteId } from '../lib/siteScope.js';
@@ -18,6 +19,45 @@ export async function resolveCatalogItem(line: any): Promise<any> {
     status: 'active',
     $or: [{ name: exact }, { description: exact }]
   });
+}
+
+/** How much of a line stores still has to supply. */
+const remainingOf = (line: any): number => line.quantity - (line.quantityFulfilledFromStock || 0);
+
+/**
+ * Lines that would go to procurement without a category. Requesters no longer
+ * choose one; stores sets it during review, and RFQ supplier matching is by
+ * category, so none may leave stores without it.
+ */
+export function uncategorisedLines(lines: any[]): any[] {
+  return lines.filter((line) => !isValidCategoryCode(line.category || ''));
+}
+
+/** The refusal for `uncategorisedLines`, or null when every line has one. */
+export function missingCategoryMessage(lines: any[]): string | null {
+  const missing = uncategorisedLines(lines);
+  if (missing.length === 0) return null;
+  const names = missing.map((line) => `"${line.description}"`).join(', ');
+  return `Set a category on ${missing.length === 1 ? 'this line' : 'these lines'} before sending to procurement: ${names}`;
+}
+
+/** Lines not yet issued, i.e. everything a forward sends to procurement. */
+export function linesStillOpen(requisition: any): any[] {
+  return (requisition.items as any[]).filter((line) => remainingOf(line) > 0);
+}
+
+/** Lines that stock at the site cannot fully cover, i.e. what auto-process sends to procurement. */
+export async function linesShortOfStock(requisition: any, siteId: any): Promise<any[]> {
+  const short: any[] = [];
+  for (const line of linesStillOpen(requisition)) {
+    const catalogItem = siteId ? await resolveCatalogItem(line) : null;
+    const inventory = catalogItem
+      ? await Inventory.findOne({ item: catalogItem._id, site: siteId, isDeleted: false })
+      : null;
+    const available = inventory ? Math.max(0, inventory.quantityOnHand - (inventory.quantityReserved || 0)) : 0;
+    if (available < remainingOf(line)) short.push(line);
+  }
+  return short;
 }
 
 /** SI-YYYY-NNNNN — assigned when stock is physically issued. */
@@ -71,7 +111,13 @@ export async function processRequisitionAgainstStock(
   };
 
   for (const line of requisition.items as any[]) {
-    const requested = line.quantity;
+    // Only what is still owed: stores may have issued part of it by hand.
+    const alreadyIssued = line.quantityFulfilledFromStock || 0;
+    const requested = remainingOf(line);
+    if (requested <= 0) {
+      summary.fullyFromStock += 1;
+      continue;
+    }
     const catalogItem = await resolveCatalogItem(line);
 
     let issueQty = 0;
@@ -111,7 +157,7 @@ export async function processRequisitionAgainstStock(
 
     const shortfall = requested - issueQty;
     if (shortfall > 0) {
-      if (issueQty > 0) summary.partial += 1;
+      if (issueQty > 0 || alreadyIssued > 0) summary.partial += 1;
       else summary.notInStock += 1;
       shortfallItems.push({
         item: catalogItem?._id || line.item,
@@ -120,11 +166,14 @@ export async function processRequisitionAgainstStock(
         category: line.category,
         specification: line.specification,
         specifications: line.specifications,
+        // The data-plate photos are what lets a supplier quote the right spare.
+        equipment: line.equipment,
+        attachments: line.attachments,
         quantity: shortfall,
         unit: line.unit,
         estimatedUnitPrice: line.estimatedUnitPrice,
         estimatedTotalPrice: line.estimatedUnitPrice ? line.estimatedUnitPrice * shortfall : 0,
-        quantityFulfilledFromStock: issueQty
+        quantityFulfilledFromStock: alreadyIssued + issueQty
       });
     } else {
       summary.fullyFromStock += 1;
@@ -347,16 +396,6 @@ export async function issueRequisitionLine(
 
 /** True when every line can be fully covered from stock at the requisition site. */
 export async function canFullyFulfillFromStock(requisition: any): Promise<boolean> {
-  const siteId = requisition.site;
-  if (!siteId) return false;
-
-  for (const line of requisition.items as any[]) {
-    const catalogItem = await resolveCatalogItem(line);
-    if (!catalogItem) return false;
-    const inventory = await Inventory.findOne({ item: catalogItem._id, site: siteId, isDeleted: false });
-    if (!inventory) return false;
-    const available = Math.max(0, inventory.quantityOnHand - (inventory.quantityReserved || 0));
-    if (available < line.quantity) return false;
-  }
-  return requisition.items.length > 0;
+  if (!requisition.site || requisition.items.length === 0) return false;
+  return (await linesShortOfStock(requisition, requisition.site)).length === 0;
 }

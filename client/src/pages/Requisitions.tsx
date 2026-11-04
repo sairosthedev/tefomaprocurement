@@ -23,6 +23,7 @@ import {
 } from '../lib/requisitionJourney';
 import { isProcurementHead } from '@fossil/shared';
 import { useDebouncedValue } from '../lib/useDebouncedValue';
+import { OPEN_STORE_REQUISITION, requestDeliveredItems, storeRequisitionStatusLabel } from '../lib/collectFromStores';
 
 const priorityColors: any = {
   low: 'bg-gray-100 text-gray-600',
@@ -172,43 +173,13 @@ export default function Requisitions() {
   };
 
   const handleRequestFromStores = async (requisition: any) => {
-    if (!requisition || !requisition.purchaseOrder) {
-      showToast('Purchase order information not available', 'error');
-      return;
-    }
-
     try {
-      // The list leaves out PO line items, so load them from the requisition.
-      let poItems = requisition.purchaseOrder.items;
-      if (!poItems) {
-        const detail = await api.get(`/department/requisitions/${requisition._id}`);
-        poItems = detail.data?.data?.purchaseOrder?.items || [];
-      }
-
-      // Create a store requisition for the items that HAVE been delivered/received
-      const items = poItems.map((poItem: any) => ({
-        description: poItem.description,
-        quantity: poItem.quantityReceived || 0,
-        unit: poItem.unit || 'Each'
-      })).filter((item: any) => item.quantity > 0);
-
-      if (items.length === 0) {
-        showToast('No items have been delivered yet. Please wait for delivery confirmation.', 'info');
-        return;
-      }
-
-      await departmentAPI.createStoreRequisition({
-        purpose: `Request delivered items from Purchase Order ${requisition.purchaseOrder.poNumber} for Requisition ${requisition.requisitionNumber}`,
-        items: items,
-        priority: requisition.priority || 'medium'
-      });
-
-      showToast('Store requisition created successfully', 'success');
+      const storeRequisition = await requestDeliveredItems(requisition);
+      showToast(`${storeRequisition?.requisitionNumber || 'Store requisition'} sent to stores`, 'success');
       setStoreRequestedIds((prev) => new Set(prev).add(requisition._id));
       fetchRequisitions();
     } catch (error: any) {
-      console.error('Error creating store requisition:', error);
-      showToast(error.response?.data?.message || 'Failed to create store requisition', 'error');
+      showToast(error.response?.data?.message || error.message || 'Failed to create store requisition', 'error');
     }
   };
 
@@ -503,7 +474,8 @@ export default function Requisitions() {
                           </button>
                         )}
 
-                        {isDeptHead && actsAsDepartment(req) && req.itemsDeliveredToStores && !req.itemsCollected && !storeRequestedIds.has(req._id) && (
+                        {isDeptHead && actsAsDepartment(req) && req.itemsDeliveredToStores && !req.itemsCollected &&
+                          !storeRequestedIds.has(req._id) && !OPEN_STORE_REQUISITION.includes(req.storeRequisition?.status) && (
                           <button
                             onClick={() => handleRequestFromStores(req)}
                             className="px-2 py-1 text-xs border border-primary rounded bg-primary hover:bg-primary-dark text-white transition-colors whitespace-nowrap"
@@ -511,9 +483,20 @@ export default function Requisitions() {
                             Req. from Stores
                           </button>
                         )}
-                        {/* Collected Badge - Show when items have been collected */}
+                        {/* The store requisition raised to collect the goods, until they are collected. */}
+                        {actsAsDepartment(req) && !req.itemsCollected && OPEN_STORE_REQUISITION.includes(req.storeRequisition?.status) && (
+                          <span
+                            className="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-700 rounded-lg whitespace-nowrap"
+                            title={req.storeRequisition.requisitionNumber}
+                          >
+                            {req.storeRequisition.requisitionNumber} · {storeRequisitionStatusLabel[req.storeRequisition.status]}
+                          </span>
+                        )}
                         {actsAsDepartment(req) && req.itemsCollected && (
-                          <span className="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-lg">
+                          <span
+                            className="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-lg whitespace-nowrap"
+                            title={req.storeRequisition?.requisitionNumber}
+                          >
                             ✓ Collected
                           </span>
                         )}

@@ -143,7 +143,8 @@ export default function Inventory() {
         notes: `Issued from inventory: ${inv.item?.name || issueContext.lineDescription}`
       });
       showToast(res.data?.message || 'Stock issued', 'success');
-      navigate('/app/stores-pr-review');
+      // Back to the IR's review, to carry on with its other lines.
+      navigate(`/app/stores-pr-review?review=${issueContext.prId}`);
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Could not issue stock', 'error');
     } finally {

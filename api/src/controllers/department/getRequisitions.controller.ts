@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { PurchaseRequisition, PurchaseOrder, Quotation, Delivery } from '../../models/index.js';
 import { buildDepartmentFilter } from '../../lib/departmentScope.js';
 import { escapeRegex } from '../../lib/regex.js';
-import { DELIVERED_TO_STORES, collectedRequisitionRefs, requisitionRef } from '../../lib/requisitionLinks.js';
+import { DELIVERED_TO_STORES, collectionState, storeRequisitionsByRequisition, type LinkedStoreRequisition } from '../../lib/requisitionLinks.js';
 
 // This feeds the requisitions table, so it returns only what a row shows or
 // acts on. Everything else comes from GET /requisitions/:id.
@@ -97,9 +97,9 @@ const getRequisitions = async (req: Request, res: Response): Promise<any> => {
     // are fetched for every candidate PO at once, alongside the PO's own
     // references, since which PO belongs to which row needs those references.
     let poWithDeliveries = new Set<string>();
-    let collectedRefs = new Set<string>();
+    let storeRequisitions = new Map<string, LinkedStoreRequisition[]>();
     if (allPOs.length > 0) {
-      const [, deliveries, collected] = await Promise.all([
+      const [, deliveries, linked] = await Promise.all([
         PurchaseOrder.populate(allPOs, [
           { path: 'supplier', select: 'companyName', options: { lean: true } },
           { path: 'rfq', select: 'purchaseRequisition', options: { lean: true } }
@@ -111,12 +111,11 @@ const getRequisitions = async (req: Request, res: Response): Promise<any> => {
         })
           .select('purchaseOrder')
           .lean(),
-        // A store requisition raised for these items names the purchase
-        // requisition in its purpose, which is how collection is detected.
-        departmentScope.then((scope) => collectedRequisitionRefs(requisitions.map(requisitionRef), scope))
+        // The store requisitions raised to collect these items.
+        departmentScope.then((scope) => storeRequisitionsByRequisition(requisitions, scope))
       ]);
       poWithDeliveries = new Set(deliveries.map((d: any) => d.purchaseOrder.toString()));
-      collectedRefs = collected;
+      storeRequisitions = linked;
     }
 
     const findPO = (reqId: string, rfqId: string | null) =>
@@ -160,7 +159,9 @@ const getRequisitions = async (req: Request, res: Response): Promise<any> => {
           supplier: po.supplier ? { companyName: po.supplier.companyName } : null
         };
         row.itemsDeliveredToStores = poWithDeliveries.has(po._id.toString());
-        row.itemsCollected = collectedRefs.has(requisitionRef(r));
+        const collection = collectionState(storeRequisitions.get(r._id.toString()));
+        row.itemsCollected = collection.itemsCollected;
+        row.storeRequisition = collection.storeRequisition;
 
         // A PO means the requisition is ordered, even if its status lags
         if (row.status !== 'ordered' && row.status !== 'completed') {

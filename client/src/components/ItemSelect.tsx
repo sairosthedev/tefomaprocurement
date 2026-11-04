@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import api from '../lib/api';
-import { ChevronDown, Search, Package, Loader2 } from 'lucide-react';
+import { ChevronDown, Search, Package, Loader2, Plus } from 'lucide-react';
 
 export interface CatalogItem {
   _id: string;
@@ -76,6 +76,11 @@ export function ItemSelect({
     setOpen(false);
   };
 
+  // Typed text that is not exactly a catalog item can be kept as a new item.
+  const typed = query.trim();
+  const canAddNew =
+    !!onFreeText && !!typed && !results.some((item) => item.name.toLowerCase() === typed.toLowerCase());
+
   const handleInput = (text: string) => {
     setQuery(text);
     onChange(null);
@@ -116,13 +121,9 @@ export function ItemSelect({
             <div className="flex items-center justify-center py-4 text-gray-400">
               <Loader2 className="h-4 w-4 animate-spin" />
             </div>
-          ) : results.length === 0 ? (
+          ) : results.length === 0 && !canAddNew ? (
             <p className="px-3 py-3 text-xs text-gray-500">
-              {query.trim()
-                ? 'No catalog match — will be treated as a non-stock item'
-                : category
-                  ? 'Type to search within this category, or describe the item freely'
-                  : 'Select a category first to filter catalog items'}
+              {category ? 'Type to search within this category' : 'Type to search the stores catalogue'}
             </p>
           ) : (
             results.map((item) => (
@@ -142,6 +143,21 @@ export function ItemSelect({
                 </p>
               </button>
             ))
+          )}
+          {!loading && canAddNew && (
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="w-full text-left px-3 py-2 hover:bg-gray-50 border-t border-gray-100 flex items-start gap-2"
+            >
+              <Plus className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              <span>
+                <span className="block text-sm font-medium text-gray-900">Add &ldquo;{typed}&rdquo; as a new item</span>
+                <span className="block text-xs text-gray-500">
+                  {results.length === 0 ? 'Not in the stores catalogue.' : 'None of these is it.'} Stores will check and categorise it.
+                </span>
+              </span>
+            </button>
           )}
         </div>
       )}

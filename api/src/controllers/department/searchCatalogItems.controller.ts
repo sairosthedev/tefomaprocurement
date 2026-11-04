@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { Item, Inventory } from '../../models/index.js';
 import { resolveSiteId } from '../../lib/siteScope.js';
+import { escapeRegex } from '../../lib/regex.js';
 
 /** Search the stock catalog so requisition lines can link to real inventory items. */
 const searchCatalogItems = async (req: Request, res: Response): Promise<any> => {
@@ -11,32 +12,37 @@ const searchCatalogItems = async (req: Request, res: Response): Promise<any> => 
     const query: any = { isDeleted: false, status: 'active' };
     if (category.trim()) query.category = category.trim();
     if (search.trim()) {
-      const regex = new RegExp(search.trim(), 'i');
+      // What people type is text, not a pattern: "Cable (2.5mm)" must match itself.
+      const regex = new RegExp(escapeRegex(search.trim()), 'i');
       query.$or = [{ name: regex }, { code: regex }, { description: regex }];
     }
 
     const items = await Item.find(query)
       .select('code name description category unit')
       .sort({ name: 1 })
-      .limit(Math.min(parseInt(String(limit), 10) || 20, 50));
+      .limit(Math.min(parseInt(String(limit), 10) || 20, 50))
+      .lean();
 
-    const enriched = await Promise.all(
-      items.map(async (item) => {
-        const inv = await Inventory.findOne({ item: item._id, site: siteId, isDeleted: false });
-        const onHand = inv?.quantityOnHand ?? 0;
-        const reserved = inv?.quantityReserved ?? 0;
-        const available = Math.max(0, onHand - reserved);
-        return {
-          _id: item._id,
-          code: item.code,
-          name: item.name,
-          description: item.description,
-          category: item.category,
-          unit: item.unit,
-          quantityAvailable: available
-        };
-      })
+    // Stock at this site for every result, in one query.
+    const stock = await Inventory.find({ item: { $in: items.map((item) => item._id) }, site: siteId, isDeleted: false })
+      .select('item quantityOnHand quantityReserved')
+      .lean();
+    const availableByItem = new Map(
+      stock.map((inv: any) => [
+        inv.item.toString(),
+        Math.max(0, (inv.quantityOnHand ?? 0) - (inv.quantityReserved ?? 0))
+      ])
     );
+
+    const enriched = items.map((item: any) => ({
+      _id: item._id,
+      code: item.code,
+      name: item.name,
+      description: item.description,
+      category: item.category,
+      unit: item.unit,
+      quantityAvailable: availableByItem.get(item._id.toString()) ?? 0
+    }));
 
     res.status(200).json({ success: true, data: enriched });
   } catch (error: any) {

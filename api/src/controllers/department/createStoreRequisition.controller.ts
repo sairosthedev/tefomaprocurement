@@ -1,12 +1,17 @@
 import type { Request, Response } from 'express';
-import { StoreRequisition, Item } from '../../models/index.js';
+import { StoreRequisition, Item, PurchaseRequisition } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole } from '../../services/notification.service.js';
 import { resolveSiteId } from '../../lib/siteScope.js';
+import { canActOnDepartment } from '../../lib/departmentScope.js';
+import { escapeRegex } from '../../lib/regex.js';
+
+/** A store requisition still on its way to being issued. */
+const OPEN_STATUSES = ['draft', 'pending', 'approved'];
 
 const createStoreRequisition = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { items, purpose, requiredDate, notes } = req.body;
+    const { items, purpose, requiredDate, notes, purchaseRequisitionId } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
@@ -15,8 +20,42 @@ const createStoreRequisition = async (req: Request, res: Response): Promise<any>
       });
     }
 
+    // Collecting an IR's delivered goods: link the two, so each shows the other.
+    let linkedRequisition: any = null;
+    if (purchaseRequisitionId) {
+      linkedRequisition = await PurchaseRequisition.findOne({ _id: purchaseRequisitionId, isDeleted: false })
+        .select('requisitionNumber department')
+        .lean();
+      if (!linkedRequisition) {
+        return res.status(404).json({ success: false, message: 'Requisition not found' });
+      }
+      if (!(await canActOnDepartment(req.user, linkedRequisition.department))) {
+        return res.status(403).json({
+          success: false,
+          message: 'You can only collect goods for your own department'
+        });
+      }
+      const open = await StoreRequisition.findOne({
+        purchaseRequisition: linkedRequisition._id,
+        status: { $in: OPEN_STATUSES },
+        isDeleted: false
+      })
+        .select('requisitionNumber')
+        .lean();
+      if (open) {
+        return res.status(409).json({
+          success: false,
+          message: `${open.requisitionNumber} is already with stores for ${linkedRequisition.requisitionNumber}`
+        });
+      }
+    }
+
     // Purpose is optional for store requisitions, use default if not provided
-    const requisitionPurpose = purpose || 'Stock request from department';
+    const requisitionPurpose =
+      purpose ||
+      (linkedRequisition
+        ? `Collect delivered items for ${linkedRequisition.requisitionNumber}`
+        : 'Stock request from department');
 
     // Process items - find or create Item records
     const processedItems: any[] = [];
@@ -39,7 +78,7 @@ const createStoreRequisition = async (req: Request, res: Response): Promise<any>
       // Try to find existing item by code or name/description
       if (!item && itemCode) {
         item = await Item.findOne({
-          code: { $regex: new RegExp(`^${itemCode}$`, 'i') },
+          code: { $regex: new RegExp(`^${escapeRegex(String(itemCode))}$`, 'i') },
           isDeleted: false
         });
       }
@@ -47,8 +86,8 @@ const createStoreRequisition = async (req: Request, res: Response): Promise<any>
       if (!item && description) {
         item = await Item.findOne({
           $or: [
-            { name: { $regex: new RegExp(`^${description}$`, 'i') } },
-            { description: { $regex: new RegExp(`^${description}$`, 'i') } }
+            { name: { $regex: new RegExp(`^${escapeRegex(String(description))}$`, 'i') } },
+            { description: { $regex: new RegExp(`^${escapeRegex(String(description))}$`, 'i') } }
           ],
           isDeleted: false
         });
@@ -97,6 +136,7 @@ const createStoreRequisition = async (req: Request, res: Response): Promise<any>
       site: siteId,
       department: req.user!.department,
       requestedBy: req.user!._id,
+      purchaseRequisition: linkedRequisition?._id,
       items: processedItems,
       purpose: requisitionPurpose,
       requiredDate: requiredDate ? new Date(requiredDate) : undefined,
@@ -129,6 +169,7 @@ const createStoreRequisition = async (req: Request, res: Response): Promise<any>
       .populate('requestedBy', 'firstName lastName')
       .populate('site', 'code name type')
       .populate('department', 'name')
+      .populate('purchaseRequisition', 'requisitionNumber title')
       .populate('items.item', 'code description unit');
 
     res.status(201).json({

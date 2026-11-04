@@ -12,6 +12,7 @@ import EquipmentDetailsView from '../components/EquipmentDetailsView';
 import { canCancelRequisition, requisitionCancelApiBase } from '../lib/cancellationAccess';
 import { CreateRFQDrawer } from '../components/RFQForm';
 import { journeyStatus, journeySteps } from '../lib/requisitionJourney';
+import { OPEN_STORE_REQUISITION, requestDeliveredItems, storeRequisitionStatusLabel } from '../lib/collectFromStores';
 import { 
   FileText,
   CheckCircle,
@@ -107,6 +108,7 @@ export default function RequisitionDetail() {
     !!userId && String(requisition?.requestedBy?._id || requisition?.requestedBy || '') === userId;
   const mayCancelRequisition = canCancelRequisition(user, requisition);
   const [accepting, setAccepting] = useState(false);
+  const [requestingStores, setRequestingStores] = useState(false);
   // The RFQ form opens over this page, so the officer keeps their place.
   const [creatingRfq, setCreatingRfq] = useState(false);
 
@@ -119,6 +121,20 @@ export default function RequisitionDetail() {
   useEffect(() => {
     fetchRequisition();
   }, [id]);
+
+  /** Raise the store requisition that collects the delivered goods, linked to this IR. */
+  const handleRequestFromStores = async () => {
+    try {
+      setRequestingStores(true);
+      const storeRequisition = await requestDeliveredItems(requisition);
+      showToast(`${storeRequisition?.requisitionNumber || 'Store requisition'} sent to stores`, 'success');
+      fetchRequisition();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || error.message || 'Failed to create store requisition', 'error');
+    } finally {
+      setRequestingStores(false);
+    }
+  };
 
   const fetchRequisition = async () => {
     try {
@@ -635,7 +651,10 @@ export default function RequisitionDetail() {
                 </section>
               )}
 
-              {requisition.itemsDeliveredToStores && (
+              {requisition.itemsDeliveredToStores && (() => {
+                const storeRequisitions: any[] = requisition.storeRequisitions || [];
+                const open = storeRequisitions.find((sr) => OPEN_STORE_REQUISITION.includes(sr.status));
+                return (
                 <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
                   <div className="flex items-center justify-between gap-3 mb-3">
                     <h3 className="flex items-center gap-2 font-semibold text-gray-900">
@@ -643,27 +662,54 @@ export default function RequisitionDetail() {
                       Stores
                     </h3>
                     <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
-                      {requisition.itemsCollected ? 'Collected' : 'Ready to collect'}
+                      {requisition.itemsCollected ? 'Collected' : open ? 'Requested' : 'Ready to collect'}
                     </span>
                   </div>
                   <p className="text-sm text-gray-600">
                     {requisition.itemsCollected
                       ? 'The items have been collected from stores.'
-                      : 'The ordered items have been received and are available in stores.'}
-                    {!requisition.itemsCollected && !isDepartment && !isProcurement && ' Your department head requests them from stores.'}
+                      : open
+                        ? 'Stores have the request to hand the items over.'
+                        : 'The ordered items have been received and are available in stores.'}
+                    {!requisition.itemsCollected && !open && !isDepartment && !isProcurement && ' Your department head requests them from stores.'}
                   </p>
+
+                  {/* The store requisitions raised to collect these goods. */}
+                  {storeRequisitions.length > 0 && (
+                    <ul className="mt-3 space-y-1.5">
+                      {storeRequisitions.map((sr) => (
+                        <li key={sr._id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
+                          {isDepartment ? (
+                            <Link
+                              to={`/app/store-requisitions?search=${encodeURIComponent(sr.requisitionNumber)}`}
+                              className="font-mono font-medium text-primary hover:underline"
+                            >
+                              {sr.requisitionNumber}
+                            </Link>
+                          ) : (
+                            <span className="font-mono font-medium text-gray-900">{sr.requisitionNumber}</span>
+                          )}
+                          <span className="text-gray-600">{storeRequisitionStatusLabel[sr.status] || sr.status}</span>
+                          {sr.issueNoteNumber && <span className="text-xs text-gray-500">Issue note {sr.issueNoteNumber}</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
                   {/* Store requisitions are raised by the department head. */}
-                  {!requisition.itemsCollected && isDepartment && (
+                  {!requisition.itemsCollected && !open && isDepartment && (
                     <button
-                      onClick={() => navigate('/app/store-requisitions')}
-                      className="mt-3 py-2 px-4 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition-colors inline-flex items-center gap-2"
+                      onClick={handleRequestFromStores}
+                      disabled={requestingStores}
+                      className="mt-3 py-2 px-4 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition-colors inline-flex items-center gap-2 disabled:opacity-50"
                     >
-                      <Truck className="h-4 w-4" />
+                      {requestingStores ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4" />}
                       Request from Stores
                     </button>
                   )}
                 </section>
-              )}
+                );
+              })()}
 
               {rfq && (
                 <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">

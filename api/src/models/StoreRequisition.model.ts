@@ -30,6 +30,12 @@ export interface IStoreRequisition extends Document {
   site: mongoose.Types.ObjectId | any;
   department: mongoose.Types.ObjectId | any;
   requestedBy: mongoose.Types.ObjectId | any;
+  /**
+   * The internal requisition (IR) whose ordered goods this collects. Absent on
+   * stock requests made without one, and on those raised before the link
+   * existed, which name the IR in `purpose` instead.
+   */
+  purchaseRequisition?: mongoose.Types.ObjectId | any;
   items: IStoreRequisitionItem[];
   purpose: string;
   requiredDate?: Date;
@@ -86,6 +92,10 @@ const StoreRequisitionSchema = new Schema<IStoreRequisition>({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
+  },
+  purchaseRequisition: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'PurchaseRequisition'
   },
   items: [RequisitionItemSchema],
   purpose: {

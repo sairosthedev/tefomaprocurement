@@ -23,6 +23,8 @@ export const storesAPI: any = {
   autoProcessPurchaseRequisition: (id: any) => http.put(`/stores/purchase-requisitions/${id}/auto-process`),
   issuePurchaseRequisitionLine: (id: any, data: any) =>
     http.put(`/stores/purchase-requisitions/${id}/issue-line`, data),
+  setPurchaseRequisitionLineCategory: (id: any, data: { lineIndex: number; category: string }) =>
+    http.put(`/stores/purchase-requisitions/${id}/line-category`, data),
   fulfillPurchaseRequisition: (id: any, data?: any) => http.put(`/stores/purchase-requisitions/${id}/fulfill`, data),
   forwardPurchaseRequisition: (id: any, data?: any) => http.put(`/stores/purchase-requisitions/${id}/forward`, data)
 };

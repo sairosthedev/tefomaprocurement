@@ -47,6 +47,7 @@ router.get('/purchase-requisitions/pending', stores.getPendingPurchaseRequisitio
 router.get('/purchase-requisitions/reviewed', stores.getReviewedPurchaseRequisitions);
 router.put('/purchase-requisitions/:id/auto-process', stores.autoProcessRequisition);
 router.put('/purchase-requisitions/:id/issue-line', stores.issuePurchaseRequisitionLine);
+router.put('/purchase-requisitions/:id/line-category', stores.setRequisitionLineCategory);
 router.put('/purchase-requisitions/:id/fulfill', stores.fulfillRequisitionFromStock);
 router.put('/purchase-requisitions/:id/forward', stores.forwardRequisitionToProcurement);
 

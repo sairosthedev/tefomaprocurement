@@ -3,7 +3,7 @@ import type { Request, Response } from 'express';
 import { PurchaseRequisition, PurchaseOrder, Quotation, Delivery } from '../../models/index.js';
 import { isProcurementHead } from '@fossil/shared';
 import { resolveUserDepartmentIds } from '../../lib/departmentScope.js';
-import { DELIVERED_TO_STORES, collectedRequisitionRefs, requisitionRef } from '../../lib/requisitionLinks.js';
+import { DELIVERED_TO_STORES, collectionState, storeRequisitionsByRequisition, type LinkedStoreRequisition } from '../../lib/requisitionLinks.js';
 
 // Statuses procurement works with, across every department.
 const PROCUREMENT_STATUSES = ['pending_acceptance', 'accepted', 'sourcing', 'quoted', 'ordered', 'completed'];
@@ -129,9 +129,9 @@ const getPendingRequisitions = async (req: Request, res: Response): Promise<any>
     // Delivery and collection state only matter for rows that have a PO.
     const matchedPOs = Array.from(new Set(poByRequisition.values()));
     let poWithDeliveries = new Set<string>();
-    let collectedRefs = new Set<string>();
+    let storeRequisitions = new Map<string, LinkedStoreRequisition[]>();
     if (matchedPOs.length > 0) {
-      const [, deliveries, collected] = await Promise.all([
+      const [, deliveries, linked] = await Promise.all([
         PurchaseOrder.populate(matchedPOs, { path: 'supplier', select: 'companyName', options: { lean: true } }),
         // received counts too: receiveGoods auto-accepts
         Delivery.find({
@@ -142,12 +142,10 @@ const getPendingRequisitions = async (req: Request, res: Response): Promise<any>
           .select('purchaseOrder')
           .lean(),
         // Procurement sees every department's store requisitions.
-        collectedRequisitionRefs(
-          requisitions.filter((r: any) => poByRequisition.has(r._id.toString())).map(requisitionRef)
-        )
+        storeRequisitionsByRequisition(requisitions.filter((r: any) => poByRequisition.has(r._id.toString())))
       ]);
       poWithDeliveries = new Set(deliveries.map((d: any) => d.purchaseOrder.toString()));
-      collectedRefs = collected;
+      storeRequisitions = linked;
     }
 
     const sourceById = new Map<string, any>(rfqSources.map((s: any) => [s._id.toString(), s]));
@@ -189,7 +187,9 @@ const getPendingRequisitions = async (req: Request, res: Response): Promise<any>
           supplier: po.supplier ? { companyName: po.supplier.companyName } : null
         };
         row.itemsDeliveredToStores = poWithDeliveries.has(po._id.toString());
-        row.itemsCollected = collectedRefs.has(requisitionRef(r));
+        const collection = collectionState(storeRequisitions.get(r._id.toString()));
+        row.itemsCollected = collection.itemsCollected;
+        row.storeRequisition = collection.storeRequisition;
 
         // A PO means the requisition is ordered, even if its status lags
         if (row.status !== 'ordered' && row.status !== 'completed') {

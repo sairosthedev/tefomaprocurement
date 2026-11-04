@@ -18,7 +18,9 @@ import {
   BarChart3,
   ShieldCheck,
   ClipboardList,
-  FileCheck
+  FileCheck,
+  Package,
+  DollarSign
 } from 'lucide-react';
 
 const activityIconMap: any = {

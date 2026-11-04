@@ -12,32 +12,76 @@ export function requisitionRef(requisition: { _id: any; requisitionNumber?: stri
   return requisition.requisitionNumber || `PR-${requisition._id.toString().slice(-6)}`;
 }
 
-/**
- * Which of these purchase requisitions have had their items collected, i.e.
- * an issued store requisition names them in its purpose.
- *
- * One query for the whole page, filtered to purposes that mention one of the
- * numbers, rather than loading every issued store requisition in the unit.
- * The final check stays a plain substring match, exactly as before.
- */
-export async function collectedRequisitionRefs(
-  refs: string[],
-  scope: Record<string, unknown> = {}
-): Promise<Set<string>> {
-  const wanted = Array.from(new Set(refs.filter(Boolean)));
-  if (wanted.length === 0) return new Set();
+/** What an IR shows of a store requisition raised to collect its goods. */
+export interface LinkedStoreRequisition {
+  _id: any;
+  requisitionNumber: string;
+  status: string;
+  issueNoteNumber?: string;
+  issuedAt?: Date;
+  createdAt: Date;
+}
 
+/** Store requisition statuses that mean the goods have left stores. */
+const COLLECTED_STATUSES = ['issued', 'partially_issued'];
+/** Rejected and cancelled store requisitions no longer stand for the IR. */
+const LIVE_STATUSES = ['draft', 'pending', 'approved', 'partially_issued', 'issued'];
+
+/**
+ * The store requisitions raised to collect each of these IRs' goods, newest
+ * first, keyed by IR id.
+ *
+ * Linked ones carry the IR's id. Those raised before the link existed only
+ * name the IR in their purpose, so they are still matched on the number. One
+ * query for the whole page.
+ */
+export async function storeRequisitionsByRequisition(
+  requisitions: Array<{ _id: any; requisitionNumber?: string }>,
+  scope: Record<string, unknown> = {}
+): Promise<Map<string, LinkedStoreRequisition[]>> {
+  const byRequisition = new Map<string, LinkedStoreRequisition[]>();
+  if (requisitions.length === 0) return byRequisition;
+
+  const idByRef = new Map(requisitions.map((r) => [requisitionRef(r), r._id.toString()]));
   const storeRequisitions = await StoreRequisition.find({
     ...scope,
     isDeleted: false,
-    status: { $in: ['issued', 'partially_issued'] },
-    purpose: { $regex: wanted.map(escapeRegex).join('|') }
+    $or: [
+      { purchaseRequisition: { $in: requisitions.map((r) => r._id) } },
+      {
+        purchaseRequisition: null,
+        purpose: { $regex: Array.from(idByRef.keys()).map(escapeRegex).join('|') }
+      }
+    ]
   })
-    .select('purpose')
+    .select('requisitionNumber status purchaseRequisition purpose issueNoteNumber issuedAt createdAt')
+    .sort({ createdAt: -1 })
     .lean();
 
-  const purposes = storeRequisitions.map((sr: any) => sr.purpose).filter(Boolean) as string[];
-  return new Set(wanted.filter((ref) => purposes.some((purpose) => purpose.includes(ref))));
+  for (const sr of storeRequisitions as any[]) {
+    const { purpose, purchaseRequisition, ...linked } = sr;
+    const ids = purchaseRequisition
+      ? [purchaseRequisition.toString()]
+      : Array.from(idByRef)
+          .filter(([ref]) => purpose?.includes(ref))
+          .map(([, id]) => id);
+    for (const id of ids) {
+      if (!byRequisition.has(id)) byRequisition.set(id, []);
+      byRequisition.get(id)!.push(linked);
+    }
+  }
+  return byRequisition;
+}
+
+/** Whether an IR's goods have been collected, and the store requisition that stands for it. */
+export function collectionState(linked: LinkedStoreRequisition[] = []): {
+  itemsCollected: boolean;
+  storeRequisition: LinkedStoreRequisition | null;
+} {
+  return {
+    itemsCollected: linked.some((sr) => COLLECTED_STATUSES.includes(sr.status)),
+    storeRequisition: linked.find((sr) => LIVE_STATUSES.includes(sr.status)) || null
+  };
 }
 
 // What the requisition page shows of its PO. The line items stay: the
@@ -49,6 +93,8 @@ export interface RequisitionOrderProgress {
   purchaseOrder: any;
   itemsDeliveredToStores: boolean;
   itemsCollected: boolean;
+  /** Store requisitions raised to collect the goods, newest first. */
+  storeRequisitions: LinkedStoreRequisition[];
 }
 
 /**
@@ -85,15 +131,17 @@ export async function requisitionOrderProgress(
   }
   if (!po) return null;
 
-  const [, delivered, collected] = await Promise.all([
+  const [, delivered, linked] = await Promise.all([
     PurchaseOrder.populate(po, { path: 'supplier', select: 'companyName', options: { lean: true } }),
     Delivery.exists({ purchaseOrder: po._id, status: { $in: DELIVERED_TO_STORES }, isDeleted: false }),
-    Promise.resolve(collectedScope).then((scope) => collectedRequisitionRefs([requisitionRef(requisition)], scope))
+    Promise.resolve(collectedScope).then((scope) => storeRequisitionsByRequisition([requisition], scope))
   ]);
+  const storeRequisitions = linked.get(requisition._id.toString()) || [];
 
   return {
     purchaseOrder: po,
     itemsDeliveredToStores: Boolean(delivered),
-    itemsCollected: collected.size > 0
+    itemsCollected: collectionState(storeRequisitions).itemsCollected,
+    storeRequisitions
   };
 }

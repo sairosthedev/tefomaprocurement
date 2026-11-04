@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 
 import { StoreRequisition } from '../../models/index.js';
+import { escapeRegex } from '../../lib/regex.js';
 import { buildSiteFilterAsync } from '../../lib/siteScope.js';
 
 const getStoreRequisitions = async (req: Request, res: Response): Promise<any> => {
@@ -20,8 +21,8 @@ const getStoreRequisitions = async (req: Request, res: Response): Promise<any> =
     if (status) query.status = status;
     if (search) {
       query.$or = [
-        { requisitionNumber: { $regex: search, $options: 'i' } },
-        { purpose: { $regex: search, $options: 'i' } }
+        { requisitionNumber: { $regex: escapeRegex(String(search)), $options: 'i' } },
+        { purpose: { $regex: escapeRegex(String(search)), $options: 'i' } }
       ];
     }
 
@@ -32,6 +33,7 @@ const getStoreRequisitions = async (req: Request, res: Response): Promise<any> =
         .populate('site', 'code name type')
         .populate('requestedBy', 'firstName lastName')
         .populate('department', 'name')
+        .populate('purchaseRequisition', 'requisitionNumber title')
         .populate('items.item', 'code name description unit')
         .populate('approvedBy', 'firstName lastName')
         .populate('issuedBy', 'firstName lastName')

@@ -1,7 +1,12 @@
 import type { Request, Response } from 'express';
 import { PurchaseRequisition } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
-import { processRequisitionAgainstStock } from '../../services/storesRequisitionProcess.service.js';
+import { resolveSiteId } from '../../lib/siteScope.js';
+import {
+  linesShortOfStock,
+  missingCategoryMessage,
+  processRequisitionAgainstStock
+} from '../../services/storesRequisitionProcess.service.js';
 
 const autoProcessRequisition = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -15,6 +20,13 @@ const autoProcessRequisition = async (req: Request, res: Response): Promise<any>
 
     if (requisition.status !== 'stores_review') {
       return res.status(400).json({ success: false, message: 'Requisition is not in stores review' });
+    }
+
+    // Checked before any stock moves, so a refusal leaves nothing half done.
+    const siteId = requisition.site || (await resolveSiteId(req.user));
+    const missingCategory = missingCategoryMessage(await linesShortOfStock(requisition, siteId));
+    if (missingCategory) {
+      return res.status(400).json({ success: false, message: missingCategory });
     }
 
     const { requisition: updated, summary, message } = await processRequisitionAgainstStock(

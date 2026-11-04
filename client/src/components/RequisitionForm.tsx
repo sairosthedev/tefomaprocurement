@@ -2,7 +2,7 @@
 import { useToast } from './Toast';
 import api from '../lib/api';
 import { Plus, Package, Save } from 'lucide-react';
-import { formatCurrency, getCategoryName } from '../lib/constants';
+import { formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
 import Modal, { ConfirmModal } from './Modal';
 import RequisitionItemDrawer, { type RequisitionItem } from './RequisitionItemDrawer';
@@ -10,9 +10,22 @@ import { FormSteps, FormStepNav } from './FormSteps';
 
 const STEPS = [
   { label: 'Details', description: 'What the request is for' },
-  { label: 'Items', description: 'What to buy, and rough prices' },
+  { label: 'Items', description: 'From the stores catalogue, or new' },
   { label: 'Review & submit', description: 'Check, then send for approval' }
 ];
+
+/** Whether a line is a catalogue item, with what stores holds, or a new one for stores to look into. */
+function StockNote({ item }: { item: RequisitionItem }) {
+  if (!item.catalogItem) {
+    return <span className="text-xs text-gray-500 whitespace-nowrap">New item</span>;
+  }
+  const inStock = item.catalogItem.quantityAvailable;
+  return (
+    <span className={`text-xs whitespace-nowrap ${inStock > 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
+      {inStock > 0 ? `${inStock} in stock` : 'Out of stock'}
+    </span>
+  );
+}
 
 export interface RequisitionFormHandle {
   /** Close the form, first offering to save a draft when something has been entered. */
@@ -105,10 +118,6 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
         showToast('Please add at least one item before submitting', 'error');
         return false;
       }
-      if (validItems.some((item: any) => !item.category)) {
-        showToast('Please select a category for every item', 'error');
-        return false;
-      }
     }
     return true;
   };
@@ -133,16 +142,6 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
         showToast('Please add at least one item before submitting', 'error');
         setLoading(false);
         return;
-      }
-
-      // Every requested item must fall under a category (when submitting)
-      if (submit) {
-        const uncategorized = validItems.filter((item: any) => !item.category);
-        if (uncategorized.length > 0) {
-          showToast('Please select a category for every item', 'error');
-          setLoading(false);
-          return;
-        }
       }
 
       const itemsToSave = submit
@@ -302,7 +301,7 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
                   <tr>
                     <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">#</th>
                     <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Item</th>
-                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Category</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Stores</th>
                     <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Qty</th>
                     <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Est. unit</th>
                     <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Line total</th>
@@ -319,7 +318,7 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
                           {item.description}
                           {item.specification && <span className="block text-xs text-gray-500">{item.specification}</span>}
                         </td>
-                        <td className="py-2 px-3 border-b border-gray-100 text-gray-700">{getCategoryName(item.category)}</td>
+                        <td className="py-2 px-3 border-b border-gray-100"><StockNote item={item} /></td>
                         <td className="py-2 px-3 border-b border-gray-100 text-right tabular-nums whitespace-nowrap">{item.quantity} {item.unit}</td>
                         <td className="py-2 px-3 border-b border-gray-100 text-right tabular-nums whitespace-nowrap">
                           {Number(item.estimatedUnitPrice) ? formatCurrency(Number(item.estimatedUnitPrice), getCurrentSbuCurrency()) : '—'}
@@ -400,7 +399,7 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
                 <thead>
                   <tr>
                     <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Item</th>
-                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Category</th>
+                    <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Stores</th>
                     <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Qty</th>
                     <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Est. unit</th>
                     <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Line total</th>
@@ -417,7 +416,7 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
                             {item.description}
                             {item.specification && <span className="block text-xs text-gray-500">{item.specification}</span>}
                           </td>
-                          <td className="py-2 px-3 border-b border-gray-100 text-gray-700">{getCategoryName(item.category)}</td>
+                          <td className="py-2 px-3 border-b border-gray-100"><StockNote item={item} /></td>
                           <td className="py-2 px-3 border-b border-gray-100 text-right tabular-nums">{item.quantity} {item.unit}</td>
                           <td className="py-2 px-3 border-b border-gray-100 text-right tabular-nums">
                             {Number(item.estimatedUnitPrice) ? formatCurrency(Number(item.estimatedUnitPrice), getCurrentSbuCurrency()) : '—'}

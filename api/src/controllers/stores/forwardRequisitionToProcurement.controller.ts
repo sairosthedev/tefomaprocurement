@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { PurchaseRequisition } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole } from '../../services/notification.service.js';
+import { linesStillOpen, missingCategoryMessage } from '../../services/storesRequisitionProcess.service.js';
 
 const forwardRequisitionToProcurement = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -18,6 +19,11 @@ const forwardRequisitionToProcurement = async (req: Request, res: Response): Pro
         success: false,
         message: 'Requisition is not in stores review'
       });
+    }
+
+    const missingCategory = missingCategoryMessage(linesStillOpen(requisition));
+    if (missingCategory) {
+      return res.status(400).json({ success: false, message: missingCategory });
     }
 
     requisition.status = 'pending_acceptance';

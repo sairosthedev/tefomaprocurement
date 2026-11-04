@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, useRef } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import api, { storesAPI, departmentAPI } from '../lib/api';
@@ -39,7 +40,9 @@ export default function StoreRequisitions() {
   const { showToast } = useToast();
   const [requisitions, setRequisitions] = useState<any[]>([]);
   const [loading, setLoading] = useState<any>(true);
-  const [searchTermInput, setSearchTerm] = useState<any>('');
+  // A link from an IR opens the list already searched for its store requisition.
+  const [searchParams] = useSearchParams();
+  const [searchTermInput, setSearchTerm] = useState<any>(() => searchParams.get('search') || '');
   // The box shows what's typed; the list is fetched once typing pauses.
   const searchTerm = useDebouncedValue(searchTermInput);
   const [showCreateModal, setShowCreateModal] = useState<any>(false);
@@ -345,10 +348,13 @@ export default function StoreRequisitions() {
               <tbody>
                 {requisitions.map((req: any) => (
                   <tr key={req._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
-                    <td className="py-2 px-3 border-b border-gray-100">
+                    <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
                       <span className="font-mono text-sm font-medium text-primary">
                         {req.requisitionNumber || `SR-${req._id.slice(-6).toUpperCase()}`}
                       </span>
+                      {req.purchaseRequisition?.requisitionNumber && (
+                        <span className="block text-xs text-gray-500">for {req.purchaseRequisition.requisitionNumber}</span>
+                      )}
                     </td>
                     <td className="py-2 px-3 border-b border-gray-100">
                       {isStoresOfficer ? (
@@ -609,6 +615,27 @@ export default function StoreRequisitions() {
                 </p>
               </div>
             </div>
+
+            {selectedRequisition.purchaseRequisition && (
+              <div>
+                <label className="text-sm text-gray-500 block">Collecting for</label>
+                <p className="text-sm">
+                  {isStoresOfficer ? (
+                    <span className="font-mono font-medium">{selectedRequisition.purchaseRequisition.requisitionNumber}</span>
+                  ) : (
+                    <Link
+                      to={`/app/requisitions/${selectedRequisition.purchaseRequisition._id}`}
+                      className="font-mono font-medium text-primary hover:underline"
+                    >
+                      {selectedRequisition.purchaseRequisition.requisitionNumber}
+                    </Link>
+                  )}
+                  {selectedRequisition.purchaseRequisition.title && (
+                    <span className="text-gray-600"> · {selectedRequisition.purchaseRequisition.title}</span>
+                  )}
+                </p>
+              </div>
+            )}
 
             <div>
               <label className="text-sm text-gray-500 mb-2 block">Purpose</label>

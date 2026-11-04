@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { PurchaseRequisition } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { createNotification } from '../../services/notification.service.js';
+import { linesStillOpen } from '../../services/storesRequisitionProcess.service.js';
 
 const fulfillRequisitionFromStock = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -17,6 +18,16 @@ const fulfillRequisitionFromStock = async (req: Request, res: Response): Promise
       return res.status(400).json({
         success: false,
         message: 'Requisition is not in stores review'
+      });
+    }
+
+    // Closing it out is for when every line has left stores; otherwise the
+    // requester is told it is fulfilled while lines are still owed.
+    const open = linesStillOpen(requisition);
+    if (open.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Issue every line first. Still to issue: ${open.map((line: any) => `"${line.description}"`).join(', ')}`
       });
     }
 

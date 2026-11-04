@@ -1,8 +1,7 @@
 ﻿import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { storesAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
-import { Loader2 } from 'lucide-react';
 import { formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
 import PageHeader from '../components/PageHeader';
@@ -11,13 +10,18 @@ import TableSkeleton from '../components/TableSkeleton';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 import Tabs from '../components/Tabs';
 import StoresReviewedList from '../components/StoresReviewedList';
+import StoresReviewDrawer, { allLinesIssued, linesNeedingCategory } from '../components/StoresReviewDrawer';
 
 export default function StoresPrReview() {
   const { showToast } = useToast();
-  const navigate = useNavigate();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [acting, setActing] = useState<string | null>(null);
+  const [acting, setActing] = useState<'forward' | 'auto' | 'fulfill' | null>(null);
+  // The IR open for review lives in the URL (?review=), so issuing a line from
+  // the inventory page can bring stores straight back to it.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const reviewingId = searchParams.get('review');
+  const reviewing = items.find((pr) => pr._id === reviewingId) || null;
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
@@ -40,12 +44,23 @@ export default function StoresPrReview() {
     }
   };
 
-  const allLinesFullyIssued = (pr: any) =>
-    pr.items?.length > 0 &&
-    pr.items.every((line: any) => (line.quantityFulfilledFromStock || 0) >= line.quantity);
+  const openReview = (id: string) =>
+    setSearchParams((params) => {
+      params.set('review', id);
+      return params;
+    });
+
+  const closeReview = () =>
+    setSearchParams(
+      (params) => {
+        params.delete('review');
+        return params;
+      },
+      { replace: true }
+    );
 
   const storeStage = (pr: any): { label: string; cls: string } => {
-    if (allLinesFullyIssued(pr)) {
+    if (allLinesIssued(pr)) {
       return { label: 'All issued', cls: 'bg-emerald-100 text-emerald-700' };
     }
     const anyInStock = pr.items?.some(
@@ -58,40 +73,36 @@ export default function StoresPrReview() {
     return { label: 'Not in stock', cls: 'bg-red-100 text-red-700' };
   };
 
-  const forward = async (id: string) => {
-    try {
-      setActing(id);
-      await storesAPI.forwardPurchaseRequisition(id, { notes: 'Forwarded to procurement after stores review' });
-      showToast('Forwarded to procurement — follow it under "Sent on"', 'success');
-      load();
-    } catch (error: any) {
-      showToast(error.response?.data?.message || 'Action failed', 'error');
-    } finally {
-      setActing(null);
+  const ACTIONS = {
+    forward: {
+      call: (id: string) => storesAPI.forwardPurchaseRequisition(id, { notes: 'Forwarded to procurement after stores review' }),
+      done: (_res: any) => 'Forwarded to procurement — follow it under "Sent on"',
+      failed: 'Action failed'
+    },
+    auto: {
+      call: (id: string) => storesAPI.autoProcessPurchaseRequisition(id),
+      done: (res: any) => res.data.message || 'Auto-processed against stock',
+      failed: 'Auto-process failed'
+    },
+    fulfill: {
+      call: (id: string) => storesAPI.fulfillPurchaseRequisition(id, { notes: 'All lines issued from stock' }),
+      done: (_res: any) => 'Requisition fulfilled from stock',
+      failed: 'Fulfill failed'
     }
   };
 
-  const autoProcess = async (id: string) => {
+  /** Run a decision on the IR under review; it leaves the queue when it succeeds. */
+  const act = async (action: keyof typeof ACTIONS) => {
+    if (!reviewing) return;
+    const { call, done, failed } = ACTIONS[action];
     try {
-      setActing(`auto-${id}`);
-      const res = await storesAPI.autoProcessPurchaseRequisition(id);
-      showToast(res.data.message || 'Auto-processed against stock', 'success');
+      setActing(action);
+      const res = await call(reviewing._id);
+      showToast(done(res), 'success');
+      closeReview();
       load();
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Auto-process failed', 'error');
-    } finally {
-      setActing(null);
-    }
-  };
-
-  const fulfillFromStock = async (id: string) => {
-    try {
-      setActing(`fulfill-${id}`);
-      await storesAPI.fulfillPurchaseRequisition(id, { notes: 'All lines issued from stock' });
-      showToast('Requisition fulfilled from stock', 'success');
-      load();
-    } catch (error: any) {
-      showToast(error.response?.data?.message || 'Fulfill failed', 'error');
+      showToast(error.response?.data?.message || failed, 'error');
     } finally {
       setActing(null);
     }
@@ -101,7 +112,7 @@ export default function StoresPrReview() {
     <div className="p-6">
       <PageHeader
         title="Internal Requisitions — Stores Review"
-        subtitle="Search inventory for each requested item, confirm stock on hand, then issue from the inventory row. Forward anything not available to procurement."
+        subtitle="Open each IR to check its lines against stock and issue what you hold. Categorise what is still owed, then forward it to procurement."
       />
 
       <Tabs
@@ -141,7 +152,7 @@ export default function StoresPrReview() {
               <tbody>
                 {items.map((pr) => {
                   const stage = storeStage(pr);
-                  const fullyIssued = allLinesFullyIssued(pr);
+                  const needCategory = linesNeedingCategory(pr).length;
                   return (
                     <tr key={pr._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                       <td className="py-2 px-3 border-b border-gray-100 font-mono text-xs font-medium whitespace-nowrap">{pr.requisitionNumber}</td>
@@ -159,42 +170,18 @@ export default function StoresPrReview() {
                       </td>
                       <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${stage.cls}`}>{stage.label}</span>
+                        {needCategory > 0 && (
+                          <span className="block mt-1 text-xs text-amber-700">{needCategory} to categorise</span>
+                        )}
                       </td>
                       <td className="py-2 px-3 border-b border-gray-100">
-                        {/* One solid button for the step this row is on: close it out once
-                            every line is issued, otherwise send it on to procurement. */}
-                        <div className="flex items-center gap-2 whitespace-nowrap">
-                          {fullyIssued ? (
-                            <button
-                              disabled={!!acting}
-                              onClick={() => fulfillFromStock(pr._id)}
-                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors disabled:opacity-50"
-                            >
-                              {acting === `fulfill-${pr._id}` && <Loader2 className="h-3 w-3 animate-spin" />}
-                              Fulfill from stock
-                            </button>
-                          ) : (
-                            <>
-                              <button
-                                disabled={!!acting}
-                                onClick={() => forward(pr._id)}
-                                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors disabled:opacity-50"
-                              >
-                                {acting === pr._id && <Loader2 className="h-3 w-3 animate-spin" />}
-                                Forward to procurement
-                              </button>
-                              <button
-                                disabled={!!acting}
-                                onClick={() => autoProcess(pr._id)}
-                                title="Issue whatever is in stock and forward the rest"
-                                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
-                              >
-                                {acting === `auto-${pr._id}` && <Loader2 className="h-3 w-3 animate-spin" />}
-                                Auto-process
-                              </button>
-                            </>
-                          )}
-                        </div>
+                        {/* Every decision is taken in the review, where the lines are. */}
+                        <button
+                          onClick={() => openReview(pr._id)}
+                          className="px-2 py-1 text-xs font-medium border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors whitespace-nowrap"
+                        >
+                          Review
+                        </button>
                       </td>
                     </tr>
                   );
@@ -213,6 +200,16 @@ export default function StoresPrReview() {
             itemLabel="requisitions"
           />}
         </>
+      )}
+
+      {reviewing && (
+        <StoresReviewDrawer
+          requisition={reviewing}
+          onClose={closeReview}
+          onUpdated={(updated) => setItems((current) => current.map((pr) => (pr._id === updated._id ? updated : pr)))}
+          onAction={act}
+          acting={acting}
+        />
       )}
     </div>
   );

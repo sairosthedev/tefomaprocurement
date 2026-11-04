@@ -49,6 +49,7 @@ const getRequisitionById = async (req: Request, res: Response): Promise<any> => 
       requisition.purchaseOrder = order.purchaseOrder;
       requisition.itemsDeliveredToStores = order.itemsDeliveredToStores;
       requisition.itemsCollected = order.itemsCollected;
+      requisition.storeRequisitions = order.storeRequisitions;
     }
 
     res.status(200).json({

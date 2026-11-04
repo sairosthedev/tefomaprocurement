@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useToast } from './Toast';
 import { UNITS_OF_MEASUREMENT, formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
-import { CategorySelect } from './CategorySelect';
 import { ItemSelect, type CatalogItem } from './ItemSelect';
 import EquipmentDetailsPanel from './EquipmentDetailsPanel';
 import Drawer from './Drawer';
@@ -10,6 +9,8 @@ import { categoryNeedsEquipmentDetails } from '@fossil/shared';
 
 export const emptyItem = () => ({
   description: '',
+  // Set from the catalogue item when one is picked. Stores categorises the
+  // rest during review; requesters are not asked for it.
   category: '',
   quantity: 1,
   unit: 'Each',
@@ -41,7 +42,7 @@ export default function RequisitionItemDrawer({ item, onClose, onSubmit }: {
   const [draft, setDraft] = useState<RequisitionItem>(() =>
     item ? { ...item, equipment: { ...(item.equipment || {}) }, attachments: [...(item.attachments || [])] } : emptyItem()
   );
-  const [errors, setErrors] = useState<{ category?: string; description?: string }>({});
+  const [errors, setErrors] = useState<{ description?: string }>({});
 
   const update = (patch: Partial<RequisitionItem>) => setDraft((current) => ({ ...current, ...patch }));
 
@@ -49,8 +50,7 @@ export default function RequisitionItemDrawer({ item, onClose, onSubmit }: {
 
   const submit = () => {
     const next: typeof errors = {};
-    if (!draft.category) next.category = 'Select a category';
-    if (!draft.description.trim()) next.description = 'Describe the item';
+    if (!draft.description.trim()) next.description = 'Search the catalogue or describe the item';
     setErrors(next);
     if (Object.keys(next).length > 0) return;
     onSubmit({ ...draft, description: draft.description.trim() });
@@ -65,7 +65,7 @@ export default function RequisitionItemDrawer({ item, onClose, onSubmit }: {
       onClose={onClose}
       size="md"
       title={isEdit ? 'Item details' : 'Add item'}
-      subtitle={isEdit ? 'Change anything, then save.' : 'What to buy, and a rough price.'}
+      subtitle={isEdit ? 'Change anything, then save.' : 'Find it in the stores catalogue, or add it if it is not there.'}
       footer={
         <>
           <button
@@ -94,54 +94,35 @@ export default function RequisitionItemDrawer({ item, onClose, onSubmit }: {
           if (e.key === 'Enter' && (e.target as HTMLElement).tagName === 'INPUT') e.preventDefault();
         }}
       >
-        {/* Category first — determines what type of item is being requested */}
         <div className="col-span-2">
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Category <span className="text-red-500">*</span>
-          </label>
-          <CategorySelect
-            value={draft.category || ''}
-            onChange={(code) => {
-              // Clear description and catalog link when category changes
-              update({ category: code, description: '', catalogItem: null });
-              setErrors((current) => ({ ...current, category: undefined }));
-            }}
-            placeholder="Select category"
-          />
-          {errors.category && <p className="text-xs text-red-600 mt-1">{errors.category}</p>}
-        </div>
-
-        <div className="col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Description <span className="text-red-500">*</span>
+            Item <span className="text-red-500">*</span>
           </label>
           <ItemSelect
             value={draft.catalogItem}
             freeTextValue={draft.description}
-            category={draft.category || ''}
             onChange={(catalogItem) => {
               update({
                 catalogItem,
                 description: catalogItem?.name || draft.description,
-                category: catalogItem?.category || draft.category,
+                // A catalogue item brings its category; a new item leaves it to stores.
+                category: catalogItem?.category || '',
                 unit: catalogItem?.unit
                   ? catalogItem.unit.charAt(0).toUpperCase() + catalogItem.unit.slice(1)
                   : draft.unit
               });
-              setErrors((current) => ({ ...current, description: undefined }));
+              setErrors({});
             }}
             onFreeText={(text) => {
-              update({ description: text });
-              if (text.trim()) setErrors((current) => ({ ...current, description: undefined }));
+              update({ description: text, category: '' });
+              if (text.trim()) setErrors({});
             }}
-            placeholder={draft.category ? 'Search catalog or describe…' : 'Select a category first'}
+            placeholder="Search the stores catalogue…"
             className="w-full pl-8 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
           />
           {errors.description && <p className="text-xs text-red-600 mt-1">{errors.description}</p>}
-          {draft.catalogItem && (
-            <p className="text-xs text-emerald-600 mt-1">
-              Linked to catalog · {draft.catalogItem.quantityAvailable} available at your site
-            </p>
+          {!draft.catalogItem && draft.description.trim() && (
+            <p className="text-xs text-gray-500 mt-1">New item: stores will check for it and categorise it.</p>
           )}
         </div>
 
