@@ -4,127 +4,22 @@ import { useAuth } from '../context/AuthContext';
 import { isProcurementHead } from '@fossil/shared';
 import api from '../lib/api';
 import PageHeader from '../components/PageHeader';
-import { 
-  FileText, 
-  ShoppingCart, 
-  Users, 
-  FileSearch, 
-  TrendingUp,
+import {
   Clock,
   CheckCircle,
   AlertCircle,
-  Package,
-  DollarSign,
-  UserCheck,
   Loader2,
   RefreshCw,
-  ShieldCheck,
-  Building2,
-  MapPin,
-  ClipboardList,
+  FileText,
+  Users,
+  FileSearch,
+  ShoppingCart,
+  TrendingUp,
   BarChart3,
+  ShieldCheck,
+  ClipboardList,
   FileCheck
 } from 'lucide-react';
-
-const iconMap: any = {
-  totalUsers: Users,
-  activeUsers: UserCheck,
-  totalSuppliers: Users,
-  activeSuppliers: Users,
-  totalPOs: ShoppingCart,
-  purchaseOrders: ShoppingCart,
-  openRFQs: FileSearch,
-  pendingQuotations: FileText,
-  quotations: FileText,
-  pendingApproval: Clock,
-  approved: CheckCircle,
-  totalValue: DollarSign,
-  pendingValue: DollarSign,
-  totalItems: Package,
-  lowStock: AlertCircle,
-  pendingDeliveries: Package,
-  myRequisitions: FileText,
-  suppliers: Users,
-  totalQuotations: FileText,
-  approvedQuotations: CheckCircle,
-  totalRFQs: FileSearch,
-  approvedPOs: CheckCircle,
-  monthlyValue: DollarSign,
-  majorPOs: ShoppingCart,
-  cooApproved: CheckCircle,
-  inventoryValue: DollarSign,
-  itemsNeedingReorder: AlertCircle,
-  receivedThisMonth: Package,
-  approvedRequisitions: CheckCircle,
-  rejectedRequisitions: AlertCircle,
-  departmentRequisitions: FileText,
-  myQuotations: FileText,
-  submittedQuotations: FileText,
-  myPOs: ShoppingCart,
-  pendingPoApprovals: Clock,
-  inProgressRequisitions: TrendingUp,
-  draftRequisitions: FileText,
-  pendingAcceptance: Clock,
-  completedRequisitions: CheckCircle,
-  pendingSuppliers: UserCheck,
-  pendingPOApprovals: Clock,
-  kysIncomplete: ShieldCheck,
-  evaluationsDue: ClipboardList,
-  pendingRequisitions: FileText,
-  departments: Building2,
-  sites: MapPin,
-  failedLogins: AlertCircle
-};
-
-const colorMap: any = {
-  totalUsers: 'bg-blue-500',
-  activeUsers: 'bg-green-500',
-  totalSuppliers: 'bg-purple-500',
-  activeSuppliers: 'bg-purple-500',
-  totalPOs: 'bg-emerald-500',
-  purchaseOrders: 'bg-emerald-500',
-  openRFQs: 'bg-blue-500',
-  pendingQuotations: 'bg-amber-500',
-  quotations: 'bg-indigo-500',
-  pendingApproval: 'bg-amber-500',
-  approved: 'bg-green-500',
-  totalValue: 'bg-emerald-500',
-  pendingValue: 'bg-amber-500',
-  totalItems: 'bg-blue-500',
-  lowStock: 'bg-red-500',
-  pendingDeliveries: 'bg-orange-500',
-  myRequisitions: 'bg-indigo-500',
-  suppliers: 'bg-purple-500',
-  totalQuotations: 'bg-indigo-500',
-  approvedQuotations: 'bg-green-500',
-  totalRFQs: 'bg-blue-500',
-  approvedPOs: 'bg-green-500',
-  monthlyValue: 'bg-emerald-500',
-  majorPOs: 'bg-orange-500',
-  cooApproved: 'bg-green-500',
-  inventoryValue: 'bg-emerald-500',
-  itemsNeedingReorder: 'bg-red-500',
-  receivedThisMonth: 'bg-blue-500',
-  approvedRequisitions: 'bg-green-500',
-  rejectedRequisitions: 'bg-red-500',
-  departmentRequisitions: 'bg-indigo-500',
-  myQuotations: 'bg-indigo-500',
-  submittedQuotations: 'bg-blue-500',
-  myPOs: 'bg-emerald-500',
-  pendingPoApprovals: 'bg-amber-500',
-  inProgressRequisitions: 'bg-blue-500',
-  draftRequisitions: 'bg-gray-500',
-  pendingAcceptance: 'bg-amber-500',
-  completedRequisitions: 'bg-green-500',
-  pendingSuppliers: 'bg-amber-500',
-  pendingPOApprovals: 'bg-orange-500',
-  kysIncomplete: 'bg-red-500',
-  evaluationsDue: 'bg-purple-500',
-  pendingRequisitions: 'bg-indigo-500',
-  departments: 'bg-blue-500',
-  sites: 'bg-teal-500',
-  failedLogins: 'bg-red-500'
-};
 
 const activityIconMap: any = {
   login: CheckCircle,
@@ -263,21 +158,12 @@ export default function Dashboard() {
   };
 
   const renderStatCard = (key: string, stat: any) => {
-    const Icon = iconMap[key] || FileText;
-    const color = colorMap[key] || 'bg-gray-500';
     const className =
       'bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow text-left w-full';
     const content = (
       <>
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-500">{stat.label}</p>
-            <p className="text-3xl font-bold text-gray-900 mt-2">{stat.value}</p>
-          </div>
-          <div className={`${color} p-4 rounded-xl`}>
-            <Icon className="h-6 w-6 text-white" />
-          </div>
-        </div>
+        <p className="text-sm font-medium text-gray-500">{stat.label}</p>
+        <p className="text-3xl font-bold text-gray-900 mt-2">{stat.value}</p>
       </>
     );
 
@@ -341,18 +227,11 @@ export default function Dashboard() {
           <h2 className="text-lg font-semibold text-gray-900 mb-4">System overview</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             {Object.entries(additionalStats).map(([key, stat]: any) => {
-              const Icon = iconMap[key] || FileText;
-              const color = colorMap[key] || 'bg-gray-500';
               const inner = (
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-gray-500">{stat.label}</p>
-                    <p className="text-xl font-bold text-gray-900 mt-1">{stat.value}</p>
-                  </div>
-                  <div className={`${color} p-2.5 rounded-lg`}>
-                    <Icon className="h-4 w-4 text-white" />
-                  </div>
-                </div>
+                <>
+                  <p className="text-xs font-medium text-gray-500">{stat.label}</p>
+                  <p className="text-xl font-bold text-gray-900 mt-1">{stat.value}</p>
+                </>
               );
               if (stat.href) {
                 return (
