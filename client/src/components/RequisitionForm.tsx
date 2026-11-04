@@ -1,5 +1,6 @@
 ﻿import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { useToast } from './Toast';
+import { useAuth } from '../context/AuthContext';
 import api from '../lib/api';
 import { Plus, Package, Save } from 'lucide-react';
 import { formatCurrency } from '../lib/constants';
@@ -45,6 +46,10 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
   onSaved: (id?: string) => void;
 }>(function RequisitionForm({ onCancel, onSaved }, ref) {
   const { showToast } = useToast();
+  const { user } = useAuth();
+  // A department head's own request needs no other department approval:
+  // submitting it sends it straight to stores.
+  const isHead = user?.role === 'department_head';
   const topRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState<any>(false);
   const [step, setStep] = useState(0);
@@ -168,7 +173,7 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
 
       if (response.data.success) {
         showToast(
-          submit ? 'Requisition submitted for approval' : 'Requisition saved as draft',
+          submit ? response.data.message || 'Requisition submitted' : 'Requisition saved as draft',
           'success'
         );
         onSaved(response.data.data?._id);
@@ -194,7 +199,12 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
 
   return (
     <div ref={topRef} className="scroll-mt-6">
-      <FormSteps steps={STEPS} current={step} onSelect={goTo} variant="track" />
+      <FormSteps
+        steps={isHead ? STEPS.map((s, i) => (i === STEPS.length - 1 ? { ...s, description: 'Check, then send to Stores' } : s)) : STEPS}
+        current={step}
+        onSelect={goTo}
+        variant="track"
+      />
 
       {/* Form */}
       <form
@@ -438,7 +448,10 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
               </span>
             </div>
             <p className="text-xs text-gray-500">
-              Submitting sends this to your department head for approval. Save a draft to finish it later.
+              {isHead
+                ? 'As department head, yours needs no other department approval: submitting sends it straight to Stores.'
+                : 'Submitting sends this to your department head for approval.'}{' '}
+              Save a draft to finish it later.
             </p>
           </div>
         )}
@@ -449,7 +462,7 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
           onBack={() => goTo(step - 1)}
           onNext={goNext}
           onCancel={requestClose}
-          finishLabel={loading ? 'Submitting...' : 'Submit for Approval'}
+          finishLabel={loading ? 'Submitting...' : isHead ? 'Send to Stores' : 'Submit for Approval'}
           submitting={loading}
           size="sm"
           extra={

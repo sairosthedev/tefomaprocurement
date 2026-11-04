@@ -177,6 +177,9 @@ export default function Requisitions() {
     }
   };
 
+  // A head sending their own requisition on, rather than approving someone else's.
+  const sendingOwn = !!selectedRequisition && isOwner(selectedRequisition);
+
   const handleSubmit = async (id: any, requisition?: any) => {
     if (itemCountOf(requisition) === 0) {
       showToast('At least one item is required before submitting', 'error');
@@ -185,8 +188,10 @@ export default function Requisitions() {
 
     try {
       setSubmittingId(id);
-      await api.put(`/department/requisitions/${id}/submit`);
-      showToast('Requisition submitted for Department Head approval', 'success');
+      // The server says where it went: to the department head, or, for a
+      // head's own, straight on to stores.
+      const res = await api.put(`/department/requisitions/${id}/submit`);
+      showToast(res.data?.message || 'Requisition submitted', 'success');
       fetchRequisitions();
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to submit', 'error');
@@ -434,7 +439,19 @@ export default function Requisitions() {
                           </>
                         )}
 
-                        {/* HOD approval gate. Not on their own: a head cannot approve what they raised (the API refuses). */}
+                        {/* A head's own requisition needs no other department approval;
+                            submitting sends it to stores. One submitted before
+                            that is sent on from here. */}
+                        {isDeptHead && actsAsDepartment(req) && req.status === 'pending_hod' && isOwner(req) && (
+                          <button
+                            onClick={() => openActionModal(req, 'approve')}
+                            className="px-2 py-1 text-xs bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors whitespace-nowrap"
+                          >
+                            Send to Stores
+                          </button>
+                        )}
+
+                        {/* HOD approval gate, for the team's requisitions */}
                         {isDeptHead && actsAsDepartment(req) && req.status === 'pending_hod' && !isOwner(req) && (
                           <>
                             <button
@@ -518,7 +535,8 @@ export default function Requisitions() {
         isOpen={showActionModal}
         onClose={() => setShowActionModal(false)}
         title={
-          actionType === 'approve' ? 'Approve Requisition'
+          actionType === 'approve' && sendingOwn ? 'Send to Stores'
+            : actionType === 'approve' ? 'Approve Requisition'
             : actionType === 'accept' ? 'Accept Requisition'
             : 'Reject Requisition'
         }
@@ -526,7 +544,9 @@ export default function Requisitions() {
         <div className="space-y-4">
           <div className="p-4 bg-gray-50 rounded-xl">
             <p className="text-sm text-gray-600">
-              {actionType === 'approve'
+              {actionType === 'approve' && sendingOwn
+                ? 'As department head, your own requisition needs no other department approval. It goes to Stores for an availability check.'
+                : actionType === 'approve'
                 ? 'You are about to approve this requisition. It will be forwarded to Stores for an availability check.'
                 : actionType === 'accept'
                 ? 'You are about to accept this requisition. The RFQ form opens next, with this requisition already selected.'
@@ -614,7 +634,7 @@ export default function Requisitions() {
               ) : budgetWarning ? (
                 'Approve over budget'
               ) : actionType === 'approve' ? (
-                'Approve'
+                sendingOwn ? 'Send to Stores' : 'Approve'
               ) : actionType === 'accept' ? (
                 'Accept'
               ) : (
