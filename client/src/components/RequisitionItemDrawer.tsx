@@ -132,9 +132,10 @@ export default function RequisitionItemDrawer({ item, onClose, onSubmit }: {
             type="text"
             value={draft.package}
             onChange={(e) => update({ package: e.target.value })}
-            placeholder="e.g. Box"
+            placeholder="e.g. Box, Carton, Roll"
             className={inputClass}
           />
+          <p className="text-xs text-gray-400 mt-1">The container or pack form the item comes in.</p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Quantity</label>
@@ -157,6 +158,7 @@ export default function RequisitionItemDrawer({ item, onClose, onSubmit }: {
               <option key={unit} value={unit}>{unit}</option>
             ))}
           </select>
+          <p className="text-xs text-gray-400 mt-1">How the quantity is measured, e.g. Each, Kg, Litre.</p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
