@@ -375,8 +375,8 @@ async function buildRoleStats(
           orderedRequisitions: { value: orderedRequisitions, label: 'Ordered' }
         },
         attentionItems: needsAttention([
-          { id: 'pending-acceptance', label: 'Requisitions awaiting acceptance', count: pendingAcceptance, href: '/app/requisitions', severity: 'high' },
-          { id: 'pending-quotations', label: 'Quotations awaiting evaluation', count: pendingQuotations, href: '/app/quotations', severity: 'medium' },
+          { id: 'pending-acceptance', label: 'Requisitions awaiting acceptance', count: pendingAcceptance, href: '/app/requisitions?status=pending_acceptance', severity: 'high' },
+          { id: 'pending-quotations', label: 'Quotations awaiting evaluation', count: pendingQuotations, href: '/app/quotations?status=submitted', severity: 'medium' },
           { id: 'open-rfqs', label: 'Open RFQs collecting quotations', count: openRFQs, href: '/app/rfqs?status=open', severity: 'low' }
         ])
       };
