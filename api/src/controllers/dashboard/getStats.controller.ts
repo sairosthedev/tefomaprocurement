@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { isProcurementHead, formatCurrency } from '@fossil/shared';
-import { User, SupplierProfile, RFQ, Quotation, PurchaseOrder, Inventory, PurchaseRequisition, AuditLog, Department, Site } from '../../models/index.js';
+import { User, SupplierProfile, RFQ, Quotation, PurchaseOrder, Inventory, PurchaseRequisition, AuditLog, Department, Site, Delivery } from '../../models/index.js';
 import { buildRoleReportCharts } from '../../lib/reportAnalytics.js';
 import { resolveUserDepartmentIds } from '../../lib/departmentScope.js';
 import { currentBaseCurrency } from '../../tenancy/sbuContext.js';
@@ -50,7 +50,7 @@ const COO_QUEUE_FILTER = {
   isDeleted: false
 };
 const LOW_STOCK_FILTER = { quantityOnHand: { $lte: 5 }, isDeleted: false };
-const PENDING_DELIVERY_FILTER = { status: { $in: ['issued', 'partially_received'] }, isDeleted: false };
+// No longer a simple filter — see count.pendingDeliveries below.
 const PR_IN_PROGRESS_STATUSES = ['stores_review', 'pending_acceptance', 'accepted', 'sourcing', 'quoted', 'ordered'];
 
 type Severity = 'high' | 'medium' | 'low';
@@ -177,7 +177,25 @@ const count = {
   pendingPOs: () => PurchaseOrder.countDocuments({ status: { $in: PO_PENDING_STATUSES }, isDeleted: false }),
   approvedPOs: () => PurchaseOrder.countDocuments({ status: { $in: PO_APPROVED_STATUSES }, isDeleted: false }),
   lowStock: () => Inventory.countDocuments(LOW_STOCK_FILTER),
-  pendingDeliveries: () => PurchaseOrder.countDocuments(PENDING_DELIVERY_FILTER),
+  // Mirrors getPendingDeliveries: POs with a pending delivery record +
+  // issued POs with no delivery at all. partially_received POs with no
+  // pending delivery are waiting for the supplier — stores can't action them.
+  pendingDeliveries: async () => {
+    const openPOs = await PurchaseOrder.find(
+      { status: { $in: ['issued', 'partially_received'] }, isDeleted: false },
+      '_id status'
+    ).lean();
+    if (!openPOs.length) return 0;
+    const poIds = openPOs.map((po: any) => po._id);
+    const pendingDels = await Delivery.find(
+      { purchaseOrder: { $in: poIds }, status: 'pending', isDeleted: false },
+      'purchaseOrder'
+    ).lean();
+    const withPending = new Set(pendingDels.map((d: any) => d.purchaseOrder.toString()));
+    return openPOs.filter(
+      (po: any) => withPending.has(po._id.toString()) || po.status === 'issued'
+    ).length;
+  },
   approvedPOValueSince: (since?: Date) =>
     sumOf(PurchaseOrder, {
       status: { $in: PO_APPROVED_STATUSES },
