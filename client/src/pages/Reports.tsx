@@ -9,7 +9,7 @@ import { getCurrentSbuCurrency } from '../lib/sbu';
 import { canViewSupplierReports } from '../lib/reportAccess';
 import PageHeader from '../components/PageHeader';
 import SupplierReportsSection from '../components/reports/SupplierReportsSection';
-import { ReportCard, ReportsTabRow, StatStrip, TOOLBAR_BUTTON, TOOLBAR_SELECT } from '../components/reports/ReportParts';
+import { ReportCard, ReportsTabRow, TOOLBAR_BUTTON, TOOLBAR_SELECT } from '../components/reports/ReportParts';
 
 type ChartConfig = {
   id: string;
@@ -21,28 +21,68 @@ type ChartConfig = {
 
 type ReportTab = 'overview' | 'suppliers';
 
+/** "2026-11-04" → "Nov 4", anything else returned as-is */
+function fmtDateLabel(label: string): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(label)) {
+    const d = new Date(label + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+  return label.replace(/_/g, ' ');
+}
+
+/** "pending_hod" → "Pending HOD" */
+function fmtStatusLabel(label: string): string {
+  return label
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function BarChart({ data, valueFormatter }: { data: { label: string; value: number }[]; valueFormatter?: (v: number) => string }) {
   const max = Math.max(...data.map((d) => d.value), 1);
   const fmt = valueFormatter || ((v: number) => String(v));
+  const gridLines = [25, 50, 75, 100];
 
-  if (!data.length) {
-    return <p className="text-sm text-gray-400 text-center py-10">No data in this period</p>;
-  }
+  if (!data.length) return null;
 
   return (
-    <div className="h-56 flex items-end gap-1.5 px-2">
-      {data.map((point) => (
-        <div key={point.label} className="flex-1 min-w-0 flex flex-col items-center justify-end h-full group">
-          <div
-            className="w-full bg-primary/80 hover:bg-primary rounded-t-md transition-all min-h-[4px]"
-            style={{ height: `${Math.max(4, (point.value / max) * 100)}%` }}
-            title={`${point.label}: ${fmt(point.value)}`}
-          />
-          <span className="text-[10px] text-gray-400 mt-2 truncate w-full text-center">
-            {point.label.length > 10 ? point.label.slice(5) : point.label}
-          </span>
-        </div>
-      ))}
+    <div className="relative h-64 mt-2">
+      {/* Horizontal gridlines */}
+      <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-6">
+        {gridLines.map((pct) => (
+          <div key={pct} className="border-t border-gray-100 w-full" style={{ marginTop: `${100 - pct}%` }} />
+        ))}
+      </div>
+
+      {/* Bars */}
+      <div className="absolute inset-0 pb-6 flex items-end gap-1 px-1">
+        {data.map((point) => {
+          const heightPct = Math.max(2, (point.value / max) * 100);
+          return (
+            <div
+              key={point.label}
+              className="flex-1 min-w-0 flex flex-col items-center justify-end h-full group cursor-default"
+              title={`${fmtDateLabel(point.label)}: ${fmt(point.value)}`}
+            >
+              <span className="text-[10px] text-primary font-medium opacity-0 group-hover:opacity-100 transition-opacity mb-1 whitespace-nowrap">
+                {fmt(point.value)}
+              </span>
+              <div
+                className="w-full bg-primary/70 group-hover:bg-primary rounded-t transition-colors"
+                style={{ height: `${heightPct}%` }}
+              />
+            </div>
+          );
+        })}
+      </div>
+
+      {/* X-axis labels */}
+      <div className="absolute bottom-0 left-1 right-1 flex gap-1">
+        {data.map((point) => (
+          <div key={point.label} className="flex-1 min-w-0 text-center">
+            <span className="text-[9px] text-gray-400 truncate block">{fmtDateLabel(point.label)}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -51,22 +91,20 @@ function HorizontalBars({ data, valueFormatter }: { data: { label: string; value
   const max = Math.max(...data.map((d) => d.value), 1);
   const fmt = valueFormatter || ((v: number) => String(v));
 
-  if (!data.length) {
-    return <p className="text-sm text-gray-400 text-center py-10">No data in this period</p>;
-  }
+  if (!data.length) return null;
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-3 mt-1">
       {data.map((row) => (
         <div key={row.label}>
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-gray-700 capitalize truncate pr-2">{row.label}</span>
-            <span className="text-gray-900 font-medium shrink-0">{fmt(row.value)}</span>
+          <div className="flex justify-between text-sm mb-1.5">
+            <span className="text-gray-600 truncate pr-3 font-medium">{fmtStatusLabel(row.label)}</span>
+            <span className="text-gray-900 font-semibold shrink-0 tabular-nums">{fmt(row.value)}</span>
           </div>
-          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
             <div
-              className="h-full bg-primary rounded-full"
-              style={{ width: `${(row.value / max) * 100}%` }}
+              className="h-full bg-primary rounded-full transition-all"
+              style={{ width: `${Math.max(2, (row.value / max) * 100)}%` }}
             />
           </div>
         </div>
@@ -167,36 +205,55 @@ function OverviewReportsSection({
           <Loader2 className="h-8 w-8 text-primary animate-spin" />
         </div>
       ) : (
-        <div className="space-y-4">
-          {reportData?.stats && (
-            <StatStrip
-              stats={Object.entries(reportData.stats).map(([key, stat]: any) => ({
-                label: stat.label || key,
-                value: stat.value
-              }))}
-            />
-          )}
+        <div className="space-y-5">
+          {/* Stat tiles */}
+          {reportData?.stats && (() => {
+            const statEntries = Object.entries(reportData.stats).map(([key, stat]: any) => ({
+              label: stat.label || key,
+              value: stat.value
+            }));
+            if (!statEntries.length) return null;
+            return (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {statEntries.map((stat) => (
+                  <div key={stat.label} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                    <p className="text-sm font-medium text-gray-500">{stat.label}</p>
+                    <p className="text-3xl font-bold text-gray-900 mt-2 tabular-nums">{stat.value}</p>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {charts.map((chart) => (
-              <ReportCard
-                key={chart.id}
-                title={chart.title}
-                className={charts.length === 1 || chart.id === 'poDistribution' ? 'lg:col-span-2' : ''}
-              >
-                {chart.kind === 'bar' ? (
-                  <BarChart data={chart.data} valueFormatter={(v) => formatValue(chart.format, v)} />
-                ) : (
-                  <HorizontalBars data={chart.data} valueFormatter={(v) => formatValue(chart.format, v)} />
-                )}
-              </ReportCard>
-            ))}
-            {charts.length === 0 && (
-              <p className="lg:col-span-2 bg-white rounded-2xl p-8 shadow-sm border border-gray-100 text-center text-sm text-gray-500">
-                No chart data for this period.
-              </p>
-            )}
-          </div>
+          {/* Charts — only the ones that have data */}
+          {(() => {
+            const withData = charts.filter((c) => c.data.length > 0);
+            if (!withData.length && charts.length > 0) {
+              return (
+                <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 text-center text-sm text-gray-500">
+                  No chart data for this period yet — data appears once activity is recorded.
+                </div>
+              );
+            }
+            if (!withData.length) return null;
+            return (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {withData.map((chart) => (
+                  <ReportCard
+                    key={chart.id}
+                    title={chart.title}
+                    className={withData.length === 1 || chart.id === 'poDistribution' ? 'lg:col-span-2' : ''}
+                  >
+                    {chart.kind === 'bar' ? (
+                      <BarChart data={chart.data} valueFormatter={(v) => formatValue(chart.format, v)} />
+                    ) : (
+                      <HorizontalBars data={chart.data} valueFormatter={(v) => formatValue(chart.format, v)} />
+                    )}
+                  </ReportCard>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>
