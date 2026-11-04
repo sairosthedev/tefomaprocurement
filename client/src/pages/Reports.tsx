@@ -40,43 +40,46 @@ function fmtStatusLabel(label: string): string {
 function BarChart({ data, valueFormatter }: { data: { label: string; value: number }[]; valueFormatter?: (v: number) => string }) {
   const max = Math.max(...data.map((d) => d.value), 1);
   const fmt = valueFormatter || ((v: number) => String(v));
-  const gridLines = [25, 50, 75, 100];
 
   if (!data.length) return null;
 
   return (
-    <div className="relative h-64 mt-2">
-      {/* Horizontal gridlines */}
-      <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-6">
-        {gridLines.map((pct) => (
-          <div key={pct} className="border-t border-gray-100 w-full" style={{ marginTop: `${100 - pct}%` }} />
+    <div className="mt-3">
+      {/* Chart area */}
+      <div className="relative h-44 bg-gray-50 rounded-xl overflow-hidden">
+        {/* Gridlines: absolute from bottom so they're in the right place */}
+        {[25, 50, 75].map((pct) => (
+          <div
+            key={pct}
+            className="absolute left-0 right-0 border-t border-gray-200 pointer-events-none"
+            style={{ bottom: `${pct}%` }}
+          />
         ))}
-      </div>
-
-      {/* Bars */}
-      <div className="absolute inset-0 pb-6 flex items-end gap-1 px-1">
-        {data.map((point) => {
-          const heightPct = Math.max(2, (point.value / max) * 100);
-          return (
-            <div
-              key={point.label}
-              className="flex-1 min-w-0 flex flex-col items-center justify-end h-full group cursor-default"
-              title={`${fmtDateLabel(point.label)}: ${fmt(point.value)}`}
-            >
-              <span className="text-[10px] text-primary font-medium opacity-0 group-hover:opacity-100 transition-opacity mb-1 whitespace-nowrap">
-                {fmt(point.value)}
-              </span>
+        {/* Bars */}
+        <div className="absolute inset-0 flex items-end gap-1 px-3">
+          {data.map((point) => {
+            const heightPct = Math.max(4, (point.value / max) * 100);
+            return (
               <div
-                className="w-full bg-primary/70 group-hover:bg-primary rounded-t transition-colors"
-                style={{ height: `${heightPct}%` }}
-              />
-            </div>
-          );
-        })}
+                key={point.label}
+                className="flex-1 min-w-0 flex flex-col items-center justify-end h-full group cursor-default"
+                title={`${fmtDateLabel(point.label)}: ${fmt(point.value)}`}
+              >
+                <span className="text-[10px] text-primary font-semibold opacity-0 group-hover:opacity-100 transition-opacity mb-1 whitespace-nowrap">
+                  {fmt(point.value)}
+                </span>
+                {/* max-w caps width so a single bar doesn't become a solid block */}
+                <div
+                  className="w-full max-w-[40px] mx-auto bg-primary/75 group-hover:bg-primary rounded-t transition-colors"
+                  style={{ height: `${heightPct}%` }}
+                />
+              </div>
+            );
+          })}
+        </div>
       </div>
-
       {/* X-axis labels */}
-      <div className="absolute bottom-0 left-1 right-1 flex gap-1">
+      <div className="flex gap-1 px-3 mt-2">
         {data.map((point) => (
           <div key={point.label} className="flex-1 min-w-0 text-center">
             <span className="text-[9px] text-gray-400 truncate block">{fmtDateLabel(point.label)}</span>
@@ -94,17 +97,17 @@ function HorizontalBars({ data, valueFormatter }: { data: { label: string; value
   if (!data.length) return null;
 
   return (
-    <div className="space-y-3 mt-1">
+    <div className="space-y-4 mt-2">
       {data.map((row) => (
         <div key={row.label}>
-          <div className="flex justify-between text-sm mb-1.5">
-            <span className="text-gray-600 truncate pr-3 font-medium">{fmtStatusLabel(row.label)}</span>
-            <span className="text-gray-900 font-semibold shrink-0 tabular-nums">{fmt(row.value)}</span>
+          <div className="flex justify-between text-sm mb-2">
+            <span className="text-gray-700 truncate pr-3 font-medium">{fmtStatusLabel(row.label)}</span>
+            <span className="text-gray-900 font-bold shrink-0 tabular-nums">{fmt(row.value)}</span>
           </div>
-          <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
             <div
-              className="h-full bg-primary rounded-full transition-all"
-              style={{ width: `${Math.max(2, (row.value / max) * 100)}%` }}
+              className="h-full bg-primary/80 rounded-full transition-all"
+              style={{ width: `${Math.max(3, (row.value / max) * 100)}%` }}
             />
           </div>
         </div>
@@ -216,9 +219,12 @@ function OverviewReportsSection({
             return (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {statEntries.map((stat) => (
-                  <div key={stat.label} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                    <p className="text-sm font-medium text-gray-500">{stat.label}</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2 tabular-nums">{stat.value}</p>
+                  <div key={stat.label} className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
+                    <div className="h-1 bg-primary/30" />
+                    <div className="p-5">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{stat.label}</p>
+                      <p className="text-3xl font-bold text-gray-900 mt-1.5 tabular-nums">{stat.value}</p>
+                    </div>
                   </div>
                 ))}
               </div>
