@@ -60,6 +60,7 @@ function useDropdownPanelStyle(
 /**
  * Single category picker rendered as a searchable, grouped dropdown.
  * Stores the category CODE, shows the NAME (grouped by section).
+ * Rendered via a portal so it isn't clipped by drawer/table overflow.
  */
 export function CategorySelect({
   value,
@@ -67,25 +68,31 @@ export function CategorySelect({
   required,
   placeholder = 'Select category',
   className = '',
-  clearable = false
+  clearable = false,
+  placement = 'auto'
 }: {
   value: string;
   onChange: (code: string) => void;
   required?: boolean;
   placeholder?: string;
   className?: string;
-  /** When true, allows clearing the selection (e.g. filter bars). */
   clearable?: boolean;
+  placement?: DropdownPlacement;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const panelStyle = useDropdownPanelStyle(open, containerRef, placement);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      const target = e.target as Node;
+      if (
+        containerRef.current?.contains(target) ||
+        panelRef.current?.contains(target)
+      ) return;
+      setOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -166,9 +173,13 @@ export function CategorySelect({
         />
       )}
 
-      {open && (
-        <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-80 overflow-hidden flex flex-col">
-          <div className="p-2 border-b border-gray-100 sticky top-0 bg-white">
+      {open && createPortal(
+        <div
+          ref={panelRef}
+          style={panelStyle}
+          className="bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden flex flex-col"
+        >
+          <div className="p-2 border-b border-gray-100 shrink-0 bg-white">
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
               <input
@@ -180,7 +191,7 @@ export function CategorySelect({
               />
             </div>
           </div>
-          <div className="overflow-y-auto">
+          <div className="overflow-y-auto min-h-0 flex-1">
             {clearable && (
               <button
                 type="button"
@@ -221,7 +232,8 @@ export function CategorySelect({
               </div>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
