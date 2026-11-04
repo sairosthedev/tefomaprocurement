@@ -22,6 +22,7 @@ import Pagination from '../components/Pagination';
 import TableSkeleton from '../components/TableSkeleton';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 import { useDebouncedValue } from '../lib/useDebouncedValue';
+import { isProcurementDepartment, isProcurementHead } from '@fossil/shared';
 
 const roleColors: any = {
   admin: 'bg-purple-100 text-purple-700',
@@ -319,9 +320,9 @@ export default function Users() {
                       </div>
                     </td>
                     <td className="py-2 px-3 border-b border-gray-100">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${(roleColors as Record<string, string>)[user.role] || ''}`}>
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${isProcurementHead(user) ? 'bg-blue-100 text-blue-700' : (roleColors as Record<string, string>)[user.role] || ''}`}>
                         <Shield className="h-3.5 w-3.5" />
-                        {(roleNames as Record<string, string>)[user.role] || user.role}
+                        {isProcurementHead(user) ? 'Head of Procurement' : (roleNames as Record<string, string>)[user.role] || user.role}
                       </span>
                     </td>
                     <td className="py-2 px-3 border-b border-gray-100 text-gray-600">
@@ -485,6 +486,21 @@ export default function Users() {
               </select>
             </div>
           </div>
+
+          {/* Head of Procurement hint */}
+          {(() => {
+            if (formData.role !== 'department_head') return null;
+            const selectedDept = departments.find((d: any) => d._id === formData.department);
+            if (!selectedDept) return null;
+            const isProcHead = isProcurementDepartment(selectedDept);
+            return (
+              <p className={`text-xs px-3 py-2 rounded-lg border ${isProcHead ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
+                {isProcHead
+                  ? 'This user will be treated as Head of Procurement — they get full procurement access plus the quotation authorization and waiver approval steps.'
+                  : 'Department heads only approve their own department\'s requisitions. For procurement access, set the department to Procurement.'}
+              </p>
+            );
+          })()}
 
           <div className="grid grid-cols-2 gap-4">
             <div>
