@@ -309,7 +309,7 @@ export default function Requisitions() {
               options={[
                 { value: '', label: 'All' },
                 ...(!isProcurement || procHead ? [{ value: 'draft', label: 'Draft' }] : []),
-                ...(procHead ? [{ value: 'pending_hod', label: 'Pending HOD Approval' }] : []),
+                ...(!isProcurement || procHead ? [{ value: 'pending_hod', label: 'Pending HOD Approval' }] : []),
                 { value: 'pending_acceptance', label: 'Pending Acceptance' },
                 { value: 'accepted', label: 'Accepted' },
                 { value: 'rejected', label: 'Rejected' },
@@ -393,15 +393,18 @@ export default function Requisitions() {
                           </span>
                         );
                       })()}
+                      {/* The store requisition raised to collect the goods, until they are collected. */}
+                      {actsAsDepartment(req) && !req.itemsCollected && OPEN_STORE_REQUISITION.includes(req.storeRequisition?.status) && (
+                        <span
+                          className="ml-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700"
+                          title={req.storeRequisition.requisitionNumber}
+                        >
+                          {req.storeRequisition.requisitionNumber} · {storeRequisitionStatusLabel[req.storeRequisition.status]}
+                        </span>
+                      )}
                     </td>
                     <td className="py-2.5 px-3 border-b border-gray-100 align-top">
                       <div className="flex items-center justify-end gap-2">
-                        <ViewButton
-                          size="xs"
-                          showIcon={false}
-                          onClick={() => navigate(`/app/requisitions/${req._id}`)}
-                        />
-
                         {/* Department Head Actions */}
                         {actsAsDepartment(req) && isOwner(req) && req.status === 'draft' && (
                           <>
@@ -484,23 +487,12 @@ export default function Requisitions() {
                             Req. from Stores
                           </button>
                         )}
-                        {/* The store requisition raised to collect the goods, until they are collected. */}
-                        {actsAsDepartment(req) && !req.itemsCollected && OPEN_STORE_REQUISITION.includes(req.storeRequisition?.status) && (
-                          <span
-                            className="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-700 rounded-lg whitespace-nowrap"
-                            title={req.storeRequisition.requisitionNumber}
-                          >
-                            {req.storeRequisition.requisitionNumber} · {storeRequisitionStatusLabel[req.storeRequisition.status]}
-                          </span>
-                        )}
-                        {actsAsDepartment(req) && req.itemsCollected && (
-                          <span
-                            className="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-lg whitespace-nowrap"
-                            title={req.storeRequisition?.requisitionNumber}
-                          >
-                            ✓ Collected
-                          </span>
-                        )}
+                        {/* Last, so View sits at the same place in every row. */}
+                        <ViewButton
+                          size="xs"
+                          showIcon={false}
+                          onClick={() => navigate(`/app/requisitions/${req._id}`)}
+                        />
                       </div>
                     </td>
                   </tr>

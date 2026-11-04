@@ -488,9 +488,9 @@ async function buildRoleStats(
           pendingApproval: { value: pendingHodApproval, label: 'Awaiting My Approval' }
         },
         attentionItems: needsAttention([
-          { id: 'pending-hod', label: 'Requisitions awaiting your approval', count: pendingHodApproval, href: '/app/approvals', severity: 'high' },
+          { id: 'pending-hod', label: 'Requisitions awaiting your approval', count: pendingHodApproval, href: '/app/requisitions?status=pending_hod', severity: 'high' },
           { id: 'pending-po-hod', label: 'Purchase orders awaiting your approval', count: pendingPoApprovals, href: '/app/approvals', severity: 'medium' },
-          { id: 'rejected-reqs', label: 'Rejected requisitions in your department', count: rejectedRequisitions, href: '/app/requisitions', severity: 'medium' }
+          { id: 'rejected-reqs', label: 'Rejected requisitions in your department', count: rejectedRequisitions, href: '/app/requisitions?status=rejected', severity: 'medium' }
         ])
       };
     }
