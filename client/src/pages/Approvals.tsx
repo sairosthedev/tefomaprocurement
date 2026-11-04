@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
+import { isProcurementHead } from '@fossil/shared';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import api from '../lib/api';
@@ -28,8 +29,8 @@ function approvalAge(updatedAt: string): { label: string; state: 'ok' | 'warning
 }
 
 const statusColors: any = {
-  pending_hod: 'bg-purple-100 text-purple-700',
-  pending_dept_hod: 'bg-purple-100 text-purple-700',
+  pending_hod: 'bg-fuchsia-100 text-fuchsia-700',
+  pending_dept_hod: 'bg-fuchsia-100 text-fuchsia-700',
   pending_proc_hod: 'bg-fuchsia-100 text-fuchsia-700',
   pending_finance: 'bg-amber-100 text-amber-700',
   pending_coo: 'bg-indigo-100 text-indigo-700',
@@ -38,10 +39,12 @@ const statusColors: any = {
   rejected: 'bg-red-100 text-red-700'
 };
 
+// The department-head step was removed, so orders still at it wait on the Head
+// of Procurement, as the PO page says.
 const statusLabels: any = {
-  pending_hod: 'Awaiting Dept HOD',
-  pending_dept_hod: 'Awaiting Dept HOD',
-  pending_proc_hod: 'Awaiting Procurement HOD',
+  pending_hod: 'Awaiting Head of Procurement',
+  pending_dept_hod: 'Awaiting Head of Procurement',
+  pending_proc_hod: 'Awaiting Head of Procurement',
   pending_finance: 'Awaiting Finance',
   pending_coo: 'Awaiting COO',
   pending_approvals: 'Pending Approvals',
@@ -176,7 +179,7 @@ export default function Approvals() {
   const getTitle = () => {
     switch (user?.role) {
       case 'department_head':
-        return 'HOD Approval';
+        return isProcurementHead(user) ? 'Head of Procurement Approval' : 'HOD Approval';
       case 'finance':
         return 'Finance Approval';
       case 'coo':

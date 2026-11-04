@@ -145,7 +145,12 @@ export default function PurchaseOrders() {
 
 
   const formatStatus = (status: any) => {
-    return status.split('_').map((word: any) => 
+    // As on the PO page: orders left at the removed department-head step wait
+    // on the Head of Procurement too.
+    if (['pending_hod', 'pending_dept_hod', 'pending_proc_hod'].includes(status)) {
+      return 'Pending Head of Procurement';
+    }
+    return status.split('_').map((word: any) =>
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
   };
@@ -154,7 +159,7 @@ export default function PurchaseOrders() {
     try {
       setSubmitting(poId);
       await procurementAPI.submitPurchaseOrder(poId);
-      showToast('Purchase order submitted for Finance approval', 'success');
+      showToast('Purchase order submitted to the Head of Procurement for approval', 'success');
       fetchOrders();
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to submit purchase order', 'error');
