@@ -12,7 +12,10 @@ const getEvaluationsDue = async (req: Request, res: Response): Promise<any> => {
         { nextEvaluationDue: { $lte: now } },
         { nextEvaluationDue: { $exists: false } }
       ]
-    }).select('companyName status lastEvaluationAt nextEvaluationDue kysComplete');
+    })
+      .select('companyName registrationNumber status lastEvaluationAt nextEvaluationDue kysComplete')
+      // A stable order, so the page's table pages the same way each load.
+      .sort({ companyName: 1 });
 
     res.status(200).json({
       success: true,

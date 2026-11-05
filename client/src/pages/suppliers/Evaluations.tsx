@@ -32,6 +32,12 @@ const STATUS_COLORS: Record<string, string> = {
   pending_sec: 'bg-blue-100 text-blue-800'
 }
 
+// Only active and dormant suppliers come back as due.
+const SUPPLIER_STATUS_COLORS: Record<string, string> = {
+  active: 'bg-green-100 text-green-800',
+  dormant: 'bg-gray-100 text-gray-700'
+}
+
 const RECOMMENDATION_OPTIONS = [
   { value: 'approve', label: 'Approve' },
   { value: 'conditional', label: 'Conditional approval' },
@@ -79,6 +85,8 @@ export default function Evaluations() {
   const [allPage, setAllPage] = useState(1)
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE)
   const [allPagination, setAllPagination] = useState(emptyPagination())
+  // The due list arrives whole, so it is paged here.
+  const [duePage, setDuePage] = useState(1)
 
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [selectedSupplier, setSelectedSupplier] = useState<any>(null)
@@ -135,6 +143,16 @@ export default function Evaluations() {
     approved: allEvaluations.filter((e) => e.status === 'approved').length,
     rejected: allEvaluations.filter((e) => e.status === 'rejected').length
   }), [suppliersDue.length, allPagination.total, allEvaluations])
+
+  const duePages = Math.max(1, Math.ceil(suppliersDue.length / limit))
+  const duePageRows = useMemo(
+    () => suppliersDue.slice((duePage - 1) * limit, duePage * limit),
+    [suppliersDue, duePage, limit]
+  )
+  // An evaluation saved from the last row of a page can empty that page.
+  useEffect(() => {
+    if (duePage > duePages) setDuePage(duePages)
+  }, [duePage, duePages])
 
   const openCreateModal = (supplier: any) => {
     setSelectedSupplier(supplier)
@@ -256,46 +274,84 @@ export default function Evaluations() {
       </div>
 
       {activeTab === 'due' && (
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100">
-            <h2 className="text-base font-semibold text-gray-900">Suppliers due for evaluation</h2>
-            <p className="text-sm text-gray-500 mt-1">Active suppliers with no recent evaluation or overdue quarterly review.</p>
-          </div>
-          <div className="divide-y divide-gray-100">
-            {suppliersDue.map((supplier) => (
-              <div key={supplier._id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-4">
-                <div>
-                  <p className="font-semibold text-gray-900">{supplier.companyName}</p>
-                  <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-500">
-                    <span className="capitalize">{supplier.status}</span>
-                    <span>Last evaluation: {formatDate(supplier.lastEvaluationAt)}</span>
-                    <span>Next due: {formatDate(supplier.nextEvaluationDue)}</span>
-                    {supplier.kysComplete && (
-                      <span className="inline-flex items-center gap-1 text-emerald-600">
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        KYS complete
+        <div>
+          <p className="text-sm text-gray-500 mb-3">Suppliers never evaluated, or past their next review date.</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Supplier</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Status</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">KYS</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Last evaluation</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Next due</th>
+                  {canCreate && (
+                    <th className="text-right py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Actions</th>
+                  )}
+                </tr>
+              </thead>
+              {suppliersDue.length === 0 ? (
+                <tbody><tr><td colSpan={canCreate ? 6 : 5} className="text-center py-10 text-gray-500">
+                  No suppliers are currently due for evaluation.
+                </td></tr></tbody>
+              ) : (
+              <tbody>
+                {duePageRows.map((supplier) => (
+                  <tr key={supplier._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                    <td className="py-2 px-3 border-b border-gray-100">
+                      <p className="font-medium text-gray-900">{supplier.companyName}</p>
+                      {supplier.registrationNumber && (
+                        <p className="text-xs text-gray-500">{supplier.registrationNumber}</p>
+                      )}
+                    </td>
+                    <td className="py-2 px-3 border-b border-gray-100">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${SUPPLIER_STATUS_COLORS[supplier.status] || 'bg-gray-100 text-gray-700'}`}>
+                        {supplier.status}
                       </span>
+                    </td>
+                    <td className="py-2 px-3 border-b border-gray-100">
+                      {supplier.kysComplete ? (
+                        <span className="inline-flex items-center gap-1 text-emerald-600">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Complete
+                        </span>
+                      ) : (
+                        <span className="text-amber-700">Incomplete</span>
+                      )}
+                    </td>
+                    <td className="py-2 px-3 border-b border-gray-100 text-gray-600">
+                      {supplier.lastEvaluationAt ? formatDate(supplier.lastEvaluationAt) : 'Never'}
+                    </td>
+                    <td className="py-2 px-3 border-b border-gray-100 text-gray-600">
+                      {supplier.nextEvaluationDue ? formatDate(supplier.nextEvaluationDue) : 'Now'}
+                    </td>
+                    {canCreate && (
+                      <td className="py-2 px-3 border-b border-gray-100 text-right">
+                        <button
+                          type="button"
+                          onClick={() => openCreateModal(supplier)}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Evaluate
+                        </button>
+                      </td>
                     )}
-                  </div>
-                </div>
-                {canCreate && (
-                  <button
-                    type="button"
-                    onClick={() => openCreateModal(supplier)}
-                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary-dark transition-colors"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Evaluate
-                  </button>
-                )}
-              </div>
-            ))}
-            {suppliersDue.length === 0 && (
-              <div className="px-5 py-10 text-center text-gray-500">
-                No suppliers are currently due for evaluation.
-              </div>
-            )}
+                  </tr>
+                ))}
+              </tbody>
+              )}
+            </table>
           </div>
+          {suppliersDue.length > 0 && <Pagination
+            page={duePage}
+            pages={duePages}
+            total={suppliersDue.length}
+            onPageChange={setDuePage}
+            pageSize={limit}
+            onPageSizeChange={(s) => { setLimit(s); setDuePage(1); setAllPage(1); }}
+            itemLabel="suppliers"
+          />}
         </div>
       )}
 
