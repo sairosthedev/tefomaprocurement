@@ -163,14 +163,11 @@ export default function Dashboard() {
 
   const renderStatCard = (key: string, stat: any) => {
     const className =
-      'bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-left w-full';
+      'bg-white rounded-2xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-left w-full';
     const content = (
       <>
-        <div className="h-1 bg-primary/30" />
-        <div className="p-6">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{stat.label}</p>
-          <p className="text-3xl font-bold text-gray-900 mt-2 tabular-nums">{stat.value}</p>
-        </div>
+        <p className="text-sm font-medium text-gray-500">{stat.label}</p>
+        <p className="text-3xl font-bold text-gray-900 mt-2 tabular-nums">{stat.value}</p>
       </>
     );
 
@@ -236,8 +233,7 @@ export default function Dashboard() {
             {Object.entries(additionalStats).map(([key, stat]: any) => {
               const inner = (
                 <>
-                  <div className="h-0.5 bg-primary/30 -mx-4 -mt-4 mb-3" />
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{stat.label}</p>
+                  <p className="text-xs font-medium text-gray-500">{stat.label}</p>
                   <p className="text-xl font-bold text-gray-900 mt-1 tabular-nums">{stat.value}</p>
                 </>
               );
@@ -247,14 +243,14 @@ export default function Dashboard() {
                     key={key}
                     type="button"
                     onClick={() => navigate(stat.href)}
-                    className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-left w-full overflow-hidden"
+                    className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow text-left w-full"
                   >
                     {inner}
                   </button>
                 );
               }
               return (
-                <div key={key} className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 overflow-hidden">
+                <div key={key} className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
                   {inner}
                 </div>
               );
