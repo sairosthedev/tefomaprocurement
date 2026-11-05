@@ -26,6 +26,13 @@ export const procurementAPI: any = {
   approveBankChange: (id: any) => http.put(`/procurement/bank-changes/${id}/approve`),
   rejectBankChange: (id: any, data: any) => http.put(`/procurement/bank-changes/${id}/reject`, data),
   approveSupplier: (id: any, data?: any) => http.put(`/procurement/suppliers/${id}/approve`, data),
+  // Two-person activation: procurement submits, the Head of Procurement or the
+  // COO (not the submitter) approves or returns it. They also reject/reopen.
+  submitSupplierActivation: (id: any, data: any) => http.put(`/procurement/suppliers/${id}/activation/submit`, data),
+  approveSupplierActivation: (id: any, data?: any) => http.put(`/procurement/suppliers/${id}/activation/approve`, data),
+  returnSupplierActivation: (id: any, data: any) => http.put(`/procurement/suppliers/${id}/activation/return`, data),
+  rejectSupplierRegistration: (id: any, data: any) => http.put(`/procurement/suppliers/${id}/registration/reject`, data),
+  reopenSupplierRegistration: (id: any, data: any) => http.put(`/procurement/suppliers/${id}/registration/reopen`, data),
   blacklistSupplier: (id: any, data: any) => http.put(`/procurement/suppliers/${id}/blacklist`, data),
   setSupplierStatus: (id: any, data: any) => http.put(`/procurement/suppliers/${id}/status`, data),
   getRFQs: (params?: any) => http.get('/procurement/rfqs', { params }),

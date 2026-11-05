@@ -41,13 +41,21 @@ import {
   type SupplierImportRow
 } from '../lib/supplierImport';
 import { useDebouncedValue } from '../lib/useDebouncedValue';
+import {
+  BUSINESS_TYPE_OPTIONS,
+  ENTITY_TYPE_OPTIONS,
+  businessTypeLabel,
+  entityTypeLabel,
+  supplierStatusLabel
+} from '../lib/supplierTypes';
 
 const statusColors: any = {
   pending: 'bg-amber-100 text-amber-700',
   active: 'bg-green-100 text-green-700',
   suspended: 'bg-gray-100 text-gray-700',
   blacklisted: 'bg-red-100 text-red-700',
-  dormant: 'bg-gray-100 text-gray-700'
+  dormant: 'bg-gray-100 text-gray-700',
+  rejected: 'bg-red-100 text-red-700'
 };
 
 const statusIcons: any = {
@@ -55,8 +63,13 @@ const statusIcons: any = {
   active: CheckCircle,
   suspended: XCircle,
   blacklisted: XCircle,
-  dormant: Clock
+  dormant: Clock,
+  rejected: XCircle
 };
+
+// Filter values that select by onboarding approval rather than by status;
+// sent as `approval`, which getSuppliers reads.
+const APPROVAL_FILTERS = ['awaiting', 'awaiting_me'];
 
 const ADD_SUPPLIER_STEPS = [
   { label: 'Company & login', description: 'Who they are, and their sign-in' },
@@ -71,6 +84,9 @@ const EMPTY_SUPPLIER_FORM = {
   registrationNumber: '',
   taxNumber: '',
   vatNumber: '',
+  // Optional; empty is sent as "not specified".
+  businessType: '',
+  entityType: '',
   firstName: '',
   lastName: '',
   email: '',
@@ -116,12 +132,17 @@ export default function Suppliers() {
   const { user } = useAuth();
   // The COO and admins read the supplier base; only procurement maintains it.
   const canManage = user?.role === 'procurement_officer' || isProcurementHead(user);
+  // The Head of Procurement and the COO approve activations.
+  const canDecide = user?.role === 'coo' || isProcurementHead(user);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [loading, setLoading] = useState<any>(true);
   const [searchInput, setSearch] = useState<any>('');
   // The box shows what's typed; the list is fetched once typing pauses.
   const search = useDebouncedValue(searchInput);
   const [statusFilter, setStatusFilter] = useState<any>(() => {
+    // The dashboard's "awaiting your activation approval" links here.
+    const approval = searchParams.get('approval');
+    if (approval && APPROVAL_FILTERS.includes(approval)) return approval;
     const fromUrl = searchParams.get('status');
     if (fromUrl) return fromUrl;
     if (searchParams.get('kys') === 'pending') return 'pending';
@@ -186,9 +207,11 @@ export default function Suppliers() {
     const seq = ++requestSeq.current;
     try {
       setLoading(true);
-      const response = await procurementAPI.getSuppliers({ 
-        search, 
-        status: statusFilter,
+      const byApproval = APPROVAL_FILTERS.includes(statusFilter);
+      const response = await procurementAPI.getSuppliers({
+        search,
+        status: byApproval ? '' : statusFilter,
+        approval: byApproval ? statusFilter : undefined,
         page,
         limit
       });
@@ -416,7 +439,7 @@ export default function Suppliers() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search suppliers..."
+                placeholder="Name, code or reg no..."
                 value={searchInput}
                 onChange={(e: any) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-3 py-[7px] text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
@@ -428,9 +451,12 @@ export default function Suppliers() {
               options={[
                 { value: '', label: 'All' },
                 { value: 'pending', label: 'Pending' },
+                { value: 'awaiting', label: 'Awaiting approval' },
+                ...(canDecide ? [{ value: 'awaiting_me', label: 'Awaiting my approval' }] : []),
                 { value: 'active', label: 'Active' },
                 { value: 'suspended', label: 'Suspended' },
-                { value: 'blacklisted', label: 'Blacklisted' }
+                { value: 'blacklisted', label: 'Blacklisted' },
+                { value: 'rejected', label: 'Rejected' }
               ]}
               value={statusFilter}
               onChange={setStatusFilter}
@@ -473,8 +499,10 @@ export default function Suppliers() {
                     const StatusIcon = statusIcons[supplier.status] || Clock;
                     const kys = kysStatus(supplier);
                     const kysPending = needsKysAttention(supplier);
-                    const statusLabel =
-                      supplier.status.charAt(0).toUpperCase() + supplier.status.slice(1);
+                    const statusLabel = supplierStatusLabel(supplier);
+                    const identifiers = [supplier.supplierCode, supplier.registrationNumber || 'No registration no.']
+                      .filter(Boolean)
+                      .join(' · ');
 
                     return (
                       <tr key={supplier._id} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
@@ -487,8 +515,8 @@ export default function Suppliers() {
                               <p className="font-medium text-gray-900 truncate" title={supplier.companyName}>
                                 {supplier.companyName}
                               </p>
-                              <p className="text-sm text-gray-500 truncate" title={supplier.registrationNumber}>
-                                {supplier.registrationNumber || 'No registration no.'}
+                              <p className="text-sm text-gray-500 truncate" title={identifiers}>
+                                {identifiers}
                               </p>
                             </div>
                           </div>
@@ -700,6 +728,37 @@ export default function Suppliers() {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Business Type</label>
+                    <select
+                      name="businessType"
+                      value={formData.businessType}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
+                    >
+                      <option value="">Not specified</option>
+                      {BUSINESS_TYPE_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Entity Type</label>
+                    <select
+                      name="entityType"
+                      value={formData.entityType}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
+                    >
+                      <option value="">Not specified</option>
+                      {ENTITY_TYPE_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Categories of Supply
@@ -822,6 +881,7 @@ export default function Suppliers() {
                     ['Trading as', formData.tradingAs],
                     ['Phone', formData.phone],
                     ['Tax / VAT', [formData.taxNumber, formData.vatNumber].filter(Boolean).join(' / ')],
+                    ['Business / entity', [businessTypeLabel(formData.businessType), entityTypeLabel(formData.entityType)].filter(Boolean).join(' / ')],
                     ['Categories', (formData.categories || []).map((c: string) => getCategoryName(c)).join(', ')],
                     ['Address', [formData.physicalAddress, formData.city, formData.province, formData.postalCode].filter(Boolean).join(', ')]
                   ]
@@ -855,7 +915,7 @@ export default function Suppliers() {
                 </div>
               ))}
               <p className="text-xs text-gray-500">
-                The supplier is created as pending. Its profile opens next, to complete KYS before activation.
+                The supplier is created as pending. Its profile opens next, to complete KYS and submit it for activation, which the Head of Procurement or the COO approves.
               </p>
             </div>
           )}
@@ -962,6 +1022,9 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
                       <FileText className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
                       <div className="text-xs text-blue-800">
                         <p className="font-medium mb-1">Required: companyName, registrationNumber, contactPerson, email, phone</p>
+                        <p className="mb-1">
+                          Optional: businessType ({BUSINESS_TYPE_OPTIONS.map((o) => o.value).join(', ')}) and entityType (company, individual). A row with any other value is not imported.
+                        </p>
                         <p>Column names are matched flexibly — "Supplier Name", "reg no" and "mobile" are all understood.</p>
                         <p className="mt-1">Categories accept canonical codes; older free-text values (e.g. "VEHICLE REPAIRS AND SPARES") are translated automatically where recognised. Imported suppliers start as <span className="font-medium">pending</span> and still need KYS before they can be awarded.</p>
                       </div>

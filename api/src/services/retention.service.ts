@@ -74,7 +74,7 @@ export const RETENTION_RULES: readonly RetentionRule[] = Object.freeze([
   },
   {
     key: 'supplier_master_inactive',
-    record: 'Supplier profiles of suppliers no longer trading (dormant, blacklisted, never approved)',
+    record: 'Supplier profiles of suppliers no longer trading (dormant, blacklisted, rejected or never approved)',
     period: '7 years after last transaction; 2 years if never transacted',
     months: YEARS(2),
     trigger: 'last update to the profile',
@@ -155,8 +155,9 @@ export async function recordsDueForReview(now = new Date()): Promise<RetentionRe
     Payment.countDocuments({ createdAt: { $lt: financialCutoff } }),
     AuditLog.countDocuments({ createdAt: { $lt: financialCutoff } }),
     SupplierProfile.countDocuments({
-      // Blacklisted suppliers are excluded: that history is kept the full 7 years.
-      status: { $in: ['pending', 'dormant'] },
+      // Blacklisted suppliers are excluded: that history is kept the full 7
+      // years. A rejected registration was never approved, like a pending one.
+      status: { $in: ['pending', 'rejected', 'dormant'] },
       updatedAt: { $lt: inactiveCutoff }
     })
   ]);
@@ -167,7 +168,7 @@ export async function recordsDueForReview(now = new Date()): Promise<RetentionRe
     { key: 'audit_log', record: 'Audit entries older than 7 years', dueForReview: audit },
     {
       key: 'supplier_master_inactive',
-      record: 'Pending or dormant supplier profiles untouched for 2 years',
+      record: 'Pending, rejected or dormant supplier profiles untouched for 2 years',
       dueForReview: inactiveSuppliers
     }
   ];

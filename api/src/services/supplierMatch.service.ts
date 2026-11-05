@@ -49,8 +49,8 @@ export async function matchSuppliersByCategories(
   // Pending suppliers are matched as well as active ones: being invited to
   // quote is not the same as being paid. The eligibility gate still refuses
   // them at award and PO until KYS is complete, so widening invitation widens
-  // competition without widening who can receive money. Suspended, blacklisted
-  // and dormant suppliers stay excluded.
+  // competition without widening who can receive money. Suspended, blacklisted,
+  // dormant and rejected suppliers stay excluded.
   const query: any = {
     status: { $in: ['active', 'pending'] },
     isDeleted: false,

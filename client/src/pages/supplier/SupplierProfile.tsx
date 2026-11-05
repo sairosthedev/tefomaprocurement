@@ -8,6 +8,7 @@ import {
 import { PROVINCES, BANKS } from '../../lib/constants';
 import PageHeader from '../../components/PageHeader';
 import { CategoryMultiSelect } from '../../components/CategorySelect';
+import { BUSINESS_TYPE_OPTIONS, ENTITY_TYPE_OPTIONS } from '../../lib/supplierTypes';
 
 /** Where a requested banking change stands, in the supplier's terms. */
 const BANK_CHANGE_STATUS: Record<string, string> = {
@@ -81,7 +82,10 @@ export default function SupplierProfile() {
       const payload: any = {
         tradingName: profile.tradingName,
         address: profile.address,
-        contactPersons: profile.contactPersons
+        contactPersons: profile.contactPersons,
+        // Optional; an empty choice clears it.
+        businessType: profile.businessType ?? undefined,
+        entityType: profile.entityType ?? undefined
       };
       if (categoriesDirty) payload.categories = profile.categories;
       if (bankDirty) payload.bankDetails = profile.bankDetails;
@@ -109,9 +113,17 @@ export default function SupplierProfile() {
 
   const getStatusBadge = () => {
     // Must match the SupplierProfile status enum: pending | active | suspended
-    // | blacklisted | dormant. 'approved' is not a member, and because it was
-    // the only success case, active suppliers previously showed no badge.
+    // | blacklisted | dormant | rejected. 'approved' is not a member, and
+    // because it was the only success case, active suppliers previously
+    // showed no badge.
     switch (profile.status) {
+      case 'rejected':
+        return (
+          <div className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-xl">
+            <Shield className="h-5 w-5" />
+            <span className="font-medium">Registration Not Approved</span>
+          </div>
+        );
       case 'active':
         return (
           <div className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-xl">
@@ -137,7 +149,7 @@ export default function SupplierProfile() {
         return (
           <div className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-xl">
             <AlertCircle className="h-5 w-5" />
-            <span className="font-medium">Pending Approval</span>
+            <span className="font-medium">{profile.activationPending ? 'With Procurement for Approval' : 'Pending Approval'}</span>
           </div>
         );
       case 'blacklisted':
@@ -168,6 +180,16 @@ export default function SupplierProfile() {
         actions={getStatusBadge()}
       />
 
+      {profile.status === 'rejected' && (
+        <div className="mb-6 flex items-start gap-2 p-3 rounded-xl border border-red-200 bg-red-50 text-sm text-red-700">
+          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+          <span>
+            Your supplier registration was not approved.
+            {profile.rejectionReason ? ` Reason: ${profile.rejectionReason}.` : ''} Contact procurement if you have any questions.
+          </span>
+        </div>
+      )}
+
       <div className="space-y-6">
         {/* Company Information */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -177,6 +199,17 @@ export default function SupplierProfile() {
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Supplier Code</label>
+              {/* Assigned by the system and permanent; quote it to procurement. */}
+              <input
+                type="text"
+                value={profile.supplierCode || 'Not yet assigned'}
+                readOnly
+                title="Your permanent supplier number on our register"
+                className="w-full px-4 py-2.5 border border-gray-200 bg-gray-50 text-gray-600 rounded-xl cursor-not-allowed font-mono"
+              />
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
               {/* Read-only: the registered identity is changed by procurement,
@@ -227,6 +260,32 @@ export default function SupplierProfile() {
                 title="Contact procurement to change your VAT number"
                 className="w-full px-4 py-2.5 border border-gray-200 bg-gray-50 text-gray-600 rounded-xl cursor-not-allowed"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Business Type</label>
+              <select
+                value={profile.businessType || ''}
+                onChange={(e: any) => setProfile({ ...profile, businessType: e.target.value })}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              >
+                <option value="">Not specified</option>
+                {BUSINESS_TYPE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Entity Type</label>
+              <select
+                value={profile.entityType || ''}
+                onChange={(e: any) => setProfile({ ...profile, entityType: e.target.value })}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              >
+                <option value="">Not specified</option>
+                {ENTITY_TYPE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
             </div>
           </div>
         </div>

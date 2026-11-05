@@ -4,6 +4,7 @@ import { computeKysCompletionForTier } from '@fossil/shared';
 import { createAuditLog } from '../../middleware/index.js';
 import { transitionSupplierStatus } from '../../services/supplierEligibility.service.js';
 import { withoutDocumentFiles } from '../../services/supplierDocuments.service.js';
+import { ACTIVATION_APPROVERS, submitActivationRequest } from '../../services/supplierActivation.service.js';
 
 const verifyKys = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -24,6 +25,24 @@ const verifyKys = async (req: Request, res: Response): Promise<any> => {
         success: false,
         message: 'This supplier is blacklisted. Lift the blacklisting before verifying KYS.'
       });
+    }
+    if (supplier.status === 'rejected') {
+      return res.status(400).json({
+        success: false,
+        message: "This supplier's registration was rejected. Reopen the registration before verifying KYS."
+      });
+    }
+
+    // A pending supplier is not activated here any more: the request goes to
+    // the Head of Procurement or the COO, and an override is applied only when
+    // they approve it. Whatever the client asked for, so an old client cannot
+    // activate alone or grant a standing exemption by itself.
+    if (supplier.status === 'pending') {
+      const outcome = await submitActivationRequest(supplier, req, {
+        overrideReason: overrideKys ? reason : undefined,
+        successMessage: `KYS checked and ${supplier.companyName} submitted for activation. It now awaits approval by ${ACTIVATION_APPROVERS}.`
+      });
+      return res.status(outcome.status).json(outcome.body);
     }
 
     // Judged against the supplier's tier: requiring all 20 items from a
@@ -59,7 +78,9 @@ const verifyKys = async (req: Request, res: Response): Promise<any> => {
     }
 
     if (approveForActivation) {
-      // Activation is what grants the right to be paid.
+      // Reached only for a suspended or dormant supplier (pending ones are
+      // submitted above): a reactivation, not onboarding. Activation is what
+      // grants the right to be paid.
       transitionSupplierStatus(
         supplier,
         'active',

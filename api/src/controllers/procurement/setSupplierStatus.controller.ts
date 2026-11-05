@@ -44,6 +44,23 @@ const setSupplierStatus = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
+    if (supplier.status === 'rejected') {
+      return res.status(400).json({
+        success: false,
+        message: "This supplier's registration was rejected. Reopen the registration before changing its status."
+      });
+    }
+
+    // Reactivating a suspended or dormant supplier is one person's call; a
+    // pending one is onboarding, which takes a submitter and a second approver.
+    if (status === 'active' && supplier.status === 'pending') {
+      return res.status(400).json({
+        success: false,
+        message:
+          'A pending supplier is activated by submitting it for activation, which the Head of Procurement or the COO then approves.'
+      });
+    }
+
     if (status === 'active' && !supplier.kysComplete && !supplier.kysExempt) {
       return res.status(400).json({
         success: false,
@@ -56,6 +73,8 @@ const setSupplierStatus = async (req: Request, res: Response): Promise<any> => {
     // authorization, suspension and dormancy withdraw it — and records the
     // reason in the status history rather than over the supplier's notes.
     transitionSupplierStatus(supplier, status, req.user!._id, reason);
+    // A pending supplier set aside is no longer up for activation.
+    supplier.activationRequest = undefined;
     if (status === 'active') {
       supplier.approvedBy = req.user!._id;
       supplier.approvedAt = new Date();

@@ -31,6 +31,8 @@ const blacklistSupplier = async (req: Request, res: Response): Promise<any> => {
     supplier.blacklistReason = reason;
     supplier.blacklistedBy = req.user!._id;
     supplier.blacklistedAt = new Date();
+    // An open activation request does not survive a blacklisting.
+    supplier.activationRequest = undefined;
 
     await supplier.save();
 

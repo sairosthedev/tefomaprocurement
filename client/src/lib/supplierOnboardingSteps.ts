@@ -6,8 +6,9 @@ import type { WorkflowStep } from '../components/WorkflowStepper';
  */
 export function supplierSteps(supplier: any, ticked: number, total: number): WorkflowStep[] {
   const classified = !!supplier.tier && supplier.tier !== 'unclassified';
-  const kysDone = !!supplier.kysComplete || !!supplier.kysExempt || supplier.status !== 'pending';
-  const stopped = ['suspended', 'blacklisted', 'dormant'].includes(supplier.status);
+  const kysDone =
+    !!supplier.kysComplete || !!supplier.kysExempt || !['pending', 'rejected'].includes(supplier.status);
+  const stopped = ['suspended', 'blacklisted', 'dormant', 'rejected'].includes(supplier.status);
   const raw = [
     {
       key: 'registered',

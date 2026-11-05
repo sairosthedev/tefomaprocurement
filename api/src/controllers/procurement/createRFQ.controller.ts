@@ -84,8 +84,8 @@ const createRFQ = async (req: Request, res: Response): Promise<any> => {
 
     // Pending suppliers may be invited to quote — competition is widened at
     // invitation, not at payment. They still cannot be awarded or issued a PO
-    // until KYS completes (see supplierEligibility). Suspended, blacklisted and
-    // dormant suppliers remain excluded.
+    // until KYS completes (see supplierEligibility). Suspended, blacklisted,
+    // dormant and rejected suppliers remain excluded.
     const suppliers = await SupplierProfile.find({
       _id: { $in: supplierIdArray },
       status: { $in: ['active', 'pending'] },
@@ -95,7 +95,7 @@ const createRFQ = async (req: Request, res: Response): Promise<any> => {
     if (suppliers.length !== supplierIdArray.length) {
       return res.status(400).json({
         success: false,
-        message: 'Some suppliers cannot be invited (suspended, blacklisted, dormant, or not found)'
+        message: 'Some suppliers cannot be invited (suspended, blacklisted, dormant, rejected, or not found)'
       });
     }
 

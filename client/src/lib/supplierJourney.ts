@@ -237,7 +237,7 @@ export function supplierBankChangeJourney(req: any) {
 export function supplierOnboardingJourney(profile: any, requiredUploaded: number, requiredTotal: number, requiredVerified: number) {
   const status = profile?.status as string;
   const active = status === 'active';
-  const barred = status === 'suspended' || status === 'blacklisted';
+  const barred = status === 'suspended' || status === 'blacklisted' || status === 'rejected';
   const uploaded = requiredUploaded >= requiredTotal || active || !!profile?.kysExempt;
   const verified = (requiredTotal > 0 && requiredVerified >= requiredTotal) || !!profile?.kysComplete || !!profile?.kysExempt || active;
   return toSteps([
@@ -249,7 +249,9 @@ export function supplierOnboardingJourney(profile: any, requiredUploaded: number
       label: 'Account active',
       done: active,
       stopped: barred,
-      detail: barred ? (status === 'suspended' ? 'Suspended' : 'Blacklisted') : status === 'dormant' ? 'Dormant' : undefined
+      detail: barred
+        ? (status === 'suspended' ? 'Suspended' : status === 'rejected' ? 'Not approved' : 'Blacklisted')
+        : status === 'dormant' ? 'Dormant' : profile?.activationPending ? 'With procurement for approval' : undefined
     }
   ]);
 }

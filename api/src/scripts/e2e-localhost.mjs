@@ -130,12 +130,29 @@ async function main() {
   ctx.newSupplierId = pending?._id;
 
   if (ctx.newSupplierId) {
-    const activate = await api('PUT', `/procurement/suppliers/${ctx.newSupplierId}/kys/verify`, procToken, {
+    // Activation takes two people: the officer's verify call now only submits
+    // the supplier, and the Head of Procurement approves it.
+    const submit = await api('PUT', `/procurement/suppliers/${ctx.newSupplierId}/kys/verify`, procToken, {
       overrideKys: true,
       approveForActivation: true,
       reason: 'E2E test activation'
     });
-    step('Procurement activates new supplier (KYS override)', activate.status === 200, activate.data?.message);
+    step(
+      'Procurement submits new supplier for activation (KYS override)',
+      submit.status === 200 && submit.data?.data?.status === 'pending' && submit.data?.awaitingActivationApproval === true,
+      submit.data?.message
+    );
+
+    const selfApprove = await api('PUT', `/procurement/suppliers/${ctx.newSupplierId}/activation/approve`, procToken, {});
+    step('Submitting officer cannot approve the activation', selfApprove.status === 403, selfApprove.data?.message);
+
+    const approverToken = await login('jb@fossilzim.com');
+    const approve = await api('PUT', `/procurement/suppliers/${ctx.newSupplierId}/activation/approve`, approverToken, {});
+    step(
+      'Head of Procurement approves the activation',
+      approve.status === 200 && approve.data?.data?.status === 'active' && approve.data?.data?.transactability === 'spend_authorized',
+      approve.data?.message
+    );
   }
 
   const profileUpdate = await api('PUT', '/supplier/profile', newSupplierToken, {

@@ -31,6 +31,7 @@
     "sbu:settings": "tsx src/scripts/set-sbu-settings.ts",
     "fx:set": "tsx src/scripts/set-fx-rate.ts",
     "backfill:currency": "tsx src/scripts/backfill-currency.ts",
+    "backfill:supplier-codes": "tsx src/scripts/backfill-supplier-codes.ts",
     "migrate:sbu-reset": "tsx src/scripts/migrate-sbu-reset.ts",
     "seed:demo": "tsx src/scripts/seed-demo.ts",
     "retire:demo": "tsx src/scripts/retire-demo-profile.ts",
@@ -43,6 +44,7 @@
     "sbu:settings:prod": "cross-env APP_ENV=production tsx src/scripts/set-sbu-settings.ts",
     "fx:set:prod": "cross-env APP_ENV=production tsx src/scripts/set-fx-rate.ts",
     "backfill:currency:prod": "cross-env APP_ENV=production tsx src/scripts/backfill-currency.ts",
+    "backfill:supplier-codes:prod": "cross-env APP_ENV=production tsx src/scripts/backfill-supplier-codes.ts",
     "seed:counters:prod": "cross-env APP_ENV=production tsx src/scripts/seed-counters.ts",
     "migrate:sbu-reset:prod": "cross-env APP_ENV=production tsx src/scripts/migrate-sbu-reset.ts"
   },

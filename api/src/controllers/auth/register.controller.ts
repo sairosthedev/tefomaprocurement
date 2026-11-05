@@ -4,6 +4,10 @@ import { isValidCategoryCode } from '@fossil/shared';
 import { User, SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { registrationConflict } from '../../services/supplierEligibility.service.js';
+import {
+  classificationFields,
+  readSupplierClassification
+} from '../../services/supplierClassification.service.js';
 import { getJwtSecret, getJwtExpiry } from '../../config/secrets.js';
 
 const register = async (req: Request, res: Response): Promise<any> => {
@@ -77,8 +81,15 @@ const register = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
+    // Optional, but an unknown value is refused before the login is made.
+    const classification = readSupplierClassification(profileData);
+    if (classification.error) {
+      return res.status(400).json({ success: false, message: classification.error });
+    }
+
     // A company registers once. A blacklisted one gets a neutral refusal
-    // rather than a fresh account under a new login.
+    // rather than a fresh account under a new login; a rejected one is told
+    // to sign in or contact procurement, like any company already on file.
     const conflict = await registrationConflict(profileData.registrationNumber);
     if (conflict) {
       return res.status(409).json({ success: false, message: conflict.message });
@@ -106,6 +117,7 @@ const register = async (req: Request, res: Response): Promise<any> => {
         tradingName: profileData.tradingName,
         registrationNumber: profileData.registrationNumber,
         vatNumber: profileData.vatNumber,
+        ...classificationFields(classification),
         address: profileData.address,
         contactPersons: [{
           name: `${firstName} ${lastName}`,

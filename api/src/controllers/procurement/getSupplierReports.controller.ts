@@ -64,7 +64,8 @@ const getSupplierReports = async (req: Request, res: Response): Promise<any> => 
 
       statusCounts[supplier.status] = (statusCounts[supplier.status] || 0) + 1;
       if (verified) kysVerified += 1;
-      else if (supplier.status !== 'blacklisted') kysPending += 1;
+      // A rejected registration's KYS is not pending: it is not going anywhere.
+      else if (supplier.status !== 'blacklisted' && supplier.status !== 'rejected') kysPending += 1;
 
       const score = latestScoreBySupplier.get(id) || 0;
       if (score > 0) {
@@ -135,7 +136,9 @@ const getSupplierReports = async (req: Request, res: Response): Promise<any> => 
       }));
 
     const totalPoSpend = purchaseOrders.reduce((sum, po) => sum + (Number(po.totalAmount) || 0), 0);
-    const dueForReview = registry.filter((row) => row.reviewOverdue && row.status !== 'blacklisted').length;
+    const dueForReview = registry.filter(
+      (row) => row.reviewOverdue && row.status !== 'blacklisted' && row.status !== 'rejected'
+    ).length;
 
     const searchTerm = String(search || '').trim().toLowerCase();
     const statusFilter = String(status || '').trim();
@@ -160,6 +163,7 @@ const getSupplierReports = async (req: Request, res: Response): Promise<any> => 
           pending: statusCounts.pending || 0,
           dormant: statusCounts.dormant || 0,
           blacklisted: statusCounts.blacklisted || 0,
+          rejected: statusCounts.rejected || 0,
           kysVerified,
           kysPending,
           averageScore: scores.length

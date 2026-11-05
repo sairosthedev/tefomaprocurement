@@ -6,6 +6,7 @@ import { SupplierBankChangeRequest, SupplierProfile } from '../../models/index.j
 const SUPPLIER_VISIBLE_FIELDS = [
   '_id',
   'user',
+  'supplierCode',
   'companyName',
   'tradingName',
   'registrationNumber',
@@ -21,6 +22,8 @@ const SUPPLIER_VISIBLE_FIELDS = [
   'proposedBusiness',
   'tradeVolume',
   'tradeProducts',
+  'businessType',
+  'entityType',
   'status',
   // The values only, without the reasons or who set them: the KYS page reads
   // the tier for which documents are required, and transactability to say
@@ -40,7 +43,8 @@ const SUPPLIER_VISIBLE_FIELDS = [
  * A supplier's own profile, as the supplier sees it. An allow-list rather than
  * the whole record: the record also holds procurement's assessment of the
  * supplier (the reason for its tier, vetting and site-visit notes, blacklist
- * and KYS-exemption reasons, internal notes, status history) and staff ids,
+ * and KYS-exemption reasons, internal notes, status history, the activation
+ * request) and staff ids,
  * none of which is the supplier's to read. Document files are not included
  * either: the KYS page fetches each from /supplier/kys/documents/:id/file.
  */
@@ -49,6 +53,14 @@ export function supplierSafeProfile(profile: any): Record<string, unknown> {
   const safe: Record<string, unknown> = {};
   for (const field of SUPPLIER_VISIBLE_FIELDS) {
     if (source[field] !== undefined) safe[field] = source[field];
+  }
+  // Onboarding, as far as the supplier's banners need it: that a request is
+  // with procurement, but not who raised it or any override reason; and why a
+  // registration was turned down, while it stands.
+  safe.activationPending = source.status === 'pending' && Boolean(source.activationRequest?.requestedBy);
+  if (source.status === 'rejected' && source.rejectionReason) {
+    safe.rejectionReason = source.rejectionReason;
+    safe.rejectedAt = source.rejectedAt;
   }
   safe.complianceDocuments = (source.complianceDocuments || []).map((doc: any) => ({
     _id: doc._id,

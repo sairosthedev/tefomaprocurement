@@ -6,6 +6,10 @@ import { User, SupplierProfile, Notification } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { sendNotificationEmail } from '../../services/email.service.js';
 import { registrationConflict } from '../../services/supplierEligibility.service.js';
+import {
+  classificationFields,
+  readSupplierClassification
+} from '../../services/supplierClassification.service.js';
 import { getProductName } from '../../lib/branding.js';
 
 const createSupplier = async (req: Request, res: Response): Promise<any> => {
@@ -49,6 +53,12 @@ const createSupplier = async (req: Request, res: Response): Promise<any> => {
         success: false,
         message: `Invalid supplier category code(s): ${invalidCategories.join(', ')}`
       });
+    }
+
+    // Optional, but checked before anything is created.
+    const classification = readSupplierClassification(req.body);
+    if (classification.error) {
+      return res.status(400).json({ success: false, message: classification.error });
     }
 
     // Normalize email
@@ -113,6 +123,7 @@ const createSupplier = async (req: Request, res: Response): Promise<any> => {
         registrationNumber,
         taxNumber,
         vatNumber,
+        ...classificationFields(classification),
         // A contact person needs a phone number (the sub-schema requires one),
         // and phone is optional on this form, so it is only recorded with one.
         contactPersons: phone
@@ -183,6 +194,7 @@ const createSupplier = async (req: Request, res: Response): Promise<any> => {
       data: {
         id: supplierProfile._id,
         companyName: supplierProfile.companyName,
+        supplierCode: supplierProfile.supplierCode,
         email: normalizedEmail,
         status: supplierProfile.status,
         // Returned once so the creator can pass it on; it is not stored anywhere readable.

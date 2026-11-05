@@ -10,7 +10,11 @@ import { Loader2, AlertCircle, CheckCircle } from 'lucide-react';
  * What the banner says, from the supplier's actual standing rather than its
  * status alone: "active" with lapsed or missing KYS is not "can be awarded".
  */
-function kysBanner(profile: any, docs: any[], requiredTypes: string[]): { ok: boolean; text: string } {
+function kysBanner(
+  profile: any,
+  docs: any[],
+  requiredTypes: string[]
+): { ok: boolean; text: string; tone?: 'error' } {
   const uploaded = requiredTypes.filter((t) => docs.some((d: any) => d.documentType === t)).length;
   const progress = `${uploaded}/${requiredTypes.length} documents required for your account uploaded.`;
 
@@ -24,7 +28,17 @@ function kysBanner(profile: any, docs: any[], requiredTypes: string[]): { ok: bo
     case 'suspended':
     case 'dormant':
       return { ok: false, text: `Your account is ${profile.status}. Contact procurement for help.` };
+    case 'rejected':
+      return {
+        ok: false,
+        tone: 'error',
+        text: `Your supplier registration was not approved.${profile.rejectionReason ? ` Reason: ${profile.rejectionReason}.` : ''} Contact procurement if you have any questions.`
+      };
     case 'pending':
+      // Submitted for activation: a second person at procurement is deciding.
+      if (profile.activationPending) {
+        return { ok: false, text: 'Your documents are with procurement for approval. We will let you know once your account is activated.' };
+      }
       return { ok: false, text: `Pending verification — ${progress}` };
   }
 
@@ -107,13 +121,17 @@ export default function MyKys() {
     <div className="p-8 max-w-3xl">
       <PageHeader
         title={`KYS Compliance — ${profile?.companyName}`}
-        subtitle="Upload your Know-Your-Supplier documents. Your account is activated once Procurement verifies the mandatory documents."
+        subtitle="Upload your Know-Your-Supplier documents. Your account is activated once Procurement has verified and approved the mandatory documents."
         bottomSpacing="mb-4"
       />
 
       <div
         className={`mb-6 flex items-start gap-2 p-3 rounded-xl border text-sm ${
-          banner.ok ? 'bg-green-50 border-green-200 text-green-700' : 'bg-amber-50 border-amber-200 text-amber-700'
+          banner.ok
+            ? 'bg-green-50 border-green-200 text-green-700'
+            : banner.tone === 'error'
+              ? 'bg-red-50 border-red-200 text-red-700'
+              : 'bg-amber-50 border-amber-200 text-amber-700'
         }`}
       >
         {banner.ok ? <CheckCircle className="h-4 w-4 mt-0.5 shrink-0" /> : <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />}

@@ -39,7 +39,8 @@ const STATUS_REASON: Record<string, string> = {
   pending: 'is still pending KYS verification',
   suspended: 'is suspended',
   blacklisted: 'is blacklisted',
-  dormant: 'is marked dormant'
+  dormant: 'is marked dormant',
+  rejected: 'had its registration rejected'
 };
 
 const STAGE_VERB: Record<EligibilityStage, string> = {
@@ -101,7 +102,8 @@ export function checkSupplierEligibility(
 
   // A pending supplier may be invited to quote: sourcing widely is how you get
   // competitive prices, and nothing is committed by asking for a quotation.
-  // Every later stage still requires full activation.
+  // Every later stage still requires full activation. A rejected registration
+  // is neither, so it is refused at every stage, invitation included.
   const invitable = supplier.status === 'active' || (stage === 'invite' && supplier.status === 'pending');
 
   if (!invitable) {
@@ -194,7 +196,7 @@ export async function partitionEligibleSuppliers(
   return { eligible, ineligible };
 }
 
-export type SupplierStatus = 'pending' | 'active' | 'suspended' | 'blacklisted' | 'dormant';
+export type SupplierStatus = 'pending' | 'active' | 'suspended' | 'blacklisted' | 'dormant' | 'rejected';
 
 /**
  * Move a supplier to a lifecycle status, keeping transactability in step and
@@ -204,7 +206,10 @@ export type SupplierStatus = 'pending' | 'active' | 'suspended' | 'blacklisted' 
  * supplier could read "Active" and still be refused at award for not being
  * spend-authorized. Activation grants spend authorization exactly as
  * approveSupplier does (only stamped when it changes); suspension,
- * blacklisting, dormancy and return to pending withdraw it.
+ * blacklisting, dormancy, rejection and return to pending withdraw it.
+ *
+ * It does not decide who may activate: a pending supplier becomes active only
+ * through the two-person approval in supplierActivation.service.
  */
 export function transitionSupplierStatus(
   supplier: any,
@@ -249,6 +254,8 @@ export const DUPLICATE_COMPANY_MESSAGE = 'This company is already registered —
  * been blacklisted, which could simply sign up again under a new login.
  * Returns the refusal to give, or null if the number is free. A blacklisted
  * match gets a neutral message so the register's contents are not disclosed.
+ * A rejected registration keeps its number: the company signs in to the
+ * account it has, or asks procurement to reopen it, rather than starting over.
  *
  * No unique index: existing data may already hold duplicates, and the check
  * has to tolerate formatting differences an index could not.

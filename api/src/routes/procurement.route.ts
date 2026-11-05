@@ -73,6 +73,22 @@ router.get(
 router.get('/quotations/:id', canReadSourcing, procurement.getQuotationById);
 router.get('/rfqs/:id/line-awards', canReadSourcing, procurement.getLineAwardMatrix);
 
+// Onboarding decisions: the checker's side of two-person activation, and the
+// registration outcome. The COO and the Head of Procurement only — above the
+// procurement guard so the COO can reach them. The submitter of an activation
+// request is refused its approval in the service.
+const canDecideActivation: RequestHandler = (req, res, next) => {
+  if (req.user?.role === 'coo' || isProcurementHead(req.user)) return next();
+  return res.status(403).json({
+    success: false,
+    message: 'Only the Head of Procurement or the COO can decide a supplier activation or registration'
+  });
+};
+router.put(`/suppliers/${SUPPLIER_ID}/activation/approve`, canDecideActivation, procurement.approveSupplierActivation);
+router.put(`/suppliers/${SUPPLIER_ID}/activation/return`, canDecideActivation, procurement.returnSupplierActivation);
+router.put(`/suppliers/${SUPPLIER_ID}/registration/reject`, canDecideActivation, procurement.rejectSupplierRegistration);
+router.put(`/suppliers/${SUPPLIER_ID}/registration/reopen`, canDecideActivation, procurement.reopenSupplierRegistration);
+
 // Procurement officers, admins, and the head of the Procurement department.
 router.use(authorizeProcurement);
 
@@ -95,6 +111,9 @@ router.get('/suppliers/match', procurement.matchSuppliers);
 // Create RFQ screen; the officer edits it before sending.
 router.get('/suppliers/invitation-proposal', procurement.getInvitationProposal);
 router.put('/suppliers/:id', procurement.updateSupplier);
+// For a pending supplier, approve and kys/verify now submit for activation
+// rather than activating; a second person approves (see above).
+router.put('/suppliers/:id/activation/submit', procurement.submitSupplierActivation);
 router.put('/suppliers/:id/approve', procurement.approveSupplier);
 router.put('/suppliers/:id/blacklist', procurement.blacklistSupplier);
 router.put('/suppliers/:id/status', procurement.setSupplierStatus);

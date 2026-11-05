@@ -11,6 +11,10 @@ import {
   phoneNumbersDiffer
 } from '../../services/bankChange.service.js';
 import { supplierSafeProfile } from './getMyProfile.controller.js';
+import {
+  applySupplierClassification,
+  readSupplierClassification
+} from '../../services/supplierClassification.service.js';
 
 /**
  * Supplier self-service profile update.
@@ -59,6 +63,11 @@ const updateProfile = async (req: Request, res: Response): Promise<any> => {
 
     if (contactPersons !== undefined && !Array.isArray(contactPersons)) {
       return res.status(400).json({ success: false, message: 'contactPersons must be an array' });
+    }
+
+    const classification = readSupplierClassification(req.body);
+    if (classification.error) {
+      return res.status(400).json({ success: false, message: classification.error });
     }
 
     // The numbers on file before this save: the only ones a banking-change
@@ -111,6 +120,13 @@ const updateProfile = async (req: Request, res: Response): Promise<any> => {
       });
       profile.categories = categories;
     }
+    for (const [field, label] of [['businessType', 'Business type'], ['entityType', 'Entity type']] as const) {
+      const next = classification[field];
+      if (next !== undefined && (next ?? undefined) !== profile[field]) {
+        changes.push({ field: label, from: profile[field], to: next ?? undefined });
+      }
+    }
+    applySupplierClassification(profile, classification);
 
     // --- Banking: a request, never a direct write ---
     let bankChangeRequest = null;

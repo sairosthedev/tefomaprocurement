@@ -200,7 +200,8 @@ export async function categoriesForRequisition(requisitionId: any): Promise<stri
  * Eligibility is checked at the `invite` stage, which admits `pending`
  * suppliers: asking for a price commits nothing, and narrow sourcing is how you
  * end up with one bid. They are flagged `notYetActivated` so nobody is
- * surprised when the award gate refuses them later.
+ * surprised when the award gate refuses them later. A rejected registration is
+ * neither matched nor eligible, so it is never proposed.
  */
 export async function proposeInvitations(
   categoryCodes: string[],

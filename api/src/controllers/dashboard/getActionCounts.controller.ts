@@ -12,6 +12,7 @@ import {
 import { isProcurementHead } from '@fossil/shared';
 import { listPendingAuthorizations } from '../../services/pendingAuthorization.service.js';
 import { countRfqsAwaitingQuote } from './getStats.controller.js';
+import { awaitingActivationFilter } from '../../services/supplierActivation.service.js';
 
 /**
  * Counts of work waiting on the signed-in user, for the sidebar badges.
@@ -198,6 +199,14 @@ const getActionCounts = async (req: Request, res: Response): Promise<any> => {
         status: { $in: ['submitted', 'under_review'] },
         isDeleted: false
       }).exec();
+    }
+
+    // ── Supplier onboarding ──
+    if (procHead || role === 'coo') {
+      // Mirrors procurement/getSuppliers?approval=awaiting_me, the dashboard
+      // item's link: activations someone else submitted, which this user may
+      // approve. Both roles have All Suppliers in their menu.
+      pending['/app/suppliers'] = SupplierProfile.countDocuments(awaitingActivationFilter(user._id)).exec();
     }
 
     if (procHead) {

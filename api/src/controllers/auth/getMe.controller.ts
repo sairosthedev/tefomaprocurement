@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { User, SupplierProfile } from '../../models/index.js';
+import { supplierSafeProfile } from '../supplier/getMyProfile.controller.js';
 
 const getMe = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -14,9 +15,13 @@ const getMe = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
+    // The supplier's own view of their record, as /supplier/profile gives it:
+    // the raw record carries procurement's notes on them, including the
+    // activation request (who raised it, any KYS override reason).
     let supplierProfile = null;
     if (user.role === 'supplier') {
-      supplierProfile = await SupplierProfile.findOne({ user: user._id });
+      const profile = await SupplierProfile.findOne({ user: user._id }).select('-complianceDocuments.filePath');
+      supplierProfile = profile ? supplierSafeProfile(profile) : null;
     }
 
     res.status(200).json({

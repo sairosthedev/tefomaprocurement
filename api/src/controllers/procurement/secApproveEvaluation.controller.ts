@@ -2,7 +2,6 @@ import type { Request, Response } from 'express';
 import { getNextReviewDate } from '@fossil/shared';
 import { SupplierEvaluation, SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
-import { transitionSupplierStatus } from '../../services/supplierEligibility.service.js';
 import { WITHOUT_DOCUMENT_FILES } from '../../services/supplierDocuments.service.js';
 
 const secApproveEvaluation = async (req: Request, res: Response): Promise<any> => {
@@ -40,13 +39,9 @@ const secApproveEvaluation = async (req: Request, res: Response): Promise<any> =
       if (supplier) {
         supplier.lastEvaluationAt = new Date();
         supplier.nextEvaluationDue = due;
-        // A passing evaluation is not a substitute for KYS. Activation here is
-        // held to the same gate as approveSupplier and setSupplierStatus, and
-        // grants spend authorization the same way — without it the supplier
-        // read "Active" but was refused at every award.
-        if (supplier.status === 'pending' && (supplier.kysComplete || supplier.kysExempt)) {
-          transitionSupplierStatus(supplier, 'active', req.user!._id, 'Activated on approval of supplier evaluation');
-        }
+        // The outcome is recorded, but a pending supplier is no longer
+        // activated here: activation needs a submitter and a second approver
+        // (supplierActivation.service), and this is one person's decision.
         await supplier.save();
       }
     }

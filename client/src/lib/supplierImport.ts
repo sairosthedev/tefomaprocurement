@@ -26,13 +26,17 @@ export interface SupplierImportRow {
   bankAccountName: string;
   bankAccountNumber: string;
   bankBranchCode: string;
+  /** Optional; the server checks the value and fails the row if it is unknown. */
+  businessType: string;
+  entityType: string;
 }
 
 export const EMPTY_ROW: SupplierImportRow = {
   companyName: '', tradingAs: '', registrationNumber: '', taxNumber: '',
   vatNumber: '', contactPerson: '', email: '', phone: '', physicalAddress: '',
   city: '', province: '', postalCode: '', categories: '', bankName: '',
-  bankAccountName: '', bankAccountNumber: '', bankBranchCode: ''
+  bankAccountName: '', bankAccountNumber: '', bankBranchCode: '',
+  businessType: '', entityType: ''
 };
 
 /** Fields the server rejects a row for when missing. */
@@ -65,7 +69,9 @@ const HEADER_ALIASES: Record<string, keyof SupplierImportRow> = {
   bankname: 'bankName', bank: 'bankName',
   accountname: 'bankAccountName', bankaccountname: 'bankAccountName',
   accountnumber: 'bankAccountNumber', bankaccountnumber: 'bankAccountNumber',
-  branchcode: 'bankBranchCode', branch: 'bankBranchCode', sortcode: 'bankBranchCode'
+  branchcode: 'bankBranchCode', branch: 'bankBranchCode', sortcode: 'bankBranchCode',
+  businesstype: 'businessType', typeofbusiness: 'businessType',
+  entitytype: 'entityType', legalentity: 'entityType', entity: 'entityType'
 };
 
 const normaliseHeader = (h: string): string =>

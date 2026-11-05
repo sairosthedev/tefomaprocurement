@@ -130,8 +130,10 @@ export default function VerificationHub() {
 
     try {
       setVerifyingSupplierId(supplierId)
-      await procurementAPI.verifyKys(supplierId, { approveForActivation: true })
-      showToast('Supplier verified successfully', 'success')
+      // For a pending supplier this submits it for activation; the Head of
+      // Procurement or the COO approves. The server says which happened.
+      const res = await procurementAPI.verifyKys(supplierId, { approveForActivation: true })
+      showToast(res.data?.message || 'Supplier verified successfully', 'success')
       await fetchSuppliers()
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Verification failed', 'error')

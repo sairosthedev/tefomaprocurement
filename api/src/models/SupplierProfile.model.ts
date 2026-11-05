@@ -1,4 +1,37 @@
 import mongoose, { Schema, type Document } from 'mongoose';
+import { nextSequence, sbuNumberPrefix } from '../services/numbering.service.js';
+
+/** What kind of business the supplier runs, as they describe it. Optional. */
+export const SUPPLIER_BUSINESS_TYPES = [
+  'manufacturer',
+  'distributor',
+  'wholesaler',
+  'retailer',
+  'service_provider',
+  'contractor',
+  'other'
+] as const;
+export type SupplierBusinessType = (typeof SUPPLIER_BUSINESS_TYPES)[number];
+
+/** Whether the supplier is a registered company or a person trading alone. Optional. */
+export const SUPPLIER_ENTITY_TYPES = ['company', 'individual'] as const;
+export type SupplierEntityType = (typeof SUPPLIER_ENTITY_TYPES)[number];
+
+export const SUPPLIER_STATUSES = ['pending', 'active', 'suspended', 'blacklisted', 'dormant', 'rejected'] as const;
+
+/**
+ * A pending supplier put forward for activation, waiting on a second person.
+ * Present only while the request is open; approval, return and rejection all
+ * clear it.
+ */
+export interface IActivationRequest {
+  requestedBy: mongoose.Types.ObjectId | any;
+  requestedAt: Date;
+  notes?: string;
+  /** True when the supplier goes forward without a complete KYS for its tier. */
+  kysOverride: boolean;
+  kysOverrideReason?: string;
+}
 
 export interface IContactPerson {
   name: string;
@@ -88,6 +121,11 @@ export interface IStatusChange {
 
 export interface ISupplierProfile extends Document {
   user: mongoose.Types.ObjectId | any;
+  /**
+   * Permanent register number, e.g. `DOKUMA-SUP-00042`. Assigned on first
+   * save and never changed: it outlives name and registration-number edits.
+   */
+  supplierCode?: string;
   companyName: string;
   tradingName?: string;
   registrationNumber: string;
@@ -119,7 +157,22 @@ export interface ISupplierProfile extends Document {
   kysExemptAt?: Date;
   lastEvaluationAt?: Date;
   nextEvaluationDue?: Date;
-  status: 'pending' | 'active' | 'suspended' | 'blacklisted' | 'dormant';
+  businessType?: SupplierBusinessType;
+  entityType?: SupplierEntityType;
+  /**
+   * `rejected` is a registration that was turned down. Unlike `blacklisted`
+   * it says nothing against the company; it was never let on the register.
+   */
+  status: (typeof SUPPLIER_STATUSES)[number];
+  /**
+   * Activation takes two people: one submits (this request), the Head of
+   * Procurement or the COO approves. One officer could once take a supplier
+   * from pending to paid alone, KYS override included.
+   */
+  activationRequest?: IActivationRequest;
+  rejectionReason?: string;
+  rejectedBy?: mongoose.Types.ObjectId | any;
+  rejectedAt?: Date;
   /**
    * Whether the supplier may be transacted with, kept separate from the
    * lifecycle `status` above. Mature platforms all split these (Oracle:
@@ -226,6 +279,14 @@ const StatusChangeSchema = new Schema<IStatusChange>({
   at: { type: Date, default: Date.now }
 }, { _id: false });
 
+const ActivationRequestSchema = new Schema<IActivationRequest>({
+  requestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  requestedAt: { type: Date, required: true, default: Date.now },
+  notes: { type: String, trim: true },
+  kysOverride: { type: Boolean, default: false },
+  kysOverrideReason: { type: String, trim: true }
+}, { _id: false });
+
 const KysChecklistSchema = new Schema<IKysChecklist>({
   cr14Directors: Boolean,
   cr6Address: Boolean,
@@ -260,6 +321,7 @@ const SupplierProfileSchema = new Schema<ISupplierProfile>({
     required: true,
     unique: true
   },
+  supplierCode: { type: String, trim: true },
   companyName: {
     type: String,
     required: [true, 'Company name is required'],
@@ -314,11 +376,18 @@ const SupplierProfileSchema = new Schema<ISupplierProfile>({
   kysExemptAt: Date,
   lastEvaluationAt: Date,
   nextEvaluationDue: Date,
+  businessType: { type: String, enum: SUPPLIER_BUSINESS_TYPES },
+  entityType: { type: String, enum: SUPPLIER_ENTITY_TYPES },
   status: {
     type: String,
-    enum: ['pending', 'active', 'suspended', 'blacklisted', 'dormant'],
+    enum: SUPPLIER_STATUSES,
     default: 'pending'
   },
+  // No default: only a supplier with an open request carries one.
+  activationRequest: { type: ActivationRequestSchema, default: undefined },
+  rejectionReason: { type: String, trim: true },
+  rejectedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  rejectedAt: Date,
   transactability: {
     type: String,
     enum: ['none', 'prospective', 'spend_authorized'],
@@ -380,5 +449,30 @@ const SupplierProfileSchema = new Schema<ISupplierProfile>({
 
 // Index for searching
 SupplierProfileSchema.index({ companyName: 'text', tradingName: 'text', categories: 'text' });
+// Sparse: records created before codes existed have none until backfilled.
+SupplierProfileSchema.index({ supplierCode: 1 }, { sparse: true });
+
+/**
+ * Supplier codes have no year: they are permanent, so the counter does not
+ * restart each January. The key is `supplier:0`.
+ */
+export const SUPPLIER_CODE_COUNTER = { type: 'supplier', year: 0 } as const;
+/** Reads the sequence back out of a code, with or without the SBU prefix. */
+export const SUPPLIER_CODE_PATTERN = /^(?:[A-Z][A-Z0-9_]*-)?SUP-(\d+)$/;
+
+/** Reserve the next supplier code in the document's own SBU database. */
+export async function nextSupplierCode(doc: Document): Promise<string> {
+  const seq = await nextSequence(doc, SUPPLIER_CODE_COUNTER.type, SUPPLIER_CODE_COUNTER.year);
+  return `${sbuNumberPrefix()}SUP-${String(seq).padStart(5, '0')}`;
+}
+
+// Numbering runs on `pre('validate')`, as for every numbered document. A
+// record loaded with a projection that left the code out is not given a new
+// one over the top of it.
+SupplierProfileSchema.pre('validate', async function () {
+  if (!this.supplierCode && this.isSelected('supplierCode')) {
+    this.supplierCode = await nextSupplierCode(this);
+  }
+});
 
 export default mongoose.model<ISupplierProfile>('SupplierProfile', SupplierProfileSchema);

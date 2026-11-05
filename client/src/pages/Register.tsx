@@ -7,6 +7,12 @@ import Logo from '../components/Logo';
 import { CategoryMultiSelect } from '../components/CategorySelect';
 import { PROVINCES, COUNTRIES, BANKS, ACCOUNT_TYPES } from '../lib/constants';
 import { FormSteps, FormStepNav } from '../components/FormSteps';
+import {
+  BUSINESS_TYPE_OPTIONS,
+  ENTITY_TYPE_OPTIONS,
+  businessTypeLabel,
+  entityTypeLabel
+} from '../lib/supplierTypes';
 
 const STEPS = [
   { label: 'Account', description: 'Who is signing up' },
@@ -36,6 +42,9 @@ export default function Register() {
     tradingName: '',
     registrationNumber: '',
     vatNumber: '',
+    // Optional descriptions of the business
+    businessType: '',
+    entityType: '',
     // Address
     street: '',
     city: '',
@@ -152,6 +161,8 @@ export default function Register() {
           tradingName: formData.tradingName,
           registrationNumber: formData.registrationNumber,
           vatNumber: formData.vatNumber,
+          businessType: formData.businessType || undefined,
+          entityType: formData.entityType || undefined,
           address: {
             street: formData.street,
             city: formData.city,
@@ -364,6 +375,36 @@ export default function Register() {
                   />
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Business Type</label>
+                  <select
+                    name="businessType"
+                    value={formData.businessType}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
+                  >
+                    <option value="">Select (optional)</option>
+                    {BUSINESS_TYPE_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Entity Type</label>
+                  <select
+                    name="entityType"
+                    value={formData.entityType}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
+                  >
+                    <option value="">Select (optional)</option>
+                    {ENTITY_TYPE_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Product/Service Categories</label>
                 <CategoryMultiSelect
@@ -567,6 +608,8 @@ export default function Register() {
                     ['Trading name', formData.tradingName],
                     ['Registration number', formData.registrationNumber],
                     ['VAT number', formData.vatNumber],
+                    ['Business type', businessTypeLabel(formData.businessType)],
+                    ['Entity type', entityTypeLabel(formData.entityType)],
                     ['Categories', formData.categories.length ? `${formData.categories.length} selected` : '']
                   ]
                 },
@@ -610,7 +653,7 @@ export default function Register() {
                 </div>
               ))}
               <p className="text-sm text-gray-500">
-                After registering, upload your compliance documents. Your account is activated once Procurement verifies them.
+                After registering, upload your compliance documents. Your account is activated once Procurement has verified and approved them.
               </p>
             </div>
           )}

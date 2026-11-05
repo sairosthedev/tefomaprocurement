@@ -24,14 +24,16 @@ const STATUS_LABELS: Record<string, string> = {
   active: 'Active',
   pending: 'Pending',
   dormant: 'Dormant',
-  blacklisted: 'Blacklisted'
+  blacklisted: 'Blacklisted',
+  rejected: 'Rejected'
 };
 
 const STATUS_COLORS: Record<string, string> = {
   active: 'bg-green-100 text-green-800',
   pending: 'bg-amber-100 text-amber-800',
   dormant: 'bg-gray-100 text-gray-700',
-  blacklisted: 'bg-red-100 text-red-700'
+  blacklisted: 'bg-red-100 text-red-700',
+  rejected: 'bg-red-100 text-red-700'
 };
 
 function formatDate(value?: string | null) {
@@ -263,7 +265,8 @@ export default function SupplierReportsSection({ tabs }: { tabs?: React.ReactNod
                     { value: 'active', label: 'Active' },
                     { value: 'pending', label: 'Pending' },
                     { value: 'dormant', label: 'Dormant' },
-                    { value: 'blacklisted', label: 'Blacklisted' }
+                    { value: 'blacklisted', label: 'Blacklisted' },
+                    { value: 'rejected', label: 'Rejected' }
                   ]}
                   value={statusFilter}
                   onChange={setStatusFilter}

@@ -7,6 +7,10 @@ import { sendEmailNotification } from '../../services/email.service.js';
 import { brandSubject, getProductName } from '../../lib/branding.js';
 import { emailPaths } from '../../lib/emailLinks.js';
 import {
+  applySupplierClassification,
+  readSupplierClassification
+} from '../../services/supplierClassification.service.js';
+import {
   contactNumbersOnFile,
   diffBankDetails,
   hasOpenBankChange,
@@ -81,6 +85,13 @@ const updateSupplier = async (req: Request, res: Response): Promise<any> => {
       return res.status(404).json({ success: false, message: 'Supplier not found' });
     }
 
+    // `supplierCode` is deliberately not read from the body: it is assigned
+    // once and is permanent.
+    const classification = readSupplierClassification(req.body);
+    if (classification.error) {
+      return res.status(400).json({ success: false, message: classification.error });
+    }
+
     // Without the document bodies: they are megabytes of base64 each, and the
     // audit entry is about the profile fields.
     const { complianceDocuments: _documents, ...previousData } = supplier.toObject();
@@ -127,6 +138,7 @@ const updateSupplier = async (req: Request, res: Response): Promise<any> => {
     if (incorporationDate !== undefined) {
       supplier.incorporationDate = incorporationDate ? new Date(incorporationDate) : undefined;
     }
+    applySupplierClassification(supplier, classification);
 
     if (address && typeof address === 'object') {
       supplier.address = {
@@ -313,7 +325,9 @@ const updateSupplier = async (req: Request, res: Response): Promise<any> => {
       .select('-complianceDocuments.filePath')
       .populate('user', 'email firstName lastName phone status')
       .populate('approvedBy', 'firstName lastName')
-      .populate('blacklistedBy', 'firstName lastName');
+      .populate('blacklistedBy', 'firstName lastName')
+      .populate('activationRequest.requestedBy', 'firstName lastName')
+      .populate('rejectedBy', 'firstName lastName');
 
     const { bankDetails: _bank, ...profileChanges } = req.body;
     await createAuditLog({

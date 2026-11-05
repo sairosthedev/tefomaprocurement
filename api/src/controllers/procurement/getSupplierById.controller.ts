@@ -14,7 +14,10 @@ const getSupplierById = async (req: Request, res: Response): Promise<any> => {
       .select(WITHOUT_DOCUMENT_FILES)
       .populate('user', 'email firstName lastName phone status')
       .populate('approvedBy', 'firstName lastName')
-      .populate('blacklistedBy', 'firstName lastName');
+      .populate('blacklistedBy', 'firstName lastName')
+      // Named on the page: who submitted for activation, who rejected.
+      .populate('activationRequest.requestedBy', 'firstName lastName')
+      .populate('rejectedBy', 'firstName lastName');
 
     if (!supplier || supplier.isDeleted) {
       return res.status(404).json({

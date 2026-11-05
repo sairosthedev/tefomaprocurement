@@ -23,7 +23,8 @@ const isBlank = (value: any) => value === undefined || value === null || value =
 
 /** Supplier statuses that may quote. A pending supplier is invited deliberately
  *  and completes KYS while the RFQ is open; award and PO still require active
- *  (see supplierEligibility). */
+ *  (see supplierEligibility). A rejected registration may not quote, even on
+ *  an RFQ it was invited to while still pending. */
 const QUOTING_STATUSES = ['active', 'pending'];
 
 const submitQuotation = async (req: Request, res: Response): Promise<any> => {
@@ -49,7 +50,10 @@ const submitQuotation = async (req: Request, res: Response): Promise<any> => {
     if (!QUOTING_STATUSES.includes(profile.status)) {
       return res.status(403).json({
         success: false,
-        message: 'Your supplier account is not active'
+        message:
+          profile.status === 'rejected'
+            ? 'Your supplier registration was not approved, so you cannot submit quotations. Contact procurement.'
+            : 'Your supplier account is not active'
       });
     }
 

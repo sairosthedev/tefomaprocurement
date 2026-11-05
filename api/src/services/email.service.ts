@@ -421,13 +421,24 @@ const getEmailContentForNotification = (notification: any): any => {
         : emailPaths.invoice(id)
     },
 
-    supplier_status_change: {
-      subject: brandSubject('Supplier status updated'),
-      headingText: 'Account status changed',
-      subText: notification.message,
-      actionButtonText: 'View profile',
-      actionButtonLink: emailPaths.supplierProfile()
-    },
+    // Also sent to staff about a supplier's onboarding (activation requests and
+    // their outcome); those open the supplier's record, since the portal
+    // profile page is the supplier's own and refuses staff.
+    supplier_status_change: notification.metadata?.audience === 'staff'
+      ? {
+          subject: brandSubject('Supplier status updated'),
+          headingText: 'Supplier status updated',
+          subText: notification.message,
+          actionButtonText: 'View supplier',
+          actionButtonLink: emailPaths.supplier(id)
+        }
+      : {
+          subject: brandSubject('Supplier status updated'),
+          headingText: 'Account status changed',
+          subText: notification.message,
+          actionButtonText: 'View profile',
+          actionButtonLink: emailPaths.supplierProfile()
+        },
 
     goods_received: {
       subject: brandSubject('Goods received'),

@@ -2,6 +2,7 @@ import React from 'react';
 import { Loader2, Plus, Save, Trash2 } from 'lucide-react';
 import { CategoryMultiSelect } from '../CategorySelect';
 import { PROVINCES, BANKS, ACCOUNT_TYPES } from '../../lib/constants';
+import { BUSINESS_TYPE_OPTIONS, ENTITY_TYPE_OPTIONS } from '../../lib/supplierTypes';
 
 export type ContactPersonDraft = {
   name: string;
@@ -20,6 +21,10 @@ export type ClientReferralDraft = {
 };
 
 export type SupplierDraft = {
+  /** Shown, never sent: the code is assigned by the server and permanent. */
+  supplierCode: string;
+  businessType: string;
+  entityType: string;
   companyName: string;
   tradingName: string;
   registrationNumber: string;
@@ -61,6 +66,9 @@ export function supplierToDraft(supplier: any): SupplierDraft {
   const tradeProducts = Array.isArray(supplier?.tradeProducts) ? supplier.tradeProducts : [];
 
   return {
+    supplierCode: supplier?.supplierCode || '',
+    businessType: supplier?.businessType || '',
+    entityType: supplier?.entityType || '',
     companyName: supplier?.companyName || '',
     tradingName: supplier?.tradingName || supplier?.tradingAs || '',
     registrationNumber: supplier?.registrationNumber || '',
@@ -123,6 +131,9 @@ export function draftPayloadForSection(section: string, draft: SupplierDraft): R
         registrationNumber: draft.registrationNumber,
         taxNumber: draft.taxNumber,
         vatNumber: draft.vatNumber,
+        // Empty clears it; both are optional.
+        businessType: draft.businessType,
+        entityType: draft.entityType,
         address: draft.address,
         categories: draft.categories,
         user: {
@@ -139,6 +150,8 @@ export function draftPayloadForSection(section: string, draft: SupplierDraft): R
         registrationNumber: draft.registrationNumber,
         taxNumber: draft.taxNumber,
         vatNumber: draft.vatNumber,
+        businessType: draft.businessType,
+        entityType: draft.entityType,
         address: draft.address,
         website: draft.website,
         incorporationDate: draft.incorporationDate || undefined,
@@ -190,6 +203,40 @@ function Field({ label, value, onChange, type = 'text', placeholder }: FieldProp
         className={inputClass}
       />
     </div>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  options
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: ReadonlyArray<{ value: string; label: string }>;
+}) {
+  return (
+    <div>
+      <label className={labelClass}>{label}</label>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className={inputClass}>
+        <option value="">Not specified</option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+/** Business and entity type: optional, edited on Overview and Corporate. */
+function ClassificationFields({ draft, patch }: { draft: SupplierDraft; patch: (p: Partial<SupplierDraft>) => void }) {
+  return (
+    <>
+      <SelectField label="Business type" value={draft.businessType} onChange={(v) => patch({ businessType: v })} options={BUSINESS_TYPE_OPTIONS} />
+      <SelectField label="Entity type" value={draft.entityType} onChange={(v) => patch({ entityType: v })} options={ENTITY_TYPE_OPTIONS} />
+    </>
   );
 }
 
@@ -259,6 +306,7 @@ export default function SupplierProfileEditor({ section, draft, onChange, onSave
           <Field label="Registration no." value={draft.registrationNumber} onChange={(v) => patch({ registrationNumber: v })} />
           <Field label="Tax number" value={draft.taxNumber} onChange={(v) => patch({ taxNumber: v })} />
           <Field label="VAT number" value={draft.vatNumber} onChange={(v) => patch({ vatNumber: v })} />
+          <ClassificationFields draft={draft} patch={patch} />
           <Field label="Email" value={draft.email} onChange={(v) => patch({ email: v })} type="email" />
           <Field label="Phone" value={draft.phone} onChange={(v) => patch({ phone: v })} />
           <Field label="Contact first name" value={draft.firstName} onChange={(v) => patch({ firstName: v })} />
@@ -303,6 +351,7 @@ export default function SupplierProfileEditor({ section, draft, onChange, onSave
           <Field label="Tax number" value={draft.taxNumber} onChange={(v) => patch({ taxNumber: v })} />
           <Field label="VAT number" value={draft.vatNumber} onChange={(v) => patch({ vatNumber: v })} />
           <Field label="Incorporation date" value={draft.incorporationDate} onChange={(v) => patch({ incorporationDate: v })} type="date" />
+          <ClassificationFields draft={draft} patch={patch} />
           <Field label="Country" value={draft.address.country} onChange={(v) => patchAddress({ country: v })} />
           <Field label="Website" value={draft.website} onChange={(v) => patch({ website: v })} placeholder="https://..." />
         </div>

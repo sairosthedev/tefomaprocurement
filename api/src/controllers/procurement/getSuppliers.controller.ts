@@ -4,6 +4,7 @@ import { SupplierProfile } from '../../models/index.js';
 import { maskBankNumbers } from '../../lib/bankMasking.js';
 import { escapeRegex } from '../../lib/regex.js';
 import { WITHOUT_DOCUMENT_FILES } from '../../services/supplierDocuments.service.js';
+import { awaitingActivationFilter } from '../../services/supplierActivation.service.js';
 
 /**
  * A query parameter as a plain string. `?status[$ne]=x` arrives as an object
@@ -18,6 +19,10 @@ const getSuppliers = async (req: Request, res: Response): Promise<any> => {
     const search = asString(req.query.search);
     const category = asString(req.query.category);
     const kys = asString(req.query.kys);
+    // `approval=awaiting`: pending suppliers submitted for activation.
+    // `approval=awaiting_me`: those the caller may decide — submitted by
+    // someone else. The dashboard item and sidebar badge count the latter.
+    const approval = asString(req.query.approval);
     // `view=picker`: only what a supplier picker shows (the RFQ form asks for
     // hundreds at once, and the full profile is over a kilobyte each).
     const picker = asString(req.query.view) === 'picker';
@@ -25,6 +30,9 @@ const getSuppliers = async (req: Request, res: Response): Promise<any> => {
     const query: any = { isDeleted: false };
 
     if (status) query.status = status;
+    if (approval === 'awaiting' || approval === 'awaiting_me') {
+      Object.assign(query, awaitingActivationFilter(approval === 'awaiting_me' ? req.user!._id : undefined));
+    }
     if (kys === 'pending') {
       query.kysComplete = false;
       query.kysExempt = { $ne: true };
@@ -49,7 +57,8 @@ const getSuppliers = async (req: Request, res: Response): Promise<any> => {
       query.$or = [
         { companyName: { $regex: pattern, $options: 'i' } },
         { tradingName: { $regex: pattern, $options: 'i' } },
-        { registrationNumber: { $regex: pattern, $options: 'i' } }
+        { registrationNumber: { $regex: pattern, $options: 'i' } },
+        { supplierCode: { $regex: pattern, $options: 'i' } }
       ];
     }
 
@@ -62,7 +71,7 @@ const getSuppliers = async (req: Request, res: Response): Promise<any> => {
     const [suppliers, total] = await Promise.all([
       picker
         ? SupplierProfile.find(query)
-            .select('companyName tradingName contactEmail categories status user')
+            .select('companyName tradingName supplierCode contactEmail categories status user')
             .populate('user', 'email')
             .sort({ createdAt: -1 })
             .skip(skip)

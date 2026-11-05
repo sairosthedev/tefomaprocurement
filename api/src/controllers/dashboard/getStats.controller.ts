@@ -5,6 +5,10 @@ import { User, SupplierProfile, RFQ, Quotation, PurchaseOrder, Inventory, Purcha
 import { buildRoleReportCharts } from '../../lib/reportAnalytics.js';
 import { resolveUserDepartmentIds } from '../../lib/departmentScope.js';
 import { currentBaseCurrency } from '../../tenancy/sbuContext.js';
+import { awaitingActivationFilter } from '../../services/supplierActivation.service.js';
+
+/** Where "awaiting your activation approval" leads: the list, filtered the same way. */
+const AWAITING_ACTIVATION_HREF = '/app/suppliers?approval=awaiting_me';
 
 /** How long a requester's rejected requisition stays under "Needs attention". */
 const RECENT_REJECTION_DAYS = 14;
@@ -197,6 +201,9 @@ const count = {
       (po: any) => withPending.has(po._id.toString()) || po.status === 'issued'
     ).length;
   },
+  // Suppliers someone else submitted for activation, which this user may
+  // approve. The same filter as the list it links to and the sidebar badge.
+  awaitingActivation: (userId: unknown) => SupplierProfile.countDocuments(awaitingActivationFilter(userId)),
   approvedPOValueSince: (since?: Date) =>
     sumOf(PurchaseOrder, {
       status: { $in: PO_APPROVED_STATUSES },
@@ -369,7 +376,8 @@ async function buildRoleStats(
         pendingAcceptance,
         acceptedRequisitions,
         sourcingRequisitions,
-        orderedRequisitions
+        orderedRequisitions,
+        awaitingActivation
       ] = await Promise.all([
         count.openRFQs(),
         count.pendingQuotations(),
@@ -384,7 +392,10 @@ async function buildRoleStats(
         PurchaseRequisition.countDocuments({
           $or: [{ purchaseOrder: { $exists: true, $ne: null } }, { status: 'ordered' }],
           isDeleted: false
-        })
+        }),
+        // Only the Head of Procurement, who shares this dashboard, approves
+        // activations; an officer only submits them.
+        isProcurementHead(user) ? count.awaitingActivation(user._id) : 0
       ]);
 
       return {
@@ -404,6 +415,7 @@ async function buildRoleStats(
           orderedRequisitions: { value: orderedRequisitions, label: 'Ordered' }
         },
         attentionItems: needsAttention([
+          { id: 'awaiting-activation', label: 'Suppliers awaiting your activation approval', count: awaitingActivation, href: AWAITING_ACTIVATION_HREF, severity: 'high' },
           { id: 'pending-acceptance', label: 'Requisitions awaiting acceptance', count: pendingAcceptance, href: '/app/requisitions?status=pending_acceptance', severity: 'high' },
           { id: 'pending-quotations', label: 'Quotations awaiting evaluation', count: pendingQuotations, href: '/app/quotations?status=submitted', severity: 'medium' },
           { id: 'open-rfqs', label: 'Open RFQs collecting quotations', count: openRFQs, href: '/app/rfqs?status=open', severity: 'low' }
@@ -442,7 +454,7 @@ async function buildRoleStats(
     }
 
     case 'coo': {
-      const [pendingApproval, cooApproved, pendingCooStatusValue, totalPOs, queueValue, majorPOs] = await Promise.all([
+      const [pendingApproval, cooApproved, pendingCooStatusValue, totalPOs, queueValue, majorPOs, awaitingActivation] = await Promise.all([
         PurchaseOrder.countDocuments(COO_QUEUE_FILTER),
         PurchaseOrder.countDocuments({ cooApproved: true, isDeleted: false }),
         sumOf(PurchaseOrder, { status: 'pending_coo', isDeleted: false }, 'totalAmount'),
@@ -455,7 +467,8 @@ async function buildRoleStats(
             { totalAmountUsd: { $exists: false }, totalAmount: { $gte: 50000 } }
           ],
           isDeleted: false
-        })
+        }),
+        count.awaitingActivation(user._id)
       ]);
 
       return {
@@ -473,7 +486,8 @@ async function buildRoleStats(
         },
         attentionItems: needsAttention([
           { id: 'pending-coo', label: 'Purchase orders awaiting your authorization', count: pendingApproval, href: '/app/approvals', severity: 'high' },
-          { id: 'major-pos', label: 'Major POs (≥ USD 50k) pending', count: majorPOs, href: '/app/approvals', severity: 'high' }
+          { id: 'major-pos', label: 'Major POs (≥ USD 50k) pending', count: majorPOs, href: '/app/approvals', severity: 'high' },
+          { id: 'awaiting-activation', label: 'Suppliers awaiting your activation approval', count: awaitingActivation, href: AWAITING_ACTIVATION_HREF, severity: 'high' }
         ])
       };
     }

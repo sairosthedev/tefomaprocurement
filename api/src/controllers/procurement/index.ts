@@ -18,6 +18,13 @@ import {
   approveBankChange,
   rejectBankChange
 } from './bankChange.controller.js';
+import {
+  submitSupplierActivation,
+  approveSupplierActivation,
+  returnSupplierActivation,
+  rejectSupplierRegistration,
+  reopenSupplierRegistration
+} from './supplierActivation.controller.js';
 import createRFQ from './createRFQ.controller.js';
 import getRFQs from './getRFQs.controller.js';
 import getRFQById from './getRFQById.controller.js';
@@ -84,6 +91,11 @@ export default {
   verifyBankChangeCallback,
   approveBankChange,
   rejectBankChange,
+  submitSupplierActivation,
+  approveSupplierActivation,
+  returnSupplierActivation,
+  rejectSupplierRegistration,
+  reopenSupplierRegistration,
   updateKysChecklist,
   verifyKys,
   uploadSupplierDocument,

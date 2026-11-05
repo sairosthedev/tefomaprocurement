@@ -6,6 +6,7 @@ import { createAuditLog } from '../../middleware/index.js';
 import { createNotification } from '../../services/notification.service.js';
 import { transitionSupplierStatus } from '../../services/supplierEligibility.service.js';
 import { withoutDocumentFiles } from '../../services/supplierDocuments.service.js';
+import { submitActivationRequest } from '../../services/supplierActivation.service.js';
 
 const approveSupplier = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -25,6 +26,23 @@ const approveSupplier = async (req: Request, res: Response): Promise<any> => {
         success: false,
         message: 'This supplier is blacklisted. Lift the blacklisting before approving them.'
       });
+    }
+    if (supplier.status === 'rejected') {
+      return res.status(400).json({
+        success: false,
+        message: "This supplier's registration was rejected. Reopen the registration before approving them."
+      });
+    }
+
+    // Onboarding takes two people: for a pending supplier this records the
+    // request for the Head of Procurement or the COO to approve, and applies
+    // nothing — not the activation and not the override.
+    if (supplier.status === 'pending') {
+      const outcome = await submitActivationRequest(supplier, req, {
+        notes,
+        overrideReason: overrideKys ? reason : undefined
+      });
+      return res.status(outcome.status).json(outcome.body);
     }
 
     const completion = computeKysCompletionForTier(
@@ -53,7 +71,8 @@ const approveSupplier = async (req: Request, res: Response): Promise<any> => {
     }
 
     const previousStatus = supplier.status;
-    // Activation grants spend authorization. The approver's notes go to the
+    // From here the supplier was active, suspended or dormant: re-approval,
+    // not onboarding. Activation grants spend authorization. The approver's notes go to the
     // status history, not `notes` (the supplier's services description).
     transitionSupplierStatus(
       supplier,

@@ -186,6 +186,10 @@ export default function Compliance() {
                 <span className="text-gray-500">Blacklisted</span>
                 <span className="font-medium text-gray-900">{summary?.blacklisted ?? 0}</span>
               </div>
+              <div className="flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2">
+                <span className="text-gray-500">Registrations rejected</span>
+                <span className="font-medium text-gray-900">{summary?.rejected ?? 0}</span>
+              </div>
             </div>
           </div>
 
@@ -194,7 +198,7 @@ export default function Compliance() {
             <ul className="mt-3 space-y-2 text-sm text-gray-600">
               <li>• Open pending suppliers → Documents tab.</li>
               <li>• Upload compliance files and complete the KYS checklist.</li>
-              <li>• Use Verify KYS &amp; Activate when ready.</li>
+              <li>• Submit for activation when ready; the Head of Procurement or the COO approves it.</li>
             </ul>
             <button
               type="button"

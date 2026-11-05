@@ -19,18 +19,27 @@ import {
   CheckCircle,
   Clock,
   Loader2,
+  RotateCcw,
+  Send,
   ShieldCheck,
   XCircle
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import Modal from '../components/Modal';
+import {
+  businessTypeLabel,
+  entityTypeLabel,
+  isAwaitingActivation,
+  supplierStatusLabel
+} from '../lib/supplierTypes';
 
 const statusColors: any = {
   pending: 'bg-amber-100 text-amber-700',
   active: 'bg-green-100 text-green-700',
   suspended: 'bg-gray-100 text-gray-700',
   blacklisted: 'bg-red-100 text-red-700',
-  dormant: 'bg-gray-100 text-gray-700'
+  dormant: 'bg-gray-100 text-gray-700',
+  rejected: 'bg-red-100 text-red-700'
 };
 
 const statusIcons: any = {
@@ -38,8 +47,16 @@ const statusIcons: any = {
   active: CheckCircle,
   suspended: XCircle,
   blacklisted: XCircle,
-  dormant: Clock
+  dormant: Clock,
+  rejected: XCircle
 };
+
+// Onboarding decisions that need a written reason.
+const REASONED_ACTIONS = ['blacklist', 'reinstate', 'returnActivation', 'rejectRegistration', 'reopenRegistration'];
+
+const KYS_LABELS: Record<string, string> = Object.fromEntries(
+  KYS_CHECKLIST_ITEMS.map((item) => [item.key, item.label])
+);
 
 function VettingForm({ supplier, onSaved, showToast }: { supplier: any; onSaved: (s: any) => void; showToast: (m: string, t: string) => void }) {
   const [form, setForm] = React.useState({
@@ -141,6 +158,10 @@ export default function SupplierDetails() {
   // The COO and admins see the full record but maintain nothing on it: editing,
   // KYS, tiering and status changes are procurement's.
   const canManage = user?.role === 'procurement_officer' || isProcurementHead(user);
+  // Approving an activation, returning it, and rejecting or reopening a
+  // registration are the Head of Procurement's and the COO's.
+  const canDecide = user?.role === 'coo' || isProcurementHead(user);
+  const userId = String(user?._id || user?.id || '');
 
   const [supplier, setSupplier] = useState<any>(null);
   const [evaluations, setEvaluations] = useState<any[]>([]);
@@ -154,6 +175,9 @@ export default function SupplierDetails() {
   const [actionReason, setActionReason] = useState('');
   const [overrideReason, setOverrideReason] = useState('');
   const [showOverrideConfirm, setShowOverrideConfirm] = useState(false);
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [submitNotes, setSubmitNotes] = useState('');
+  const [submitOverrideReason, setSubmitOverrideReason] = useState('');
   const [profileDraft, setProfileDraft] = useState<SupplierDraft | null>(null);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileEditing, setProfileEditing] = useState(false);
@@ -338,6 +362,8 @@ export default function SupplierDetails() {
     await load();
   };
 
+  // Reactivation of a suspended or dormant supplier. A pending one is put
+  // forward with Submit for activation instead (see submitForActivation).
   const verifyKys = async (overrideKys = false) => {
     if (!supplier) return;
     if (!canRunKysActivation) {
@@ -350,13 +376,14 @@ export default function SupplierDetails() {
     }
     try {
       setKysSaving(true);
-      await procurementAPI.verifyKys(supplier._id, {
+      const res = await procurementAPI.verifyKys(supplier._id, {
         approveForActivation: true,
         overrideKys,
         reason: overrideKys ? overrideReason.trim() : undefined
       });
       showToast(
-        overrideKys ? 'Supplier activated without KYS (override applied)' : 'KYS verified and supplier activated',
+        res.data?.message ||
+          (overrideKys ? 'Supplier activated without KYS (override applied)' : 'KYS verified and supplier activated'),
         'success'
       );
       await load();
@@ -429,12 +456,69 @@ export default function SupplierDetails() {
     }
   };
 
+  // Maker: put a pending supplier forward. KYS short of its tier needs an
+  // override reason, which the approver sees.
+  const submitForActivation = async () => {
+    if (!supplier) return;
+    if (!completion.isComplete && !submitOverrideReason.trim()) {
+      showToast('KYS is incomplete — a KYS override reason is required', 'error');
+      return;
+    }
+    try {
+      setKysSaving(true);
+      const res = await procurementAPI.submitSupplierActivation(supplier._id, {
+        notes: submitNotes.trim() || undefined,
+        kysOverrideReason: completion.isComplete ? undefined : submitOverrideReason.trim()
+      });
+      showToast(res.data?.message || 'Submitted for activation', 'success');
+      setShowSubmitModal(false);
+      setSubmitNotes('');
+      setSubmitOverrideReason('');
+      await load();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Could not submit for activation', 'error');
+    } finally {
+      setKysSaving(false);
+    }
+  };
+
+  // Checker decisions and the registration outcome. Each reloads the record,
+  // which carries the names the banners show.
+  const runOnboardingDecision = async (call: () => Promise<any>, fallback: string) => {
+    try {
+      setSaving(true);
+      const res = await call();
+      showToast(res.data?.message || 'Done', 'success');
+      setPendingAction(null);
+      setActionReason('');
+      await load();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || fallback, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const confirmPendingAction = () => {
     if (pendingAction === 'suspend') return runSetStatus('suspended');
     if (pendingAction === 'reactivate') return runSetStatus('active');
     if (pendingAction === 'dormant') return runSetStatus('dormant');
     if (pendingAction === 'blacklist') return runBlacklist();
     if (pendingAction === 'reinstate') return runReinstate();
+    if (!supplier) return;
+    const reason = { reason: actionReason.trim() };
+    if (pendingAction === 'approveActivation') {
+      return runOnboardingDecision(() => procurementAPI.approveSupplierActivation(supplier._id), 'Could not approve the activation');
+    }
+    if (pendingAction === 'returnActivation') {
+      return runOnboardingDecision(() => procurementAPI.returnSupplierActivation(supplier._id, reason), 'Could not return the request');
+    }
+    if (pendingAction === 'rejectRegistration') {
+      return runOnboardingDecision(() => procurementAPI.rejectSupplierRegistration(supplier._id, reason), 'Could not reject the registration');
+    }
+    if (pendingAction === 'reopenRegistration') {
+      return runOnboardingDecision(() => procurementAPI.reopenSupplierRegistration(supplier._id, reason), 'Could not reopen the registration');
+    }
   };
 
   const closePendingAction = () => {
@@ -455,7 +539,23 @@ export default function SupplierDetails() {
   // A blacklisted supplier must have the blacklisting lifted first; the API
   // refuses KYS verification for them, so the button is not offered.
   const isBlacklisted = supplier?.status === 'blacklisted';
-  const canRunKysActivation = supplier?.status !== 'active' && !isBlacklisted;
+  const isRejected = supplier?.status === 'rejected';
+  const isPending = supplier?.status === 'pending';
+  const canRunKysActivation = supplier?.status !== 'active' && !isBlacklisted && !isRejected;
+  // Activation is two people's: whoever submitted it cannot also approve it.
+  const awaiting = isAwaitingActivation(supplier);
+  const activationRequest = supplier?.activationRequest;
+  const requester = activationRequest?.requestedBy;
+  const requesterName =
+    requester && typeof requester === 'object'
+      ? [requester.firstName, requester.lastName].filter(Boolean).join(' ') || 'a colleague'
+      : 'a colleague';
+  const isRequester = !!requester && String(requester?._id || requester) === userId;
+  const canDecideThis = canDecide && !isRequester;
+  const rejectedByName =
+    supplier?.rejectedBy && typeof supplier.rejectedBy === 'object'
+      ? [supplier.rejectedBy.firstName, supplier.rejectedBy.lastName].filter(Boolean).join(' ')
+      : '';
   const directorCount = Array.isArray(supplier?.contactPersons) ? supplier.contactPersons.length : 0;
   const referenceCount = Array.isArray(supplier?.clientReferrals) ? supplier.clientReferrals.length : 0;
   const tabs = [
@@ -509,6 +609,11 @@ export default function SupplierDetails() {
         : supplier.transactability === 'prospective' ? 'May quote, not be awarded' : 'Cannot be awarded'
     },
     {
+      label: 'Business',
+      value: businessTypeLabel(supplier.businessType) || 'Not specified',
+      sub: entityTypeLabel(supplier.entityType) || undefined
+    },
+    {
       label: 'Performance',
       value: performanceScore,
       sub: latestEvaluation ? `Evaluated ${formatDate(latestEvaluation.createdAt)}` : 'Not evaluated yet'
@@ -525,14 +630,24 @@ export default function SupplierDetails() {
         backTo="/app/suppliers"
         backLabel="Back to suppliers"
         title={supplier.companyName}
-        subtitle={(supplier.tradingName || supplier.tradingAs) ? `Trading as ${supplier.tradingName || supplier.tradingAs}` : undefined}
+        subtitle={[
+          supplier.supplierCode,
+          (supplier.tradingName || supplier.tradingAs) ? `Trading as ${supplier.tradingName || supplier.tradingAs}` : ''
+        ].filter(Boolean).join(' · ') || undefined}
         bottomSpacing="mb-4"
         actions={
           <>
             <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${statusColors[supplier.status]}`}>
               <StatusIcon className="h-4 w-4" />
-              {supplier.status.charAt(0).toUpperCase() + supplier.status.slice(1)}
+              {supplierStatusLabel(supplier)}
             </span>
+            {/* While a request waits, these decisions sit on its banner instead. */}
+            {canDecide && isPending && !awaiting && (
+              <button type="button" onClick={() => setPendingAction('rejectRegistration')} className={`${actionButton} text-red-700 border-red-200 hover:bg-red-50`}>
+                <XCircle className="h-4 w-4" />
+                Reject registration
+              </button>
+            )}
             {canManage && (supplier.status === 'suspended' || supplier.status === 'dormant') && (
               <button type="button" onClick={() => setPendingAction('reactivate')} className={`${actionButton} bg-primary border-primary text-white hover:bg-primary-dark`}>
                 <CheckCircle className="h-4 w-4" />
@@ -570,6 +685,64 @@ export default function SupplierDetails() {
       {supplier.status === 'blacklisted' && supplier.blacklistReason && (
         <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
           <span className="font-medium">Blacklist reason: </span>{supplier.blacklistReason}
+        </div>
+      )}
+      {awaiting && (
+        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1">
+              <p className="font-medium">
+                Awaiting activation approval — submitted by {requesterName} on {formatDate(activationRequest?.requestedAt)}
+              </p>
+              {activationRequest?.kysOverride && (
+                <p><span className="font-medium">KYS override requested: </span>{activationRequest.kysOverrideReason}</p>
+              )}
+              {activationRequest?.notes && (
+                <p><span className="font-medium">Notes: </span>{activationRequest.notes}</p>
+              )}
+              {!canDecideThis && (
+                <p className="text-amber-800">
+                  {isRequester
+                    ? 'You submitted this, so the Head of Procurement or the COO — someone other than you — must approve it.'
+                    : 'Needs approval by the Head of Procurement or the COO.'}
+                </p>
+              )}
+            </div>
+            {canDecideThis && (
+              <div className="flex flex-wrap gap-2 shrink-0">
+                <button type="button" onClick={() => setPendingAction('approveActivation')} className={`${actionButton} bg-primary border-primary text-white hover:bg-primary-dark`}>
+                  <CheckCircle className="h-4 w-4" />
+                  Approve activation
+                </button>
+                <button type="button" onClick={() => setPendingAction('returnActivation')} className={`${actionButton} bg-white text-gray-700 border-gray-300 hover:bg-gray-50`}>
+                  <RotateCcw className="h-4 w-4" />
+                  Return
+                </button>
+                <button type="button" onClick={() => setPendingAction('rejectRegistration')} className={`${actionButton} bg-white text-red-700 border-red-200 hover:bg-red-50`}>
+                  <XCircle className="h-4 w-4" />
+                  Reject registration
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      {isRejected && (
+        <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="font-medium">
+                Registration rejected{rejectedByName ? ` by ${rejectedByName}` : ''}{supplier.rejectedAt ? ` on ${formatDate(supplier.rejectedAt)}` : ''}
+              </p>
+              {supplier.rejectionReason && <p><span className="font-medium">Reason: </span>{supplier.rejectionReason}</p>}
+            </div>
+            {canDecide && (
+              <button type="button" onClick={() => setPendingAction('reopenRegistration')} className={`${actionButton} shrink-0 bg-white text-gray-700 border-gray-300 hover:bg-gray-50`}>
+                <RotateCcw className="h-4 w-4" />
+                Reopen registration
+              </button>
+            )}
+          </div>
         </div>
       )}
       {supplier.kysExempt && supplier.kysExemptReason && (
@@ -611,7 +784,7 @@ export default function SupplierDetails() {
           const DOC_STEPS = [
             { label: 'Documents', done: checklistDocuments.length > 0 },
             { label: 'Checklist', done: completion.isComplete },
-            { label: 'Verify', done: supplier.status === 'active' }
+            { label: isPending || isRejected ? 'Activate' : 'Verify', done: supplier.status === 'active' }
           ];
           return (
             <div className="space-y-6">
@@ -732,7 +905,9 @@ export default function SupplierDetails() {
                   <div className={`${panel} space-y-3`}>
                     <div className="flex items-center gap-2">
                       <ShieldCheck className="h-4 w-4 text-primary" />
-                      <p className="text-sm font-semibold text-gray-900">Verify KYS &amp; activate</p>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {isPending || isRejected ? 'Activation' : 'Verify KYS & activate'}
+                      </p>
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -745,12 +920,34 @@ export default function SupplierDetails() {
                       <p className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">
                         Supplier is blacklisted — lift the blacklisting before verifying KYS.
                       </p>
+                    ) : isRejected ? (
+                      <p className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">
+                        Registration rejected — it must be reopened before the supplier can be put forward for activation.
+                      </p>
                     ) : !canRunKysActivation ? (
                       <p className="rounded-lg border border-green-100 bg-green-50 px-3 py-2 text-sm text-green-700">
                         Supplier is active — KYS verification is locked.
                       </p>
+                    ) : awaiting ? (
+                      <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                        Submitted for activation by {requesterName} on {formatDate(activationRequest?.requestedAt)} — awaiting approval by the Head of Procurement or the COO.
+                      </p>
                     ) : !canManage ? (
                       <p className="text-sm text-gray-400">Managed by procurement</p>
+                    ) : isPending ? (
+                      // Onboarding takes two people: this puts the supplier
+                      // forward, and someone else approves it.
+                      <div className="space-y-2">
+                        <button type="button" onClick={() => setShowSubmitModal(true)} disabled={kysSaving}
+                          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50">
+                          <Send className="h-4 w-4" />
+                          Submit for activation
+                        </button>
+                        <p className="text-xs text-gray-500">
+                          The Head of Procurement or the COO then approves it.
+                          {!completion.isComplete && ' KYS is incomplete, so an override reason will be needed.'}
+                        </p>
+                      </div>
                     ) : showOverrideConfirm ? (
                       <div className="space-y-3">
                         <textarea value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)}
@@ -912,7 +1109,11 @@ export default function SupplierDetails() {
             : pendingAction === 'reactivate' ? 'Reactivate this supplier?'
               : pendingAction === 'dormant' ? 'Mark this supplier as dormant?'
                 : pendingAction === 'reinstate' ? 'Lift this blacklisting?'
-                  : 'Blacklist this supplier?'
+                  : pendingAction === 'approveActivation' ? 'Approve this activation?'
+                    : pendingAction === 'returnActivation' ? 'Return this activation request?'
+                      : pendingAction === 'rejectRegistration' ? 'Reject this registration?'
+                        : pendingAction === 'reopenRegistration' ? 'Reopen this registration?'
+                          : 'Blacklist this supplier?'
         }
         subtitle={supplier.companyName}
         footer={
@@ -928,9 +1129,11 @@ export default function SupplierDetails() {
             <button
               type="button"
               onClick={confirmPendingAction}
-              disabled={saving || ((pendingAction === 'blacklist' || pendingAction === 'reinstate') && !actionReason.trim())}
+              disabled={saving || (REASONED_ACTIONS.includes(pendingAction) && !actionReason.trim())}
               className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 ${
-                pendingAction === 'blacklist' ? 'border border-red-200 text-red-700 hover:bg-red-50' : 'bg-primary text-white hover:bg-primary-dark'
+                pendingAction === 'blacklist' || pendingAction === 'rejectRegistration'
+                  ? 'border border-red-200 text-red-700 hover:bg-red-50'
+                  : 'bg-primary text-white hover:bg-primary-dark'
               }`}
             >
               {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
@@ -939,11 +1142,37 @@ export default function SupplierDetails() {
           </>
         }
       >
-        {pendingAction === 'suspend' || pendingAction === 'blacklist' || pendingAction === 'reinstate' ? (
+        {pendingAction === 'approveActivation' ? (
+          <div className="space-y-2 text-sm text-gray-600">
+            <p>
+              The supplier becomes active and spend-authorised: it can be awarded work and paid. Submitted by {requesterName}.
+            </p>
+            {activationRequest?.kysOverride && (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">
+                KYS is incomplete. Approving grants the KYS override in your name: {activationRequest.kysOverrideReason}
+              </p>
+            )}
+          </div>
+        ) : pendingAction === 'suspend' || REASONED_ACTIONS.includes(pendingAction) ? (
           <>
             {pendingAction === 'reinstate' && (
               <p className="text-sm text-gray-600 mb-3">
-                The supplier returns to pending and must be re-approved through KYS before they can be awarded work.
+                The supplier returns to pending and must be submitted for activation, and approved by someone else, before they can be awarded work.
+              </p>
+            )}
+            {pendingAction === 'returnActivation' && (
+              <p className="text-sm text-gray-600 mb-3">
+                The request goes back to {requesterName}. The supplier stays pending and can be submitted again.
+              </p>
+            )}
+            {pendingAction === 'rejectRegistration' && (
+              <p className="text-sm text-gray-600 mb-3">
+                The supplier cannot be invited, quote or be awarded work. They are told the reason and can still sign in.
+              </p>
+            )}
+            {pendingAction === 'reopenRegistration' && (
+              <p className="text-sm text-gray-600 mb-3">
+                The registration returns to pending, from where it must be submitted for activation and approved.
               </p>
             )}
             <textarea
@@ -953,7 +1182,10 @@ export default function SupplierDetails() {
               placeholder={
                 pendingAction === 'blacklist' ? 'Reason for blacklisting (required)'
                   : pendingAction === 'reinstate' ? 'Reason for lifting the blacklisting (required)'
-                    : 'Reason for suspension (required)'
+                    : pendingAction === 'returnActivation' ? 'Why it is being returned (required)'
+                      : pendingAction === 'rejectRegistration' ? 'Reason for rejecting — the supplier is shown this (required)'
+                        : pendingAction === 'reopenRegistration' ? 'Reason for reopening (required)'
+                          : 'Reason for suspension (required)'
               }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
@@ -965,6 +1197,66 @@ export default function SupplierDetails() {
               : 'The supplier stays on the register but is set aside until reactivated.'}
           </p>
         )}
+      </Modal>
+
+      <Modal
+        isOpen={showSubmitModal}
+        onClose={() => { if (!kysSaving) setShowSubmitModal(false); }}
+        title="Submit for activation"
+        subtitle={supplier.companyName}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowSubmitModal(false)}
+              disabled={kysSaving}
+              className="px-3 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={submitForActivation}
+              disabled={kysSaving || (!completion.isComplete && !submitOverrideReason.trim())}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary-dark transition-colors disabled:opacity-50"
+            >
+              {kysSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+              Submit
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-3 text-sm">
+          <p className="text-gray-600">
+            The Head of Procurement or the COO — not you — approves the activation. Until then the supplier stays pending: it may be invited to quote, but not awarded work.
+          </p>
+          {!completion.isComplete && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900 space-y-1">
+              <p className="font-medium">
+                KYS is incomplete for this tier ({completion.ticked}/{completion.keys.length} required checks). Missing:
+              </p>
+              <ul className="list-disc pl-5 text-xs space-y-0.5">
+                {completion.missing.map((key: string) => <li key={key}>{KYS_LABELS[key] || key}</li>)}
+              </ul>
+            </div>
+          )}
+          {!completion.isComplete && (
+            <textarea
+              value={submitOverrideReason}
+              onChange={(e) => setSubmitOverrideReason(e.target.value)}
+              rows={3}
+              placeholder="Reason for the KYS override (required) — the approver sees it"
+              className="w-full px-3 py-2 border border-amber-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-200"
+            />
+          )}
+          <textarea
+            value={submitNotes}
+            onChange={(e) => setSubmitNotes(e.target.value)}
+            rows={2}
+            placeholder="Notes for the approver (optional)"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </div>
       </Modal>
     </div>
   );

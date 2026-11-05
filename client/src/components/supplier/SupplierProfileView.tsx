@@ -3,6 +3,7 @@ import { Mail, Phone } from 'lucide-react';
 import { getCategoryName } from '../../lib/constants';
 import type { SupplierDraft } from './SupplierProfileEditor';
 import { supplierToDraft } from './SupplierProfileEditor';
+import { businessTypeLabel, entityTypeLabel, supplierStatusLabel } from '../../lib/supplierTypes';
 
 function valueOrDash(value: unknown) {
   return value === null || value === undefined || value === '' ? '-' : String(value);
@@ -37,11 +38,14 @@ export default function SupplierProfileView({ section, supplier }: Props) {
     return (
       <div className="space-y-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field label="Supplier code" value={draft.supplierCode} />
           <Field label="Company name" value={draft.companyName} />
           <Field label="Trading name" value={draft.tradingName} />
           <Field label="Registration no." value={draft.registrationNumber} />
           <Field label="Tax number" value={draft.taxNumber} />
           <Field label="VAT number" value={draft.vatNumber} />
+          <Field label="Business type" value={businessTypeLabel(draft.businessType)} />
+          <Field label="Entity type" value={entityTypeLabel(draft.entityType)} />
           <div>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Contact</p>
             <p className="text-gray-900 text-sm flex items-center gap-2">
@@ -58,7 +62,7 @@ export default function SupplierProfileView({ section, supplier }: Props) {
           </div>
           <Field label="Address" value={addressLine} />
           <Field label="Registered" value={supplier.createdAt ? new Date(supplier.createdAt).toLocaleDateString('en-ZA') : '-'} />
-          <Field label="Supplier status" value={supplier.status ? supplier.status.charAt(0).toUpperCase() + supplier.status.slice(1) : '-'} />
+          <Field label="Supplier status" value={supplier.status ? supplierStatusLabel(supplier) : '-'} />
         </div>
         <div>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Categories</p>
@@ -86,6 +90,8 @@ export default function SupplierProfileView({ section, supplier }: Props) {
         <Field label="Registration no." value={draft.registrationNumber} />
         <Field label="Tax number" value={draft.taxNumber} />
         <Field label="VAT number" value={draft.vatNumber} />
+        <Field label="Business type" value={businessTypeLabel(draft.businessType)} />
+        <Field label="Entity type" value={entityTypeLabel(draft.entityType)} />
         <Field
           label="Incorporation date"
           value={draft.incorporationDate ? new Date(draft.incorporationDate).toLocaleDateString('en-ZA') : '-'}

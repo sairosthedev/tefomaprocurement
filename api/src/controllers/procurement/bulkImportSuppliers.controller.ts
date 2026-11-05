@@ -5,6 +5,10 @@ import { isValidCategoryCode, mapLegacyCategory } from '@fossil/shared';
 import { User, SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { registrationConflict } from '../../services/supplierEligibility.service.js';
+import {
+  classificationFields,
+  readSupplierClassification
+} from '../../services/supplierClassification.service.js';
 
 const bulkImportSuppliers = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -106,6 +110,18 @@ const bulkImportSuppliers = async (req: Request, res: Response): Promise<any> =>
 
         const finalCategories = Array.from(new Set(resolvedCategories));
 
+        // Optional columns. An unknown value fails the row, as an unknown
+        // category does, rather than being dropped without a word.
+        const classification = readSupplierClassification(supplier);
+        if (classification.error) {
+          results.failed.push({
+            companyName,
+            email,
+            reason: `${classification.error}, or leave the column empty.`
+          });
+          continue;
+        }
+
         // Check if email already exists
         const existingUser = await User.findOne({ email: email.toLowerCase() });
         if (existingUser) {
@@ -151,6 +167,7 @@ const bulkImportSuppliers = async (req: Request, res: Response): Promise<any> =>
             taxNumber,
             vatNumber,
             tradingName: tradingAs,
+            ...classificationFields(classification),
             contactPersons: [{
               name: contactPerson,
               email: email.toLowerCase(),
@@ -181,6 +198,7 @@ const bulkImportSuppliers = async (req: Request, res: Response): Promise<any> =>
 
         results.success.push({
           id: supplierProfile._id,
+          supplierCode: supplierProfile.supplierCode,
           companyName,
           email,
           tempPassword,
