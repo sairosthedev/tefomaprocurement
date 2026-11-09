@@ -11,7 +11,7 @@ import {
   effectiveReorderLevel,
   stockStatus,
   suggestedRestockQuantity,
-  isValidCategoryCode,
+  categoryCodeForStock,
   USAGE_WINDOW_DAYS
 } from '@fossil/shared';
 import PageHeader from '../components/PageHeader';
@@ -385,7 +385,9 @@ export default function Inventory() {
     const { level } = levelOf(inv);
     setRestockFor(inv);
     setRestockQty(String(suggestedRestockQuantity(inv.quantityOnHand || 0, level, inv.reorderQuantity)));
-    setRestockCategory(isValidCategoryCode(inv.item?.category || '') ? inv.item.category : '');
+    // The item's own category, translated to the supplier category; blank only
+    // when it cannot be told (e.g. "Consumables").
+    setRestockCategory(categoryCodeForStock(inv.item?.category));
     setRestockNote('');
   };
 
@@ -657,7 +659,12 @@ export default function Inventory() {
                       </td>
                       <td className="py-2 px-3 border-b border-gray-100">
                         <p className="font-medium text-gray-900">{item.name || '-'}</p>
-                        <p className="text-xs text-gray-500 truncate max-w-xs">{item.description || ''}</p>
+                        {/* Which store this row is: one item has a row per site it is held at. */}
+                        <p className="text-xs text-gray-500 truncate max-w-xs">
+                          {[inv.site?.name, item.description && item.description !== item.name ? item.description : '']
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </p>
                       </td>
                       <td className="py-2 px-3 border-b border-gray-100">
                         <span className="text-gray-600" title={item.category || ''}>
@@ -1058,6 +1065,22 @@ export default function Inventory() {
                 reorder level {levelOf(restockFor).level}.
               </p>
             </div>
+            {(restockFor.otherSites || []).length > 0 && (
+              <div className="rounded-xl bg-blue-50 border border-blue-100 p-3 text-sm text-blue-900">
+                <p className="font-medium">Also in stock elsewhere</p>
+                <ul className="mt-1 space-y-0.5">
+                  {restockFor.otherSites.map((other: any) => (
+                    <li key={String(other.siteId)}>
+                      {other.siteName}: {other.available} {restockFor.item?.unit || 'each'} available
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-1 text-xs text-blue-800">
+                  Moving stock across may be quicker and cheaper than buying.{' '}
+                  <Link to="/app/stock-transfers" className="font-medium underline">Start a transfer</Link>
+                </p>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Quantity to order</label>
               <input

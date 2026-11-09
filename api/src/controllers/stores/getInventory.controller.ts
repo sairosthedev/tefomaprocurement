@@ -188,6 +188,23 @@ const getInventory = async (req: Request, res: Response): Promise<any> => {
       for (const row of rows) {
         row.openRestock = bySiteItem.get(`${row.site?._id}:${row.item?._id}`) || null;
       }
+
+      // The same item free at other sites: a transfer can be quicker than
+      // buying, and it explains why one item shows on two rows.
+      const elsewhere = await Inventory.find({ item: { $in: itemIds }, isDeleted: false, quantityOnHand: { $gt: 0 } })
+        .select('item site quantityOnHand quantityReserved')
+        .populate('site', 'name')
+        .lean();
+      for (const row of rows) {
+        row.otherSites = (elsewhere as any[])
+          .filter((inv) => String(inv.item) === String(row.item?._id) && String(inv.site?._id) !== String(row.site?._id))
+          .map((inv) => ({
+            siteId: inv.site?._id,
+            siteName: inv.site?.name || 'another site',
+            available: Math.max(0, (inv.quantityOnHand || 0) - (inv.quantityReserved || 0))
+          }))
+          .filter((other) => other.available > 0);
+      }
     }
 
     res.status(200).json({

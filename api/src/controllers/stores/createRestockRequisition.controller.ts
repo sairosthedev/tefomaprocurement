@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import {
   PR_TERMINAL_STATUSES,
+  categoryCodeForStock,
   effectiveReorderLevel,
   getCategoryName,
   isValidCategoryCode,
@@ -44,7 +45,9 @@ const createRestockRequisition = async (req: Request, res: Response): Promise<an
 
     // It goes straight to procurement, where suppliers are matched by
     // category, so the category is settled here rather than in stores review.
-    const category = String(req.body.category || item.category || '').trim();
+    // The item's own catalogue category is used when it maps to one; stores
+    // is asked only when it does not.
+    const category = String(req.body.category || categoryCodeForStock(item.category) || '').trim();
     if (!isValidCategoryCode(category)) {
       return res.status(400).json({ success: false, message: `Choose a category for ${item.name}` });
     }
@@ -124,6 +127,13 @@ const createRestockRequisition = async (req: Request, res: Response): Promise<an
       newData: { restock: true, item: item._id, quantity, onHand, reorderLevel: level },
       req
     });
+
+    // Remember a category stores had to pick, so the item is not asked about
+    // again. Items whose category already maps keep their own wording.
+    if (!categoryCodeForStock(item.category)) {
+      item.category = category;
+      await item.save();
+    }
 
     // From here it is any other requisition: budget check, then the head.
     const { requisition: submitted, budgetCheck } = await submitRequisitionForApproval(requisition, req);
