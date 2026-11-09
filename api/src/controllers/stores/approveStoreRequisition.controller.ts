@@ -28,8 +28,11 @@ const approveStoreRequisition = async (req: Request, res: Response): Promise<any
 
     // Marking it ready tells the requester to come and collect, so the stock
     // has to be at this store: the one the goods will be handed over from.
+    // Ready to collect is a promise, so the stock is reserved for it: another
+    // issue cannot take it before the requester arrives. Lines for the same
+    // item are added up before checking.
     const availabilityCheck = [];
-    
+    const toReserve = new Map<string, { inventory: any; quantity: number; name: string }>();
     for (const reqItem of requisition.items) {
       const inventory = await Inventory.findOne({ item: reqItem.item._id, site: requisition.site, isDeleted: false });
       if (!inventory) {
@@ -38,13 +41,15 @@ const approveStoreRequisition = async (req: Request, res: Response): Promise<any
           message: `${reqItem.item.name || reqItem.item.description} is not stocked at this store`
         });
       }
-      
-      if (inventory.quantityAvailable < reqItem.quantityRequested) {
-        availabilityCheck.push({
-          item: reqItem.item.name || reqItem.item.description,
-          requested: reqItem.quantityRequested,
-          available: inventory.quantityAvailable
-        });
+      const key = inventory._id.toString();
+      const entry = toReserve.get(key) || { inventory, quantity: 0, name: reqItem.item.name || reqItem.item.description };
+      entry.quantity += Math.max(0, reqItem.quantityRequested - (reqItem.quantityIssued || 0));
+      toReserve.set(key, entry);
+    }
+    for (const { inventory, quantity, name } of toReserve.values()) {
+      const available = Math.max(0, inventory.quantityOnHand - (inventory.quantityReserved || 0));
+      if (available < quantity) {
+        availabilityCheck.push({ item: name, requested: quantity, available });
       }
     }
 
@@ -55,6 +60,12 @@ const approveStoreRequisition = async (req: Request, res: Response): Promise<any
         data: availabilityCheck
       });
     }
+
+    for (const { inventory, quantity } of toReserve.values()) {
+      inventory.quantityReserved = (inventory.quantityReserved || 0) + quantity;
+      await inventory.save();
+    }
+    (requisition as any).stockReserved = true;
 
     // Approve the requisition
     (requisition as any).status = 'approved';

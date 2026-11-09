@@ -73,6 +73,12 @@ export interface IPurchaseRequisition extends Document {
   title: string;
   /** WORK ORDER on the paper IR form — job / project reference. */
   workOrder?: string;
+  /**
+   * Raised by stores to refill its own shelves. It skips the stock check (stores
+   * already know it is short) and its goods go into stock on delivery instead
+   * of being collected by a department.
+   */
+  restock?: boolean;
   /** STORES ISSUE NO — assigned when stock is issued from stores. */
   storesIssueNumber?: string;
   site?: mongoose.Types.ObjectId | any;
@@ -228,6 +234,7 @@ const PurchaseRequisitionSchema = new Schema<IPurchaseRequisition>({
     trim: true
   },
   workOrder: { type: String, trim: true },
+  restock: { type: Boolean, default: false },
   storesIssueNumber: { type: String, trim: true, unique: true, sparse: true },
   site: {
     type: mongoose.Schema.Types.ObjectId,

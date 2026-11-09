@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { isProcurementHead, formatCurrency } from '@fossil/shared';
 import { User, SupplierProfile, RFQ, Quotation, PurchaseOrder, Inventory, PurchaseRequisition, AuditLog, Department, Site, Delivery } from '../../models/index.js';
 import { buildRoleReportCharts } from '../../lib/reportAnalytics.js';
+import { countLowStock } from '../../lib/stockLevels.js';
 import { resolveUserDepartmentIds } from '../../lib/departmentScope.js';
 import { currentBaseCurrency } from '../../tenancy/sbuContext.js';
 import { awaitingActivationFilter } from '../../services/supplierActivation.service.js';
@@ -53,7 +54,6 @@ const COO_QUEUE_FILTER = {
   cooApproved: false,
   isDeleted: false
 };
-const LOW_STOCK_FILTER = { quantityOnHand: { $lte: 5 }, isDeleted: false };
 // No longer a simple filter — see count.pendingDeliveries below.
 const PR_IN_PROGRESS_STATUSES = ['stores_review', 'pending_acceptance', 'accepted', 'sourcing', 'quoted', 'ordered'];
 
@@ -181,7 +181,10 @@ const count = {
   totalPOs: () => PurchaseOrder.countDocuments({ isDeleted: false }),
   pendingPOs: () => PurchaseOrder.countDocuments({ status: { $in: PO_PENDING_STATUSES }, isDeleted: false }),
   approvedPOs: () => PurchaseOrder.countDocuments({ status: { $in: PO_APPROVED_STATUSES }, isDeleted: false }),
-  lowStock: () => Inventory.countDocuments(LOW_STOCK_FILTER),
+  // The shared rule, as on the inventory page: at or below the site's reorder
+  // level, else the item's, else the default. It once counted anything at 5 or
+  // fewer whatever its level, under a "below reorder level" label.
+  lowStock: () => countLowStock().then((c) => c.low),
   // Mirrors getPendingDeliveries: POs with a pending delivery record +
   // issued POs with no delivery at all. partially_received POs with no
   // pending delivery are waiting for the supplier — stores can't action them.
@@ -357,7 +360,7 @@ async function buildRoleStats(
           { id: 'pending-suppliers', label: 'Suppliers awaiting activation', count: pendingSuppliers, href: '/app/suppliers', severity: 'high' },
           { id: 'kys-incomplete', label: 'Active suppliers with incomplete KYS', count: kysIncomplete, href: '/app/suppliers/analytics/compliance', severity: 'medium' },
           { id: 'evaluations-due', label: 'Supplier evaluations overdue', count: evaluationsDue, href: '/app/suppliers/evaluations', severity: 'medium' },
-          { id: 'low-stock', label: 'Inventory items below reorder level', count: lowStockItems, href: '/app/reports', severity: 'low' },
+          { id: 'low-stock', label: 'Items at or below reorder level', count: lowStockItems, href: '/app/reports', severity: 'low' },
           { id: 'failed-logins', label: 'Failed login attempts (7 days)', count: failedLogins, href: '/app/audit-logs', severity: failedLogins >= 5 ? 'high' : 'low' }
         ])
       };
@@ -493,9 +496,9 @@ async function buildRoleStats(
     }
 
     case 'stores_officer': {
-      const [lowStockItems, totalItems, pendingDeliveries, approvedPOs, storesReviewQueue, inventoryValue, receivedThisMonth] =
+      const [stockAlerts, totalItems, pendingDeliveries, approvedPOs, storesReviewQueue, inventoryValue, receivedThisMonth] =
         await Promise.all([
-          count.lowStock(),
+          countLowStock(),
           Inventory.countDocuments({ isDeleted: false }),
           count.pendingDeliveries(),
           count.approvedPOs(),
@@ -504,6 +507,7 @@ async function buildRoleStats(
           PurchaseOrder.countDocuments({ status: 'completed', isDeleted: false, updatedAt: { $gte: oneMonthAgo() } })
         ]);
 
+      const lowStockItems = stockAlerts.low;
       return {
         stats: {
           totalItems: { value: totalItems, label: 'Inventory Items' },
@@ -519,7 +523,8 @@ async function buildRoleStats(
         },
         attentionItems: needsAttention([
           { id: 'stores-queue', label: 'Purchase requisitions to review', count: storesReviewQueue, href: '/app/stores-pr-review', severity: 'high' },
-          { id: 'low-stock', label: 'Inventory items below reorder level', count: lowStockItems, href: '/app/inventory', severity: 'medium' },
+          { id: 'out-of-stock', label: 'Items out of stock', count: stockAlerts.out, href: '/app/inventory?filter=out', severity: 'high' },
+          { id: 'low-stock', label: 'Items at or below reorder level', count: lowStockItems, href: '/app/inventory?filter=low', severity: 'medium' },
           { id: 'pending-deliveries', label: 'Deliveries pending receipt', count: pendingDeliveries, href: '/app/deliveries', severity: 'low' }
         ])
       };

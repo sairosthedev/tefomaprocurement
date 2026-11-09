@@ -651,7 +651,25 @@ export default function RequisitionDetail() {
                 </section>
               )}
 
-              {requisition.itemsDeliveredToStores && (() => {
+              {/* A restock refills stores' own shelves, so there is nothing to collect. */}
+              {requisition.restock && requisition.itemsDeliveredToStores && (
+                <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <h3 className="flex items-center gap-2 font-semibold text-gray-900">
+                      <Truck className="h-4 w-4 text-emerald-600" />
+                      Stores
+                    </h3>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                      In stock
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    This is a restock: the delivered goods went straight into stock and need no collection.
+                  </p>
+                </section>
+              )}
+
+              {!requisition.restock && requisition.itemsDeliveredToStores && (() => {
                 const storeRequisitions: any[] = requisition.storeRequisitions || [];
                 const open = storeRequisitions.find((sr) => OPEN_STORE_REQUISITION.includes(sr.status));
                 return (

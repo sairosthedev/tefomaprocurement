@@ -48,6 +48,12 @@ export interface IStoreRequisition extends Document {
   collectedBy?: ICollectedBy;
   /** Document number for the printed issue note, assigned on first issue. */
   issueNoteNumber?: string;
+  /**
+   * Set when approval reserved the stock for this collection, so issuing or
+   * rejecting releases exactly what was reserved. Absent on those approved
+   * before reservations existed, which reserved nothing.
+   */
+  stockReserved?: boolean;
   notes?: string;
   isDeleted: boolean;
   createdAt: Date;
@@ -124,6 +130,10 @@ const StoreRequisitionSchema = new Schema<IStoreRequisition>({
     department: { type: String, trim: true },
     contactNumber: { type: String, trim: true },
     signedAt: Date
+  },
+  stockReserved: {
+    type: Boolean,
+    default: false
   },
   issueNoteNumber: {
     type: String,

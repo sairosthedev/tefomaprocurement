@@ -10,7 +10,8 @@ router.use(protect);
 // Requisitions — end users raise/manage their own; HODs manage the department's.
 // Admins can read them but never raise, submit or approve one.
 const requester = authorize('end_user', 'department_head');
-const reader = authorize('end_user', 'department_head', 'admin');
+// Stores officers read and cancel their own department's restock requisitions here.
+const reader = authorize('end_user', 'department_head', 'admin', 'stores_officer');
 router.get('/catalog-items', requester, department.searchCatalogItems);
 router.post('/requisitions', requester, department.createRequisition);
 router.get('/requisitions', reader, department.getRequisitions);

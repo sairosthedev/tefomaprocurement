@@ -23,6 +23,9 @@ const INTERNAL_ENTITY_ROUTES: Record<string, (id: string) => string | null> = {
   SupplierEvaluation: () => `/app/suppliers/evaluations`,
   Delivery: () => `/app/deliveries`,
   StoreRequisition: () => `/app/store-requisitions`,
+  // Low-stock alerts: one per site now, older ones per item.
+  Site: () => `/app/inventory?filter=low`,
+  Inventory: () => `/app/inventory?filter=low`,
   User: () => `/app/profile`
 };
 

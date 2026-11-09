@@ -331,8 +331,11 @@ const receiveGoods = async (req: Request, res: Response): Promise<any> => {
         await createNotification({
           recipient: requisition.requestedBy,
           type: 'goods_received',
-          title: 'Goods Received - Ready for Collection',
-          message: `All items from Purchase Order ${po.poNumber} have been received. You can now request them from stores.`,
+          // A restock's goods are for the shelf, so there is nothing to collect.
+          title: (requisition as any).restock ? 'Restock received into stock' : 'Goods Received - Ready for Collection',
+          message: (requisition as any).restock
+            ? `All items from Purchase Order ${po.poNumber} for restock ${requisition.requisitionNumber} are now in stock.`
+            : `All items from Purchase Order ${po.poNumber} have been received. You can now request them from stores.`,
           entity: 'PurchaseRequisition',
           entityId: requisition._id,
           relatedUser: req.user!._id,

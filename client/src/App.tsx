@@ -273,12 +273,12 @@ function App() {
 
             {/* Department Head Routes */}
             <Route path="/app/requisitions" element={
-              <AppLayout allowedRoles={['procurement_officer', 'department_head', 'end_user']}>
+              <AppLayout allowedRoles={['procurement_officer', 'department_head', 'end_user', 'stores_officer']}>
                 <Requisitions />
               </AppLayout>
             } />
             <Route path="/app/requisitions/:id" element={
-              <AppLayout allowedRoles={['procurement_officer', 'department_head', 'end_user']}>
+              <AppLayout allowedRoles={['procurement_officer', 'department_head', 'end_user', 'stores_officer']}>
                 <RequisitionDetail />
               </AppLayout>
             } />

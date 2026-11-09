@@ -6,7 +6,7 @@ import { DELIVERED_TO_STORES, collectionState, storeRequisitionsByRequisition, u
 
 // This feeds the requisitions table, so it returns only what a row shows or
 // acts on. Everything else comes from GET /requisitions/:id.
-const ROW_FIELDS = 'requisitionNumber title priority status createdAt requestedBy rfq items._id budgetCheck';
+const ROW_FIELDS = 'requisitionNumber title priority status createdAt requestedBy rfq items._id budgetCheck restock';
 const PO_FIELDS = 'poNumber status financeApproved cooApproved supplier purchaseRequisition rfq quotation items.quantityReceived';
 
 const idOf = (value: any): string | null => value?._id?.toString() || value?.toString() || null;
@@ -139,6 +139,7 @@ const getRequisitions = async (req: Request, res: Response): Promise<any> => {
         createdAt: r.createdAt,
         requestedBy: r.requestedBy,
         itemCount: r.items?.length || 0,
+        restock: Boolean(r.restock),
         rfq: r.rfq ? { _id: r.rfq._id, rfqNumber: r.rfq.rfqNumber } : null
       };
 

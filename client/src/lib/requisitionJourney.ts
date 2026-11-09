@@ -63,6 +63,8 @@ export function journeyStatus(req: any): { label: string; className: string; hin
   if (req.status === 'cancelled' || req.status === 'rejected') {
     return { label: REQUISITION_STATUS_LABELS[req.status], className: REQUISITION_STATUS_COLORS[req.status], hint };
   }
+  // A restock's goods go onto the shelf, so delivered is the end of it.
+  if (req.restock && req.itemsDeliveredToStores) return { label: 'In stock', className: 'bg-emerald-100 text-emerald-700', hint };
   if (req.itemsCollected) return { label: 'Collected', className: 'bg-emerald-100 text-emerald-700', hint };
   if (req.itemsDeliveredToStores) return { label: 'Delivered to Stores', className: 'bg-green-100 text-green-700', hint };
   if (po && PO_STAGE[po.status]) return { ...PO_STAGE[po.status], hint };

@@ -11,7 +11,7 @@ const PROCUREMENT_STATUSES = ['pending_acceptance', 'accepted', 'sourcing', 'quo
 // This feeds the requisitions table, so a row carries only what the table
 // shows or acts on; everything else comes from GET /requisitions/:id.
 // `items._id` is read for the line count only.
-const ROW_FIELDS = 'requisitionNumber title priority status createdAt department requestedBy rfq items._id budgetCheck';
+const ROW_FIELDS = 'requisitionNumber title priority status createdAt department requestedBy rfq items._id budgetCheck restock';
 // The RFQ form raises an RFQ from an accepted row of this list
 // (?status=accepted) and copies its lines and justification, so accepted rows
 // keep those in full.
@@ -161,6 +161,7 @@ const getPendingRequisitions = async (req: Request, res: Response): Promise<any>
         department: r.department,
         requestedBy: r.requestedBy,
         itemCount: r.items?.length || 0,
+        restock: Boolean(r.restock),
         rfq: r.rfq
       };
 

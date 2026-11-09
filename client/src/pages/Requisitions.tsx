@@ -72,6 +72,8 @@ export default function Requisitions() {
   const procHead = isProcurementHead(user);
   const isProcurement = user?.role === 'procurement_officer' || procHead;
   const isDeptHead = user?.role === 'department_head';
+  // Stores officers see their department's restocks here; they raise them from Inventory.
+  const isStores = user?.role === 'stores_officer';
   const userId = String(user?._id || user?.id || '');
   // Only the requester submits a draft; the API refuses anyone else.
   const isOwner = (req: any) => !!userId && String(req?.requestedBy?._id || req?.requestedBy || '') === userId;
@@ -89,7 +91,7 @@ export default function Requisitions() {
   const viewFilter: 'all' | 'mine' | 'team' = headView
     ? searchParams.get('view') === 'mine' ? 'mine' : 'team'
     : 'all';
-  const canCreate = !isProcurement || procHead;
+  const canCreate = (!isProcurement || procHead) && !isStores;
   // Say whose each requisition is wherever the list is not just the user's own.
   const showRequester = isProcurement || viewFilter === 'team';
   const createOpen = canCreate && searchParams.get('new') === '1';
@@ -281,10 +283,12 @@ export default function Requisitions() {
   return (
     <div className="p-8">
       <PageHeader
-        title={isProcurement ? 'Purchase Requisitions' : viewFilter === 'team' ? 'Team Requisitions' : 'My Requisitions'}
+        title={isProcurement ? 'Purchase Requisitions' : isStores ? 'Restock Requests' : viewFilter === 'team' ? 'Team Requisitions' : 'My Requisitions'}
         subtitle={
           isProcurement
             ? 'Accept or reject requisitions from departments'
+            : isStores
+            ? 'Requests to refill the shelves, raised from Inventory'
             : viewFilter === 'team'
               ? 'Raised by your team, for your approval'
               : headView
@@ -372,6 +376,11 @@ export default function Requisitions() {
                       <span className="font-mono text-sm font-medium text-primary">
                         {req.requisitionNumber || `REQ-${req._id.slice(-6).toUpperCase()}`}
                       </span>
+                      {req.restock && (
+                        <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-blue-50 text-blue-700 align-middle">
+                          Restock
+                        </span>
+                      )}
                       <p className="text-xs text-gray-400 mt-0.5">{new Date(req.createdAt).toLocaleDateString('en-ZA')}</p>
                     </td>
                     <td className="py-2.5 px-3 border-b border-gray-100 align-top">
@@ -496,7 +505,7 @@ export default function Requisitions() {
                           </button>
                         )}
 
-                        {isDeptHead && actsAsDepartment(req) && req.itemsDeliveredToStores && !req.itemsCollected &&
+                        {isDeptHead && actsAsDepartment(req) && !req.restock && req.itemsDeliveredToStores && !req.itemsCollected &&
                           !storeRequestedIds.has(req._id) && !OPEN_STORE_REQUISITION.includes(req.storeRequisition?.status) && (
                           <button
                             onClick={() => handleRequestFromStores(req)}

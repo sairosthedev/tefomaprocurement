@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 
-import { StoreRequisition } from '../../models/index.js';
+import { StoreRequisition, Inventory } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { createNotification } from '../../services/notification.service.js';
 
@@ -30,6 +30,20 @@ const rejectStoreRequisition = async (req: Request, res: Response): Promise<any>
         success: false,
         message: `Cannot reject a store requisition with status: ${requisition.status}`
       });
+    }
+
+    // Give back what approval reserved, so it can be issued to someone else.
+    if ((requisition as any).stockReserved) {
+      for (const line of requisition.items as any[]) {
+        const held = Math.max(0, line.quantityRequested - (line.quantityIssued || 0));
+        if (held <= 0) continue;
+        const inventory = await Inventory.findOne({ item: line.item, site: requisition.site, isDeleted: false });
+        if (inventory) {
+          inventory.quantityReserved = Math.max(0, (inventory.quantityReserved || 0) - held);
+          await inventory.save();
+        }
+      }
+      (requisition as any).stockReserved = false;
     }
 
     // Reject the requisition

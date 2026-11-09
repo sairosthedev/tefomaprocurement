@@ -1,12 +1,12 @@
 import { getChecklistKeyForDocType } from '@fossil/shared';
-import { Inventory, RFQ, Notification, SupplierProfile } from '../models/index.js';
-import { notifyUsersByRole, notifySupplier } from '../services/notification.service.js';
+import { Inventory, RFQ, Notification, SupplierProfile, User } from '../models/index.js';
+import { notifyUsersByRole, notifySupplier, createNotification } from '../services/notification.service.js';
+import { effectiveLevelExpr, isLowExpr, withLiveItem } from '../lib/stockLevels.js';
 import { applyExpiryToKys, scanDocumentExpiry } from '../services/documentExpiry.service.js';
 import { logger } from '../lib/logger.js';
 
 const DEDUP_HOURS = parseInt(process.env.ALERT_DEDUP_HOURS || '24', 10);
 const RFQ_DEADLINE_HOURS = parseInt(process.env.RFQ_DEADLINE_ALERT_HOURS || '48', 10);
-const DEFAULT_REORDER_THRESHOLD = parseInt(process.env.LOW_STOCK_DEFAULT_THRESHOLD || '5', 10);
 
 function dedupSince(): Date {
   const d = new Date();
@@ -25,80 +25,101 @@ async function wasEntityRecentlyAlerted(type: string, entity: string, entityId: 
 }
 
 /**
- * Notify stores officers when on-hand quantity is at or below the item reorder level.
+ * One low-stock alert per site, to the stores officers who work there.
+ *
+ * It used to send one notification and email per item to every stores officer
+ * and administrator, without saying which site, and it took the first 50 low
+ * items before skipping those already alerted, so items past the 50th were
+ * never alerted at all. Now each site gets one alert listing what is low, using
+ * the same rule as the inventory page. An item is alerted once a day; within
+ * the day only newly low items bring a fresh alert, so nothing is repeated.
  */
 export async function runLowStockAlertJob(): Promise<number> {
-  const lowStockRows = await Inventory.aggregate([
-    { $match: { isDeleted: false } },
+  const bySite = await Inventory.aggregate([
+    ...withLiveItem(),
+    { $match: { $expr: isLowExpr } },
+    { $lookup: { from: 'sites', localField: 'site', foreignField: '_id', as: 'siteDoc' } },
+    { $unwind: { path: '$siteDoc', preserveNullAndEmptyArrays: true } },
+    { $sort: { quantityOnHand: 1, 'itemDoc.name': 1 } },
     {
-      $lookup: {
-        from: 'items',
-        localField: 'item',
-        foreignField: '_id',
-        as: 'itemDoc'
-      }
-    },
-    { $unwind: '$itemDoc' },
-    {
-      $match: {
-        'itemDoc.isDeleted': false,
-        'itemDoc.status': 'active',
-        $expr: {
-          $lte: [
-            '$quantityOnHand',
-            {
-              $cond: [
-                { $gt: ['$itemDoc.reorderLevel', 0] },
-                '$itemDoc.reorderLevel',
-                DEFAULT_REORDER_THRESHOLD
-              ]
-            }
-          ]
+      $group: {
+        _id: '$site',
+        siteName: { $first: '$siteDoc.name' },
+        items: {
+          $push: {
+            inventoryId: '$_id',
+            name: '$itemDoc.name',
+            code: '$itemDoc.code',
+            unit: '$itemDoc.unit',
+            onHand: '$quantityOnHand',
+            level: effectiveLevelExpr
+          }
         }
       }
-    },
-    {
-      $project: {
-        _id: 1,
-        quantityOnHand: 1,
-        itemName: '$itemDoc.name',
-        itemCode: '$itemDoc.code',
-        reorderLevel: '$itemDoc.reorderLevel'
-      }
-    },
-    { $limit: 50 }
+    }
   ]);
 
   let sent = 0;
+  for (const group of bySite) {
+    if (!group._id) continue;
+    const siteId = group._id;
+    const siteName = group.siteName || 'a store';
 
-  for (const row of lowStockRows) {
-    const threshold =
-      row.reorderLevel > 0 ? row.reorderLevel : DEFAULT_REORDER_THRESHOLD;
-
-    if (await wasEntityRecentlyAlerted('low_stock', 'Inventory', row._id)) {
-      continue;
-    }
-
-    const message = `${row.itemName} (${row.itemCode}) is low: ${row.quantityOnHand} on hand (reorder at ${threshold}).`;
-
-    await notifyUsersByRole(['stores_officer', 'admin'], {
+    // Items already in an alert for this site today are not repeated.
+    const recent = await Notification.find({
       type: 'low_stock',
-      title: 'Low stock alert',
-      message,
-      entity: 'Inventory',
-      entityId: row._id,
-      metadata: {
-        itemCode: row.itemCode,
-        itemName: row.itemName,
-        quantityOnHand: row.quantityOnHand,
-        reorderLevel: threshold
-      }
-    });
-    sent++;
+      entity: 'Site',
+      entityId: siteId,
+      createdAt: { $gte: dedupSince() }
+    })
+      .select('metadata.inventoryIds')
+      .lean();
+    const alerted = new Set<string>(
+      recent.flatMap((n: any) => (n.metadata?.inventoryIds || []).map((id: unknown) => String(id)))
+    );
+    const fresh = (group.items as any[]).filter((row) => !alerted.has(String(row.inventoryId)));
+    if (fresh.length === 0) continue;
+
+    const out = fresh.filter((row) => (row.onHand || 0) <= 0);
+    const listed = fresh
+      .slice(0, 5)
+      .map((row) => `${row.name} ${row.onHand <= 0 ? 'out of stock' : `${row.onHand} ${row.unit || ''}`.trim()}`)
+      .join('; ');
+    const more = fresh.length > 5 ? `, and ${fresh.length - 5} more` : '';
+    const headline = out.length > 0
+      ? `${fresh.length} item${fresh.length === 1 ? '' : 's'} low at ${siteName}, ${out.length} out of stock`
+      : `${fresh.length} item${fresh.length === 1 ? '' : 's'} low at ${siteName}`;
+
+    // The site's own stores officers, and those with no home site who cover
+    // every store. Administrators are no longer sent each site's list.
+    const recipients = await User.find({
+      role: 'stores_officer',
+      status: 'active',
+      isDeleted: false,
+      $or: [{ homeSite: siteId }, { homeSite: null }, { homeSite: { $exists: false } }]
+    }).select('_id');
+    for (const recipient of recipients) {
+      await createNotification({
+        recipient: recipient._id,
+        type: 'low_stock',
+        title: out.length > 0 ? `Out of stock at ${siteName}` : `Low stock at ${siteName}`,
+        message: `${headline}: ${listed}${more}. Restock from the inventory page.`,
+        entity: 'Site',
+        entityId: siteId,
+        metadata: {
+          siteName,
+          count: fresh.length,
+          outOfStock: out.length,
+          inventoryIds: fresh.map((row) => row.inventoryId),
+          items: fresh.slice(0, 20).map((row) => ({ name: row.name, code: row.code, onHand: row.onHand, reorderLevel: row.level }))
+        }
+      });
+      sent++;
+    }
   }
 
   if (sent > 0) {
-    logger.info(`Low-stock alert job: ${sent} notification(s) for ${lowStockRows.length} item(s)`);
+    logger.info(`Low-stock alert job: ${sent} notification(s) across ${bySite.length} site(s)`);
   }
 
   return sent;

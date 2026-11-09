@@ -10,3 +10,4 @@ export * from './constants/kys.js';
 export * from './constants/ranking.js';
 export * from './constants/cancellations.js';
 export * from './constants/equipmentDetails.js';
+export * from './constants/stock.js';

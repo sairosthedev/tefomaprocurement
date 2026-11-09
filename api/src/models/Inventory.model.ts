@@ -8,6 +8,14 @@ export interface IInventory extends Document {
   quantityOnHand: number;
   quantityReserved: number;
   quantityAvailable: number;
+  /**
+   * This site's reorder level. Unset means the catalogue item's level applies
+   * (or the default when the item has none). Zero is a real setting: only an
+   * empty shelf counts as low.
+   */
+  reorderLevel?: number | null;
+  /** How much this site orders when it restocks. Unset means a suggestion is worked out. */
+  reorderQuantity?: number | null;
   unitCost: number;
   totalValue: number;
   lastReceivedDate?: Date;
@@ -48,6 +56,16 @@ const InventorySchema = new Schema<IInventory>(
     quantityAvailable: {
       type: Number,
       default: 0
+    },
+    reorderLevel: {
+      type: Number,
+      min: 0,
+      default: null
+    },
+    reorderQuantity: {
+      type: Number,
+      min: 0,
+      default: null
     },
     unitCost: {
       type: Number,

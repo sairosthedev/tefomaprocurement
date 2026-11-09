@@ -25,6 +25,9 @@ import setRequisitionLineCategory from './setRequisitionLineCategory.controller.
 import addInventoryItem from './addInventoryItem.controller.js';
 import bulkImportInventory from './bulkImportInventory.controller.js';
 import getTransferSites from './getTransferSites.controller.js';
+import updateInventoryLevels from './updateInventoryLevels.controller.js';
+import getInventoryUsage from './getInventoryUsage.controller.js';
+import createRestockRequisition from './createRestockRequisition.controller.js';
 
 export default {
   receiveGoods,
@@ -53,5 +56,8 @@ export default {
   setRequisitionLineCategory,
   addInventoryItem,
   bulkImportInventory,
-  getTransferSites
+  getTransferSites,
+  updateInventoryLevels,
+  getInventoryUsage,
+  createRestockRequisition
 };

@@ -161,6 +161,7 @@ const roleNavigation: any = {
       { name: "Inventory", href: "/app/inventory", icon: Package },
       { name: "Stock Movements", href: "/app/stock-movements", icon: ArrowLeftRight },
       { name: "Stock Transfers", href: "/app/stock-transfers", icon: Truck },
+      { name: "Restock Requests", href: "/app/requisitions", icon: ShoppingCart },
     ] },
     { name: "Reports", href: "/app/reports", icon: BarChart3 },
     { name: "Notifications", href: "/app/notifications", icon: Bell },

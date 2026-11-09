@@ -37,6 +37,11 @@ router.put('/deliveries/:id/accept', stores.acceptDelivery);
 router.get('/inventory', stores.getInventory);
 router.post('/inventory', stores.addInventoryItem);
 router.post('/inventory/bulk', stores.bulkImportInventory);
+// A site's own reorder level and quantity, without touching what is on hand.
+router.put('/inventory/:id', stores.updateInventoryLevels);
+router.get('/inventory/:id/usage', stores.getInventoryUsage);
+// Stores asks for its own shelf to be refilled; approved by its department head.
+router.post('/restock', stores.createRestockRequisition);
 
 // Stock Movements
 router.get('/movements', stores.getMovements);

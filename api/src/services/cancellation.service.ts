@@ -84,7 +84,7 @@ export function assertCanCancelRequisition(
   }
 
   const permitted = stageRoles.some((role) => {
-    if (role === 'end_user') return toIdString(requisition.requestedBy) === toIdString(user._id);
+    if (role === 'end_user' || role === 'stores_officer') return toIdString(requisition.requestedBy) === toIdString(user._id);
     if (role === 'department_head') return toIdString(requisition.department) === toIdString(user.department);
     return true;
   });

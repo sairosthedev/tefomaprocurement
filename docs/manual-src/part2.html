@@ -11,7 +11,7 @@
     <tbody>
       <tr><td>End user</td><td>Staff in any department or site</td><td>Raise requisitions for their department and track them to delivery</td><td>Approve anything; see other people's requests</td></tr>
       <tr><td>Department head</td><td>Head of each department; a deputy can act for them</td><td>Approve or reject the team's requisitions; raise their own, which go straight to Stores; collect delivered goods from Stores</td><td>Approve their own requisition; approve purchase orders; pick a winning quotation</td></tr>
-      <tr><td>Stores officer</td><td>Stores and warehouse staff</td><td>Check stock against requisitions; issue stock; receive goods on a GRV and reject what is faulty; move stock between sites</td><td>Approve orders or invoices</td></tr>
+      <tr><td>Stores officer</td><td>Stores and warehouse staff</td><td>Check stock against requisitions; issue stock; receive goods on a GRV and reject what is faulty; move stock between sites; set reorder levels and request restocks</td><td>Approve orders or invoices</td></tr>
       <tr><td>Procurement officer</td><td>Procurement staff</td><td>Accept requisitions; issue RFQs; select the winner with a justification; raise orders; onboard suppliers and submit them for activation; handle bank-detail changes; evaluate suppliers</td><td>Activate a supplier alone; authorise their own award; approve orders</td></tr>
       <tr><td>Head of Procurement</td><td>The department head of the Procurement department</td><td>Everything a procurement officer does, plus: authorise awards; first approval on every order; approve waivers; approve, return or reject supplier activations</td><td>Select a winner and authorise the same award; approve an activation they submitted</td></tr>
       <tr><td>Finance manager</td><td>Finance team</td><td>Second approval on orders; match and approve invoices; record payments; set department budgets</td><td>Raise orders or receive goods</td></tr>
@@ -74,7 +74,7 @@
   <div class="menus">
     <div class="menu"><b>End user</b><span>My Requisitions</span></div>
     <div class="menu"><b>Department head</b><span>Approvals</span><b>Requisitions</b><span>Team Requisitions</span><span>My Requisitions</span><b>Reports</b></div>
-    <div class="menu"><b>Stores officer: Receiving</b><span>PR Stores Review</span><span>Deliveries (GRV)</span><span>Store Requisitions</span><b>Stock</b><span>Inventory</span><span>Stock Movements</span><span>Stock Transfers</span><b>Reports</b></div>
+    <div class="menu"><b>Stores officer: Receiving</b><span>PR Stores Review</span><span>Deliveries (GRV)</span><span>Store Requisitions</span><b>Stock</b><span>Inventory</span><span>Stock Movements</span><span>Stock Transfers</span><span>Restock Requests</span><b>Reports</b></div>
     <div class="menu"><b>Procurement officer: Sourcing</b><span>Requisitions</span><span>RFQs</span><span>Quotations</span><span>Purchase Orders</span><b>Suppliers</b><span>All Suppliers</span><span>Performance</span><span>Compliance</span><span>Evaluations</span><span>Banking Changes</span><b>Reports</b></div>
     <div class="menu"><b>Head of Procurement: Sign-offs</b><span>Authorizations</span><span>Approvals</span><b>Sourcing</b><span>as Procurement officer</span><b>Suppliers</b><span>as Procurement officer</span><b>Reports</b></div>
     <div class="menu"><b>Finance: Approvals</b><b>Payables</b><span>Invoices</span><span>Payments</span><span>Purchase Orders</span><b>Budgets</b><b>Reports</b></div>
@@ -250,9 +250,11 @@
     <figcaption><b>Figure</b> Inventory: stock level against reorder level, with Low Stock marked. Add Item and Import Excel sit above the list.</figcaption>
   </figure>
 
-  <p><span class="path">Stock &rsaquo; Inventory</span> shows every item with its stock level, reorder level and status (<span class="st amber">Low Stock</span> or <span class="st green">In Stock</span>), with totals for items, low stock and stock value.</p>
+  <p><span class="path">Stock &rsaquo; Inventory</span> shows every item with its stock level, reorder level and status: <span class="st red">Out of Stock</span> when nothing is on hand, <span class="st amber">Low Stock</span> at or below the reorder level, otherwise <span class="st green">In Stock</span>. The tiles count items, low stock, stock value and out of stock; click <strong>Low Stock</strong> or <strong>Out of Stock</strong> to list only those. The dashboard, the reports and the alerts all count low stock the same way.</p>
   <ul>
-    <li><strong>Add an item.</strong> <span class="btn dark">Add Item</span> opens a three-step form: <strong>Item</strong> (code, auto-generated if empty; category; name; description), <strong>Stock</strong> (unit, unit price, current quantity, reorder level) and <strong>Review &amp; add</strong>. Set a reorder level on everything you want a low-stock alert for.</li>
+    <li><strong>Add an item.</strong> <span class="btn dark">Add Item</span> opens a three-step form: <strong>Item</strong> (code, auto-generated if empty; category; name; description), <strong>Stock</strong> (unit, unit price, current quantity, reorder level) and <strong>Review &amp; add</strong>.</li>
+    <li><strong>Reorder levels.</strong> Each item has a reorder level, and each site can set its own. Open <span class="btn">View</span> on the item, enter this site's <strong>Reorder level</strong> and, if you always order the same amount, a <strong>Reorder quantity</strong>, then click <span class="btn dark">Save levels</span>. This never changes the quantity on hand. The view also shows how much was issued in the last 90 days; about one month's use is a common starting level. An item with no level uses 5 and is marked <em>default, not set</em>.</li>
+    <li><strong>Held for collection.</strong> When you mark a collection ready (5.2), its stock is held for it and shown under the stock level. Nobody else can be issued that stock until it is handed over or the request is rejected.</li>
     <li><strong>Opening balances and bulk loads.</strong> <span class="btn">Import Excel</span> opens <strong>Bulk Import Inventory</strong>: download the template, fill it, upload, check the preview, then <span class="btn dark">Import</span>. Use this for the opening stock count at launch.</li>
     <li><strong>Issue.</strong> Stock leaves inventory only through an issue (5.1), a hand-over (5.2) or a transfer (5.6). Never correct a balance by editing it; record the movement that was missed.</li>
   </ul>
@@ -267,4 +269,16 @@
     <li><span class="path">Stock &rsaquo; Stock Movements</span> is the full history: stock in, stock out, adjustments and transfers, filtered by type and date, searchable by item or reference. Use it to reconcile a count.</li>
     <li><span class="path">Stock &rsaquo; Stock Transfers</span> moves stock between sites. Click <span class="btn dark">New transfer</span>, choose <strong>From site</strong> and <strong>To site</strong>, add lines, and <span class="btn dark">Create transfer</span>. The transfer then goes through <span class="btn">Approve</span>, <span class="btn">Ship</span> and, at the receiving site, <span class="btn">Receive</span>. Stock leaves the source on shipping and arrives on receipt, so a transfer in transit is visible at neither site.</li>
   </ul>
+
+  <h3 id="p5-7">5.7 Restock a low shelf</h3>
+  <span class="who">Stores officer</span>
+  <p>Stores asks for its own shelves to be refilled. A restock is a requisition from your department: your department head approves it, it goes straight to procurement without a stock check, and on delivery it goes into stock with nothing to collect.</p>
+  <ol class="steps">
+    <li>On <span class="path">Stock &rsaquo; Inventory</span>, click <span class="btn dark">Restock</span> on a row marked Low Stock or Out of Stock.</li>
+    <li>Check the <strong>Quantity to order</strong>. It is the site's reorder quantity if one is set, otherwise enough to bring stock to twice the reorder level.</li>
+    <li>Choose the <strong>Category</strong> so procurement can invite the right suppliers. Add a <strong>Note for the approver</strong> if useful, then click <span class="btn dark">Request restock</span>.</li>
+  </ol>
+  <p class="result">Toast <b>sent to your department head for approval</b>. The row shows the requisition number instead of the Restock button until the goods arrive, so the same shelf is never ordered twice. Follow it under <span class="path">Stock &rsaquo; Restock Requests</span>.</p>
+  <div class="note"><b>Low-stock alerts.</b> Once an hour Procureline checks every site. Stores officers at a site with items at or below their reorder level get one alert naming the site and the items, by email and in Notifications. An item is alerted once a day; an item that becomes low later in the day brings a new alert. The alert links to the low-stock list.</div>
+  <div class="note warn"><b>Your department needs a head.</b> A restock is refused if the stores officer's department has no head or deputy to approve it. The administrator names one under <span class="path">Organisation &rsaquo; Departments</span>.</div>
 </section>

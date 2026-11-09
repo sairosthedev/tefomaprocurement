@@ -1,3 +1,4 @@
+import { isLowExpr, withLiveItem } from './stockLevels.js';
 import mongoose from 'mongoose';
 import {
   PurchaseOrder,
@@ -172,21 +173,8 @@ async function buildStoresCharts(start: Date): Promise<ReportChartConfig[]> {
   ]);
 
   const lowStock = await Inventory.aggregate([
-    { $match: { isDeleted: false } },
-    {
-      $lookup: { from: 'items', localField: 'item', foreignField: '_id', as: 'itemDoc' }
-    },
-    { $unwind: '$itemDoc' },
-    {
-      $match: {
-        $expr: {
-          $lte: [
-            '$quantityOnHand',
-            { $cond: [{ $gt: ['$itemDoc.reorderLevel', 0] }, '$itemDoc.reorderLevel', 5] }
-          ]
-        }
-      }
-    },
+    ...withLiveItem(),
+    { $match: { $expr: isLowExpr } },
     {
       $project: {
         label: '$itemDoc.name',

@@ -1,12 +1,14 @@
 import type { Request, Response } from 'express';
 
-import { Inventory } from '../../models/index.js';
+import { PR_TERMINAL_STATUSES } from '@fossil/shared';
+import { Inventory, PurchaseRequisition } from '../../models/index.js';
 import { buildSiteFilterAsync } from '../../lib/siteScope.js';
 import { escapeRegex } from '../../lib/regex.js';
+import { effectiveLevelExpr, isLowExpr, isOutExpr, levelSourceExpr } from '../../lib/stockLevels.js';
 
 const getInventory = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { search, category, belowReorderLevel, lowStock, site, page = 1, limit = 50 } =
+    const { search, category, belowReorderLevel, lowStock, outOfStock, site, page = 1, limit = 50 } =
       req.query as Record<string, any>;
 
     let siteFilter: Record<string, unknown> = {};
@@ -17,6 +19,7 @@ const getInventory = async (req: Request, res: Response): Promise<any> => {
     }
 
     const filterLowStock = belowReorderLevel === 'true' || lowStock === 'true';
+    const filterOutOfStock = outOfStock === 'true';
     const skip = (Number(page) - 1) * Number(limit);
     const pageLimit = parseInt(limit, 10);
 
@@ -48,12 +51,12 @@ const getInventory = async (req: Request, res: Response): Promise<any> => {
       { $match: itemMatch }
     ];
 
+    // The shared rule: the site's level, else the item's, else the default.
     if (filterLowStock) {
-      baseStages.push({
-        $match: {
-          $expr: { $lte: ['$quantityOnHand', '$itemDoc.reorderLevel'] }
-        }
-      });
+      baseStages.push({ $match: { $expr: isLowExpr } });
+    }
+    if (filterOutOfStock) {
+      baseStages.push({ $match: { $expr: isOutExpr } });
     }
 
     const [result] = await Inventory.aggregate([
@@ -94,12 +97,8 @@ const getInventory = async (req: Request, res: Response): Promise<any> => {
             }
           ],
           lowStock: [
-            {
-              $match: {
-                $expr: { $lte: ['$quantityOnHand', '$itemDoc.reorderLevel'] }
-              }
-            },
-            { $count: 'count' }
+            { $match: { $expr: isLowExpr } },
+            { $group: { _id: null, count: { $sum: 1 }, out: { $sum: { $cond: [isOutExpr, 1, 0] } } } }
           ],
           totalCount: [{ $count: 'count' }],
           data: [
@@ -121,6 +120,11 @@ const getInventory = async (req: Request, res: Response): Promise<any> => {
                 quantityOnHand: 1,
                 quantityReserved: 1,
                 quantityAvailable: 1,
+                reorderLevel: 1,
+                reorderQuantity: 1,
+                effectiveReorderLevel: effectiveLevelExpr,
+                reorderLevelSource: levelSourceExpr,
+                location: 1,
                 unitCost: 1,
                 totalValue: 1,
                 lastReceivedDate: 1,
@@ -156,13 +160,43 @@ const getInventory = async (req: Request, res: Response): Promise<any> => {
     };
     const total = result?.totalCount?.[0]?.count || 0;
     const lowStockCount = result?.lowStock?.[0]?.count || 0;
+    const outOfStockCount = result?.lowStock?.[0]?.out || 0;
+
+    // A restock already on its way, so the page shows it instead of offering
+    // a second one for the same shelf.
+    const rows: any[] = result?.data || [];
+    const itemIds = rows.map((row) => row.item?._id).filter(Boolean);
+    if (itemIds.length > 0) {
+      const open = await PurchaseRequisition.find({
+        restock: true,
+        isDeleted: false,
+        status: { $nin: PR_TERMINAL_STATUSES as unknown as string[] },
+        'items.item': { $in: itemIds }
+      })
+        .select('requisitionNumber status site items.item')
+        .sort({ createdAt: -1 })
+        .lean();
+      const bySiteItem = new Map<string, any>();
+      for (const pr of open as any[]) {
+        for (const line of pr.items || []) {
+          const key = `${pr.site}:${line.item}`;
+          if (!bySiteItem.has(key)) {
+            bySiteItem.set(key, { _id: pr._id, requisitionNumber: pr.requisitionNumber, status: pr.status });
+          }
+        }
+      }
+      for (const row of rows) {
+        row.openRestock = bySiteItem.get(`${row.site?._id}:${row.item?._id}`) || null;
+      }
+    }
 
     res.status(200).json({
       success: true,
-      data: result?.data || [],
+      data: rows,
       stats: {
         totalItems: statsRow.totalItems,
         lowStockCount,
+        outOfStockCount,
         totalStockValue: statsRow.totalStockValue,
         categoryCount: statsRow.categoryCount
       },

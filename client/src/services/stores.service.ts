@@ -8,6 +8,13 @@ export const storesAPI: any = {
   printIssueNote: (id: any) => http.get(`/stores/requisitions/${id}/issue-note`, { responseType: 'blob' }),
   getDeliveries: (params?: any) => http.get('/stores/deliveries', { params }),
   getInventory: (params?: any) => http.get('/stores/inventory', { params }),
+  // A site's own reorder level and quantity; null clears it back to the item's.
+  updateInventoryLevels: (id: any, data: { reorderLevel?: number | null; reorderQuantity?: number | null; location?: string }) =>
+    http.put(`/stores/inventory/${id}`, data),
+  getInventoryUsage: (id: any) => http.get(`/stores/inventory/${id}/usage`),
+  // Stores asks for its own shelf to be refilled.
+  createRestock: (data: { inventoryId: string; quantity: number; category: string; justification?: string }) =>
+    http.post('/stores/restock', data),
   getStoreRequisitions: (params?: any) => http.get('/stores/requisitions', { params }),
   approveStoreRequisition: (id: any, data: any) => http.put(`/stores/requisitions/${id}/approve`, data),
   rejectStoreRequisition: (id: any, data: any) => http.put(`/stores/requisitions/${id}/reject`, data),

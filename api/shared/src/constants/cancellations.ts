@@ -32,6 +32,8 @@ export const PO_TERMINAL_STATUSES = ['cancelled', 'completed', 'partially_receiv
 /** PR statuses each role may cancel (subject to ownership / department checks). */
 export const PR_CANCEL_BY_ROLE: Record<string, readonly string[]> = {
   end_user: ['draft', 'pending_hod'],
+  // Their own restock requisitions, before the department head has decided.
+  stores_officer: ['draft', 'pending_hod'],
   department_head: ['draft', 'pending_hod', 'stores_review'],
   procurement_officer: ['pending_acceptance', 'accepted', 'sourcing', 'quoted', 'ordered'],
   admin: [

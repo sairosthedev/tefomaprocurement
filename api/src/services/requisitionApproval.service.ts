@@ -52,8 +52,10 @@ export async function approveAsDepartmentHead(
   const comments = options.comments || 'Approved by Department Head';
   const previousStatus = requisition.status;
 
-  // HOD approval → forward to stores review
-  requisition.status = 'stores_review';
+  // HOD approval → forward to stores review. A restock is stores' own request
+  // for a shelf it already knows is short, so it goes straight to procurement.
+  const isRestock = requisition.restock === true;
+  requisition.status = isRestock ? 'pending_acceptance' : 'stores_review';
   requisition.hodApprovedBy = user._id;
   requisition.hodApprovedAt = new Date();
 
@@ -71,9 +73,17 @@ export async function approveAsDepartmentHead(
     role: user.role,
     comments: needsOverride ? `${comments} — BUDGET OVERRIDE: ${overrideReason}` : comments
   });
+  if (isRestock) {
+    requisition.statusHistory.push({
+      action: 'forwarded_to_procurement',
+      by: user._id,
+      role: user.role,
+      comments: 'Restock for stores: no stock check needed'
+    });
+  }
 
   // Stock enquiry — populate storeAvailability on each line (paper IR stores check).
-  if (requisition.site) {
+  if (requisition.site && !isRestock) {
     const enriched = await enrichRequisitionItemsWithAvailability(requisition.items as any[], requisition.site);
     requisition.items = enriched as any;
   }
@@ -82,7 +92,7 @@ export async function approveAsDepartmentHead(
 
   // When every line is fully in stock at site, issue automatically (no manual stores step).
   let autoProcessed = false;
-  if (await canFullyFulfillFromStock(requisition)) {
+  if (!isRestock && (await canFullyFulfillFromStock(requisition))) {
     const { requisition: processed } = await processRequisitionAgainstStock(
       requisition,
       user,
@@ -138,6 +148,8 @@ export async function approveAsDepartmentHead(
       title: autoProcessed ? 'Requisition fulfilled from stores' : 'Requisition Approved',
       message: autoProcessed
         ? `Your requisition ${requisition.requisitionNumber} was approved and fully issued from stock (Issue No. ${fresh?.storesIssueNumber || '—'}).`
+        : isRestock
+        ? `Your restock ${requisition.requisitionNumber} has been approved by the Department Head and sent to Procurement.`
         : `Your requisition ${requisition.requisitionNumber} has been approved by the Department Head and sent to Stores.`,
       entity: 'PurchaseRequisition',
       entityId: requisition._id,
@@ -145,11 +157,32 @@ export async function approveAsDepartmentHead(
     });
   }
 
-  if (!autoProcessed) {
+  if (isRestock) {
+    await notifyUsersByRole('procurement_officer', {
+      type: 'requisition_submitted',
+      title: 'Restock ready for procurement',
+      message: `Restock ${requisition.requisitionNumber} for stores was approved and needs acceptance.`,
+      entity: 'PurchaseRequisition',
+      entityId: requisition._id,
+      relatedUser: user._id
+    });
+  } else if (!autoProcessed) {
     await notifyUsersByRole('stores_officer', {
       type: 'requisition_submitted',
       title: 'Requisition awaiting stores review',
       message: `Requisition ${requisition.requisitionNumber} requires a stores availability check.`,
+      entity: 'PurchaseRequisition',
+      entityId: requisition._id,
+      relatedUser: user._id
+    });
+  } else {
+    // Issued automatically, so the stock left the books without anyone in
+    // stores touching it. Stores is told, to put the goods aside for the
+    // department to collect.
+    await notifyUsersByRole('stores_officer', {
+      type: 'stock_issued',
+      title: 'Issued from stock automatically',
+      message: `${requisition.requisitionNumber} was approved and issued from stock (Issue No. ${fresh?.storesIssueNumber || '—'}). Set the goods aside for the department to collect.`,
       entity: 'PurchaseRequisition',
       entityId: requisition._id,
       relatedUser: user._id

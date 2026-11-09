@@ -117,11 +117,25 @@ const issueStock = async (req: Request, res: Response): Promise<any> => {
       lines.push({ reqItem, inventory, quantityToIssue });
     }
 
+    // What approval reserved for this collection is this collection's to take.
+    // Reserved per line as what was still to issue, so that is what is held.
+    const reservedHere = new Map<string, number>();
+    if ((requisition as any).stockReserved) {
+      for (const { reqItem, inventory } of lines) {
+        const key = inventory._id.toString();
+        const held = Math.max(0, reqItem.quantityRequested - (reqItem.quantityIssued || 0));
+        reservedHere.set(key, (reservedHere.get(key) || 0) + held);
+      }
+    }
+
     // One entry per stock item, with the total all its lines need.
     const short = new Map<string, string>();
     for (const { reqItem, inventory } of lines) {
       const key = inventory._id.toString();
-      const available = Math.max(0, inventory.quantityOnHand - (inventory.quantityReserved || 0));
+      const available = Math.max(
+        0,
+        inventory.quantityOnHand - Math.max(0, (inventory.quantityReserved || 0) - (reservedHere.get(key) || 0))
+      );
       const needed = neededByInventory.get(key)!;
       if (available < needed && !short.has(key)) {
         short.set(key, `${reqItem.item.name || reqItem.item.description || 'Unknown'} (need ${needed}, have ${available})`);
@@ -139,6 +153,13 @@ const issueStock = async (req: Request, res: Response): Promise<any> => {
       const previousQty = inventory.quantityOnHand;
       inventory.quantityOnHand -= quantityToIssue;
       inventory.lastIssuedDate = new Date();
+      // Release what this line held, as it leaves.
+      const key = inventory._id.toString();
+      const release = Math.min(quantityToIssue, reservedHere.get(key) || 0);
+      if (release > 0) {
+        inventory.quantityReserved = Math.max(0, (inventory.quantityReserved || 0) - release);
+        reservedHere.set(key, (reservedHere.get(key) || 0) - release);
+      }
       await inventory.save();
 
       // Generate transaction number (increment counter for each transaction)

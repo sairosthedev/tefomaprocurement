@@ -4,8 +4,16 @@ import { useToast } from '../components/Toast';
 import api, { storesAPI } from '../lib/api';
 import { 
   Search, Package, AlertTriangle, TrendingDown, 
-  TrendingUp, Loader2, Plus, Upload, Download, FileSpreadsheet, PackageCheck, X, ArrowLeft, XCircle
+  TrendingUp, Loader2, Plus, Upload, Download, FileSpreadsheet, PackageCheck, X, ArrowLeft, XCircle,
+  ShoppingCart, PackageX
 } from 'lucide-react';
+import {
+  effectiveReorderLevel,
+  stockStatus,
+  suggestedRestockQuantity,
+  isValidCategoryCode,
+  USAGE_WINDOW_DAYS
+} from '@fossil/shared';
 import PageHeader from '../components/PageHeader';
 import ViewButton from '../components/ViewButton';
 import Modal from '../components/Modal';
@@ -66,7 +74,20 @@ export default function Inventory() {
   // The box shows what's typed; the list is fetched once typing pauses.
   const searchTerm = useDebouncedValue(searchTermInput);
   const [categoryFilter, setCategoryFilter] = useState<any>('');
-  const [showLowStock, setShowLowStock] = useState<any>(false);
+  const [stockFilter, setStockFilter] = useState<'' | 'low' | 'out'>(() => {
+    const f = searchParams.get('filter');
+    return f === 'low' || f === 'out' ? f : '';
+  });
+  // Restock: the stock row being restocked, and the request being built.
+  const [restockFor, setRestockFor] = useState<any>(null);
+  const [restockQty, setRestockQty] = useState<string>('');
+  const [restockCategory, setRestockCategory] = useState<string>('');
+  const [restockNote, setRestockNote] = useState<string>('');
+  const [restocking, setRestocking] = useState(false);
+  // This site's own levels, edited from the item view.
+  const [levelsForm, setLevelsForm] = useState<{ reorderLevel: string; reorderQuantity: string }>({ reorderLevel: '', reorderQuantity: '' });
+  const [savingLevels, setSavingLevels] = useState(false);
+  const [usage, setUsage] = useState<any>(null);
   const [showAddModal, setShowAddModal] = useState<any>(false);
   const [showViewModal, setShowViewModal] = useState<any>(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
@@ -93,6 +114,7 @@ export default function Inventory() {
   const [stats, setStats] = useState({
     totalItems: 0,
     lowStockCount: 0,
+    outOfStockCount: 0,
     totalStockValue: 0,
     categoryCount: 0
   });
@@ -160,11 +182,11 @@ export default function Inventory() {
 
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, categoryFilter, showLowStock]);
+  }, [searchTerm, categoryFilter, stockFilter]);
 
   useEffect(() => {
     fetchInventory();
-  }, [page, limit, searchTerm, categoryFilter, showLowStock]);
+  }, [page, limit, searchTerm, categoryFilter, stockFilter]);
 
   const handleSearchSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -181,11 +203,13 @@ export default function Inventory() {
   }) => {
     try {
       setLoading(true);
+      const filter = overrides?.lowStock === false ? '' : stockFilter;
       const response = await api.get('/stores/inventory', {
-        params: { 
-          search: (overrides?.search ?? searchTerm).trim(), 
+        params: {
+          search: (overrides?.search ?? searchTerm).trim(),
           category: overrides?.category ?? categoryFilter,
-          lowStock: overrides?.lowStock ?? showLowStock,
+          lowStock: filter === 'low',
+          outOfStock: filter === 'out',
           page: overrides?.page ?? page,
           limit
         }
@@ -254,7 +278,7 @@ export default function Inventory() {
       });
       setSearchTerm('');
       setCategoryFilter('');
-      setShowLowStock(false);
+      setStockFilter('');
       setPage(1);
       fetchInventory({ page: 1, search: '', category: '', lowStock: false });
     } catch (error: any) {
@@ -318,7 +342,7 @@ export default function Inventory() {
       showToast(res.data.message || 'Import complete', res.data.summary?.failed ? 'info' : 'success');
       setSearchTerm('');
       setCategoryFilter('');
-      setShowLowStock(false);
+      setStockFilter('');
       setPage(1);
       fetchInventory({ page: 1, search: '', category: '', lowStock: false });
     } catch (error: any) {
@@ -338,6 +362,93 @@ export default function Inventory() {
   };
 
   const lowStockCount = stats.lowStockCount;
+
+  const toggleFilter = (next: 'low' | 'out') => {
+    const value = stockFilter === next ? '' : next;
+    setStockFilter(value);
+    const params = new URLSearchParams(searchParams);
+    if (value) params.set('filter', value);
+    else params.delete('filter');
+    setSearchParams(params, { replace: true });
+  };
+
+  /** The level that applies to a stock row, and where it came from. */
+  const levelOf = (inv: any) => {
+    const fallback = effectiveReorderLevel(inv.reorderLevel, inv.item?.reorderLevel);
+    return {
+      level: typeof inv.effectiveReorderLevel === 'number' ? inv.effectiveReorderLevel : fallback.level,
+      source: inv.reorderLevelSource || fallback.source
+    };
+  };
+
+  const openRestock = (inv: any) => {
+    const { level } = levelOf(inv);
+    setRestockFor(inv);
+    setRestockQty(String(suggestedRestockQuantity(inv.quantityOnHand || 0, level, inv.reorderQuantity)));
+    setRestockCategory(isValidCategoryCode(inv.item?.category || '') ? inv.item.category : '');
+    setRestockNote('');
+  };
+
+  const submitRestock = async () => {
+    if (!restockFor) return;
+    const quantity = parseInt(restockQty, 10);
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      showToast('Enter a quantity of at least 1', 'error');
+      return;
+    }
+    if (!restockCategory) {
+      showToast('Choose a category so procurement can find suppliers', 'error');
+      return;
+    }
+    try {
+      setRestocking(true);
+      const res = await storesAPI.createRestock({
+        inventoryId: restockFor._id,
+        quantity,
+        category: restockCategory,
+        justification: restockNote.trim() || undefined
+      });
+      showToast(res.data?.message || 'Restock requested', 'success');
+      setRestockFor(null);
+      fetchInventory();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Could not request a restock', 'error');
+    } finally {
+      setRestocking(false);
+    }
+  };
+
+  // Opening an item loads its own levels and what it has been used for lately.
+  useEffect(() => {
+    if (!showViewModal || !selectedItem?._id) return;
+    setLevelsForm({
+      reorderLevel: typeof selectedItem.reorderLevel === 'number' ? String(selectedItem.reorderLevel) : '',
+      reorderQuantity: typeof selectedItem.reorderQuantity === 'number' ? String(selectedItem.reorderQuantity) : ''
+    });
+    setUsage(null);
+    storesAPI
+      .getInventoryUsage(selectedItem._id)
+      .then((res: any) => setUsage(res.data?.data || null))
+      .catch(() => setUsage(null));
+  }, [showViewModal, selectedItem?._id]);
+
+  const saveLevels = async () => {
+    if (!selectedItem) return;
+    try {
+      setSavingLevels(true);
+      const res = await storesAPI.updateInventoryLevels(selectedItem._id, {
+        reorderLevel: levelsForm.reorderLevel.trim() === '' ? null : Number(levelsForm.reorderLevel),
+        reorderQuantity: levelsForm.reorderQuantity.trim() === '' ? null : Number(levelsForm.reorderQuantity)
+      });
+      showToast(res.data?.message || 'Stock levels saved', 'success');
+      setShowViewModal(false);
+      fetchInventory();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || 'Could not save the levels', 'error');
+    } finally {
+      setSavingLevels(false);
+    }
+  };
 
   return (
     <div className="p-8">
@@ -361,21 +472,22 @@ export default function Inventory() {
           </div>
         </div>
 
-        <div 
-          onClick={() => setShowLowStock(!showLowStock)}
+        <div
+          onClick={() => toggleFilter('low')}
+          title="At or below the reorder level, empty shelves included. Click to show only these."
           className={`rounded-2xl p-5 shadow-sm border cursor-pointer transition-all ${
-            showLowStock 
-              ? 'bg-red-50 border-red-200' 
-              : 'bg-white border-gray-100 hover:border-red-200'
+            stockFilter === 'low'
+              ? 'bg-amber-50 border-amber-200'
+              : 'bg-white border-gray-100 hover:border-amber-200'
           }`}
         >
           <div className="flex items-center gap-3">
-            <div className={`p-3 rounded-xl ${showLowStock ? 'bg-red-200' : 'bg-red-100'}`}>
-              <AlertTriangle className="h-6 w-6 text-red-600" />
+            <div className={`p-3 rounded-xl ${stockFilter === 'low' ? 'bg-amber-200' : 'bg-amber-100'}`}>
+              <AlertTriangle className="h-6 w-6 text-amber-600" />
             </div>
             <div>
               <p className="text-sm text-gray-500">Low Stock</p>
-              <p className="text-2xl font-bold text-red-600">{lowStockCount}</p>
+              <p className="text-2xl font-bold text-amber-600">{lowStockCount}</p>
             </div>
           </div>
         </div>
@@ -394,14 +506,22 @@ export default function Inventory() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        <div
+          onClick={() => toggleFilter('out')}
+          title="Nothing on hand. Click to show only these."
+          className={`rounded-2xl p-5 shadow-sm border cursor-pointer transition-all ${
+            stockFilter === 'out'
+              ? 'bg-red-50 border-red-200'
+              : 'bg-white border-gray-100 hover:border-red-200'
+          }`}
+        >
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-purple-100 rounded-xl">
-              <TrendingDown className="h-6 w-6 text-purple-600" />
+            <div className={`p-3 rounded-xl ${stockFilter === 'out' ? 'bg-red-200' : 'bg-red-100'}`}>
+              <PackageX className="h-6 w-6 text-red-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Categories</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.categoryCount}</p>
+              <p className="text-sm text-gray-500">Out of Stock</p>
+              <p className="text-2xl font-bold text-red-600">{stats.outOfStockCount || 0}</p>
             </div>
           </div>
         </div>
@@ -512,7 +632,10 @@ export default function Inventory() {
               <tbody>
                 {inventory.map((inv: any) => {
                   const item = inv.item || {};
-                  const isLowStock = inv.quantityOnHand <= (item.reorderLevel || 0);
+                  // The shared rule: this site's level, else the item's, else the default.
+                  const { level, source } = levelOf(inv);
+                  const status = stockStatus(inv.quantityOnHand || 0, level);
+                  const isLowStock = status !== 'ok';
                   const canIssue =
                     issueContext && (inv.quantityOnHand || 0) >= issueContext.lineQty;
                   const isIssuing = issuingItemId === item._id;
@@ -520,8 +643,10 @@ export default function Inventory() {
                     <tr
                       key={inv._id}
                       className={`transition-colors ${
-                        isLowStock
-                          ? 'bg-red-50/50 hover:bg-red-50'
+                        status === 'out'
+                          ? 'bg-red-50/60 hover:bg-red-50'
+                          : status === 'low'
+                          ? 'bg-amber-50/50 hover:bg-amber-50'
                           : 'odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07]'
                       }`}
                     >
@@ -540,19 +665,30 @@ export default function Inventory() {
                         </span>
                       </td>
                       <td className="py-2 px-3 border-b border-gray-100">
-                        <span className={`font-semibold ${isLowStock ? 'text-red-600' : 'text-gray-900'}`}>
+                        <span className={`font-semibold ${status === 'out' ? 'text-red-600' : status === 'low' ? 'text-amber-700' : 'text-gray-900'}`}>
                           {inv.quantityOnHand || 0} {item.unit || 'each'}
                         </span>
+                        {(inv.quantityReserved || 0) > 0 && (
+                          <span className="block text-xs text-gray-500">{inv.quantityReserved} held for collection</span>
+                        )}
                       </td>
                       <td className="py-2 px-3 border-b border-gray-100 text-gray-500">
-                        {item.reorderLevel || 0} {item.unit || 'each'}
+                        {level} {item.unit || 'each'}
+                        {source === 'default' && (
+                          <span className="block text-xs text-amber-700" title="No level set for this item. Set one from View.">default, not set</span>
+                        )}
+                        {source === 'site' && <span className="block text-xs text-gray-400">this site</span>}
                       </td>
                       <td className="py-2 px-3 border-b border-gray-100 text-gray-900">
                         {formatCurrency(inv.unitCost || 0, getCurrentSbuCurrency())}
                       </td>
                       <td className="py-2 px-3 border-b border-gray-100">
-                        {isLowStock ? (
-                          <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                        {status === 'out' ? (
+                          <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 whitespace-nowrap">
+                            Out of Stock
+                          </span>
+                        ) : status === 'low' ? (
+                          <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 whitespace-nowrap">
                             Low Stock
                           </span>
                         ) : (
@@ -582,6 +718,26 @@ export default function Inventory() {
                               )}
                               Issue
                             </button>
+                          )}
+                          {isLowStock && !issueContext && (
+                            inv.openRestock ? (
+                              <Link
+                                to={`/app/requisitions/${inv.openRestock._id}`}
+                                title="A restock for this item is already on its way"
+                                className="px-2 py-1 text-xs font-medium rounded bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap hover:bg-blue-100"
+                              >
+                                {inv.openRestock.requisitionNumber}
+                              </Link>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => openRestock({ ...inv, item })}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors whitespace-nowrap"
+                              >
+                                <ShoppingCart className="h-3.5 w-3.5" />
+                                Restock
+                              </button>
+                            )
                           )}
                           <ViewButton
                             size="xs"
@@ -831,6 +987,130 @@ export default function Inventory() {
               <p className="text-xl font-bold text-green-600">
                 {formatCurrency(selectedItem.totalValue || 0, getCurrentSbuCurrency())}
               </p>
+            </div>
+
+            <div className="border-t border-gray-100 pt-4">
+              <h3 className="text-sm font-semibold text-gray-900">Levels at {selectedItem.site?.name || 'this site'}</h3>
+              <p className="text-xs text-gray-500 mt-0.5 mb-3">
+                Leave a box blank to use the catalogue level
+                {selectedItem.item?.reorderLevel > 0 ? ` (${selectedItem.item.reorderLevel})` : ' (none set, so the default applies)'}
+                {' '}and a suggested quantity.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Reorder level</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={levelsForm.reorderLevel}
+                    onChange={(e: any) => setLevelsForm((f) => ({ ...f, reorderLevel: e.target.value }))}
+                    placeholder={String(levelOf(selectedItem).level)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Reorder quantity</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={levelsForm.reorderQuantity}
+                    onChange={(e: any) => setLevelsForm((f) => ({ ...f, reorderQuantity: e.target.value }))}
+                    placeholder="Suggested"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                {usage
+                  ? usage.issued > 0
+                    ? `Issued ${usage.issued} ${selectedItem.item?.unit || 'each'} in the last ${USAGE_WINDOW_DAYS} days, about ${usage.perMonth} a month. A level of about one month's use is a common starting point.`
+                    : `Nothing issued in the last ${USAGE_WINDOW_DAYS} days.`
+                  : 'Loading recent usage...'}
+              </p>
+              <div className="flex justify-end mt-3">
+                <button
+                  type="button"
+                  onClick={saveLevels}
+                  disabled={savingLevels}
+                  className="flex items-center gap-1.5 px-3 py-2 text-sm bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
+                >
+                  {savingLevels && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Save levels
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Restock: stores asks for its own shelf to be refilled */}
+      <Modal
+        isOpen={Boolean(restockFor)}
+        onClose={() => setRestockFor(null)}
+        title="Request a restock"
+      >
+        {restockFor && (
+          <div className="space-y-4">
+            <div className="rounded-xl bg-gray-50 border border-gray-100 p-3 text-sm">
+              <p className="font-medium text-gray-900">{restockFor.item?.name}</p>
+              <p className="text-gray-600">
+                {restockFor.quantityOnHand || 0} {restockFor.item?.unit || 'each'} on hand at {restockFor.site?.name || 'this site'},
+                reorder level {levelOf(restockFor).level}.
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Quantity to order</label>
+              <input
+                type="number"
+                min="1"
+                value={restockQty}
+                onChange={(e: any) => setRestockQty(e.target.value)}
+                className="w-40 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              />
+              <span className="ml-2 text-sm text-gray-500">{restockFor.item?.unit || 'each'}</span>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <CategorySelect
+                value={restockCategory}
+                onChange={setRestockCategory}
+                placeholder="Choose the supplier category"
+                className="w-full flex items-center justify-between px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Note for the approver <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <textarea
+                rows={2}
+                value={restockNote}
+                onChange={(e: any) => setRestockNote(e.target.value)}
+                placeholder="Leave blank to say how low it is"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
+              />
+            </div>
+            <p className="text-xs text-gray-500">
+              It goes to your department head for approval, then to procurement to buy. When it is delivered it goes
+              straight into stock here; nobody needs to collect it.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setRestockFor(null)}
+                className="px-3 py-2 text-sm border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={submitRestock}
+                disabled={restocking}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm bg-primary text-white font-medium rounded-lg hover:bg-primary-dark disabled:opacity-50"
+              >
+                {restocking ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
+                Request restock
+              </button>
             </div>
           </div>
         )}
