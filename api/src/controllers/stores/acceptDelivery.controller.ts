@@ -1,9 +1,10 @@
 import type { Request, Response } from 'express';
 
-import { Delivery, PurchaseOrder, PurchaseRequisition, StoreTransaction, Item } from '../../models/index.js';
+import { Delivery, PurchaseOrder, PurchaseRequisition, StoreTransaction } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { resolveSiteId, findOrCreateInventory } from '../../lib/siteScope.js';
 import { notifySupplier } from '../../services/notification.service.js';
+import { catalogItemForOrderLine } from '../../services/storesRequisitionProcess.service.js';
 
 const acceptDelivery = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -60,34 +61,7 @@ const acceptDelivery = async (req: Request, res: Response): Promise<any> => {
         const poItem = po.items.id(deliveryItem.poItem);
         if (!poItem) continue;
 
-        // Find or create Item by matching description
-        let inventoryItem = await Item.findOne({
-          $or: [
-            { name: { $regex: new RegExp(poItem.description, 'i') } },
-            { description: { $regex: new RegExp(poItem.description, 'i') } }
-          ],
-          isDeleted: false
-        });
-
-        // If item not found, create a new one
-        if (!inventoryItem) {
-          const itemCount = await Item.countDocuments();
-          const itemCode = `ITEM-${String(itemCount + 1).padStart(6, '0')}`;
-          
-          // Normalize unit to lowercase to match enum values
-          const normalizedUnit = (poItem.unit || 'each').toLowerCase();
-          const validUnits = ['each', 'kg', 'litre', 'meter', 'box', 'pack', 'set', 'roll', 'sheet', 'pair'];
-          const unit = validUnits.includes(normalizedUnit) ? normalizedUnit : 'each';
-          
-          inventoryItem = await Item.create({
-            code: itemCode,
-            name: poItem.description,
-            description: poItem.description,
-            category: 'General',
-            unit: unit,
-            status: 'active'
-          });
-        }
+        const inventoryItem = await catalogItemForOrderLine(poItem);
 
         let inventory = await findOrCreateInventory(inventoryItem._id, receiveSiteId);
         if (!delivery.receivedAtSite) {

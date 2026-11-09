@@ -1,9 +1,10 @@
 import type { Request, Response } from 'express';
 
-import { Delivery, PurchaseOrder, Inventory, StoreTransaction, Item, PurchaseRequisition, User } from '../../models/index.js';
+import { Delivery, PurchaseOrder, StoreTransaction, PurchaseRequisition } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole, notifySupplier, notifyUsersByDepartment, createNotification } from '../../services/notification.service.js';
 import { resolveSiteId, findOrCreateInventory } from '../../lib/siteScope.js';
+import { catalogItemForOrderLine } from '../../services/storesRequisitionProcess.service.js';
 
 /** What stores accepted and rejected on one GRV, told to the supplier. */
 function receiptNoticeForSupplier(po: any, delivery: any, allReceived: boolean, receivedBy: unknown) {
@@ -108,16 +109,60 @@ const receiveGoods = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    // Check if all items are fully received
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, message: 'Record at least one line received' });
+    }
+
+    // Each line as counted and judged at the door. Rejected goods stay on the
+    // GRV, for the supplier and the record, but are not taken into stock or
+    // counted against the order, so they remain owed. A line in damaged or
+    // defective condition with no rejected quantity is rejected in full: such
+    // lines never went into stock.
+    const lines = items.map((line: any) => {
+      const quantityReceived = Math.max(0, Number(line.quantityReceived) || 0);
+      const condition = ['good', 'damaged', 'defective'].includes(line.condition) ? line.condition : 'good';
+      const stated =
+        line.quantityRejected === undefined || line.quantityRejected === null || line.quantityRejected === ''
+          ? null
+          : Math.max(0, Number(line.quantityRejected) || 0);
+      const quantityRejected = Math.min(quantityReceived, stated ?? (condition === 'good' ? 0 : quantityReceived));
+      return {
+        poItem: line.poItem,
+        description: line.description,
+        quantityOrdered: line.quantityOrdered,
+        quantityReceived,
+        quantityRejected,
+        rejectionReason: line.rejectionReason ? String(line.rejectionReason).trim() : undefined,
+        condition,
+        notes: line.notes
+      };
+    });
+    const acceptedOf = (line: { quantityReceived: number; quantityRejected: number }) =>
+      line.quantityReceived - line.quantityRejected;
+
+    // Rev 9 clauses 6.6.7-6.6.9: the supplier is told why goods were refused.
+    const unexplained = lines.find((line: any) => line.quantityRejected > 0 && line.condition === 'good' && !line.rejectionReason);
+    if (unexplained) {
+      return res.status(400).json({
+        success: false,
+        message: `Give a reason for rejecting ${unexplained.description || 'this line'}`
+      });
+    }
+
+    // The order is complete when every line has been accepted in full.
     let allReceived = true;
-    items.forEach((item: any) => {
-      const poItem = (po.items as any).id(item.poItem);
+    lines.forEach((line: any) => {
+      const poItem = (po.items as any).id(line.poItem);
       if (poItem) {
-        const newTotal = (poItem.quantityReceived || 0) + item.quantityReceived;
+        const newTotal = (poItem.quantityReceived || 0) + acceptedOf(line);
         if (newTotal < poItem.quantity) {
           allReceived = false;
         }
       }
+    });
+    (po.items as any[]).forEach((poItem: any) => {
+      const line = lines.find((l: any) => String(l.poItem) === String(poItem._id));
+      if (!line && (poItem.quantityReceived || 0) < poItem.quantity) allReceived = false;
     });
 
     // Check if there's a pending delivery for this PO
@@ -131,8 +176,8 @@ const receiveGoods = async (req: Request, res: Response): Promise<any> => {
       po.deliverToSite ||
       (await resolveSiteId(req.user, req.body.receivedAtSiteId));
 
-    // 5-day return deadline (6.6.7–6.6.9): set when any item arrives damaged/defective.
-    const hasFaultyItems = items.some((i: any) => i.condition && i.condition !== 'good');
+    // 5-day return deadline (6.6.7–6.6.9): set when anything is rejected.
+    const hasFaultyItems = lines.some((line: any) => line.quantityRejected > 0);
     const returnDeadline = hasFaultyItems
       ? new Date(new Date(deliveryDate).getTime() + 5 * 24 * 60 * 60 * 1000)
       : undefined;
@@ -158,7 +203,7 @@ const receiveGoods = async (req: Request, res: Response): Promise<any> => {
       if (hasHazardousMaterials !== undefined) delivery.hasHazardousMaterials = Boolean(hasHazardousMaterials);
       if (msdsReference) delivery.msdsReference = String(msdsReference).trim();
       if (returnDeadline) delivery.returnDeadline = returnDeadline;
-      delivery.items = items;
+      delivery.items = lines;
       delivery.isPartialDelivery = !allReceived;
       delivery.isFinalDelivery = allReceived;
       delivery.status = 'received';
@@ -182,7 +227,7 @@ const receiveGoods = async (req: Request, res: Response): Promise<any> => {
         hasHazardousMaterials: Boolean(hasHazardousMaterials),
         msdsReference: msdsReference ? String(msdsReference).trim() : undefined,
         returnDeadline,
-        items,
+        items: lines,
         isPartialDelivery: !allReceived,
         isFinalDelivery: allReceived,
         status: 'received',
@@ -195,51 +240,20 @@ const receiveGoods = async (req: Request, res: Response): Promise<any> => {
     const year = new Date().getFullYear();
 
     // Update PO quantities and update inventory
-    for (const item of items) {
-      const poItem = (po.items as any).id(item.poItem);
+    for (const line of lines) {
+      const poItem = (po.items as any).id(line.poItem);
       if (!poItem) continue;
 
-      // Update PO item quantity received
-      poItem.quantityReceived = (poItem.quantityReceived || 0) + item.quantityReceived;
+      // Only accepted goods count against the order; rejected ones are still owed.
+      const goodQuantity = acceptedOf(line);
+      poItem.quantityReceived = (poItem.quantityReceived || 0) + goodQuantity;
 
-      // Find or create Item by matching description
-      let inventoryItem = await Item.findOne({
-        $or: [
-          { name: { $regex: new RegExp(poItem.description, 'i') } },
-          { description: { $regex: new RegExp(poItem.description, 'i') } }
-        ],
-        isDeleted: false
-      });
-
-      // If item not found, create a new one
-      if (!inventoryItem) {
-        // Generate item code
-        const itemCount = await Item.countDocuments();
-        const itemCode = `ITEM-${String(itemCount + 1).padStart(6, '0')}`;
-        
-        // Normalize unit to lowercase to match enum values
-        const normalizedUnit = (poItem.unit || 'each').toLowerCase();
-        const validUnits = ['each', 'kg', 'litre', 'meter', 'box', 'pack', 'set', 'roll', 'sheet', 'pair'];
-        const unit = validUnits.includes(normalizedUnit) ? normalizedUnit : 'each';
-        
-        inventoryItem = await Item.create({
-          code: itemCode,
-          name: poItem.description,
-          description: poItem.description,
-          category: 'General', // Default category
-          unit: unit,
-          status: 'active'
-        });
-      }
-
-      let inventory = await findOrCreateInventory(inventoryItem._id, receiveSiteId);
-      if (!inventory.unitCost && poItem.unitPrice) {
-        inventory.unitCost = poItem.unitPrice;
-      }
-
-      // Update inventory quantities (only for items in good condition)
-      const goodQuantity = item.condition === 'good' ? item.quantityReceived : 0;
       if (goodQuantity > 0) {
+        const inventoryItem = await catalogItemForOrderLine(poItem);
+        const inventory = await findOrCreateInventory(inventoryItem._id, receiveSiteId);
+        if (!inventory.unitCost && poItem.unitPrice) {
+          inventory.unitCost = poItem.unitPrice;
+        }
         const previousQty = inventory.quantityOnHand;
         inventory.quantityOnHand += goodQuantity;
         
@@ -281,9 +295,11 @@ const receiveGoods = async (req: Request, res: Response): Promise<any> => {
     po.status = allReceived ? 'completed' : 'partially_received';
     await po.save();
 
-    // Auto-accept delivery when goods are received (can be inspected later if needed)
+    // The GRV is decided at the door: what was not rejected is accepted.
+    const acceptedTotal = lines.reduce((sum: number, line: any) => sum + acceptedOf(line), 0);
+    const rejectedTotal = lines.reduce((sum: number, line: any) => sum + line.quantityRejected, 0);
     if (delivery.status === 'received') {
-      delivery.status = 'accepted';
+      delivery.status = rejectedTotal === 0 ? 'accepted' : acceptedTotal === 0 ? 'rejected' : 'partially_accepted';
       await delivery.save();
     }
 
@@ -356,7 +372,11 @@ const receiveGoods = async (req: Request, res: Response): Promise<any> => {
     res.status(201).json({
       success: true,
       data: delivery,
-      message: allReceived ? 'All goods received and requisition marked as completed' : 'Goods received successfully'
+      message: rejectedTotal > 0
+        ? `Goods received. ${rejectedTotal} rejected and still owed by the supplier.`
+        : allReceived
+        ? 'All goods received and requisition marked as completed'
+        : 'Goods received successfully'
     });
   } catch (error: any) {
     console.error('Receive goods error:', error);

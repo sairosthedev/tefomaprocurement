@@ -1,0 +1,270 @@
+
+<!-- ================= PART 3 ================= -->
+<section class="page" id="p3">
+  <span class="kicker-sm">Part 3</span>
+  <h2>Who does what</h2>
+  <p class="lead">Eight roles use the system, and each sees and does only its own work. No single person can complete a purchase alone: the requester cannot approve, the approver cannot receive, and the receiver cannot pay.</p>
+
+  <h3 id="p3-1">3.1 The roles</h3>
+  <table class="first-bold">
+    <thead><tr><th style="width:19%">Role</th><th style="width:19%">Who holds it</th><th>What they do in the system</th><th style="width:24%">What they cannot do</th></tr></thead>
+    <tbody>
+      <tr><td>End user</td><td>Staff in any department or site</td><td>Raise requisitions for their department and track them to delivery</td><td>Approve anything; see other people's requests</td></tr>
+      <tr><td>Department head</td><td>Head of each department; a deputy can act for them</td><td>Approve or reject the team's requisitions; raise their own, which go straight to Stores; collect delivered goods from Stores</td><td>Approve their own requisition; approve purchase orders; pick a winning quotation</td></tr>
+      <tr><td>Stores officer</td><td>Stores and warehouse staff</td><td>Check stock against requisitions; issue stock; receive goods on a GRV and reject what is faulty; move stock between sites</td><td>Approve orders or invoices</td></tr>
+      <tr><td>Procurement officer</td><td>Procurement staff</td><td>Accept requisitions; issue RFQs; select the winner with a justification; raise orders; onboard suppliers and submit them for activation; handle bank-detail changes; evaluate suppliers</td><td>Activate a supplier alone; authorise their own award; approve orders</td></tr>
+      <tr><td>Head of Procurement</td><td>The department head of the Procurement department</td><td>Everything a procurement officer does, plus: authorise awards; first approval on every order; approve waivers; approve, return or reject supplier activations</td><td>Select a winner and authorise the same award; approve an activation they submitted</td></tr>
+      <tr><td>Finance manager</td><td>Finance team</td><td>Second approval on orders; match and approve invoices; record payments; set department budgets</td><td>Raise orders or receive goods</td></tr>
+      <tr><td>COO</td><td>COO of the organisation</td><td>Final approval on orders at or above the organisation's limit (default USD 5,000); approve waivers; approve, return or reject supplier activations</td><td>Raise or receive anything; edit supplier records</td></tr>
+      <tr><td>Supplier</td><td>External companies</td><td>Register once; upload KYS documents; quote on RFQs; acknowledge orders; follow deliveries; submit invoices; request bank-detail changes</td><td>See internal approvals or other suppliers' bids</td></tr>
+      <tr><td>Administrator</td><td>IT administrator for the organisation</td><td>Manage users, departments and sites; read the audit log; view orders and reports</td><td>Any business step: approvals, awards, receiving, payments</td></tr>
+    </tbody>
+  </table>
+  <div class="note"><b>Two-person rules.</b> An award needs one person to select it and the Head of Procurement to authorise it. A supplier activation needs one person to submit it and the Head of Procurement or the COO to approve it. A bank-detail change needs a call-back by one person and approval by another, neither of them the requester.</div>
+
+  <h3 id="p3-2">3.2 The purchase, step by step</h3>
+  <p>A purchase moves through 20 steps in five phases. Each step unlocks only when the one before it is complete. The tinted rows are controls the system enforces.</p>
+  <figure id="fig4">
+    <div class="panel">
+    <svg viewBox="0 0 800 92" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Five phases">
+      <g font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10">
+        <rect x="4" y="18" width="148" height="56" rx="6" fill="#0B1E3F"/><text x="78" y="42" fill="#fff" font-weight="700" font-size="12" text-anchor="middle">Request</text><text x="78" y="60" fill="#8FA6C4" text-anchor="middle">Steps 1 to 4</text>
+        <path d="M154 46 L166 46" stroke="#6B7686" stroke-width="1.6" marker-end="url(#arr)"/>
+        <rect x="168" y="18" width="148" height="56" rx="6" fill="#1D5EFF"/><text x="242" y="42" fill="#fff" font-weight="700" font-size="12" text-anchor="middle">Source</text><text x="242" y="60" fill="#DCE7FF" text-anchor="middle">Steps 5 to 9</text>
+        <path d="M318 46 L330 46" stroke="#6B7686" stroke-width="1.6" marker-end="url(#arr)"/>
+        <rect x="332" y="18" width="148" height="56" rx="6" fill="#0B1E3F"/><text x="406" y="42" fill="#fff" font-weight="700" font-size="12" text-anchor="middle">Order</text><text x="406" y="60" fill="#8FA6C4" text-anchor="middle">Steps 10 to 14</text>
+        <path d="M482 46 L494 46" stroke="#6B7686" stroke-width="1.6" marker-end="url(#arr)"/>
+        <rect x="496" y="18" width="148" height="56" rx="6" fill="#1D5EFF"/><text x="570" y="42" fill="#fff" font-weight="700" font-size="12" text-anchor="middle">Receive</text><text x="570" y="60" fill="#DCE7FF" text-anchor="middle">Steps 15 and 16</text>
+        <path d="M646 46 L658 46" stroke="#6B7686" stroke-width="1.6" marker-end="url(#arr)"/>
+        <rect x="660" y="18" width="136" height="56" rx="6" fill="#0B1E3F"/><text x="728" y="42" fill="#fff" font-weight="700" font-size="12" text-anchor="middle">Pay</text><text x="728" y="60" fill="#8FA6C4" text-anchor="middle">Steps 17 to 20</text>
+      </g>
+    </svg>
+    </div>
+    <figcaption><b>Figure</b> The five phases of a purchase. The rehearsal purchase in the launch checklist runs all twenty steps once, with an order above the COO limit.</figcaption>
+  </figure>
+  <table class="check tight">
+    <thead><tr><th>#</th><th style="width:34%">Step</th><th style="width:24%">Who</th><th>What the system checks</th><th style="width:9%">See</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Raise and submit a requisition</td><td>End user or department head</td><td>At least one item; a title</td><td>4.1</td></tr>
+      <tr style="background:#E8F0FF"><td>2</td><td>Approve the requisition</td><td>Department head or deputy</td><td>Not the requester; over budget needs a reason and Finance is told</td><td>4.5</td></tr>
+      <tr><td>3</td><td>Stock review</td><td>Stores officer</td><td>Items in stock are issued; only the shortfall goes on</td><td>5.1</td></tr>
+      <tr><td>4</td><td>Accept for sourcing</td><td>Procurement officer</td><td>Within 2 days, or it is marked overdue</td><td>6.2</td></tr>
+      <tr><td>5</td><td>Publish the RFQ to invited suppliers</td><td>Procurement officer</td><td>A deadline; suppliers matched by category, topped up to three</td><td>6.3</td></tr>
+      <tr><td>6</td><td>Submit sealed quotations</td><td>Suppliers</td><td>Bids stay sealed until the RFQ closes</td><td>11.4</td></tr>
+      <tr style="background:#E8F0FF"><td>7</td><td>Close the RFQ; bids ranked</td><td>Procurement officer</td><td>Fewer than three quotes needs a waiver from the COO or Head of Procurement</td><td>6.4, 6.5</td></tr>
+      <tr><td>8</td><td>Select the winner with a justification</td><td>Procurement officer</td><td>A written reason, for the whole quotation or line by line</td><td>6.6</td></tr>
+      <tr style="background:#E8F0FF"><td>9</td><td>Authorise the award</td><td>Head of Procurement</td><td>A different person from the selector; the supplier must be activated with KYS complete</td><td>8.1</td></tr>
+      <tr><td>10</td><td>Raise and submit the purchase order</td><td>Procurement officer</td><td>One order per accepted quotation</td><td>6.8</td></tr>
+      <tr style="background:#E8F0FF"><td>11</td><td>Approve the order</td><td>Head of Procurement</td><td>Always</td><td>8.2</td></tr>
+      <tr style="background:#E8F0FF"><td>12</td><td>Approve the order</td><td>Finance</td><td>Always</td><td>9.1</td></tr>
+      <tr style="background:#E8F0FF"><td>13</td><td>Approve the order</td><td>COO</td><td>Only at or above the organisation's limit in USD; below it, skipped</td><td>8.2</td></tr>
+      <tr><td>14</td><td>Order sent; supplier acknowledges</td><td>System, then supplier</td><td>The order PDF is emailed on the last approval; acknowledging marks it issued</td><td>11.5</td></tr>
+      <tr><td>15</td><td>Receive the goods on a GRV</td><td>Stores officer</td><td>Delivery note, who delivered, counts, witnesses, MSDS for hazardous goods</td><td>5.3</td></tr>
+      <tr><td>16</td><td>Reject what is faulty</td><td>Stores officer</td><td>On the same GRV: rejected goods stay out of stock and remain owed; the supplier is told why</td><td>5.4</td></tr>
+      <tr><td>17</td><td>Submit an invoice against the order</td><td>Supplier</td><td>Only issued orders; lines come from received quantities</td><td>11.7</td></tr>
+      <tr style="background:#E8F0FF"><td>18</td><td>Three-way match; approve the invoice</td><td>Finance</td><td>Order, GRV and invoice must agree within 2%; a variance needs a written reason</td><td>9.2</td></tr>
+      <tr><td>19</td><td>Record the payment</td><td>Finance</td><td>Tuesday or Thursday run</td><td>9.3</td></tr>
+      <tr><td>20</td><td>Evaluate the supplier</td><td>Procurement officer</td><td>Seven criteria, scored 1 to 5</td><td>6.10</td></tr>
+    </tbody>
+  </table>
+  <p>Any approver can reject with a reason, which sends the record back with that reason on file. A requisition, RFQ or purchase order can also be cancelled with a reason from a fixed list.</p>
+
+  <h3 id="p3-3">3.3 Your menu</h3>
+  <p>The left-hand menu is different for each role. These are the menus as built; <strong>Dashboard</strong> and <strong>Notifications</strong> appear for everyone and are left out below.</p>
+  <div class="menus">
+    <div class="menu"><b>End user</b><span>My Requisitions</span></div>
+    <div class="menu"><b>Department head</b><span>Approvals</span><b>Requisitions</b><span>Team Requisitions</span><span>My Requisitions</span><b>Reports</b></div>
+    <div class="menu"><b>Stores officer: Receiving</b><span>PR Stores Review</span><span>Deliveries (GRV)</span><span>Store Requisitions</span><b>Stock</b><span>Inventory</span><span>Stock Movements</span><span>Stock Transfers</span><b>Reports</b></div>
+    <div class="menu"><b>Procurement officer: Sourcing</b><span>Requisitions</span><span>RFQs</span><span>Quotations</span><span>Purchase Orders</span><b>Suppliers</b><span>All Suppliers</span><span>Performance</span><span>Compliance</span><span>Evaluations</span><span>Banking Changes</span><b>Reports</b></div>
+    <div class="menu"><b>Head of Procurement: Sign-offs</b><span>Authorizations</span><span>Approvals</span><b>Sourcing</b><span>as Procurement officer</span><b>Suppliers</b><span>as Procurement officer</span><b>Reports</b></div>
+    <div class="menu"><b>Finance: Approvals</b><b>Payables</b><span>Invoices</span><span>Payments</span><span>Purchase Orders</span><b>Budgets</b><b>Reports</b></div>
+    <div class="menu"><b>COO</b><span>Approvals</span><b>Suppliers</b><span>All Suppliers</span><span>Performance</span><span>Compliance</span><span>Evaluations</span><b>Reports</b></div>
+    <div class="menu"><b>Administrator: Organisation</b><span>Staff Team</span><span>Departments</span><span>Sites</span><b>Suppliers</b><span>All Suppliers and analytics (read only)</span><b>Oversight</b><span>Purchase Orders</span><span>Reports</span><span>Audit Logs</span></div>
+    <div class="menu"><b>Supplier: Bidding</b><span>My RFQs</span><span>Submitted Quotations</span><b>Orders</b><span>Purchase Orders</span><span>Deliveries</span><span>Invoices</span><b>Account</b><span>Company Profile</span><span>KYS Documents</span></div>
+  </div>
+</section>
+
+<!-- ================= PART 4 ================= -->
+<section class="page" id="p4">
+  <span class="kicker-sm">Part 4</span>
+  <h2>Requisitions</h2>
+  <p class="lead">For anyone who asks for goods or services, and for the department heads who approve those requests. A requisition is the start of every purchase: what you need, how many, and why.</p>
+  <p><strong>Your dashboard.</strong> An end user sees My Requisitions, Drafts, Awaiting HOD Approval and Fulfilled, with a reminder of drafts not yet submitted and anything rejected recently. A department head sees Dept. Requisitions, Awaiting My Approval, Approved and POs Pending Approval, and a <strong>Needs attention</strong> list of requisitions awaiting their approval.</p>
+
+  <h3 id="p4-1">4.1 Raise a requisition</h3>
+  <span class="who">End user or department head</span>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/05-new-requisition.png" alt=""></div>
+    <figcaption><b>Figure</b> The New Requisition drawer opens over the list. Three steps: Details, Items, Review &amp; submit.</figcaption>
+  </figure>
+
+  <ol class="steps">
+    <li><b>Open</b> <span class="path">My Requisitions</span> and click <span class="btn dark">New Requisition</span>. The form opens in a drawer with three steps: <strong>Details</strong>, <strong>Items</strong>, <strong>Review &amp; submit</strong>.</li>
+    <li><b>Details.</b> Give a <strong>Title</strong> (required), a <strong>Description</strong>, a <strong>Work Order</strong> reference if there is one, and the <strong>Urgency</strong>: Normal or High Priority. Click <span class="btn">Next</span>.</li>
+    <li><b>Items.</b> Click <span class="btn">Add Item</span>. In <strong>Item</strong>, search the stores catalogue; pick a catalogue item (the row shows its code, unit and how many are available) or choose <em>Add "…" as a new item</em> for something not in the catalogue. Set <strong>Package</strong>, <strong>Quantity</strong>, <strong>Unit</strong>, an estimated unit price if you know it, and a <strong>Specification</strong>. Click <span class="btn dark">Add</span>. Repeat for each line.</li>
+    <li><b>Equipment and photos (optional).</b> For a spare part or a repair, open <strong>Equipment details &amp; photos</strong> on the item and record make, model, plant number, serial numbers and the OEM part number. Add photos of the data plate, the part or the fault, with a caption. Suppliers see these with the RFQ, which cuts wrong parts.</li>
+    <li><b>Review &amp; submit.</b> Check the summary and the <strong>Estimated total</strong>. Estimated prices let your department head check the request against the budget.</li>
+    <li>Click <span class="btn dark">Submit for Approval</span>, or <span class="btn">Save Draft</span> to finish later.</li>
+  </ol>
+  <p class="result">The requisition appears in your list as <b>Pending HOD Approval</b> and your department head is notified. A draft shows as <span class="st">Draft</span> until you submit it.</p>
+  <div class="note">Closing the drawer with unsaved entries asks <em>Save this requisition?</em> with the choices <span class="btn">Discard</span>, <span class="btn">Keep editing</span> and <span class="btn">Save draft</span>. A draft needs at least a title.</div>
+
+  <h3 id="p4-2">4.2 Submit and track it</h3>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/04-requisitions-end-user.png" alt=""></div>
+    <figcaption><b>Figure</b> My Requisitions: the list an end user sees, with New Requisition above it and search and status filters on the right.</figcaption>
+  </figure>
+
+  <ul>
+    <li><strong>Submit a draft</strong> from the list with <span class="btn">Submit</span>, or open it with <span class="btn">View</span> and submit from there. A draft with no items cannot be submitted.</li>
+    <li><strong>Track it</strong> in <span class="path">My Requisitions</span>. The status badge follows the request through sourcing and ordering (4.7). Open it with <span class="btn">View</span> for the full picture: the line items with quantity delivered, a <strong>Purchase order</strong> card showing which approval the order is waiting on, an <strong>RFQ</strong> card, a <strong>Stores</strong> card and an <strong>Activity</strong> timeline.</li>
+    <li><strong>Search and filter</strong> the list by status; the row shows the department and the number of items, and a chip for high-priority requests.</li>
+    <li><strong>Rejected?</strong> The reason is on the record under Activity. Correct the request and raise it again; a rejected requisition is not reopened.</li>
+  </ul>
+
+  <h3 id="p4-3">4.3 Collect goods from stores</h3>
+  <p>When Stores has issued items from stock, or has received a delivery for your requisition, the goods are collected through a <em>store requisition</em>. The department head raises it.</p>
+  <span class="who">Department head</span>
+  <ol class="steps">
+    <li>In <span class="path">Requisitions &rsaquo; Team Requisitions</span> or on the requisition itself, click <span class="btn">Req. from Stores</span> (shown once goods are delivered to Stores).</li>
+    <li>Stores marks it <span class="st blue">Ready to collect</span> and you are notified with any note from Stores.</li>
+    <li>Send someone to collect. Stores records who collected on the <strong>Hand over</strong> form and prints an issue note for them to sign.</li>
+  </ol>
+  <p class="result">The requisition's Stores card shows <b>Collected</b>; the request is complete.</p>
+  <p>If the order arrives in more than one delivery, collect each part as it comes. After a later delivery, <span class="btn">Req. from Stores</span> appears again and asks only for what has not yet been collected.</p>
+
+  <h3 id="p4-4">4.4 Cancel a requisition</h3>
+  <p>Open the requisition and click <span class="btn">Cancel requisition</span>. Choose a <strong>Reason for cancellation</strong> from the list: No longer required, Duplicate request, Budget no longer available, Specification changed, Sourced elsewhere, Project or work order cancelled, or Other with details. Confirm with <span class="btn dark">Confirm cancellation</span>. An end user can cancel a draft or a request still with the department head; a department head can also cancel one in stores review. Once Procurement has accepted it, only Procurement can cancel it. Cancelling also cancels open RFQs and draft orders linked to it, and cannot be undone.</p>
+
+  <h3 id="p4-5">4.5 Approve or reject a requisition</h3>
+  <span class="who">Department head or deputy</span>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/06-team-requisitions.png" alt=""></div>
+    <figcaption><b>Figure</b> Team Requisitions: requests raised by the department, for the head to approve or reject.</figcaption>
+  </figure>
+
+  <ol class="steps">
+    <li>Open <span class="path">Requisitions &rsaquo; Team Requisitions</span>, or click <strong>Requisitions awaiting your approval</strong> on the dashboard. Each row has <span class="btn">Approve</span> and <span class="btn">Reject</span>.</li>
+    <li><b>Check the lines first</b> if you want to change them: open the request with <span class="btn">View</span>. While it is with you, each line has <span class="btn">Edit</span> to change the quantity and <span class="btn">Remove</span> to drop it. Remove anything you do not want purchased before approving.</li>
+    <li><b>Approve.</b> Click <span class="btn">Approve</span>, add <strong>Comments</strong> if useful, and confirm. If the request takes the department over its budget, the box <strong>Over budget</strong> shows the available amount, the request and the shortfall, and a <strong>Reason for approving over budget</strong> is required. The button becomes <span class="btn dark">Approve over budget</span>; the reason is recorded and Finance is notified.</li>
+    <li><b>Reject.</b> Click <span class="btn">Reject</span> and give the <strong>Reason for Rejection</strong>, which the requester sees.</li>
+  </ol>
+  <p class="result">Toast <b>Requisition approved and sent to stores</b>. The request moves to <span class="st">Stores Review</span>. The one-hour target applies; the Approvals queue marks items that have waited longer.</p>
+  <div class="note"><b>Purchase order approvals.</b> Since 28 October 2026 department heads no longer approve purchase orders. The <span class="path">Approvals</span> page for a department head shows only older orders that were already at that stage, and the Head of Procurement's queue. Orders are approved by the Head of Procurement, Finance and, above the limit, the COO.</div>
+
+  <h3 id="p4-6">4.6 A department head's own requisition</h3>
+  <p>A department head cannot approve their own request, so submitting is the approval. In the form the last step says <em>Check, then send to Stores</em> and the button is <span class="btn dark">Send to Stores</span>; on the list a pending request of their own has <span class="btn">Send to Stores</span>. If it is over budget, it is reported to Finance as an override. The request then follows the normal path from stock review onwards.</p>
+
+  <h3 id="p4-7">4.7 Requisition statuses</h3>
+  <table class="tight">
+    <thead><tr><th style="width:30%">Badge</th><th>Meaning</th><th style="width:26%">Who acts next</th></tr></thead>
+    <tbody>
+      <tr><td><span class="st">Draft</span></td><td>Saved, not submitted</td><td>The requester</td></tr>
+      <tr><td><span class="st amber">Pending HOD Approval</span></td><td>Waiting for the department head or deputy</td><td>Department head</td></tr>
+      <tr><td><span class="st">Stores Review</span></td><td>Stores is checking what is in stock</td><td>Stores</td></tr>
+      <tr><td><span class="st green">Fulfilled from Stock</span></td><td>Everything was in stock and has been issued; nothing to buy</td><td>Collect from Stores</td></tr>
+      <tr><td><span class="st amber">Pending Acceptance</span></td><td>With Procurement, to accept for sourcing</td><td>Procurement</td></tr>
+      <tr><td><span class="st">Accepted</span>, <span class="st">Sourcing</span>, <span class="st">Quoted</span></td><td>An RFQ is being prepared, is open, or has quotations to evaluate</td><td>Procurement</td></tr>
+      <tr><td><span class="st blue">PO with Head of Procurement</span>, <span class="st blue">PO with Finance</span>, <span class="st blue">PO with COO</span></td><td>The purchase order is at that approval stage</td><td>That approver</td></tr>
+      <tr><td><span class="st blue">Ordered from supplier</span>, <span class="st blue">Partly delivered</span></td><td>The supplier has the order; some goods may have arrived</td><td>Supplier, then Stores</td></tr>
+      <tr><td><span class="st green">Delivered to Stores</span></td><td>Goods received and accepted; ready to request from Stores</td><td>Department head (4.3)</td></tr>
+      <tr><td><span class="st green">Collected</span>, <span class="st green">Completed</span></td><td>Done</td><td></td></tr>
+      <tr><td><span class="st red">Rejected</span>, <span class="st red">Cancelled</span>, <span class="st red">PO rejected</span></td><td>Stopped, with the reason on the record</td><td>Raise again if still needed</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ================= PART 5 ================= -->
+<section class="page" id="p5">
+  <span class="kicker-sm">Part 5</span>
+  <h2>Stores</h2>
+  <p class="lead">Stores sits at both ends of a purchase: it checks what is already on the shelf before anything is bought, and it receives what arrives before anything is paid. Nothing enters or leaves stock without a record.</p>
+  <p><strong>Your dashboard.</strong> Inventory Items, Low Stock Items, Pending Deliveries and Approved POs, with a <strong>Needs attention</strong> list of requisitions to review, items below reorder level and deliveries pending receipt. Quick actions: View Inventory, Pending Deliveries, Stock Alerts.</p>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/38-dashboard-stores.png" alt=""></div>
+    <figcaption><b>Figure</b> The Stores dashboard: stock, low stock and deliveries at a glance, with the queue under Needs attention.</figcaption>
+  </figure>
+
+
+  <h3 id="p5-1">5.1 Stock review of a requisition</h3>
+  <span class="who">Stores officer</span>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/07-stores-review.png" alt=""></div>
+    <figcaption><b>Figure</b> Internal Requisitions, Stores Review: the To review tab lists approved requisitions waiting for a stock check.</figcaption>
+  </figure>
+
+  <p>Every approved requisition comes to Stores first, under <span class="path">Receiving &rsaquo; PR Stores Review</span> (titled <em>Internal Requisitions — Stores Review</em>). Only what is not in stock goes on to Procurement.</p>
+  <ol class="steps">
+    <li>On the <strong>To review</strong> tab, click <span class="btn">Review</span> on a requisition. The drawer lists each line with <strong>In stock</strong> (<em>n here</em>, <em>n at other sites</em>, or <em>Search to check</em> for a new item) and a <strong>Category</strong>.</li>
+    <li><b>Issue what you have.</b> Click <span class="btn">Issue from stock</span> on a line that is in stock. You are taken to Inventory with the banner <em>Issuing for IR-…</em>; confirm the item and click <span class="btn dark">Issue</span>. An issue is all or nothing: if there is not enough stock the system says so and nothing moves.</li>
+    <li><b>Categorise the rest.</b> Every line that still has to be bought needs a <strong>Category</strong>; the drawer warns how many lines are still uncategorised. The category is what matches the request to suppliers.</li>
+    <li><b>Send it on.</b> Click <span class="btn dark">Forward to procurement</span>. If every line was issued, the button is <span class="btn dark">Fulfill from stock</span> and the requisition is closed. <span class="btn">Auto-process</span> issues whatever is in stock and forwards the rest in one go.</li>
+  </ol>
+  <p class="result">Toast <b>Forwarded to procurement</b>. The requisition moves to the <strong>Sent on</strong> tab, where you can follow it: <em>Awaiting procurement</em>, <em>Out for quotation</em>, <em>Purchase order raised</em>, with the expected delivery date and a <span class="btn">Receive in Deliveries</span> shortcut once an order exists.</p>
+
+  <h3 id="p5-2">5.2 Store requisitions: hand-overs</h3>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/08-store-requisitions.png" alt=""></div>
+    <figcaption><b>Figure</b> Store Requisitions: collection requests to mark ready, hand over and print an issue note for.</figcaption>
+  </figure>
+
+  <p>A department collects issued or delivered goods through a store requisition, under <span class="path">Receiving &rsaquo; Store Requisitions</span>.</p>
+  <ol class="steps">
+    <li>A new request shows as <span class="st amber">New request</span>. Pick the goods, then click <span class="btn">Mark ready</span> and add a <strong>Note to the requester</strong> if useful (where to collect, when). The requester is told.</li>
+    <li>When they arrive, click <span class="btn dark">Hand over</span> and record the collector's <strong>Full name</strong>, <strong>ID / Employee no.</strong>, <strong>Department</strong> and <strong>Contact number</strong>. Leave these blank only if nobody is available to sign.</li>
+    <li>Click <span class="btn">Issue Note</span> to print the note for the collector to sign and file.</li>
+    <li>To refuse a request, click <span class="btn">Reject</span> and give the <strong>Rejection Reason</strong>.</li>
+  </ol>
+  <p class="result">The request shows <span class="st green">Collected</span> (or <span class="st">Part collected</span> if some lines remain), and the requisition's Stores card updates.</p>
+
+  <h3 id="p5-3">5.3 Receive a delivery (GRV)</h3>
+  <span class="who">Stores officer</span>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/09-deliveries-grv.png" alt=""></div>
+    <figcaption><b>Figure</b> Goods Receiving (GRV): the banner counts orders awaiting delivery; recent deliveries are listed below with their GRV numbers.</figcaption>
+  </figure>
+
+  <p>Under <span class="path">Receiving &rsaquo; Deliveries (GRV)</span>, the banner lists every purchase order with goods still due, including the balance of an order already part-delivered. Click <span class="btn">Show all</span> when there are more than three. Nothing can be invoiced until the goods are on a GRV.</p>
+  <ol class="steps">
+    <li>Click <span class="btn dark">Receive</span> on the order. The <strong>Receive Goods</strong> wizard has four steps.</li>
+    <li><b>Delivery.</b> Enter the <strong>Delivery Note Number</strong> and who <strong>Delivered</strong> the goods: full name (required), ID number, vehicle registration and contact number. You are recorded as the receiving officer.</li>
+    <li><b>Count items.</b> For each line, enter what was <strong>Received</strong>. Count physically; do not copy the delivery note. A part-delivered order shows how many are still due. If any arrived damaged, wrong or not to specification, enter them under <strong>Rejected</strong> with a <strong>Reason for rejecting</strong> (5.4).</li>
+    <li><b>Inspection.</b> Record who inspected, and the <strong>Witnesses present</strong> (MT, Security, SHEQ). Tick <strong>Delivery contains hazardous materials</strong> if it does and enter the <strong>MSDS reference</strong>; a hazardous delivery cannot be received without one.</li>
+    <li><b>Review &amp; receive.</b> Click <span class="btn dark">Confirm Receipt</span>.</li>
+  </ol>
+  <p class="result">Toast <b>Goods received successfully</b>, or <b>Goods received. 1 rejected and still owed by the supplier.</b> The GRV has a number, the accepted goods are in stock, the order shows partly or fully received, and the supplier is told what was accepted and rejected. Use <span class="btn">Print</span> on the row for the GRV document.</p>
+  <div class="note warn"><b>Short deliveries.</b> Enter only what actually arrived. A line received short leaves the order <em>partly received</em>; it stays in the banner, and the balance is received on a later GRV in the same way.</div>
+
+  <h3 id="p5-4">5.4 Rejected goods</h3>
+  <p>Goods are accepted or rejected when they are counted, on the receive form in 5.3. There is no separate acceptance step afterwards.</p>
+  <ul>
+    <li>Rejected goods are not added to stock and do not count against the order. The order stays <em>partly received</em> until the supplier replaces them, and they are received on a later GRV.</li>
+    <li>The GRV shows <span class="st amber">Partially accepted</span>, or <span class="st red">Rejected</span> when nothing was accepted. The printed GRV lists each rejected quantity with its reason.</li>
+    <li>The supplier is told what was rejected and why, and has five days to collect the goods.</li>
+    <li>Only accepted goods count in the three-way match, so the supplier cannot be paid for what was rejected.</li>
+  </ul>
+
+  <h3 id="p5-5">5.5 Inventory and catalogue</h3>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/10-inventory.png" alt=""></div>
+    <figcaption><b>Figure</b> Inventory: stock level against reorder level, with Low Stock marked. Add Item and Import Excel sit above the list.</figcaption>
+  </figure>
+
+  <p><span class="path">Stock &rsaquo; Inventory</span> shows every item with its stock level, reorder level and status (<span class="st amber">Low Stock</span> or <span class="st green">In Stock</span>), with totals for items, low stock and stock value.</p>
+  <ul>
+    <li><strong>Add an item.</strong> <span class="btn dark">Add Item</span> opens a three-step form: <strong>Item</strong> (code, auto-generated if empty; category; name; description), <strong>Stock</strong> (unit, unit price, current quantity, reorder level) and <strong>Review &amp; add</strong>. Set a reorder level on everything you want a low-stock alert for.</li>
+    <li><strong>Opening balances and bulk loads.</strong> <span class="btn">Import Excel</span> opens <strong>Bulk Import Inventory</strong>: download the template, fill it, upload, check the preview, then <span class="btn dark">Import</span>. Use this for the opening stock count at launch.</li>
+    <li><strong>Issue.</strong> Stock leaves inventory only through an issue (5.1), a hand-over (5.2) or a transfer (5.6). Never correct a balance by editing it; record the movement that was missed.</li>
+  </ul>
+
+  <h3 id="p5-6">5.6 Stock movements and transfers</h3>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/11-stock-transfers.png" alt=""></div>
+    <figcaption><b>Figure</b> Stock Transfers: moves between sites, each going through Approve, Ship and Receive.</figcaption>
+  </figure>
+
+  <ul>
+    <li><span class="path">Stock &rsaquo; Stock Movements</span> is the full history: stock in, stock out, adjustments and transfers, filtered by type and date, searchable by item or reference. Use it to reconcile a count.</li>
+    <li><span class="path">Stock &rsaquo; Stock Transfers</span> moves stock between sites. Click <span class="btn dark">New transfer</span>, choose <strong>From site</strong> and <strong>To site</strong>, add lines, and <span class="btn dark">Create transfer</span>. The transfer then goes through <span class="btn">Approve</span>, <span class="btn">Ship</span> and, at the receiving site, <span class="btn">Receive</span>. Stock leaves the source on shipping and arrives on receipt, so a transfer in transit is visible at neither site.</li>
+  </ul>
+</section>

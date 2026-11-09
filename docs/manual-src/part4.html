@@ -1,0 +1,185 @@
+
+<!-- ================= PART 8 ================= -->
+<section class="page" id="p8">
+  <span class="kicker-sm">Part 8</span>
+  <h2>Sign-offs</h2>
+  <p class="lead">The Head of Procurement and the COO are the second pair of eyes on the decisions that commit money or admit a supplier. Each decision is one click with a reason where it is a refusal, and each lands in a queue with a count on the menu.</p>
+  <p><strong>Where to look.</strong> The Head of Procurement has <span class="path">Sign-offs &rsaquo; Authorizations</span> (awards) and <span class="path">Sign-offs &rsaquo; Approvals</span> (orders), plus every Procurement screen. The COO has <span class="path">Approvals</span> (orders at or above the limit) and the Suppliers section. Both see <strong>Suppliers awaiting your activation approval</strong> on the dashboard.</p>
+
+  <h3 id="p8-1">8.1 Authorise an award</h3>
+  <span class="who">Head of Procurement</span>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/15-authorizations.png" alt=""></div>
+    <figcaption><b>Figure</b> Authorizations: quotations selected by Procurement that need the Head of Procurement's authorisation.</figcaption>
+  </figure>
+
+  <ol class="steps">
+    <li>Open <span class="path">Sign-offs &rsaquo; Authorizations</span>. Each row is a quotation a procurement officer has selected, with the RFQ, the value, the justification and who selected it. A row you selected yourself says <em>You selected this</em> and can only be viewed.</li>
+    <li>Click <span class="btn">Review</span>. Read the quotation, the ranking on the RFQ, and the justification.</li>
+    <li>In <strong>Acceptance Authorization</strong>, click <span class="btn dark">Authorize as Head of Procurement</span>. For a split award, open the RFQ's award matrix and click <span class="btn">Authorize</span> on each line.</li>
+  </ol>
+  <p class="result">Toast <b>Quotation authorized. Ready for acceptance.</b> The procurement officer can now accept it and raise the order. Authorisation is refused if the supplier is not activated, its KYS is incomplete for its tier, or a required document has expired; fix the supplier first (Part 7).</p>
+
+  <h3 id="p8-2">8.2 Approve a purchase order</h3>
+  <span class="who">Head of Procurement, then Finance, then COO at or above the limit</span>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/17-approvals-hop.png" alt=""></div>
+    <figcaption><b>Figure</b> Head of Procurement Approval: the first stage of every order, with Review on each row.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/22-approvals-coo.png" alt=""></div>
+    <figcaption><b>Figure</b> COO Authorization: only orders at or above the organisation's limit reach this queue.</figcaption>
+  </figure>
+
+  <ol class="steps">
+    <li>Open <span class="path">Approvals</span>. The title says whose stage it is: <em>Head of Procurement Approval</em>, <em>Finance Approval</em> or <em>COO Authorization</em>. Tiles show the pending count, total value and orders of USD 10,000 or more. Rows waiting longer than 45 minutes show an age chip against the one-hour target.</li>
+    <li>Click <span class="btn">Review</span>. The box shows the supplier, total, payment terms, expected delivery, the lines with VAT, a <em>High Value Purchase Order</em> warning where relevant, and for the COO the approval history so far.</li>
+    <li>Click <span class="btn dark">Approve</span>, or <span class="btn">Reject</span> with <strong>Comments</strong>, which are required for a rejection.</li>
+  </ol>
+  <p class="result">Toast <b>Purchase Order approved successfully</b>. The order moves to the next stage, or if yours was the last, the order PDF is emailed to the supplier at once. A rejection returns the order to Procurement with your reason.</p>
+  <table class="first-bold tight">
+    <thead><tr><th style="width:12%">Stage</th><th style="width:26%">Approver</th><th>Required when</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Head of Procurement</td><td>Always</td></tr>
+      <tr><td>2</td><td>Finance manager</td><td>Always</td></tr>
+      <tr><td>3</td><td>COO</td><td>Order total at or above the organisation's COO limit in US dollars (default USD 5,000). Other currencies are converted at the stored rate; with no rate on file, the order goes to the COO so an unknown conversion can never skip the top approval</td></tr>
+    </tbody>
+  </table>
+  <p>Orders can also be approved from the order itself under <span class="path">Purchase Orders</span>, where the approver whose turn it is sees <span class="btn dark">Approve</span> and <span class="btn">Reject</span>.</p>
+
+  <h3 id="p8-3">8.3 Approve a quotation waiver</h3>
+  <span class="who">Head of Procurement or COO</span>
+  <p>When an RFQ closed with fewer than three quotations you are notified. Open the quotation (or the award matrix line) and, in the step <em>Minimum 3 competitive quotations</em>, choose the waiver type and click <span class="btn dark">Approve waiver</span>. The types are listed in 6.5. Approve only where the reason is true on the file: a sole source, a framework contract, no responses received, a unique product, or a written COO instruction. The waiver and its type are logged against the award.</p>
+
+  <h3 id="p8-4">8.4 Decide a supplier activation</h3>
+  <span class="who">Head of Procurement or COO, never the submitter</span>
+  <ol class="steps">
+    <li>Open <span class="path">Suppliers &rsaquo; All Suppliers</span> and set the status filter to <strong>Awaiting my approval</strong>, or click <strong>Suppliers awaiting your activation approval</strong> on the dashboard.</li>
+    <li>Click <span class="btn">View</span>. The banner reads <em>Awaiting activation approval — submitted by … on …</em>, with any <strong>KYS override requested</strong> reason and the submitter's notes. The facts strip shows KYS progress, the tier and the business type.</li>
+    <li><b>Check the file.</b> Open the <strong>Documents</strong> tab and look at the verified documents and the checklist for the tier; look at Directors, References and Vetting. If anything is missing and no override reason justifies it, return the request.</li>
+    <li>Choose one:
+      <ul>
+        <li><span class="btn dark">Approve activation</span>: the supplier becomes active and spend-authorised. If an override was requested, the confirmation says <em>Approving grants the KYS override in your name</em>.</li>
+        <li><span class="btn">Return</span>: give the reason. The request goes back to the submitter, the supplier stays pending, and it can be submitted again.</li>
+        <li><span class="btn">Reject registration</span>: give the reason, which the supplier is shown. The supplier cannot be invited, quote or be awarded, but can still sign in.</li>
+      </ul>
+    </li>
+  </ol>
+  <p class="result">The badge changes to <span class="st green">Active</span>, <span class="st amber">Pending</span> or <span class="st red">Rejected</span>, the supplier is emailed, and the decision is in the audit log and the supplier's status history with your name and reason.</p>
+  <div class="note"><b>You cannot approve what you submitted.</b> If you put the supplier forward yourself, the page says so and the buttons are not shown; another Head of Procurement or the COO must decide. If the checklist changed while the request waited and is no longer complete, approval is refused until the request is returned and resubmitted.</div>
+
+  <h3 id="p8-5">8.5 Reject or reopen a registration</h3>
+  <p>A pending supplier that should not be on the register at all, for example a self-registration from a company you will never use, can be refused before it is ever submitted: open it and click <span class="btn">Reject registration</span> with a reason. A rejected supplier shows the banner <em>Registration rejected by … on …</em> and can be brought back with <span class="btn">Reopen registration</span> and a reason; it returns to pending and activation again takes two people. Rejection is not blacklisting: it says nothing against the company and a later registration under the same number is refused only because the record already exists.</p>
+</section>
+
+<!-- ================= PART 9 ================= -->
+<section class="page" id="p9">
+  <span class="kicker-sm">Part 9</span>
+  <h2>Finance</h2>
+  <p class="lead">Finance approves every order, pays only what was ordered and received, and keeps department spending against budget. The three-way match is done by the system; Finance decides what to do when it fails.</p>
+  <p><strong>Your dashboard.</strong> Pending Approval, Approved POs, Total PO Value and All Purchase Orders, with <strong>Purchase orders awaiting finance approval</strong> under Needs attention. Quick actions: Pending Approvals, Invoices, All Purchase Orders, View Reports.</p>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/39-dashboard-finance.png" alt=""></div>
+    <figcaption><b>Figure</b> The Finance dashboard: orders pending approval and their value, with quick actions to approvals, invoices and reports.</figcaption>
+  </figure>
+
+
+  <h3 id="p9-1">9.1 Approve purchase orders</h3>
+  <span class="who">Finance manager</span>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/18-approvals-finance.png" alt=""></div>
+    <figcaption><b>Figure</b> Finance Approval: orders that have passed the Head of Procurement, waiting for Finance.</figcaption>
+  </figure>
+
+  <p>Finance is the second approval on every order, after the Head of Procurement. Open <span class="path">Approvals</span> (titled <em>Finance Approval</em>), click <span class="btn">Review</span>, check the supplier, value, terms and lines, and click <span class="btn dark">Approve</span> or <span class="btn">Reject</span> with comments. The steps are the same as 8.2. Below the COO limit yours is the last approval, and the order is emailed to the supplier when you click. At or above the limit it goes on to the COO.</p>
+  <p>Check two things every time: that the order's department has budget for it (Budgets shows the committed amount), and that the supplier is one you expect to pay. The supplier's bank details are frozen while a bank change is open, so an order to a supplier with a change in progress will not be paid until that change is decided.</p>
+
+  <h3 id="p9-2">9.2 Match and approve an invoice</h3>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/19-invoices.png" alt=""></div>
+    <figcaption><b>Figure</b> Invoices: supplier invoices with their status and a match icon; View opens the three-way match.</figcaption>
+  </figure>
+
+  <p>Suppliers submit invoices against issued orders through their portal (11.7); Finance does not key them. Each invoice arrives under <span class="path">Payables &rsaquo; Invoices</span> with a match icon.</p>
+  <ol class="steps">
+    <li>Open the invoice with <span class="btn">View</span>. The <strong>Three-way match</strong> panel shows the order total, the value of goods received on GRVs, the amount already invoiced on this order, and this invoice. Below are the GRVs (or <em>None — stores has not receipted these goods</em>) and the line items.</li>
+    <li><b>If it matches</b> (within 2% or one unit of currency of what was received and not yet invoiced), click <span class="btn dark">Approve</span>.</li>
+    <li><b>If there is a variance</b>, the invoice shows <span class="st amber">Variance</span>. Either <span class="btn">Reject</span> it with a <strong>Rejection reason</strong> so the supplier submits a corrected invoice, or, where the difference is explained and acceptable, write the <strong>Reason for approving despite the variance</strong> and click <span class="btn dark">Approve with variance</span>. The reason is logged against the invoice.</li>
+  </ol>
+  <p class="result">Toast <b>Invoice approved for payment</b>; the status is <span class="st green">Approved</span> and the supplier is told. An invoice with no GRV cannot be approved at all: ask Stores to receive the goods first. The approved invoices on an order can never exceed the value received.</p>
+
+  <h3 id="p9-3">9.3 Record a payment</h3>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/20-payments.png" alt=""></div>
+    <figcaption><b>Figure</b> Payments: every payment recorded, with the next payment run shown in the banner.</figcaption>
+  </figure>
+
+  <p>On an approved invoice click <span class="btn dark">Record payment</span>. The payment is recorded as a bank transfer dated today for the invoice amount, the invoice becomes <span class="st green">Paid</span>, and the supplier sees it in the payment history on their portal. <span class="path">Payables &rsaquo; Payments</span> lists every payment and shows the next payment run; supplier payments are processed on Tuesdays and Thursdays only. Record the payment on the day the transfer is made, not before.</p>
+
+  <h3 id="p9-4">9.4 Budgets</h3>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/21-budgets.png" alt=""></div>
+    <figcaption><b>Figure</b> Budget Management: allocation, utilised, committed and available per department, with Edit to set the year's allocation.</figcaption>
+  </figure>
+
+  <p><span class="path">Budgets</span> (titled <em>Budget Management</em>) shows the financial year's allocation per department against <strong>Utilized</strong> (paid), <strong>Committed</strong> (approved orders not yet paid) and <strong>Available</strong>, with a red banner naming departments that are over budget.</p>
+  <ol class="steps">
+    <li>Click <span class="btn">Edit</span> on a department.</li>
+    <li>Enter the <strong>Allocated amount</strong> for the financial year and click <span class="btn dark">Save</span>.</li>
+  </ol>
+  <p class="result">Toast <b>Budget allocation saved</b>. From now on a requisition that would take the department over its allocation needs a written reason from its department head, and you are notified of each such approval. Set every department's budget before launch (step 9 of the checklist); a department with no allocation shows <em>No allocation</em> and cannot be checked.</p>
+</section>
+
+<!-- ================= PART 10 ================= -->
+<section class="page" id="p10">
+  <span class="kicker-sm">Part 10</span>
+  <h2>Administration</h2>
+  <p class="lead">The administrator sets the organisation up in Procureline and keeps it tidy: sites, departments, users and their roles, and the audit log. The administrator cannot carry out any business step, which is what makes the audit log trustworthy.</p>
+  <p><strong>Your dashboard.</strong> A system overview, recent activity, and attention rows for suppliers, KYS, evaluations due, low stock and failed sign-ins.</p>
+
+  <h3 id="p10-1">10.1 Sites</h3>
+  <p>Create sites first, because departments, stock and deliveries refer to them. Open <span class="path">Organisation &rsaquo; Sites</span> and click <span class="btn dark">Add site</span>: a short <strong>Code</strong> (such as <code>HQ</code>, locked once saved), the <strong>Type</strong> (HQ or Site), <strong>Name</strong>, city and province, and tick <strong>Has local store inventory</strong> for any site that holds its own stock. Stock transfers (5.6) move stock between sites that have inventory.</p>
+
+  <h3 id="p10-2">10.2 Departments</h3>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/29-departments.png" alt=""></div>
+    <figcaption><b>Figure</b> Departments: code, name, head and members; Add Department opens the form.</figcaption>
+  </figure>
+
+  <p>Open <span class="path">Organisation &rsaquo; Departments</span> and click <span class="btn dark">Add Department</span>: <strong>Department Name</strong> (required), a short <strong>Department Code</strong>, a description, the <strong>Department Head</strong> and a <strong>Deputy HOD</strong>. Both lists offer only users with the Department Head role, so create those users first (10.3) or come back and edit. The deputy can approve the department's requisitions when the head is away; name one for every department so approvals never stall. Create a department called <strong>Procurement</strong>: its head is the Head of Procurement.</p>
+
+  <h3 id="p10-3">10.3 Staff Team (users)</h3>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/28-staff-team.png" alt=""></div>
+    <figcaption><b>Figure</b> Staff Team: each user with role, department and status; Add User opens the form.</figcaption>
+  </figure>
+
+  <ol class="steps">
+    <li>Open <span class="path">Organisation &rsaquo; Staff Team</span> and click <span class="btn dark">Add User</span>.</li>
+    <li>Enter <strong>First Name</strong>, <strong>Last Name</strong> and <strong>Email</strong>. Use the person's real work address: sign-in codes and every notification go there, and the email cannot be changed later. Set a <strong>Password</strong> of at least 6 characters and confirm it; the user should change it at first sign-in.</li>
+    <li>Choose the <strong>Role</strong>: Admin, Procurement Officer, Department Head, End User, Finance, COO or Stores Officer. Set the <strong>Department</strong> for everyone who raises or approves requisitions; a Department Head whose department is Procurement becomes the <strong>Head of Procurement</strong>, with full procurement access plus award authorisation and waiver approval. Add a phone number and leave <strong>Status</strong> as Active.</li>
+    <li>Click <span class="btn dark">Create User</span>.</li>
+  </ol>
+  <p class="result">Toast <b>User created successfully</b>. The user signs in at your organisation's address (2.2). To change a role or deactivate someone, click <span class="btn">Edit</span>; set <strong>Status</strong> to Inactive or Suspended rather than deleting, so their history stays attributed. Supplier logins are not created here; suppliers register themselves or are created by Procurement (7.1).</p>
+  <div class="note warn"><b>One person, one role.</b> Give nobody two logins to get around a control. The two-person rules (awards, bank changes, activations) assume the submitter and the approver are different people, and the audit log records the account, not the person at the keyboard.</div>
+
+  <h3 id="p10-4">10.4 Organisation settings</h3>
+  <p>Open your profile from the card above the menu. The panel <strong>Business unit settings</strong> (Procureline's name for an organisation's settings) shows the organisation's code, country, base currency, the <strong>COO approval limit</strong> with the exchange rate it is applied at, and the document branding (legal name, VAT number, address, logo) printed on orders. These are read-only here; changes to the currency, limit, exchange rate or branding are made by the Procureline operators. Before launch, confirm the limit matches your delegation of authority (step 6 of the checklist). The warning <em>No exchange rate on file — every PO routes to the COO</em> means exactly that for an organisation whose currency is not USD.</p>
+
+  <h3 id="p10-5">10.5 Audit log and evidence pack</h3>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/30-audit-logs.png" alt=""></div>
+    <figcaption><b>Figure</b> Audit Logs: every action with who did it, filtered by action, entity and date; Export CSV and Evidence pack at the top.</figcaption>
+  </figure>
+
+  <p><span class="path">Oversight &rsaquo; Audit Logs</span> records every sign-in, failed sign-in, create, update, delete, approval, rejection, submission, upload and download, with the user, role, time, IP address and the fields that changed. Search by description, user or IP; filter by action, entity and date. Click an entry for <strong>Audit Log Details</strong>, including before and after values. <span class="btn">Export CSV</span> exports the filtered list; <span class="btn">Evidence pack</span> produces the controls evidence for auditors for the date range (default the last twelve months). Check the log daily during the first weeks (1.7); the hourly jobs appear in it when they run.</p>
+
+  <h3 id="p10-6">10.6 Reports</h3>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/31-reports.png" alt=""></div>
+    <figcaption><b>Figure</b> Reports &amp; Analytics: the Overview tab with period selection and Export; the Suppliers tab holds the supplier registry.</figcaption>
+  </figure>
+
+  <p><span class="path">Oversight &rsaquo; Reports</span> shows spend trends, department spend and order value by status for the week, month, quarter or year, with <span class="btn">Export</span> to CSV. The <strong>Suppliers</strong> tab is the supplier registry with KYS, scores, orders and spend. Reports are available to every staff role except end users.</p>
+</section>

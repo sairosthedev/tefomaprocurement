@@ -51,6 +51,7 @@ export default function Deliveries() {
   const [showViewModal, setShowViewModal] = useState<any>(false);
   const [selectedDelivery, setSelectedDelivery] = useState<any>(null);
   const [selectedPO, setSelectedPO] = useState<any>(null);
+  const [showAllPending, setShowAllPending] = useState(false);
   const [receiveData, setReceiveData] = useState<any>({
     deliveryNote: '',
     items: [],
@@ -128,7 +129,9 @@ export default function Deliveries() {
         quantity: item.quantity,
         quantityReceived: item.quantityReceived || 0,
         unit: item.unit,
-        receivedQuantity: item.quantity - (item.quantityReceived || 0)
+        receivedQuantity: item.quantity - (item.quantityReceived || 0),
+        rejectedQuantity: 0,
+        rejectionReason: ''
       }))
     });
     setReceiveStep(0);
@@ -151,6 +154,20 @@ export default function Deliveries() {
     if (step === 1 && !receiveData.items.some((item: any) => item.receivedQuantity > 0)) {
       showToast('Enter the quantity received for at least one item', 'error');
       return false;
+    }
+    if (step === 1) {
+      const over = receiveData.items.find((item: any) => (item.rejectedQuantity || 0) > (item.receivedQuantity || 0));
+      if (over) {
+        showToast(`More rejected than received for ${over.description}`, 'error');
+        return false;
+      }
+      const unexplained = receiveData.items.find(
+        (item: any) => (item.rejectedQuantity || 0) > 0 && !String(item.rejectionReason || '').trim()
+      );
+      if (unexplained) {
+        showToast(`Give a reason for rejecting ${unexplained.description}`, 'error');
+        return false;
+      }
     }
     return true;
   };
@@ -185,6 +202,8 @@ export default function Deliveries() {
             description: item.description,
             quantityOrdered: item.quantity,
             quantityReceived: item.receivedQuantity || 0,
+            quantityRejected: Math.min(item.rejectedQuantity || 0, item.receivedQuantity || 0),
+            rejectionReason: (item.rejectedQuantity || 0) > 0 ? String(item.rejectionReason || '').trim() : undefined,
             condition: 'good'
           })),
         deliveredBy: {
@@ -248,6 +267,20 @@ export default function Deliveries() {
   const updateReceivedQty = (index: any, qty: any) => {
     const newItems = [...receiveData.items];
     newItems[index].receivedQuantity = parseInt(qty) || 0;
+    setReceiveData({ ...receiveData, items: newItems });
+  };
+
+  // Rejected goods are counted on the GRV but stay out of stock and remain
+  // owed by the supplier, who is told why and given five days to collect them.
+  const updateRejectedQty = (index: any, qty: any) => {
+    const newItems = [...receiveData.items];
+    newItems[index].rejectedQuantity = Math.max(0, parseInt(qty) || 0);
+    setReceiveData({ ...receiveData, items: newItems });
+  };
+
+  const updateRejectionReason = (index: any, reason: string) => {
+    const newItems = [...receiveData.items];
+    newItems[index].rejectionReason = reason;
     setReceiveData({ ...receiveData, items: newItems });
   };
 
@@ -343,7 +376,7 @@ export default function Deliveries() {
             </div>
           </div>
           <div className="mt-4 space-y-2">
-            {pendingPOs.slice(0, 3).map((po: any) => (
+            {(showAllPending ? pendingPOs : pendingPOs.slice(0, 3)).map((po: any) => (
               <div key={po._id} className="flex items-center justify-between bg-white rounded-xl p-3">
                 <div>
                   <span className="font-mono text-sm font-medium text-primary">{po.poNumber}</span>
@@ -357,6 +390,14 @@ export default function Deliveries() {
                 </button>
               </div>
             ))}
+            {pendingPOs.length > 3 && (
+              <button
+                onClick={() => setShowAllPending((shown) => !shown)}
+                className="text-sm font-medium text-amber-800 hover:underline"
+              >
+                {showAllPending ? 'Show fewer' : `Show all ${pendingPOs.length}`}
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -631,21 +672,50 @@ export default function Deliveries() {
                           <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Item</th>
                           <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Ordered</th>
                           <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Received</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Rejected</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Reason for rejecting</th>
                         </tr>
                       </thead>
                       <tbody>
                         {receiveData.items.map((item: any, index: any) => (
                           <tr key={index} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                             <td className="py-2 px-3 border-b border-gray-100">{item.description}</td>
-                            <td className="py-2 px-3 border-b border-gray-100">{item.quantity} {item.unit}</td>
+                            <td className="py-2 px-3 border-b border-gray-100 whitespace-nowrap">
+                              {item.quantity} {item.unit}
+                              {item.quantityReceived > 0 && (
+                                <span className="block text-xs text-gray-500">
+                                  {item.quantity - item.quantityReceived} still due
+                                </span>
+                              )}
+                            </td>
                             <td className="py-2 px-3 border-b border-gray-100">
                               <input
                                 type="number"
                                 min="0"
-                                max={item.quantity - (item.previouslyReceived || 0)}
+                                max={item.quantity - (item.quantityReceived || 0)}
                                 value={item.receivedQuantity}
                                 onChange={(e: any) => updateReceivedQty(index, e.target.value)}
                                 className="w-24 px-3 py-1.5 border border-gray-200 rounded-lg text-sm"
+                              />
+                            </td>
+                            <td className="py-2 px-3 border-b border-gray-100">
+                              <input
+                                type="number"
+                                min="0"
+                                max={item.receivedQuantity || 0}
+                                value={item.rejectedQuantity || 0}
+                                onChange={(e: any) => updateRejectedQty(index, e.target.value)}
+                                className="w-20 px-3 py-1.5 border border-gray-200 rounded-lg text-sm"
+                              />
+                            </td>
+                            <td className="py-2 px-3 border-b border-gray-100">
+                              <input
+                                type="text"
+                                value={item.rejectionReason || ''}
+                                onChange={(e: any) => updateRejectionReason(index, e.target.value)}
+                                disabled={!(item.rejectedQuantity > 0)}
+                                placeholder={item.rejectedQuantity > 0 ? 'e.g. damaged in transit' : 'Nothing rejected'}
+                                className="w-48 px-3 py-1.5 border border-gray-200 rounded-lg text-sm disabled:bg-gray-50 disabled:text-gray-400"
                               />
                             </td>
                           </tr>
@@ -798,6 +868,7 @@ export default function Deliveries() {
                           <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Item</th>
                           <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Ordered</th>
                           <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Receiving now</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">Rejected</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -808,13 +879,18 @@ export default function Deliveries() {
                             <td className={`py-2 px-3 border-b border-gray-100 font-medium ${item.receivedQuantity > 0 ? 'text-green-700' : 'text-gray-400'}`}>
                               {item.receivedQuantity} {item.unit}
                             </td>
+                            <td className={`py-2 px-3 border-b border-gray-100 ${item.rejectedQuantity > 0 ? 'text-red-700 font-medium' : 'text-gray-400'}`}>
+                              {item.rejectedQuantity > 0 ? `${item.rejectedQuantity} ${item.unit}: ${item.rejectionReason}` : 'None'}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
                   <p className="text-xs text-gray-500">
-                    Confirming records the GRV and moves the goods into stock. Lines with nothing received are left off.
+                    Confirming records the GRV and moves the accepted goods into stock. Rejected goods stay
+                    owed by the supplier, who is told why and has five days to collect them. Lines with
+                    nothing received are left off.
                   </p>
                 </div>
               )}

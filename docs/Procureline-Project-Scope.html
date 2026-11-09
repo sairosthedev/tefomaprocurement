@@ -39,7 +39,7 @@
   .toc { break-after: page; }
   .chapter + .chapter { margin-top: 13mm; }
   /* These open on a diagram, which would otherwise leave the heading stranded. */
-  #s6, #s9 { break-before: page; margin-top: 0; }
+  #s6, #s8, #s9, #s10, #s12 { break-before: page; margin-top: 0; }
   .chapter-num { break-after: avoid; }
   .lead { break-before: avoid; }
   .chapter-num { display: block; font-size: 8.4pt; font-weight: 700; letter-spacing: 1.8pt; color: var(--blue); text-transform: uppercase; margin-bottom: 1.5mm; }
@@ -109,9 +109,9 @@
   <div class="cover-meta">
     <div><div class="meta-label">Client</div><div class="meta-value">Tefoma Construction</div></div>
     <div><div class="meta-label">Business units</div><div class="meta-value">15: 12 in Zimbabwe,<br>3 in South Africa</div></div>
-    <div><div class="meta-label">Version</div><div class="meta-value">1.0</div></div>
-    <div><div class="meta-label">Date</div><div class="meta-value">4 November 2026</div></div>
-    <div><div class="meta-label">Basis</div><div class="meta-value">Code on the main branch,<br>3 November 2026</div></div>
+    <div><div class="meta-label">Version</div><div class="meta-value">2.0</div></div>
+    <div><div class="meta-label">Date</div><div class="meta-value">5 November 2026</div></div>
+    <div><div class="meta-label">Basis</div><div class="meta-value">Code on the main branch,<br>5 November 2026</div></div>
     <div><div class="meta-label">Classification</div><div class="meta-value">Internal &mdash; confidential</div></div>
   </div>
 </div>
@@ -125,38 +125,39 @@
   <div class="toc-row toc-h3"><a href="#s1-related">Related documents</a><span class="dots"></span><span class="pg">3</span></div>
   <div class="toc-row toc-h2"><a href="#s2"><span class="n">02</span>Executive summary</a><span class="dots"></span><span class="pg">4</span></div>
   <div class="toc-row toc-h3"><a href="#s2-guarantees">What it guarantees</a><span class="dots"></span><span class="pg">4</span></div>
-  <div class="toc-row toc-h3"><a href="#s2-status">Where it stands (3 November 2026)</a><span class="dots"></span><span class="pg">5</span></div>
+  <div class="toc-row toc-h3"><a href="#s2-status">Where it stands (5 November 2026)</a><span class="dots"></span><span class="pg">5</span></div>
   <div class="toc-row toc-h2"><a href="#s3"><span class="n">03</span>Why: background and objectives</a><span class="dots"></span><span class="pg">5</span></div>
   <div class="toc-row toc-h3"><a href="#s3-problems">The problems it was built to solve</a><span class="dots"></span><span class="pg">5</span></div>
   <div class="toc-row toc-h3"><a href="#s3-objectives">Business objectives</a><span class="dots"></span><span class="pg">6</span></div>
   <div class="toc-row toc-h2"><a href="#s4"><span class="n">04</span>What: scope</a><span class="dots"></span><span class="pg">6</span></div>
-  <div class="toc-row toc-h3"><a href="#s4-org">Organisational scope</a><span class="dots"></span><span class="pg">6</span></div>
-  <div class="toc-row toc-h3"><a href="#s4-in">In scope</a><span class="dots"></span><span class="pg">6</span></div>
+  <div class="toc-row toc-h3"><a href="#s4-org">Organisational scope</a><span class="dots"></span><span class="pg">7</span></div>
+  <div class="toc-row toc-h3"><a href="#s4-in">In scope</a><span class="dots"></span><span class="pg">7</span></div>
   <div class="toc-row toc-h3"><a href="#s4-out">Out of scope (not built)</a><span class="dots"></span><span class="pg">7</span></div>
-  <div class="toc-row toc-h2"><a href="#s5"><span class="n">05</span>Who: roles and responsibilities</a><span class="dots"></span><span class="pg">7</span></div>
-  <div class="toc-row toc-h2"><a href="#s6"><span class="n">06</span>When: the end-to-end process</a><span class="dots"></span><span class="pg">9</span></div>
-  <div class="toc-row toc-h3"><a href="#s6-times">Time limits and schedules</a><span class="dots"></span><span class="pg">10</span></div>
-  <div class="toc-row toc-h2"><a href="#s7"><span class="n">07</span>Approval matrix</a><span class="dots"></span><span class="pg">11</span></div>
-  <div class="toc-row toc-h3"><a href="#s7-po">Purchase order approval chain (since 28 October 2026)</a><span class="dots"></span><span class="pg">11</span></div>
-  <div class="toc-row toc-h3"><a href="#s7-other">Other approvals</a><span class="dots"></span><span class="pg">12</span></div>
-  <div class="toc-row toc-h2"><a href="#s8"><span class="n">08</span>What: functional modules</a><span class="dots"></span><span class="pg">12</span></div>
-  <div class="toc-row toc-h2"><a href="#s9"><span class="n">09</span>Supplier lifecycle</a><span class="dots"></span><span class="pg">14</span></div>
-  <div class="toc-row toc-h3"><a href="#s9-tiers">Due diligence by tier</a><span class="dots"></span><span class="pg">14</span></div>
-  <div class="toc-row toc-h3"><a href="#s9-ongoing">Ongoing controls</a><span class="dots"></span><span class="pg">15</span></div>
-  <div class="toc-row toc-h2"><a href="#s10"><span class="n">10</span>Where and how: architecture and technology</a><span class="dots"></span><span class="pg">15</span></div>
-  <div class="toc-row toc-h3"><a href="#s10-tech">Technology</a><span class="dots"></span><span class="pg">15</span></div>
-  <div class="toc-row toc-h2"><a href="#s11"><span class="n">11</span>Security, audit trail and notifications</a><span class="dots"></span><span class="pg">16</span></div>
-  <div class="toc-row toc-h3"><a href="#s11-access">Access control</a><span class="dots"></span><span class="pg">16</span></div>
-  <div class="toc-row toc-h3"><a href="#s11-audit">Audit trail</a><span class="dots"></span><span class="pg">16</span></div>
-  <div class="toc-row toc-h3"><a href="#s11-retention">Data retention</a><span class="dots"></span><span class="pg">17</span></div>
-  <div class="toc-row toc-h3"><a href="#s11-notify">Notifications</a><span class="dots"></span><span class="pg">17</span></div>
-  <div class="toc-row toc-h2"><a href="#s12"><span class="n">12</span>Compliance, rollout, assumptions and risks</a><span class="dots"></span><span class="pg">17</span></div>
-  <div class="toc-row toc-h3"><a href="#s12-compliance">Compliance with the procurement procedure</a><span class="dots"></span><span class="pg">18</span></div>
-  <div class="toc-row toc-h3"><a href="#s12-rollout">Rollout plan</a><span class="dots"></span><span class="pg">18</span></div>
-  <div class="toc-row toc-h3"><a href="#s12-assumptions">Assumptions</a><span class="dots"></span><span class="pg">18</span></div>
-  <div class="toc-row toc-h3"><a href="#s12-constraints">Constraints</a><span class="dots"></span><span class="pg">19</span></div>
-  <div class="toc-row toc-h3"><a href="#s12-risks">Risks and open items</a><span class="dots"></span><span class="pg">19</span></div>
-  <div class="toc-row toc-h2"><a href="#s13"><span class="n">13</span>Glossary</a><span class="dots"></span><span class="pg">19</span></div>
+  <div class="toc-row toc-h2"><a href="#s5"><span class="n">05</span>Who: roles and responsibilities</a><span class="dots"></span><span class="pg">8</span></div>
+  <div class="toc-row toc-h2"><a href="#s6"><span class="n">06</span>When: the end-to-end process</a><span class="dots"></span><span class="pg">10</span></div>
+  <div class="toc-row toc-h3"><a href="#s6-times">Time limits and schedules</a><span class="dots"></span><span class="pg">11</span></div>
+  <div class="toc-row toc-h2"><a href="#s7"><span class="n">07</span>Approval matrix</a><span class="dots"></span><span class="pg">12</span></div>
+  <div class="toc-row toc-h3"><a href="#s7-po">Purchase order approval chain (since 28 October 2026)</a><span class="dots"></span><span class="pg">12</span></div>
+  <div class="toc-row toc-h3"><a href="#s7-other">Other approvals</a><span class="dots"></span><span class="pg">13</span></div>
+  <div class="toc-row toc-h2"><a href="#s8"><span class="n">08</span>What: functional modules</a><span class="dots"></span><span class="pg">14</span></div>
+  <div class="toc-row toc-h2"><a href="#s9"><span class="n">09</span>Supplier lifecycle</a><span class="dots"></span><span class="pg">16</span></div>
+  <div class="toc-row toc-h3"><a href="#s9-activation">Two-person activation</a><span class="dots"></span><span class="pg">16</span></div>
+  <div class="toc-row toc-h3"><a href="#s9-tiers">Due diligence by tier</a><span class="dots"></span><span class="pg">17</span></div>
+  <div class="toc-row toc-h3"><a href="#s9-ongoing">Ongoing controls</a><span class="dots"></span><span class="pg">17</span></div>
+  <div class="toc-row toc-h2"><a href="#s10"><span class="n">10</span>Where and how: architecture and technology</a><span class="dots"></span><span class="pg">19</span></div>
+  <div class="toc-row toc-h3"><a href="#s10-tech">Technology</a><span class="dots"></span><span class="pg">19</span></div>
+  <div class="toc-row toc-h2"><a href="#s11"><span class="n">11</span>Security, audit trail and notifications</a><span class="dots"></span><span class="pg">20</span></div>
+  <div class="toc-row toc-h3"><a href="#s11-access">Access control</a><span class="dots"></span><span class="pg">20</span></div>
+  <div class="toc-row toc-h3"><a href="#s11-audit">Audit trail</a><span class="dots"></span><span class="pg">21</span></div>
+  <div class="toc-row toc-h3"><a href="#s11-retention">Data retention</a><span class="dots"></span><span class="pg">21</span></div>
+  <div class="toc-row toc-h3"><a href="#s11-notify">Notifications</a><span class="dots"></span><span class="pg">21</span></div>
+  <div class="toc-row toc-h2"><a href="#s12"><span class="n">12</span>Compliance, rollout, assumptions and risks</a><span class="dots"></span><span class="pg">22</span></div>
+  <div class="toc-row toc-h3"><a href="#s12-compliance">Compliance with the procurement procedure</a><span class="dots"></span><span class="pg">22</span></div>
+  <div class="toc-row toc-h3"><a href="#s12-rollout">Rollout plan</a><span class="dots"></span><span class="pg">23</span></div>
+  <div class="toc-row toc-h3"><a href="#s12-assumptions">Assumptions</a><span class="dots"></span><span class="pg">23</span></div>
+  <div class="toc-row toc-h3"><a href="#s12-constraints">Constraints</a><span class="dots"></span><span class="pg">23</span></div>
+  <div class="toc-row toc-h3"><a href="#s12-risks">Risks and open items</a><span class="dots"></span><span class="pg">23</span></div>
+  <div class="toc-row toc-h2"><a href="#s13"><span class="n">13</span>Glossary</a><span class="dots"></span><span class="pg">24</span></div>
 </div>
 
 <!-- ================= 1 ================= -->
@@ -171,6 +172,7 @@
     <thead><tr><th style="width:12%">Version</th><th style="width:18%">Date</th><th>Change</th></tr></thead>
     <tbody>
       <tr><td>1.0</td><td>4 Nov 2026</td><td>First full scope document. Covers the three-stage purchase order approval chain introduced on 28 October 2026 and the Procureline brand from 29 October 2026.</td></tr>
+      <tr><td>2.0</td><td>5 Nov 2026</td><td>Supplier activation now takes two people: Procurement submits, the Head of Procurement or the COO approves, returns or rejects (sections 5, 7 and 9, figure 2). Registrations can be rejected and reopened; a company cannot register twice; permanent supplier codes; business and entity type. Invoice matching now accounts for earlier invoices on the same order, and an expired required document blocks awards on its own. A department head's own requisition needs no separate approval; store requisitions only collect delivered goods. Suppliers are told of every RFQ that opens, every GRV and can download their order PDF. The hourly jobs need an external scheduler on the hosted API (sections 6, 10 and 12).</td></tr>
     </tbody>
   </table>
 
@@ -200,7 +202,7 @@
       <tr><td><code>docs/Tefoma-Full-System-E2E-Handover-Test-Pack.html</code></td><td>End-to-end acceptance test pack</td></tr>
     </tbody>
   </table>
-  <div class="note">Some of these still describe a four-stage purchase order approval with the department head first. That stage was removed on 28 October 2026. Section 7 shows the current chain.</div>
+  <div class="note">Some of these still describe a four-stage purchase order approval with the department head first (removed 28 October 2026) and single-person supplier activation (replaced 5 November 2026). Sections 7 and 9 show the current rules.</div>
 </section>
 
 <!-- ================= 2 ================= -->
@@ -215,21 +217,21 @@
     <div class="card"><b>Three quotations before an award</b><span>Fewer is allowed only with a recorded waiver and a reason from a fixed list.</span></div>
     <div class="card"><b>The right approvals, in order</b><span>A purchase order is approved by the Head of Procurement, then Finance, and also the COO at USD 5,000 or more.</span></div>
     <div class="card"><b>No payment without receipt</b><span>An invoice is matched against the order and the goods received before Finance can approve it.</span></div>
-    <div class="card"><b>Only vetted suppliers are paid</b><span>A supplier can quote while its Know Your Supplier (KYS) checks run, but cannot win an award or receive an order until they are complete.</span></div>
+    <div class="card"><b>Only vetted suppliers are paid</b><span>A supplier can quote while its Know Your Supplier (KYS) checks run, but cannot win an award or receive an order until they are complete and a second person has approved its activation.</span></div>
     <div class="card"><b>Everything is on record</b><span>Every create, approval, rejection, upload and sign-in is logged with the user, the time and the IP address.</span></div>
     <div class="card"><b>Each unit stands alone</b><span>Every business unit has its own address and database. A session in one unit is refused by all others.</span></div>
   </div>
 
-  <h3 data-toc="2" id="s2-status">Where it stands (3 November 2026)</h3>
+  <h3 data-toc="2" id="s2-status">Where it stands (5 November 2026)</h3>
   <table class="kv">
     <thead><tr><th>Item</th><th>Status</th></tr></thead>
     <tbody>
       <tr><td>Deployment</td><td>Live. All 15 business units serve over HTTPS on their own hostnames.</td></tr>
-      <tr><td>End-to-end proof</td><td>The full cycle (50 steps) ran against the live system on 26 October 2026 with no failures.</td></tr>
+      <tr><td>End-to-end proof</td><td>The full cycle (50 steps) ran against the live system on 26 October 2026 with no failures. The scripted cycle now also covers two-person supplier activation and is due a re-run before the next go-live wave.</td></tr>
       <tr><td>Data separation</td><td>Business units cannot see each other's data; a script check proves it.</td></tr>
       <tr><td>Users</td><td>8 roles, including external suppliers through their own portal.</td></tr>
-      <tr><td>Size</td><td>About 58,000 lines of TypeScript; 26 data models, about 170 API endpoints, about 50 screens.</td></tr>
-      <tr><td>Before full use</td><td>Set-up, not software: load 14 empty units, enable real email for administrators, confirm the database backup tier.</td></tr>
+      <tr><td>Size</td><td>About 69,000 lines of TypeScript (API, client and shared package); 26 data models, about 185 API endpoints, about 50 screens.</td></tr>
+      <tr><td>Before full use</td><td>Set-up, not software: load 14 empty units, enable real email for administrators, confirm the database backup tier, schedule the hourly jobs on the hosted API, and give existing suppliers their permanent codes.</td></tr>
     </tbody>
   </table>
 </section>
@@ -250,6 +252,7 @@
       <tr><td>4</td><td>Approval authority depended on who signed a paper, often out of order</td><td>The approval sequence is enforced in code and cannot be skipped or reordered</td></tr>
       <tr><td>5</td><td>Invoices were paid without checking what was ordered or received</td><td>A three-way match of order, goods received voucher (GRV) and invoice gates payment</td></tr>
       <tr><td>6</td><td>Audits meant searching physical files</td><td>Every material action is logged with who, when and from where</td></tr>
+      <tr><td>7</td><td>One officer could register, vet and activate a supplier alone, and so decide who gets paid</td><td>Activation takes two people: Procurement submits, and the Head of Procurement or the COO approves; the submitter can never approve their own</td></tr>
     </tbody>
   </table>
 
@@ -262,7 +265,7 @@
       <tr><td>BO-3</td><td>Enforce competitive, evidenced sourcing</td><td>Three quotations per award, or a recorded waiver with a reason</td></tr>
       <tr><td>BO-4</td><td>Enforce delegated financial authority</td><td>Approvals run in a fixed order; the COO limit applies automatically</td></tr>
       <tr><td>BO-5</td><td>Prevent improper payment</td><td>No invoice without an order; no approval without receipt and a three-way match</td></tr>
-      <tr><td>BO-6</td><td>Trade only with vetted suppliers</td><td>No award or purchase order until the supplier's KYS is complete</td></tr>
+      <tr><td>BO-6</td><td>Trade only with vetted suppliers</td><td>No award or purchase order until the supplier's KYS is complete and a second person has approved its activation</td></tr>
       <tr><td>BO-7</td><td>Produce an audit trail without extra effort</td><td>Every material action is logged with actor, time and network address</td></tr>
       <tr><td>BO-8</td><td>Encode the Rev 9 procedure in software</td><td>Policy rules work as system constraints, not guidance</td></tr>
       <tr><td>BO-9</td><td>Serve the whole group with full separation</td><td>Each of the 15 business units has its own address and database</td></tr>
@@ -289,13 +292,13 @@
   <table class="first-bold">
     <thead><tr><th style="width:22%">Area</th><th>What is included</th></tr></thead>
     <tbody>
-      <tr><td>Requisitions</td><td>Raising, department approval, stock check, acceptance by Procurement, cancellation with a reason</td></tr>
+      <tr><td>Requisitions</td><td>Raising by staff or by a department head for their own department, department approval with a budget check, stock check, acceptance by Procurement, cancellation with a reason, collection of delivered goods from stores</td></tr>
       <tr><td>Stores</td><td>Item catalogue, stock by site, issues against requisitions, transfers between sites, reorder levels, low-stock alerts, bulk stock import</td></tr>
-      <tr><td>Sourcing</td><td>Requests for quotation (RFQs), supplier invitation by category, sealed quotations, ranking, award with justification, waivers, line-by-line award</td></tr>
+      <tr><td>Sourcing</td><td>Requests for quotation (RFQs), supplier invitation by category, notification of every invited supplier when an RFQ opens, sealed quotations with brand and notes per line, ranking, award with justification, waivers, line-by-line award</td></tr>
       <tr><td>Purchase orders</td><td>Raising from the accepted quotation, value-based approval chain, issue to supplier, supplier acknowledgement, printed PO</td></tr>
       <tr><td>Receiving</td><td>Goods received vouchers (GRVs), acceptance or rejection, hazardous-goods MSDS, witnesses, faulty-goods return deadline</td></tr>
-      <tr><td>Invoicing and payment</td><td>Supplier invoices, three-way match, VAT check, variance override with reason, payment recording, payment-run dates</td></tr>
-      <tr><td>Suppliers</td><td>Self-registration, KYS due diligence by tier, document expiry, vetting and site visits, bank-detail change control, evaluation, status (active, suspended, dormant, blacklisted)</td></tr>
+      <tr><td>Invoicing and payment</td><td>Supplier invoices, three-way match that counts earlier invoices on the same order, VAT check, variance override with reason, payment recording, payment-run dates</td></tr>
+      <tr><td>Suppliers</td><td>Self-registration with a once-only check on the registration number, permanent supplier codes, business and entity type, KYS due diligence by tier, two-person activation, registration rejection and reopening, document expiry, vetting and site visits, bank-detail change control, evaluation, status (pending, awaiting approval, active, suspended, dormant, blacklisted, rejected)</td></tr>
       <tr><td>Budgets</td><td>Annual budget per department, committed and spent amounts</td></tr>
       <tr><td>Oversight</td><td>Role dashboards, approvals queue, reports, supplier reports, notifications, full audit log, auditor evidence pack</td></tr>
       <tr><td>Administration</td><td>Users, departments (with head and deputy head), sites, business-unit settings, exchange rates</td></tr>
@@ -325,17 +328,17 @@
     <thead><tr><th style="width:15%">Role</th><th style="width:19%">Who holds it</th><th style="width:38%">What they do in the system</th><th>What they cannot do</th></tr></thead>
     <tbody>
       <tr><td>End user</td><td>Staff in any department or site</td><td>Raise requisitions for their department and track them to delivery</td><td>Approve anything, or see other people's requests</td></tr>
-      <tr><td>Department head (HOD)</td><td>Head of each department; a deputy can act for them</td><td>Approve or reject their department's requisitions; view team and own requisitions; follow the resulting orders</td><td>Approve purchase orders (removed 28 Oct 2026), or select quotation winners</td></tr>
-      <tr><td>Head of Procurement (HoP)</td><td>The department head of the Procurement department</td><td>Authorise awards; first approval on every purchase order; approve quotation waivers; procurement cancel rights</td><td>Select a winner and authorise the same award alone</td></tr>
-      <tr><td>Procurement officer</td><td>Procurement staff</td><td>Manage suppliers and KYS; issue RFQs; select the winning quotation with a justification; raise and issue purchase orders; handle bank-detail changes; evaluate suppliers</td><td>Authorise their own award, or approve purchase orders</td></tr>
+      <tr><td>Department head (HOD)</td><td>Head of each department; a deputy can act for them</td><td>Approve or reject their team's requisitions; raise their own, which go straight to stores because submitting is the department approval; follow the resulting orders</td><td>Approve a requisition they raised themselves; approve purchase orders (removed 28 Oct 2026); select quotation winners</td></tr>
+      <tr><td>Head of Procurement (HoP)</td><td>The department head of the Procurement department (the Users screen labels them so)</td><td>Authorise awards; first approval on every purchase order; approve quotation waivers; approve, return or reject supplier activations; reject or reopen registrations; procurement cancel rights</td><td>Select a winner and authorise the same award alone; approve an activation they submitted themselves</td></tr>
+      <tr><td>Procurement officer</td><td>Procurement staff</td><td>Create suppliers and check their KYS; submit them for activation; issue RFQs; select the winning quotation with a justification; raise and issue purchase orders; handle bank-detail changes; evaluate suppliers</td><td>Activate a supplier alone; authorise their own award; approve purchase orders</td></tr>
       <tr><td>Stores officer</td><td>Stores and warehouse staff</td><td>Check stock against requisitions; issue stock; receive goods and raise GRVs; accept or reject deliveries; transfer stock between sites</td><td>Approve orders or invoices</td></tr>
       <tr><td>Finance manager</td><td>Finance team</td><td>Second approval on purchase orders; set department budgets; approve invoices after the three-way match; record payments</td><td>Raise orders or receive goods</td></tr>
-      <tr><td>Chief Operating Officer (COO)</td><td>COO of the business unit</td><td>Final approval on purchase orders at or above the unit's limit (default USD 5,000); approve quotation waivers; read-only supplier view</td><td>Raise or receive anything</td></tr>
-      <tr><td>Supplier</td><td>External companies</td><td>Register; upload KYS documents; quote on RFQs; acknowledge orders; submit invoices; request bank-detail changes</td><td>See internal records or other suppliers' bids</td></tr>
+      <tr><td>Chief Operating Officer (COO)</td><td>COO of the business unit</td><td>Final approval on purchase orders at or above the unit's limit (default USD 5,000); approve quotation waivers; approve, return or reject supplier activations; reject or reopen registrations</td><td>Raise or receive anything; edit supplier records</td></tr>
+      <tr><td>Supplier</td><td>External companies</td><td>Register once; upload and view KYS documents; quote on RFQs; acknowledge orders and download the order PDF; follow each GRV; submit invoices and see their payment history; request bank-detail changes</td><td>See internal records, internal approvals or other suppliers' bids</td></tr>
       <tr><td>System administrator</td><td>IT administrator for the unit</td><td>Manage users, departments, sites, unit settings and exchange rates; read the audit log; cancel records</td><td>Perform business steps such as approvals, awards, receiving or payments</td></tr>
     </tbody>
   </table>
-  <div class="note"><strong>Four-eyes controls.</strong> A supplier bank-detail change needs a call-back to a phone number already on file, and the approver must be neither the requester nor the person who made the call-back. An award needs one person to select it and a different person, the Head of Procurement, to authorise it.</div>
+  <div class="note"><strong>Four-eyes controls.</strong> A supplier bank-detail change needs a call-back to a phone number that was on file before the change was requested, and the approver must be neither the requester nor the person who made the call-back. An award needs one person to select it and a different person, the Head of Procurement, to authorise it. A supplier activation needs one person to submit it and a different person, the Head of Procurement or the COO, to approve it.</div>
 </section>
 
 <!-- ================= 6 ================= -->
@@ -368,7 +371,7 @@
       <tr><td>Low stock</td><td>When stock falls to the item's reorder level</td><td>Stores</td></tr>
     </tbody>
   </table>
-  <p>Background jobs check for these alerts every hour. A data-retention job runs once a day.</p>
+  <p>Background jobs check for these alerts every hour and run the data-retention job once a day. On a long-running server they run on an internal timer. The hosted API runs as serverless functions, which have no timer, so there they run only when an external scheduler calls the secured jobs endpoint; see sections 10 and 12. Every invited supplier is told when an RFQ opens, whichever way it was opened: published from a draft, created open, or raised to re-source unawarded lines.</p>
 </section>
 
 <!-- ================= 7 ================= -->
@@ -397,14 +400,15 @@
   <table class="first-bold">
     <thead><tr><th style="width:22%">Record</th><th style="width:24%">Who decides</th><th>Rule enforced</th></tr></thead>
     <tbody>
-      <tr><td>Requisition</td><td>Department head or deputy</td><td>Checked against the department budget. Approving over budget needs a written reason, and Finance is notified</td></tr>
+      <tr><td>Requisition</td><td>Department head or deputy</td><td>Checked against the department budget. Approving over budget needs a written reason, and Finance is notified. A head's own requisition is approved by submitting it; an over-budget one is reported to Finance as an override</td></tr>
       <tr><td>Stock check</td><td>Stores officer</td><td>Items in stock are issued; only the shortfall goes on to Procurement</td></tr>
       <tr><td>Award selection</td><td>Procurement officer</td><td>Needs a written justification, for the whole quotation or line by line</td></tr>
       <tr><td>Award authorisation</td><td>Head of Procurement</td><td>Must be a different person from the selector; the supplier's KYS must be complete</td></tr>
       <tr><td>Fewer than 3 quotations</td><td>COO or Head of Procurement</td><td>A waiver with a reason from a fixed list (single source, approved contract, no quotes received, unique product and others)</td></tr>
-      <tr><td>Invoice</td><td>Finance manager</td><td>Three-way match within 2% or 1 unit of currency; a larger variance needs a written override reason</td></tr>
-      <tr><td>Supplier bank-detail change</td><td>Procurement</td><td>Call-back to a phone number on file; the approver is neither the requester nor the caller</td></tr>
-      <tr><td>Supplier activation</td><td>Procurement</td><td>KYS checklist for the supplier's tier verified, or an override with a reason on record</td></tr>
+      <tr><td>Invoice</td><td>Finance manager</td><td>Three-way match within 2% or 1 unit of currency against the goods received and not yet invoiced on that order; the approved invoices on an order can never exceed the value received; a larger variance needs a written override reason</td></tr>
+      <tr><td>Supplier bank-detail change</td><td>Procurement</td><td>Call-back to a phone number on file before the change was requested; contact numbers are frozen while a change is open; the approver is neither the requester nor the caller</td></tr>
+      <tr><td>Supplier activation</td><td>Submitted by Procurement; approved by the Head of Procurement or the COO</td><td>Two people: the approver is never the submitter. KYS for the supplier's tier must be complete, or the submission carries a KYS override reason that the approver accepts. The approver can instead return it with a reason</td></tr>
+      <tr><td>Supplier registration</td><td>Head of Procurement or COO</td><td>A pending registration can be rejected with a reason, and a rejected one reopened with a reason. A rejected supplier cannot quote, be awarded or be ordered from</td></tr>
     </tbody>
   </table>
   <p>Rejecting at any stage needs a reason, which is kept on the record and in the audit log.</p>
@@ -419,16 +423,16 @@
     <thead><tr><th style="width:14%">Module</th><th style="width:21%">Main screens</th><th style="width:33%">What it does</th><th>Key rules</th></tr></thead>
     <tbody>
       <tr><td>Dashboard and approvals</td><td>Dashboard, Approvals, Authorizations</td><td>Shows each role its pipeline, counts and the items waiting on it</td><td>Only items at the user's own step appear; overdue items are marked against the 1-hour target</td></tr>
-      <tr><td>Requisitions</td><td>Requisitions, Requisition detail</td><td>Raise a request from the item catalogue, submit it, track it to delivery, cancel with a reason</td><td>Only the owner submits a draft; department heads see All, Mine and Team views</td></tr>
-      <tr><td>Stores</td><td>Stores review, Store requisitions, Inventory, Stock movements, Stock transfers</td><td>Check stock, issue items, move stock between sites, import stock in bulk</td><td>Shortfall lines go to Procurement; stock below reorder level raises an alert</td></tr>
+      <tr><td>Requisitions</td><td>Requisitions, Requisition detail</td><td>Raise a request from the item catalogue (with package type and unit), submit it, track it to delivery, collect delivered goods from stores, cancel with a reason</td><td>Only the owner submits a draft; department heads see Team Requisitions (to approve) and My Requisitions (their own)</td></tr>
+      <tr><td>Stores</td><td>Stores review, Store requisitions, Inventory, Stock movements, Stock transfers</td><td>Check stock, issue items, hand over delivered goods, move stock between sites, import stock in bulk</td><td>Shortfall lines go to Procurement; an issue is all or nothing, checked before any stock moves; store requisitions only collect goods delivered against a requisition; stock below reorder level raises an alert</td></tr>
       <tr><td>Sourcing</td><td>RFQs, Create RFQ, Quotations, Award</td><td>Invite suppliers, collect sealed quotations, rank responses, select and authorise the award</td><td>Suppliers are invited by category, topped up to at least 3; bids stay sealed until the RFQ closes</td></tr>
       <tr><td>Purchase orders</td><td>Purchase orders, PO detail</td><td>Raise an order from an accepted quotation, route it for approval, issue it, print it</td><td>Approval chain in section 7; one order per accepted quotation</td></tr>
-      <tr><td>Receiving</td><td>Deliveries</td><td>Record goods received on a GRV; accept or reject each line</td><td>Hazardous goods need an MSDS reference; witnesses recorded; 5-day return deadline for faulty goods</td></tr>
+      <tr><td>Receiving</td><td>Deliveries</td><td>Record goods received on a GRV; accept or reject each line</td><td>Hazardous goods need an MSDS reference; witnesses recorded; 5-day return deadline for faulty goods; the supplier is told what was accepted and rejected on every GRV</td></tr>
       <tr><td>Invoices and payments</td><td>Invoices, Payments</td><td>Supplier invoices against an order, three-way match, approval, payment recording</td><td>No invoice without an order; no approval without receipt; payments run on Tuesdays and Thursdays</td></tr>
-      <tr><td>Suppliers</td><td>Suppliers, Supplier detail, KYS, Verification hub, Bank changes</td><td>Register, vet, activate, suspend or blacklist suppliers; manage documents and bank details</td><td>Section 9 sets out the full lifecycle</td></tr>
-      <tr><td>Supplier portal</td><td>My RFQs, My quotations, My purchase orders, My deliveries, My invoices, My KYS, Company profile</td><td>Suppliers quote, acknowledge orders, track deliveries and invoice</td><td>Separate sign-in route; suppliers never see internal records</td></tr>
+      <tr><td>Suppliers</td><td>Suppliers, Supplier detail, KYS, Verification hub, Bank changes</td><td>Create, vet and submit suppliers for activation in a three-step KYS wizard; approve, return or reject them; suspend, blacklist or reactivate; manage documents and bank details; filter by Awaiting approval or Awaiting my approval; search by name, code or registration number</td><td>Activation takes two people; section 9 sets out the full lifecycle</td></tr>
+      <tr><td>Supplier portal</td><td>My RFQs, My quotations, My purchase orders, My deliveries, My invoices, My KYS, Company profile</td><td>Suppliers quote line by line, acknowledge orders and download the order PDF, track deliveries, invoice and see payment history, view their own documents</td><td>Separate sign-in route; suppliers see their own orders and acknowledgement only, never internal approvals, match workings or other suppliers' bids</td></tr>
       <tr><td>Budgets</td><td>Budgets</td><td>Set annual budgets per department; show committed and spent amounts</td><td>Finance sets allocations; approving over budget needs a reason</td></tr>
-      <tr><td>Reports</td><td>Reports, Supplier reports, Performance, Compliance, Evaluations</td><td>Spend trends, department spend, order values, supplier registry, compliance and scores</td><td>Exports to CSV</td></tr>
+      <tr><td>Reports</td><td>Reports, Supplier reports, Performance, Compliance, Evaluations</td><td>Spend trends, department spend, order values, supplier registry, compliance and paged evaluation history with scores</td><td>Exports to CSV</td></tr>
       <tr><td>Administration</td><td>Users, Departments, Sites, Audit logs, Notifications</td><td>Manage users and roles, departments with head and deputy, and sites; read the audit trail</td><td>The administrator cannot carry out business steps</td></tr>
     </tbody>
   </table>
@@ -438,11 +442,26 @@
 <section class="chapter" id="s9">
   <span class="chapter-num">Section 09</span>
   <h2 data-toc="1">Supplier lifecycle</h2>
-  <p class="lead">A supplier can be asked for a price while its checks are in progress, because a quote commits nothing. It cannot win an award or receive a purchase order until its KYS is complete and it is marked spend-authorised.</p>
+  <p class="lead">A supplier can be asked for a price while its checks are in progress, because a quote commits nothing. It cannot win an award or receive a purchase order until its KYS is complete, a second person has approved its activation and it is marked spend-authorised.</p>
   <figure id="fig2">
-    <svg viewBox="0 0 760 328" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Supplier lifecycle"><defs><marker id="sup-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#9AA4B2"/></marker></defs><text x="24" y="30" font-size="15" font-weight="600" fill="#16202E" text-anchor="start">Only an active, spend-authorised supplier can win an award</text><text x="24" y="50" font-size="11.5" font-weight="400" fill="#5B6676" text-anchor="start">Supplier statuses; Procurement moves a supplier between them</text><path d="M240 116H270" fill="none" stroke="#9AA4B2" stroke-width="1.25" marker-end="url(#sup-arrow)"/><path d="M488 116H518" fill="none" stroke="#9AA4B2" stroke-width="1.25" marker-end="url(#sup-arrow)"/><path d="M628 160V230" fill="none" stroke="#9AA4B2" stroke-width="1.25" marker-end="url(#sup-arrow)"/><path d="M628 200H132V230" fill="none" stroke="#9AA4B2" stroke-width="1.25" marker-end="url(#sup-arrow)"/><path d="M380 200V230" fill="none" stroke="#9AA4B2" stroke-width="1.25" marker-end="url(#sup-arrow)"/><text x="144" y="192" font-size="11.5" font-weight="400" fill="#5B6676" text-anchor="start">Procurement action, with a recorded reason</text><rect x="24" y="72" width="216" height="88" rx="8" fill="#FFFFFF" stroke="#9AA4B2" stroke-width="1.25"/><text x="40" y="96" font-size="13" font-weight="600" fill="#16202E" text-anchor="start">Registered</text><text x="40" y="112" font-size="11.5" font-weight="400" fill="#5B6676" text-anchor="start">Self-registers online, or is</text><text x="40" y="128" font-size="11.5" font-weight="400" fill="#5B6676" text-anchor="start">created by Procurement;</text><text x="40" y="144" font-size="11.5" font-weight="400" fill="#5B6676" text-anchor="start">status pending</text><rect x="272" y="72" width="216" height="88" rx="8" fill="#FFFFFF" stroke="#9AA4B2" stroke-width="1.25"/><text x="288" y="96" font-size="13" font-weight="600" fill="#16202E" text-anchor="start">KYS and vetting</text><text x="288" y="112" font-size="11.5" font-weight="400" fill="#5B6676" text-anchor="start">KYS documents checked by tier;</text><text x="288" y="128" font-size="11.5" font-weight="400" fill="#5B6676" text-anchor="start">site visit where required;</text><text x="288" y="144" font-size="11.5" font-weight="400" fill="#5B6676" text-anchor="start">can be invited to quote</text><rect x="520" y="72" width="216" height="88" rx="8" fill="#16A34A" fill-opacity="0.1" stroke="#16A34A" stroke-width="2"/><text x="536" y="96" font-size="13" font-weight="600" fill="#16202E" text-anchor="start">Active, spend-authorised</text><text x="536" y="112" font-size="11.5" font-weight="400" fill="#16202E" text-anchor="start">Can win awards and receive</text><text x="536" y="128" font-size="11.5" font-weight="400" fill="#16202E" text-anchor="start">purchase orders; re-evaluated</text><text x="536" y="144" font-size="11.5" font-weight="400" fill="#16202E" text-anchor="start">every 3 to 24 months by tier</text><rect x="24" y="232" width="216" height="72" rx="8" fill="#D97706" fill-opacity="0.1" stroke="#D97706" stroke-width="2"/><text x="40" y="256" font-size="13" font-weight="600" fill="#16202E" text-anchor="start">Suspended</text><text x="40" y="272" font-size="11.5" font-weight="400" fill="#16202E" text-anchor="start">Barred until reactivated;</text><text x="40" y="288" font-size="11.5" font-weight="400" fill="#16202E" text-anchor="start">reason recorded</text><rect x="272" y="232" width="216" height="72" rx="8" fill="#FFFFFF" stroke="#9AA4B2" stroke-width="1.25"/><text x="288" y="256" font-size="13" font-weight="600" fill="#16202E" text-anchor="start">Dormant</text><text x="288" y="272" font-size="11.5" font-weight="400" fill="#5B6676" text-anchor="start">Inactive, kept on file;</text><text x="288" y="288" font-size="11.5" font-weight="400" fill="#5B6676" text-anchor="start">can be reactivated</text><rect x="520" y="232" width="216" height="72" rx="8" fill="#DC2626" fill-opacity="0.1" stroke="#DC2626" stroke-width="2"/><text x="536" y="256" font-size="13" font-weight="600" fill="#16202E" text-anchor="start">Blacklisted</text><text x="536" y="272" font-size="11.5" font-weight="400" fill="#16202E" text-anchor="start">Barred from all sourcing;</text><text x="536" y="288" font-size="11.5" font-weight="400" fill="#16202E" text-anchor="start">reason recorded</text></svg>
-    <figcaption><b>Figure 2.</b> Supplier statuses. Suspended and dormant suppliers can be reactivated by Procurement; every status change is logged with who made it and why.</figcaption>
+    <svg viewBox="0 0 800 352" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Supplier lifecycle"><defs><marker id="sup-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#9AA4B2"/></marker></defs><text x="24" y="30" font-size="15" font-weight="600" fill="#16202E" text-anchor="start">Only an active, spend-authorised supplier can win an award</text><text x="24" y="50" font-size="11.5" font-weight="400" fill="#5B6676" text-anchor="start">Supplier statuses. Activation takes two people; every other move is a Procurement action with a recorded reason</text><path d="M200 122H224" fill="none" stroke="#9AA4B2" stroke-width="1.25" marker-end="url(#sup-arrow)"/><path d="M400 122H424" fill="none" stroke="#9AA4B2" stroke-width="1.25" marker-end="url(#sup-arrow)"/><path d="M600 122H624" fill="none" stroke="#9AA4B2" stroke-width="1.25" marker-end="url(#sup-arrow)"/><path d="M470 172V196H350V172" fill="none" stroke="#9AA4B2" stroke-width="1.25" stroke-dasharray="4 3" marker-end="url(#sup-arrow)"/><text x="410" y="209" font-size="10" font-weight="400" fill="#5B6676" text-anchor="middle">returned with a reason</text><path d="M260 172V236H112V254" fill="none" stroke="#9AA4B2" stroke-width="1.25" marker-end="url(#sup-arrow)"/><text x="186" y="229" font-size="10" font-weight="400" fill="#5B6676" text-anchor="middle">rejected by HoP or COO</text><path d="M712 172V254" fill="none" stroke="#9AA4B2" stroke-width="1.25" marker-end="url(#sup-arrow)"/><path d="M712 216H312V254" fill="none" stroke="#9AA4B2" stroke-width="1.25" marker-end="url(#sup-arrow)"/><path d="M512 216V254" fill="none" stroke="#9AA4B2" stroke-width="1.25" marker-end="url(#sup-arrow)"/><rect x="24" y="72" width="176" height="100" rx="8" fill="#FFFFFF" stroke="#9AA4B2" stroke-width="1.25"/><text x="40" y="96" font-size="13" font-weight="600" fill="#16202E" text-anchor="start">Registered</text><text x="40" y="113" font-size="11" font-weight="400" fill="#5B6676" text-anchor="start">Self-registers online, or is</text><text x="40" y="129" font-size="11" font-weight="400" fill="#5B6676" text-anchor="start">created by Procurement;</text><text x="40" y="145" font-size="11" font-weight="400" fill="#5B6676" text-anchor="start">pending; permanent supplier</text><text x="40" y="161" font-size="11" font-weight="400" fill="#5B6676" text-anchor="start">code assigned</text><rect x="224" y="72" width="176" height="100" rx="8" fill="#FFFFFF" stroke="#9AA4B2" stroke-width="1.25"/><text x="240" y="96" font-size="13" font-weight="600" fill="#16202E" text-anchor="start">KYS and vetting</text><text x="240" y="113" font-size="11" font-weight="400" fill="#5B6676" text-anchor="start">Documents checked by tier;</text><text x="240" y="129" font-size="11" font-weight="400" fill="#5B6676" text-anchor="start">site visit where required;</text><text x="240" y="145" font-size="11" font-weight="400" fill="#5B6676" text-anchor="start">can be invited to quote</text><rect x="424" y="72" width="176" height="100" rx="8" fill="#005CE6" fill-opacity="0.08" stroke="#005CE6" stroke-width="2"/><text x="440" y="96" font-size="13" font-weight="600" fill="#16202E" text-anchor="start">Awaiting approval</text><text x="440" y="113" font-size="11" font-weight="400" fill="#16202E" text-anchor="start">Submitted by Procurement;</text><text x="440" y="129" font-size="11" font-weight="400" fill="#16202E" text-anchor="start">KYS complete for the tier,</text><text x="440" y="145" font-size="11" font-weight="400" fill="#16202E" text-anchor="start">or an override reason;</text><text x="440" y="161" font-size="11" font-weight="400" fill="#16202E" text-anchor="start">a second person decides</text><rect x="624" y="72" width="176" height="100" rx="8" fill="#16A34A" fill-opacity="0.1" stroke="#16A34A" stroke-width="2"/><text x="640" y="96" font-size="13" font-weight="600" fill="#16202E" text-anchor="start">Active, spend-authorised</text><text x="640" y="113" font-size="11" font-weight="400" fill="#16202E" text-anchor="start">Approved by the Head of</text><text x="640" y="129" font-size="11" font-weight="400" fill="#16202E" text-anchor="start">Procurement or the COO;</text><text x="640" y="145" font-size="11" font-weight="400" fill="#16202E" text-anchor="start">wins awards and orders;</text><text x="640" y="161" font-size="11" font-weight="400" fill="#16202E" text-anchor="start">re-evaluated by tier</text><rect x="24" y="256" width="176" height="76" rx="8" fill="#FFFFFF" stroke="#9AA4B2" stroke-width="1.25"/><text x="40" y="280" font-size="13" font-weight="600" fill="#16202E" text-anchor="start">Rejected</text><text x="40" y="297" font-size="11" font-weight="400" fill="#5B6676" text-anchor="start">Registration turned down;</text><text x="40" y="313" font-size="11" font-weight="400" fill="#5B6676" text-anchor="start">cannot quote; can be reopened</text><rect x="224" y="256" width="176" height="76" rx="8" fill="#D97706" fill-opacity="0.1" stroke="#D97706" stroke-width="2"/><text x="240" y="280" font-size="13" font-weight="600" fill="#16202E" text-anchor="start">Suspended</text><text x="240" y="297" font-size="11" font-weight="400" fill="#16202E" text-anchor="start">Barred until reactivated;</text><text x="240" y="313" font-size="11" font-weight="400" fill="#16202E" text-anchor="start">reason recorded</text><rect x="424" y="256" width="176" height="76" rx="8" fill="#FFFFFF" stroke="#9AA4B2" stroke-width="1.25"/><text x="440" y="280" font-size="13" font-weight="600" fill="#16202E" text-anchor="start">Dormant</text><text x="440" y="297" font-size="11" font-weight="400" fill="#5B6676" text-anchor="start">Inactive, kept on file;</text><text x="440" y="313" font-size="11" font-weight="400" fill="#5B6676" text-anchor="start">can be reactivated</text><rect x="624" y="256" width="176" height="76" rx="8" fill="#DC2626" fill-opacity="0.1" stroke="#DC2626" stroke-width="2"/><text x="640" y="280" font-size="13" font-weight="600" fill="#16202E" text-anchor="start">Blacklisted</text><text x="640" y="297" font-size="11" font-weight="400" fill="#16202E" text-anchor="start">Barred from all sourcing;</text><text x="640" y="313" font-size="11" font-weight="400" fill="#16202E" text-anchor="start">cannot register again</text></svg>
+    <figcaption><b>Figure 2.</b> Supplier statuses. Activation takes two people: Procurement submits, and the Head of Procurement or the COO approves. A returned request leaves the supplier pending; a rejected registration can be reopened; suspended and dormant suppliers can be reactivated. Every change is logged with who made it and why.</figcaption>
   </figure>
+
+  <h3 data-toc="2" id="s9-activation">Two-person activation</h3>
+  <p>Activation is what gives a supplier the right to be paid, so since 5 November 2026 no one person can grant it. The request is kept on the supplier record while it is open, and the supplier stays pending, so it can still be invited to quote.</p>
+  <table class="first-bold">
+    <thead><tr><th style="width:16%">Step</th><th style="width:26%">Who</th><th>What happens</th></tr></thead>
+    <tbody>
+      <tr><td>Submit</td><td>Procurement officer or Head of Procurement</td><td>Assigns the tier, works through the KYS checklist and submits, with notes. If the checklist is short of what the tier requires, a KYS override reason is mandatory and travels with the request. The Heads of Procurement and COOs, other than the submitter, are notified</td></tr>
+      <tr><td>Approve</td><td>Head of Procurement or COO, never the submitter</td><td>The supplier becomes active and spend-authorised. An override is recorded as granted by the approver, who accepted it. If the checklist changed while the request waited and is no longer complete, approval is refused until it is returned and resubmitted</td></tr>
+      <tr><td>Return</td><td>Head of Procurement or COO</td><td>With a reason. The supplier stays pending and the submitter is told; it can be resubmitted once the gap is closed</td></tr>
+      <tr><td>Reject registration</td><td>Head of Procurement or COO</td><td>With a reason. The supplier becomes rejected, is told why, and cannot quote, be awarded or be ordered from. Unlike blacklisting, it says nothing against the company</td></tr>
+      <tr><td>Reopen registration</td><td>Head of Procurement or COO</td><td>With a reason. The supplier returns to pending and activation again takes two people</td></tr>
+      <tr><td>Reactivate</td><td>Procurement</td><td>A suspended or dormant supplier is reactivated by Procurement with a reason, as before. This is not onboarding, so a second approval is not required</td></tr>
+    </tbody>
+  </table>
+  <p>Every submission, approval, return, rejection and reopening is written to the audit log and to the supplier's own status history with the reason given. The older verify and approve actions on a pending supplier now submit it rather than activate it, so an older screen or script cannot activate a supplier alone. The dashboard, the supplier list filter <em>Awaiting my approval</em> and the sidebar badge all show an approver the requests that are theirs to decide.</p>
 
   <h3 data-toc="2" id="s9-tiers">Due diligence by tier</h3>
   <p>The depth of the Know Your Supplier (KYS) check depends on the supplier's risk tier. An unclassified supplier gets the full check, so low risk is never assumed by default.</p>
@@ -460,9 +479,11 @@
 
   <h3 data-toc="2" id="s9-ongoing">Ongoing controls</h3>
   <ul>
-    <li><strong>Document expiry.</strong> Uploaded documents carry expiry dates. Reminders go out 60, 30 and 7 days before expiry.</li>
+    <li><strong>Registration.</strong> A company registers once. The registration number is compared ignoring case, spaces and hyphens; a second registration is refused, and a blacklisted company gets a neutral refusal that does not disclose why. A contact phone number is required, and a registration that fails part-way leaves no half-made login behind.</li>
+    <li><strong>Identity.</strong> Each supplier gets a permanent code on first save, such as <code>DOKUMA-SUP-00042</code>, which never changes even if the name or registration number is corrected. Business type (manufacturer, distributor, wholesaler, retailer, service provider, contractor, other) and entity type (company or individual) are optional and validated wherever a supplier is created or imported.</li>
+    <li><strong>Document expiry.</strong> Uploaded documents carry expiry dates. Reminders go out 60, 30 and 7 days before expiry. A required document that has passed its expiry date blocks awards and orders on its own, whether or not the hourly job has run.</li>
     <li><strong>Vetting.</strong> Procurement records site visits (date, who and notes), the vetting result, and how the supplier was found (newspaper advert, direct application, referral).</li>
-    <li><strong>Bank details.</strong> A change is requested by the supplier, checked by a call-back to a phone number already on file, and approved by a third person.</li>
+    <li><strong>Bank details.</strong> A change is requested by the supplier, checked by a call-back to a phone number that was on file before the request, and approved by a third person. The phone numbers are frozen while a change is open, so a number added with the change can never be the one called. A staff change to a supplier's sign-in email is told to both the old and the new address.</li>
     <li><strong>Evaluation.</strong> After delivery, Procurement scores the supplier on 7 criteria: credit terms, contracts in place, market reputation, pricing, delivery, ease of dealing and consistent quality.</li>
     <li><strong>Ranking of quotations.</strong> Responses to an RFQ are scored out of 100: price 50, delivery 20, past performance 20, completeness 10. The ranking is advisory, and a snapshot is saved when the RFQ closes.</li>
   </ul>
@@ -488,8 +509,9 @@
       <tr><td>Database</td><td>MongoDB Atlas, Mongoose 8; 26 data models</td></tr>
       <tr><td>Sign-in</td><td>Password (bcrypt hash), then a 6-digit code by email; JSON Web Tokens</td></tr>
       <tr><td>Email</td><td>Resend</td></tr>
-      <tr><td>Documents</td><td>PDFKit for printed purchase orders and issue notes; SheetJS for bulk supplier and stock import</td></tr>
+      <tr><td>Documents</td><td>PDFKit for printed purchase orders and issue notes, the same PDF a supplier downloads; SheetJS for bulk supplier and stock import; supplier compliance files (up to 5 MB each) stored on the supplier record and served one at a time</td></tr>
       <tr><td>Hosting</td><td>Vercel: the client as a static site, the API as serverless functions</td></tr>
+      <tr><td>Scheduled jobs</td><td>An hourly in-process timer on a long-running server. On Vercel there is no long-lived process, so an external scheduler calls a secret-protected internal endpoint that runs the same hourly pass for every business unit</td></tr>
       <tr><td>Exchange rates</td><td>Stored rates to US dollars per currency, used for the COO limit and group rules</td></tr>
     </tbody>
   </table>
@@ -512,12 +534,15 @@
       <tr><td>Role checks</td><td>Every API route checks the role and, where relevant, the department or site. The administrator can read business records but not change them</td></tr>
       <tr><td>Separation of units</td><td>Each unit has its own database; a request without a known unit is refused</td></tr>
       <tr><td>Sealed bids</td><td>Quotations cannot be compared until the RFQ closes</td></tr>
-      <tr><td>Bank details</td><td>Masked on screen; changes need a call-back and an independent approver</td></tr>
+      <tr><td>Bank details</td><td>Masked on screen, including in the change history; changes need a call-back to a number on file before the request and an independent approver</td></tr>
+      <tr><td>Supplier documents</td><td>Served one file at a time to staff who may read suppliers and to the supplier that owns them; never cached, and with headers that stop a browser running an uploaded file</td></tr>
+      <tr><td>Supplier portal data</td><td>A supplier sees its own orders, its own acknowledgement and its own invoices with payment history; internal approvals, match workings and override reasons are left out</td></tr>
+      <tr><td>Two-person rules</td><td>Awards, bank-detail changes and supplier activation each need two different people; the server refuses the same person on both sides</td></tr>
     </tbody>
   </table>
 
   <h3 data-toc="2" id="s11-audit">Audit trail</h3>
-  <p>Every create, update, delete, approval, rejection, submission, upload, download, status change, sign-in and failed sign-in is logged. Each entry records the user, their role, the record, the time, the IP address and the browser. Administrators can search the log, and an evidence pack endpoint gathers proof of controls for auditors.</p>
+  <p>Every create, update, delete, approval, rejection, submission, upload, download, status change, sign-in and failed sign-in is logged. Each entry records the user, their role, the record, the time, the IP address and the browser. Supplier activation submissions, approvals, returns, rejections and reopenings are logged with the reason and, for an override, the reason the approver accepted. Administrators can search the log, and an evidence pack endpoint gathers proof of controls for auditors.</p>
 
   <h3 data-toc="2" id="s11-retention">Data retention</h3>
   <table class="first-bold">
@@ -535,7 +560,7 @@
   <p>The retention policy is a draft awaiting approval by Finance and Legal.</p>
 
   <h3 data-toc="2" id="s11-notify">Notifications</h3>
-  <p>Users get in-app notifications, and email through Resend, when something reaches their step. Examples: a requisition to approve, a PO at their approval stage, a quotation selected for authorisation, an RFQ closing with fewer than 3 quotes, an over-budget approval, an invoice to match, low stock, expiring supplier documents and suppliers due for review.</p>
+  <p>Users get in-app notifications, and email through Resend, when something reaches their step. Examples: a requisition to approve, a PO at their approval stage, a quotation selected for authorisation, a supplier awaiting activation approval, an activation approved or returned, a registration rejected or reopened, an RFQ closing with fewer than 3 quotes, an over-budget approval, an invoice to match, low stock, expiring supplier documents and suppliers due for review. Suppliers are told when an RFQ they are invited to opens, what stores accepted and rejected on each GRV, and the outcome of their registration; the buyer is told when the supplier acknowledges an order.</p>
 </section>
 
 <!-- ================= 12 ================= -->
@@ -553,7 +578,8 @@
       <tr><td>6.3.12</td><td>Order approved by Procurement, department head, Finance, then COO</td><td>Head of Procurement, Finance, then COO; the department head step was removed</td><td>Deliberate departure, decided 28 Oct 2026; matrix still to be updated</td></tr>
       <tr><td>5.5, 6.2.1</td><td>Supplier site visits; newspaper onboarding</td><td>Site visits, vetting result and onboarding method recorded</td><td>Added 29 Oct 2026</td></tr>
       <tr><td>6.6.3, 6.6.7&ndash;6.6.9, 6.8.5</td><td>MSDS for hazardous goods; return of faulty goods; witnesses at receipt</td><td>MSDS reference, 5-day return deadline and witness names on the GRV</td><td>Added 29 Oct 2026</td></tr>
-      <tr><td>6.3.14</td><td>Order emailed to the supplier</td><td>Supplier is notified and sees the order in the portal; no PDF attached to the email</td><td>Partial</td></tr>
+      <tr><td>6.2.2, 6.2.5</td><td>Onboarding framework; approved suppliers list</td><td>A supplier joins the approved list only when a second person, the Head of Procurement or the COO, approves its activation</td><td>Added 5 Nov 2026</td></tr>
+      <tr><td>6.3.14</td><td>Order emailed to the supplier</td><td>Supplier is notified, sees the order in the portal and can download the order PDF; no PDF attached to the email</td><td>Partial</td></tr>
       <tr><td>6.6.2</td><td>Quality check by department representatives</td><td>Condition recorded per line; no department sign-off</td><td>Partial</td></tr>
     </tbody>
   </table>
@@ -570,6 +596,7 @@
     <li>Stores keeps inventory in the system, not in parallel spreadsheets.</li>
     <li>Each unit's COO limit and approval chain match its real delegation of authority. This must be confirmed per unit before go-live.</li>
     <li>The group owns the source code, the data and every service account.</li>
+    <li>Each unit has at least one Head of Procurement or COO user, otherwise no supplier can be activated there.</li>
   </ul>
 
   <h3 data-toc="2" id="s12-constraints">Constraints</h3>
@@ -591,6 +618,9 @@
       <tr><td>Email links point to one fixed web address</td><td>A link may open the wrong unit</td><td>Send per-unit links</td></tr>
       <tr><td>Older documents and test packs describe the four-stage PO chain</td><td>Testers and auditors check against the wrong rule</td><td>Update the guides, the test packs and the compliance matrix</td></tr>
       <tr><td>Orders left at the old department-head step</td><td>They wait for the wrong person</td><td>The Head of Procurement can now approve them</td></tr>
+      <tr><td>The hourly jobs do not run by themselves on the hosted API, because serverless functions have no timer</td><td>Document-expiry, low-stock, RFQ-deadline and re-evaluation alerts and the retention job never fire in production</td><td>Set <code>CRON_SECRET</code> and schedule a call to <code>/api/internal/run-alert-jobs</code> every hour (Vercel Cron or another scheduler)</td></tr>
+      <tr><td>Suppliers created before 5 Nov 2026 have no permanent code</td><td>They cannot be found by code; the register is inconsistent</td><td>Run <code>backfill:supplier-codes</code> for each unit, dry run first, then with <code>--apply</code></td></tr>
+      <tr><td>Older guides and test packs describe single-person supplier activation</td><td>Testers expect a pending supplier to go active on verify</td><td>Update the guides and test packs to the submit-then-approve flow in section 9</td></tr>
     </tbody>
   </table>
 </section>
@@ -602,6 +632,7 @@
   <table class="first-bold">
     <thead><tr><th style="width:26%">Term</th><th>Meaning</th></tr></thead>
     <tbody>
+      <tr><td>Activation request</td><td>A pending supplier put forward by Procurement for a second person to approve. Open until approved, returned or rejected</td></tr>
       <tr><td>Award</td><td>The decision to buy from a supplier's quotation, made in full or line by line</td></tr>
       <tr><td>Business unit (SBU)</td><td>One of the 15 group companies. Each has its own address, database and settings</td></tr>
       <tr><td>COO limit</td><td>The order value in US dollars at or above which the COO must approve. The default is USD 5,000</td></tr>
@@ -614,11 +645,14 @@
       <tr><td>NSSA</td><td>National Social Security Authority (Zimbabwe); its compliance certificate is a KYS item</td></tr>
       <tr><td>PO</td><td>Purchase order: the commitment to buy, sent to the supplier after approval</td></tr>
       <tr><td>Requisition (PR)</td><td>A request from a department for goods or services</td></tr>
+      <tr><td>Rejected (registration)</td><td>A supplier registration turned down with a reason. The company cannot quote or be awarded, and the registration can be reopened. Not a blacklisting</td></tr>
       <tr><td>RFQ</td><td>Request for quotation, sent to invited suppliers</td></tr>
       <tr><td>Sealed bid</td><td>A quotation no one can compare with others until the RFQ closes</td></tr>
-      <tr><td>Spend-authorised</td><td>A supplier whose KYS is complete and who may receive awards and orders</td></tr>
+      <tr><td>Spend-authorised</td><td>A supplier whose activation has been approved and who may receive awards and orders</td></tr>
+      <tr><td>Supplier code</td><td>The permanent register number given to a supplier on first save, such as DOKUMA-SUP-00042</td></tr>
       <tr><td>Three-way match</td><td>Comparing the order, the goods received and the invoice before payment</td></tr>
       <tr><td>Tier</td><td>A supplier's risk class (critical, strategic, tactical, transactional, unclassified), which sets the depth of its KYS and how often it is reviewed</td></tr>
+      <tr><td>Two-person rule</td><td>A control that needs two different people, one to propose and one to approve: awards, bank-detail changes and supplier activation</td></tr>
       <tr><td>Waiver</td><td>Approval to award with fewer than three quotations, with a reason from a fixed list</td></tr>
     </tbody>
   </table>

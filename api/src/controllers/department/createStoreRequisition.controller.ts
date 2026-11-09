@@ -119,6 +119,42 @@ const createStoreRequisition = async (req: Request, res: Response): Promise<any>
       });
     }
 
+    // Ask only for what earlier collections for this requisition have not.
+    // The requester's page sends everything received on the order, so after a
+    // second delivery the first delivery's goods would otherwise be asked for
+    // twice. Open ones were refused above; rejected and cancelled ones no
+    // longer count.
+    const earlier = await StoreRequisition.find({
+      purchaseRequisition: linkedRequisition._id,
+      status: { $in: ['partially_issued', 'issued'] },
+      isDeleted: false
+    })
+      .select('items.item items.quantityRequested')
+      .lean();
+    const alreadyAsked = new Map<string, number>();
+    for (const sr of earlier as any[]) {
+      for (const line of sr.items || []) {
+        const key = String(line.item);
+        alreadyAsked.set(key, (alreadyAsked.get(key) || 0) + (line.quantityRequested || 0));
+      }
+    }
+    const outstanding = processedItems
+      .map((line: any) => {
+        const key = String(line.item);
+        const covered = Math.min(alreadyAsked.get(key) || 0, line.quantityRequested);
+        alreadyAsked.set(key, (alreadyAsked.get(key) || 0) - covered);
+        return { ...line, quantityRequested: line.quantityRequested - covered };
+      })
+      .filter((line: any) => line.quantityRequested > 0);
+
+    if (processedItems.length > 0 && outstanding.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Everything delivered for ${linkedRequisition.requisitionNumber} has already been collected or requested`
+      });
+    }
+    processedItems.splice(0, processedItems.length, ...outstanding);
+
     if (processedItems.length === 0) {
       return res.status(400).json({
         success: false,

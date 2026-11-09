@@ -3,7 +3,7 @@ import type { Request, Response } from 'express';
 import { PurchaseRequisition, PurchaseOrder, Quotation, Delivery } from '../../models/index.js';
 import { isProcurementHead } from '@fossil/shared';
 import { resolveUserDepartmentIds } from '../../lib/departmentScope.js';
-import { DELIVERED_TO_STORES, collectionState, storeRequisitionsByRequisition, type LinkedStoreRequisition } from '../../lib/requisitionLinks.js';
+import { DELIVERED_TO_STORES, collectionState, storeRequisitionsByRequisition, unitsReceivedOn, type LinkedStoreRequisition } from '../../lib/requisitionLinks.js';
 
 // Statuses procurement works with, across every department.
 const PROCUREMENT_STATUSES = ['pending_acceptance', 'accepted', 'sourcing', 'quoted', 'ordered', 'completed'];
@@ -16,7 +16,7 @@ const ROW_FIELDS = 'requisitionNumber title priority status createdAt department
 // (?status=accepted) and copies its lines and justification, so accepted rows
 // keep those in full.
 const RFQ_SOURCE_FIELDS = 'items justification';
-const PO_FIELDS = 'poNumber status financeApproved cooApproved supplier purchaseRequisition quotation';
+const PO_FIELDS = 'poNumber status financeApproved cooApproved supplier purchaseRequisition quotation items.quantityReceived';
 
 const getPendingRequisitions = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -187,7 +187,7 @@ const getPendingRequisitions = async (req: Request, res: Response): Promise<any>
           supplier: po.supplier ? { companyName: po.supplier.companyName } : null
         };
         row.itemsDeliveredToStores = poWithDeliveries.has(po._id.toString());
-        const collection = collectionState(storeRequisitions.get(r._id.toString()));
+        const collection = collectionState(storeRequisitions.get(r._id.toString()), unitsReceivedOn(po));
         row.itemsCollected = collection.itemsCollected;
         row.storeRequisition = collection.storeRequisition;
 

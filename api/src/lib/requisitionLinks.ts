@@ -20,6 +20,8 @@ export interface LinkedStoreRequisition {
   issueNoteNumber?: string;
   issuedAt?: Date;
   createdAt: Date;
+  /** Units it asks stores for, across its lines. */
+  unitsRequested: number;
 }
 
 /** Store requisition statuses that mean the goods have left stores. */
@@ -54,12 +56,16 @@ export async function storeRequisitionsByRequisition(
       }
     ]
   })
-    .select('requisitionNumber status purchaseRequisition purpose issueNoteNumber issuedAt createdAt')
+    .select('requisitionNumber status purchaseRequisition purpose issueNoteNumber issuedAt createdAt items.quantityRequested')
     .sort({ createdAt: -1 })
     .lean();
 
   for (const sr of storeRequisitions as any[]) {
-    const { purpose, purchaseRequisition, ...linked } = sr;
+    const { purpose, purchaseRequisition, items, ...rest } = sr;
+    const linked: LinkedStoreRequisition = {
+      ...rest,
+      unitsRequested: (items || []).reduce((sum: number, line: any) => sum + (line.quantityRequested || 0), 0)
+    };
     const ids = purchaseRequisition
       ? [purchaseRequisition.toString()]
       : Array.from(idByRef)
@@ -73,14 +79,31 @@ export async function storeRequisitionsByRequisition(
   return byRequisition;
 }
 
-/** Whether an IR's goods have been collected, and the store requisition that stands for it. */
-export function collectionState(linked: LinkedStoreRequisition[] = []): {
+/** Units received on an order so far, across its lines. */
+export function unitsReceivedOn(po: { items?: Array<{ quantityReceived?: number }> } | null | undefined): number {
+  return (po?.items || []).reduce((sum, line) => sum + (line.quantityReceived || 0), 0);
+}
+
+/**
+ * Whether an IR's goods have been collected, and the store requisition that
+ * stands for it.
+ *
+ * Collected means some have left stores and every unit received so far has
+ * been asked for. Without the second part, goods from a later delivery on the
+ * same order could never be requested: the first collection hid the button.
+ * `unitsReceived` is left out where the order's lines are not to hand.
+ */
+export function collectionState(linked: LinkedStoreRequisition[] = [], unitsReceived?: number): {
   itemsCollected: boolean;
   storeRequisition: LinkedStoreRequisition | null;
 } {
+  const live = linked.filter((sr) => LIVE_STATUSES.includes(sr.status));
+  const unitsAskedFor = live.reduce((sum, sr) => sum + (sr.unitsRequested || 0), 0);
   return {
-    itemsCollected: linked.some((sr) => COLLECTED_STATUSES.includes(sr.status)),
-    storeRequisition: linked.find((sr) => LIVE_STATUSES.includes(sr.status)) || null
+    itemsCollected:
+      linked.some((sr) => COLLECTED_STATUSES.includes(sr.status)) &&
+      (unitsReceived === undefined || unitsAskedFor >= unitsReceived),
+    storeRequisition: live[0] || null
   };
 }
 
@@ -141,7 +164,7 @@ export async function requisitionOrderProgress(
   return {
     purchaseOrder: po,
     itemsDeliveredToStores: Boolean(delivered),
-    itemsCollected: collectionState(storeRequisitions).itemsCollected,
+    itemsCollected: collectionState(storeRequisitions, unitsReceivedOn(po)).itemsCollected,
     storeRequisitions
   };
 }

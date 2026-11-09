@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Procureline — Launch and User Manual</title>
+<meta name="author" content="Procureline">
+<meta name="description" content="How to launch Procureline in an organisation and how each role uses it day to day: signing in, requisitions, approvals, sourcing, orders, receiving, invoices, payments, suppliers and administration.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0B1E3F; --deep: #061530; --blue: #1D5EFF; --sky: #2F7BFF; --ink: #16202E; --body: #2B3445;
+    --muted: #6B7686; --hair: #E3E7ED; --band: #F4F6F9; --zebra: #FAFBFC;
+    --amber: #B45309; --amber-bg: #FFF7E6; --green: #15803D; --green-bg: #ECFDF3; --red: #B91C1C; --red-bg: #FEF2F2;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  @page { size: A4; margin: 22mm 18mm 24mm 20mm; }
+  @page dark { margin: 0; }
+  html { font-family: Inter, "Segoe UI", "Helvetica Neue", Arial, sans-serif; font-size: 9.6pt; color: var(--body); }
+  body { margin: 0; line-height: 1.55; }
+
+  /* ---------- dark pages: cover and closing ---------- */
+  .darkpage { page: dark; position: relative; width: 210mm; height: 297mm; overflow: hidden; color: #fff;
+          background:
+            radial-gradient(ellipse 70mm 60mm at 86% 12%, rgba(29,94,255,0.45), transparent 70%),
+            repeating-linear-gradient(0deg, rgba(255,255,255,0.045) 0 0.25mm, transparent 0.25mm 12mm),
+            repeating-linear-gradient(90deg, rgba(255,255,255,0.045) 0 0.25mm, transparent 0.25mm 12mm),
+            linear-gradient(160deg, #0F2A57 0%, #0B1E3F 45%, #061530 100%); }
+  .darkpage .brand { position: absolute; top: 22mm; left: 20mm; display: flex; align-items: center; gap: 4mm; }
+  .darkpage .tile { width: 12mm; height: 12mm; border-radius: 3mm; background: #fff; display: flex; align-items: center; justify-content: center; }
+  .darkpage .tile img { width: 9.5mm; height: 9.5mm; }
+  .darkpage .word { font-size: 14pt; font-weight: 700; letter-spacing: -0.3pt; color: #fff; }
+  .darkpage .word span { color: var(--sky); }
+  .darkpage .word small { display: block; font-size: 6pt; font-weight: 600; letter-spacing: 2pt; color: #8FA6C4; text-transform: uppercase; margin-top: 0.5mm; }
+  .darkpage .body { position: absolute; left: 20mm; right: 30mm; top: 100mm; }
+  .darkpage .kicker { display: flex; align-items: center; gap: 4mm; font-size: 8pt; font-weight: 700; letter-spacing: 2.6pt; color: var(--sky); text-transform: uppercase; }
+  .darkpage .kicker::before { content: ''; width: 10mm; height: 0.6mm; background: var(--sky); }
+  .darkpage h1 { font-size: 46pt; line-height: 1.02; font-weight: 800; letter-spacing: -1.4pt; margin: 6mm 0 7mm; color: #fff; }
+  .darkpage .sub { font-size: 12.5pt; line-height: 1.5; color: #C9D4E6; margin: 0; max-width: 140mm; }
+  .darkpage .rule { width: 16mm; height: 0.8mm; background: var(--sky); margin: 6mm 0 7mm; }
+  .darkpage .meta { position: absolute; left: 20mm; right: 20mm; bottom: 22mm; border-top: 0.3mm solid rgba(255,255,255,0.25); padding-top: 6mm;
+                display: grid; grid-template-columns: 1.2fr 1.2fr 1fr; gap: 6mm 8mm; }
+  .meta-label { font-size: 6.6pt; letter-spacing: 1.8pt; text-transform: uppercase; color: #8FA6C4; }
+  .meta-value { font-size: 9.5pt; color: #fff; font-weight: 500; margin-top: 1.4mm; line-height: 1.4; }
+
+  /* ---------- body pages ---------- */
+  .page { break-before: page; }
+  .kicker-sm { display: block; font-size: 7.6pt; font-weight: 700; letter-spacing: 2.2pt; color: var(--blue); text-transform: uppercase; margin-bottom: 2mm; break-after: avoid; }
+  h2 { font-size: 24pt; line-height: 1.12; color: var(--navy); margin: 0 0 7mm; font-weight: 800; letter-spacing: -0.6pt; padding-bottom: 4mm; border-bottom: 0.7mm solid var(--blue); break-after: avoid; }
+  h3 { font-size: 12.5pt; color: var(--navy); margin: 7mm 0 2.4mm; font-weight: 700; letter-spacing: -0.2pt; break-after: avoid; }
+  h4 { font-size: 9.8pt; color: var(--navy); margin: 4mm 0 1.6mm; break-after: avoid; }
+  p { margin: 0 0 3mm; }
+  .lead { font-size: 11.5pt; line-height: 1.55; color: var(--ink); margin: 0 0 6mm; break-before: avoid; }
+  ul, ol { margin: 0 0 4mm; padding-left: 5mm; }
+  li { margin-bottom: 1.6mm; padding-left: 1mm; }
+  li::marker { color: var(--blue); font-weight: 700; }
+  strong { color: var(--ink); }
+  code { font-family: Consolas, "Courier New", monospace; font-size: 8.4pt; background: #EEF2F7; padding: 0 1mm; border-radius: 0.6mm; color: var(--ink); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 8.7pt; line-height: 1.45; margin: 1mm 0 6mm; }
+  th { text-align: left; font-size: 6.9pt; font-weight: 600; letter-spacing: 1.4pt; text-transform: uppercase; color: var(--muted);
+       border-bottom: 0.5mm solid var(--navy); padding: 1.8mm 2.4mm; vertical-align: bottom; }
+  td { padding: 2.4mm 2.4mm; border-bottom: 0.25mm solid var(--hair); vertical-align: top; }
+  tr { break-inside: avoid; }
+  table.first-bold td:first-child, table.kv td:first-child { font-weight: 600; color: var(--ink); }
+  table.kv td:first-child { width: 26%; }
+  table.check td:first-child { width: 8mm; font-weight: 700; color: var(--blue); }
+  table.tight td { padding: 1.7mm 2.4mm; }
+
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4mm; margin: 2mm 0 8mm; }
+  .tile-stat { background: var(--band); border-top: 0.8mm solid var(--blue); border-radius: 0 0 1.5mm 1.5mm; padding: 4mm 4mm 3.5mm; break-inside: avoid; }
+  .tile-stat b { display: block; font-size: 18pt; font-weight: 800; color: var(--navy); letter-spacing: -0.6pt; line-height: 1.1; }
+  .tile-stat span { display: block; font-size: 8.2pt; color: var(--muted); margin-top: 1.4mm; }
+
+  figure { margin: 3mm 0 7mm; break-inside: avoid; }
+  .panel { background: linear-gradient(135deg, #F7F9FC 0%, #EEF3FA 100%); border-radius: 2mm; padding: 6mm 8mm; }
+  .panel.shot { padding: 5mm 7mm; }
+  .panel.shot img { display: block; width: 100%; height: auto; border-radius: 1.4mm; box-shadow: 0 1mm 4mm rgba(11,30,63,0.18); }
+  .panel.shot.narrow img { width: 72%; margin: 0 auto; }
+  figure svg { display: block; width: 100%; height: auto; font-family: Inter, "Segoe UI", Arial, sans-serif; }
+  figcaption { font-size: 8.4pt; color: var(--muted); margin-top: 2.4mm; }
+  figcaption b { color: var(--blue); font-weight: 700; margin-right: 1.5mm; }
+
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 3.5mm; margin: 1mm 0 6mm; }
+  .card { border: 0.25mm solid var(--hair); border-top: 0.8mm solid var(--blue); border-radius: 1.5mm; padding: 3.2mm 3.8mm; break-inside: avoid; background: #fff; }
+  .card b { display: block; color: var(--navy); font-size: 9.8pt; margin-bottom: 1mm; }
+  .card span { font-size: 8.8pt; line-height: 1.45; }
+  .note { background: var(--band); border-left: 0.9mm solid var(--blue); padding: 3mm 4mm; border-radius: 1mm; font-size: 9pt; margin: 2mm 0 5mm; break-inside: avoid; }
+  .note.warn { background: var(--amber-bg); border-left-color: var(--amber); }
+  .note.ok { background: var(--green-bg); border-left-color: var(--green); }
+  .note b { color: var(--navy); }
+
+  .path { font-weight: 600; color: var(--navy); white-space: nowrap; }
+  .btn { display: inline-block; font-size: 8.2pt; font-weight: 600; color: var(--navy); background: #fff; border: 0.25mm solid #B5BECA; border-radius: 1mm; padding: 0 1.6mm; line-height: 1.65; white-space: nowrap; }
+  .btn.dark { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .st { display: inline-block; font-size: 7.6pt; font-weight: 600; border-radius: 3mm; padding: 0 2mm; line-height: 1.75; white-space: nowrap; background: var(--band); color: var(--ink); }
+  .st.amber { background: var(--amber-bg); color: var(--amber); }
+  .st.green { background: var(--green-bg); color: var(--green); }
+  .st.red { background: var(--red-bg); color: var(--red); }
+  .st.blue { background: #E8F0FF; color: var(--blue); }
+  .who { display: block; width: max-content; break-after: avoid; font-size: 7.2pt; font-weight: 700; letter-spacing: 1pt; text-transform: uppercase; color: var(--blue); border: 0.25mm solid var(--blue); border-radius: 0.8mm; padding: 0.2mm 1.6mm; margin: 0 0 1.8mm; }
+  ol.steps { counter-reset: step; list-style: none; padding-left: 0; margin: 1mm 0 4mm; }
+  ol.steps > li { counter-increment: step; position: relative; padding-left: 9.5mm; margin-bottom: 2.2mm; min-height: 6mm; }
+  ol.steps > li::before { content: counter(step); position: absolute; left: 0; top: 0.3mm; width: 6mm; height: 6mm; border-radius: 50%; background: var(--navy); color: #fff; font-weight: 700; font-size: 8.2pt; text-align: center; line-height: 6mm; }
+  .result { font-size: 8.8pt; color: var(--muted); margin: -1mm 0 5mm 9.5mm; }
+  .result b { color: var(--green); }
+  .menu { font-size: 8.6pt; border: 0.25mm solid var(--hair); border-radius: 1.5mm; padding: 2.8mm 3.6mm; margin: 1mm 0 5mm; break-inside: avoid; }
+  .menu b { display: block; color: var(--navy); margin-top: 1.4mm; }
+  .menu b:first-child { margin-top: 0; }
+  .menu span { display: block; padding-left: 3mm; color: var(--body); }
+  .menus { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3.5mm; }
+  .faq dt { font-weight: 700; color: var(--navy); margin-top: 3.5mm; break-after: avoid; }
+  .faq dd { margin: 0.8mm 0 0 0; }
+
+  /* ---------- contents ---------- */
+  .toc { break-before: page; }
+  .toc h2 { border-bottom: 0; padding-bottom: 0; margin-bottom: 8mm; }
+  .toc-row { display: grid; grid-template-columns: 18mm 1fr 10mm; align-items: baseline; }
+  .toc-row .n { white-space: nowrap; font-size: 7pt; font-weight: 700; letter-spacing: 1.6pt; color: var(--blue); text-transform: uppercase; }
+  .toc-row a { color: inherit; text-decoration: none; grid-column: 2; }
+  .toc-row .pg { text-align: right; font-variant-numeric: tabular-nums; grid-column: 3; }
+  .toc-h2 { font-weight: 700; color: var(--navy); font-size: 9.8pt; padding: 2mm 0 0.6mm; border-top: 0.25mm solid var(--hair); margin-top: 1.6mm; break-after: avoid; }
+  .toc-h2 .pg { font-weight: 700; }
+  .toc-h3 { color: var(--muted); font-size: 7.9pt; line-height: 1.3; padding: 0.25mm 0; }
+  .toc-h3 .pg { color: var(--muted); }
+  .toc-cols { column-count: 2; column-gap: 7mm; }
+  .toc-cols .toc-row { grid-template-columns: 15mm 1fr 8mm; }
+  .toc-group { break-inside: auto; }
+  .toc-group:first-child .toc-h2 { border-top: 0; margin-top: 0; }
+</style>
+</head>
+<body>
+
+<!-- ================= COVER ================= -->
+<div class="darkpage">
+  <div class="brand">
+    <div class="tile"><img src="<!--MARK-->" alt=""></div>
+    <div class="word">Procure<span>line</span><small>Procurement system</small></div>
+  </div>
+  <div class="body">
+    <div class="kicker">Procurement system</div>
+    <h1>Launch and<br>User Manual</h1>
+    <p class="sub">How an organisation goes live on Procureline, and how every role does its work in it: requesting, approving, sourcing, ordering, receiving, paying and supplying.</p>
+  </div>
+  <div class="meta">
+    <div><div class="meta-label">Version</div><div class="meta-value">1.0 &middot; 6 November 2026</div></div>
+    <div><div class="meta-label">Covers</div><div class="meta-value">Procureline as released on 5 November 2026</div></div>
+    <div><div class="meta-label">For</div><div class="meta-value">Staff and registered suppliers</div></div>
+  </div>
+</div>
+
+<!-- ================= CONTENTS ================= -->
+<div class="toc">
+  <span class="kicker-sm">Procureline launch and user manual</span>
+  <h2>Contents</h2>
+<!--TOC-->
+</div>
+
+<!-- ================= AT A GLANCE ================= -->
+<section class="page" id="glance">
+  <span class="kicker-sm">Summary</span>
+  <h2>At a glance</h2>
+  <p class="lead">Procureline runs every purchase in your organisation from the request to the supplier's payment, in one place, with your procurement rules built in. Each organisation has its own address and its own private data. This manual says how an organisation goes live and how each person uses the system.</p>
+  <div class="tiles">
+    <div class="tile-stat"><b>1</b><span>Address per organisation, with its own data</span></div>
+    <div class="tile-stat"><b>8</b><span>Roles, including suppliers on their own portal</span></div>
+    <div class="tile-stat"><b>20</b><span>Steps from requisition to payment</span></div>
+    <div class="tile-stat"><b>7</b><span>Controls the system enforces on the way</span></div>
+  </div>
+  <table class="kv">
+    <tbody>
+      <tr><td>Product</td><td>Procureline, a procurement and stores system used in a web browser</td></tr>
+      <tr><td>Your address</td><td>Each organisation has its own web address. Your administrator gives it to you</td></tr>
+      <tr><td>Signing in</td><td>Email and password, then a six-digit code sent to your email</td></tr>
+      <tr><td>Who uses it</td><td>Staff who request goods, department heads, Stores, Procurement, the Head of Procurement, Finance, the COO, administrators, and suppliers</td></tr>
+      <tr><td>The rules</td><td>Three quotations or a recorded waiver; orders approved by the Head of Procurement, Finance and, above a set limit, the COO; no invoice approved without goods received; only activated suppliers can win work; every action logged</td></tr>
+      <tr><td>Launch</td><td>Four stages: prepare the infrastructure, pilot with real purchases, go live, settle in</td></tr>
+      <tr><td>Part A</td><td>Launch: for the launch team and administrators</td></tr>
+      <tr><td>Part B</td><td>Using the system: one part per role, with numbered steps</td></tr>
+      <tr><td>Help</td><td>Part 12: common problems and the glossary. Your first call is your administrator; suppliers call the buyer's Procurement team</td></tr>
+    </tbody>
+  </table>
+  <h3 id="glance-read">Who should read what</h3>
+  <table class="first-bold tight">
+    <thead><tr><th style="width:34%">If you are</th><th>Read</th></tr></thead>
+    <tbody>
+      <tr><td>On the launch team</td><td>Parts 1, 2 and 10</td></tr>
+      <tr><td>Any member of staff</td><td>Parts 2 and 3, then your own part</td></tr>
+      <tr><td>A requester or department head</td><td>Part 4</td></tr>
+      <tr><td>Stores</td><td>Part 5</td></tr>
+      <tr><td>Procurement</td><td>Parts 6 and 7, and Part 11 so you can help suppliers</td></tr>
+      <tr><td>Head of Procurement or COO</td><td>Part 8, and Part 6 or 7 for background</td></tr>
+      <tr><td>Finance</td><td>Part 9</td></tr>
+      <tr><td>An administrator</td><td>Part 10</td></tr>
+      <tr><td>A supplier</td><td>Part 11 only, and Part 12 if something goes wrong</td></tr>
+    </tbody>
+  </table>
+  <h3 id="glance-conventions">How to read the steps</h3>
+  <ul>
+    <li><span class="path">Sourcing &rsaquo; RFQs</span> is a menu path: open <strong>Sourcing</strong> in the left-hand menu, then click <strong>RFQs</strong>.</li>
+    <li><span class="btn">Submit</span> is a button or link exactly as labelled on screen. <span class="st amber">Pending HOD</span> is a status badge as it appears in a list.</li>
+    <li><span class="who">Procurement officer</span> before a procedure names the role that performs it. Other roles do not see those buttons.</li>
+    <li>Numbered steps are done in order. The grey line after a procedure says what you should see when it has worked.</li>
+    <li>Every rejection, return, cancellation, waiver and override needs a reason. The reason stays on the record, in the audit log, and is shown to the person who raised the record.</li>
+  </ul>
+</section>
+
+<!-- ================= PART 1 ================= -->
+<section class="page" id="p1">
+  <span class="kicker-sm">Part 1</span>
+  <h2>Launch</h2>
+  <p class="lead">An organisation is live when real requisitions start in Procureline and the old paper process is kept only as a fallback. Launch runs in four stages behind one infrastructure gate. Nothing here is optional: each item is there because its absence costs real money.</p>
+
+  <h3 id="p1-1">1.1 The four stages</h3>
+  <figure id="fig1">
+    <div class="panel">
+    <svg viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Launch stages">
+      <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6B7686"/></marker></defs>
+      <g font-family="Inter, Segoe UI, Arial, sans-serif">
+        <rect x="4" y="16" width="180" height="150" rx="6" fill="#0B1E3F"/>
+        <text x="94" y="42" fill="#8FA6C4" font-size="9.5" font-weight="700" text-anchor="middle" letter-spacing="1.5">STAGE 1</text>
+        <text x="94" y="64" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">Prepare</text>
+        <text x="94" y="86" fill="#DCE1E8" font-size="9.5" text-anchor="middle">Own address, tested backup,</text>
+        <text x="94" y="100" fill="#DCE1E8" font-size="9.5" text-anchor="middle">real email, two-factor sign-in,</text>
+        <text x="94" y="114" fill="#DCE1E8" font-size="9.5" text-anchor="middle">hourly jobs, master data,</text>
+        <text x="94" y="128" fill="#DCE1E8" font-size="9.5" text-anchor="middle">suppliers activated, training</text>
+        <text x="94" y="152" fill="#8FA6C4" font-size="9" text-anchor="middle">Gate: the checklist in 1.3</text>
+
+        <line x1="186" y1="90" x2="208" y2="90" stroke="#6B7686" stroke-width="1.6" marker-end="url(#arr)"/>
+        <rect x="210" y="16" width="180" height="150" rx="6" fill="#E8F0FF" stroke="#1D5EFF" stroke-width="1.4"/>
+        <text x="300" y="42" fill="#1D5EFF" font-size="9.5" font-weight="700" text-anchor="middle" letter-spacing="1.5">STAGE 2</text>
+        <text x="300" y="64" fill="#0B1E3F" font-size="13" font-weight="700" text-anchor="middle">Pilot</text>
+        <text x="300" y="86" fill="#2B3445" font-size="9.5" text-anchor="middle">Three weeks of real purchases</text>
+        <text x="300" y="100" fill="#2B3445" font-size="9.5" text-anchor="middle">in one or two departments.</text>
+        <text x="300" y="114" fill="#2B3445" font-size="9.5" text-anchor="middle">Old process as fallback only.</text>
+        <text x="300" y="138" fill="#2B3445" font-size="9.5" text-anchor="middle">Exit tests in 1.4, then a review:</text>
+        <text x="300" y="152" fill="#2B3445" font-size="9.5" text-anchor="middle">proceed, fix first, or stop</text>
+
+        <line x1="392" y1="90" x2="414" y2="90" stroke="#6B7686" stroke-width="1.6" marker-end="url(#arr)"/>
+        <rect x="416" y="16" width="180" height="150" rx="6" fill="#fff" stroke="#B5BECA" stroke-width="1.2"/>
+        <text x="506" y="42" fill="#1D5EFF" font-size="9.5" font-weight="700" text-anchor="middle" letter-spacing="1.5">STAGE 3</text>
+        <text x="506" y="64" fill="#0B1E3F" font-size="13" font-weight="700" text-anchor="middle">Go live</text>
+        <text x="506" y="86" fill="#2B3445" font-size="9.5" text-anchor="middle">Every department and site,</text>
+        <text x="506" y="100" fill="#2B3445" font-size="9.5" text-anchor="middle">a few at a time, each after</text>
+        <text x="506" y="114" fill="#2B3445" font-size="9.5" text-anchor="middle">one rehearsal purchase.</text>
+        <text x="506" y="138" fill="#2B3445" font-size="9.5" text-anchor="middle">New requisitions only;</text>
+        <text x="506" y="152" fill="#2B3445" font-size="9.5" text-anchor="middle">in-flight work finishes as it was</text>
+
+        <line x1="598" y1="90" x2="620" y2="90" stroke="#6B7686" stroke-width="1.6" marker-end="url(#arr)"/>
+        <rect x="622" y="16" width="174" height="150" rx="6" fill="#fff" stroke="#B5BECA" stroke-width="1.2" stroke-dasharray="4 3"/>
+        <text x="709" y="42" fill="#1D5EFF" font-size="9.5" font-weight="700" text-anchor="middle" letter-spacing="1.5">STAGE 4</text>
+        <text x="709" y="64" fill="#0B1E3F" font-size="13" font-weight="700" text-anchor="middle">Settle in</text>
+        <text x="709" y="86" fill="#2B3445" font-size="9.5" text-anchor="middle">One month of daily checks</text>
+        <text x="709" y="100" fill="#2B3445" font-size="9.5" text-anchor="middle">(1.7) with the old process</text>
+        <text x="709" y="114" fill="#2B3445" font-size="9.5" text-anchor="middle">still available as fallback.</text>
+        <text x="709" y="138" fill="#2B3445" font-size="9.5" text-anchor="middle">Then the fallback is closed</text>
+        <text x="709" y="152" fill="#2B3445" font-size="9.5" text-anchor="middle">and Procureline is the record</text>
+
+        <text x="400" y="190" fill="#6B7686" font-size="9.5" text-anchor="middle">A defect found in the pilot is fixed once. One found after everyone is live is fixed in every department.</text>
+      </g>
+    </svg>
+    </div>
+    <figcaption><b>Figure</b> The four stages of a launch. Each stage ends with a decision that is written down.</figcaption>
+  </figure>
+
+  <h3 id="p1-2">1.2 Prepare: the infrastructure gate</h3>
+  <p>Nothing starts until these are done and signed off. Until two-factor sign-in is on, anyone who knows an email address and password can act as that person, Finance included. That is acceptable for testing and not for live purchasing.</p>
+  <table class="check">
+    <thead><tr><th>#</th><th style="width:44%">Task</th><th style="width:20%">Owner</th><th>Done when</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>The organisation owns its domain, its database account, its hosting account and its email-sending account. Nothing is on a personal account</td><td>IT, technical team</td><td>Each account is held by the organisation and has two administrators</td></tr>
+      <tr><td>2</td><td>Database backups run daily with a copy kept elsewhere, and a restore has been performed into a scratch environment and timed</td><td>Technical team</td><td>A restore has actually been done, not only configured</td></tr>
+      <tr><td>3</td><td>Procureline answers at the organisation's own address over HTTPS</td><td>Technical team</td><td>The address opens the sign-in page with a valid certificate</td></tr>
+      <tr><td>4</td><td>Real email sending is switched on, and the address used in email links is correct</td><td>Technical team</td><td>A notification email links to a working page</td></tr>
+      <tr><td>5</td><td>Two-factor sign-in is on: a real six-digit code is required by email</td><td>Technical team</td><td>Sign-in cannot complete without the emailed code</td></tr>
+      <tr><td>6</td><td>The hourly alert jobs are scheduled on the hosted API</td><td>Technical team</td><td>A scheduler calls the secured jobs endpoint every hour and the audit log shows it ran</td></tr>
+      <tr><td>7</td><td>Suppliers imported from an older register have their permanent supplier codes</td><td>Technical team</td><td>Every supplier in the list shows a code such as <code>ORG-SUP-00001</code></td></tr>
+      <tr><td>8</td><td>A separate test environment exists, so testing never touches live data</td><td>Technical team</td><td>Testers sign in somewhere other than the live address</td></tr>
+    </tbody>
+  </table>
+  <div class="note ok"><b>Exit test.</b> An administrator signs out, requests a password reset, receives the email, sets a new password, and signs back in with a real emailed code, at the organisation's own address.</div>
+  <div class="note warn"><b>Why the hourly jobs matter.</b> The hosted API runs as serverless functions, which have no internal clock. Without the scheduler, nobody is reminded of overdue approvals, expiring supplier documents, low stock or an RFQ closing short of three quotes. The controls still hold (an expired required document blocks an award by itself) but the warnings do not go out.</div>
+
+  <h3 id="p1-3">1.3 Launch checklist</h3>
+  <p>The organisation works through this list before its first real requisition. The administrator coordinates; the owner column says who does each step.</p>
+  <table class="check">
+    <thead><tr><th>#</th><th style="width:50%">Step</th><th style="width:20%">Owner</th><th>See</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Confirm the address opens over HTTPS and shows the organisation's name</td><td>Technical team</td><td>Part 2</td></tr>
+      <tr><td>2</td><td>Clear any test data from the live organisation</td><td>Technical team</td><td>1.2</td></tr>
+      <tr><td>3</td><td>Create the administrator with a real email address and a real password</td><td>Technical team</td><td>Part 10</td></tr>
+      <tr><td>4</td><td>Create sites, then departments, naming each department's head and deputy</td><td>Administrator</td><td>10.1, 10.2</td></tr>
+      <tr><td>5</td><td>Create users, at least one per role, each with a real email address</td><td>Administrator</td><td>10.3</td></tr>
+      <tr><td>6</td><td><strong>Confirm the COO limit and the approval chain match your real delegation of authority.</strong> Have the limit and, for a non-USD organisation, the exchange rate set</td><td>Finance, COO</td><td>10.4</td></tr>
+      <tr><td>7</td><td>Onboard suppliers: create or import them, complete KYS, submit each for activation, and have the Head of Procurement or the COO approve</td><td>Procurement, Head of Procurement</td><td>Part 7, 8.4</td></tr>
+      <tr><td>8</td><td>Load the item catalogue and opening stock balances per site</td><td>Stores</td><td>5.5</td></tr>
+      <tr><td>9</td><td>Set the annual budget for each department</td><td>Finance</td><td>9.4</td></tr>
+      <tr><td>10</td><td>Train each role on your own data, using the plan in 1.6</td><td>Business</td><td>Part B</td></tr>
+      <tr><td>11</td><td>Run one complete rehearsal purchase from requisition to payment, including an order above the COO limit</td><td>All roles</td><td>3.2</td></tr>
+      <tr><td>12</td><td>Confirm that a session from another organisation's address is refused and that no other organisation's data is visible</td><td>Technical team</td><td>2.1</td></tr>
+    </tbody>
+  </table>
+  <p>Step 6 is the one most often skipped and the most expensive to find later. The system enforces the limit it is given, faithfully. If your real authority limits differ from the default of USD 5,000, it will enforce the wrong rule on real money.</p>
+
+  <h3 id="p1-4">1.4 Pilot and exit tests</h3>
+  <p>Run the pilot with real people and real purchases in one or two departments for three weeks. The old process stays available as a fallback but is not run in parallel: doing both doubles the work and guarantees neither is trusted. The pilot has passed when all of these are true.</p>
+  <table class="check tight">
+    <thead><tr><th>#</th><th>Exit test</th><th style="width:26%">Evidence</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>At least ten real requisitions have reached payment</td><td>Payments list</td></tr>
+      <tr><td>2</td><td>At least one order above the COO limit has passed every approval stage</td><td>The order's approval history</td></tr>
+      <tr><td>3</td><td>At least one invoice has been correctly refused for goods not receipted</td><td>The rejected invoice and its reason</td></tr>
+      <tr><td>4</td><td>Stock figures agree with a physical count</td><td>Inventory against the count sheet</td></tr>
+      <tr><td>5</td><td>Finance confirms the budget figures match its own records</td><td>Budgets page</td></tr>
+      <tr><td>6</td><td>No unresolved issue rated urgent</td><td>The issue list</td></tr>
+    </tbody>
+  </table>
+  <p>Then hold a review with the results in front of you. Proceed, proceed after fixes, or stop. Write down which and why.</p>
+
+  <h3 id="p1-5">1.5 Cutover and fallback</h3>
+  <div class="cards">
+    <div class="card"><b>Cutover is per department or site</b><span>A department switches when its rehearsal purchase passes. From that day, its new requisitions are raised only in Procureline.</span></div>
+    <div class="card"><b>In-flight work stays where it started</b><span>Purchases already under way finish in the old process. Moving half-finished purchases is more error-prone than letting them drain.</span></div>
+    <div class="card"><b>Fallback for one month</b><span>The old process stays available for that department alone. The trigger is a defect that stops purchasing with no workaround within a day.</span></div>
+    <div class="card"><b>Decide and record</b><span>After each stage, review the exit-test results. Proceed, proceed after fixes, or stop. Write down which and why.</span></div>
+  </div>
+
+  <h3 id="p1-6">1.6 Training</h3>
+  <p>One session per role. Use your own suppliers, items and departments, never sample data. Each session ends with the trainee doing the task alone.</p>
+  <table class="first-bold tight">
+    <thead><tr><th style="width:22%">Audience</th><th style="width:11%">Length</th><th>Covers</th><th style="width:12%">Part</th></tr></thead>
+    <tbody>
+      <tr><td>End users</td><td>15 min</td><td>Sign in; raise a requisition; track it; collect goods from stores; read notifications</td><td>2, 4</td></tr>
+      <tr><td>Department heads</td><td>30 min</td><td>Approve and reject requisitions; the budget check; Team and My requisitions</td><td>4</td></tr>
+      <tr><td>Stores</td><td>45 min</td><td>Stock review; issuing; GRV; accept and reject deliveries; inventory and transfers</td><td>5</td></tr>
+      <tr><td>Procurement</td><td>60 min</td><td>Accept requisitions; RFQs; quotations; waiver; award; orders; supplier onboarding and KYS; bank changes; evaluations</td><td>6, 7</td></tr>
+      <tr><td>Head of Procurement</td><td>30 min</td><td>Authorise awards; approve orders; approve, return or reject supplier activations</td><td>8</td></tr>
+      <tr><td>Finance</td><td>45 min</td><td>Approve orders; three-way match; invoices; payments; budgets</td><td>9</td></tr>
+      <tr><td>COO</td><td>15 min</td><td>Approve orders above the limit; waivers; supplier activations; what the dashboard shows</td><td>8</td></tr>
+      <tr><td>Administrators</td><td>30 min</td><td>Users, departments, sites, settings, audit log</td><td>10</td></tr>
+      <tr><td>Suppliers</td><td>20 min</td><td>Register; upload KYS documents; quote; acknowledge orders; invoice; bank changes</td><td>11</td></tr>
+    </tbody>
+  </table>
+  <div class="note warn"><b>Supplier training is the one usually forgotten.</b> Suppliers who cannot quote get chased by telephone, and the three-quotation control quietly lapses. Invite suppliers to register before launch and check that each has signed in at least once.</div>
+
+  <h3 id="p1-7">1.7 The first weeks after launch</h3>
+  <p>During the fallback month, the administrator and the Head of Procurement check these once a day. Each takes a minute.</p>
+  <table class="first-bold">
+    <thead><tr><th style="width:28%">Check</th><th>Where</th><th style="width:34%">If it is wrong</th></tr></thead>
+    <tbody>
+      <tr><td>Nothing overdue in approvals</td><td><span class="path">Approvals</span> and <span class="path">Sign-offs &rsaquo; Authorizations</span>; overdue items are marked</td><td>Chase the approver. If they are away, the administrator names a deputy on the department</td></tr>
+      <tr><td>Every open RFQ has at least three invited suppliers who can sign in</td><td><span class="path">Sourcing &rsaquo; RFQs</span></td><td>Invite more suppliers, or help the invited ones register (Part 11)</td></tr>
+      <tr><td>No supplier waiting more than a day for activation approval</td><td><span class="path">Suppliers &rsaquo; All Suppliers</span>, filter <strong>Awaiting approval</strong></td><td>Ask the Head of Procurement or the COO to approve or return it (8.4)</td></tr>
+      <tr><td>Deliveries have GRVs and invoices are matched</td><td><span class="path">Receiving &rsaquo; Deliveries (GRV)</span>, <span class="path">Payables &rsaquo; Invoices</span></td><td>An invoice with no GRV cannot be approved; ask Stores to receive the goods first</td></tr>
+      <tr><td>Stock agrees with the shelves</td><td><span class="path">Stock &rsaquo; Inventory</span></td><td>Record the movement that was missed; never edit the balance</td></tr>
+      <tr><td>The audit log shows the hourly jobs running</td><td><span class="path">Oversight &rsaquo; Audit Logs</span></td><td>Tell the technical team; the scheduler has stopped</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ================= PART 2 ================= -->
+<section class="page" id="p2">
+  <span class="kicker-sm">Part 2</span>
+  <h2>Getting started</h2>
+  <p class="lead">This part applies to everyone, staff and supplier alike: where to sign in, how the six-digit code works, how to recover a password, and how the screen is laid out.</p>
+
+  <h3 id="p2-1">2.1 Your organisation's address</h3>
+  <p>Procureline lives at <strong>www.procureline.co.zw</strong>. Each organisation using it has its own address under that domain, and its data is kept apart from every other organisation's. Opening your address tells the system who you belong to. Your administrator gives you the address. A user of one organisation cannot sign in at another's address, and a supplier registers separately with each organisation it supplies. Where one address serves more than one organisation, the sign-in page adds a <strong>Business Unit</strong> list; choose yours there.</p>
+
+  <h3 id="p2-2">2.2 Signing in</h3>
+  <p>Sign-in has two steps: your email and password, then a six-digit code sent to your email. The code proves that whoever has your password also has your mailbox.</p>
+  <figure id="fig2">
+    <div class="panel shot narrow"><img src="manual-screenshots/01-sign-in.png" alt="The sign-in page"></div>
+    <figcaption><b>Figure</b> The sign-in page. Suppliers register through the link at the bottom.</figcaption>
+  </figure>
+  <ol class="steps">
+    <li><b>Open your organisation's address.</b> The page says <strong>Sign in</strong>, with the line <em>For group staff and registered suppliers</em>. If a <strong>Business Unit</strong> list is shown, choose your organisation.</li>
+    <li><b>Enter your Email Address and Password</b> and click <span class="btn dark">Continue</span>. <span class="btn">SHOW</span> lets you check what you typed.</li>
+    <li><b>Open your email.</b> The page now says <strong>Enter verification code</strong> and names the address the code went to. The code has six digits and expires after 10 minutes.</li>
+    <li><b>Type the code</b> and click <span class="btn dark">Verify &amp; sign in</span>. If it has expired, click <span class="btn">Back to sign in</span> and start again; a new code is sent.</li>
+  </ol>
+  <p class="result">You land on your <b>Dashboard</b>, with your name and role on the card at the top of the left-hand menu.</p>
+  <div class="note"><b>No code arrived?</b> Check the spam folder, and check that the address on your user record is the one you are reading. Codes go to the address your administrator entered. If it is wrong, the administrator corrects it under <span class="path">Organisation &rsaquo; Staff Team</span>; a supplier asks the buyer's Procurement team.</div>
+
+  <h3 id="p2-3">2.3 Forgotten password</h3>
+  <ol class="steps">
+    <li>On the sign-in page click <span class="btn">Forgot password?</span>.</li>
+    <li>Enter your <strong>Email</strong> and click <span class="btn dark">Send reset link</span>. The page says a link has been sent if an account exists; it does not reveal whether the address is known.</li>
+    <li>Open the email and follow the link. The page <strong>Set new password</strong> asks for a <strong>New password</strong> and <strong>Confirm password</strong>, at least 6 characters.</li>
+    <li>Click <span class="btn dark">Update password</span>, then sign in as usual. If the page says the link is invalid or incomplete, request a new one.</li>
+  </ol>
+  <p>To change a password you still know, open your profile (2.4) and use <strong>Current Password</strong>, <strong>New Password</strong> and <strong>Confirm New Password</strong>. A supplier whose first password was generated by Procurement should change it at the first sign-in.</p>
+
+  <h3 id="p2-4">2.4 The screen</h3>
+  <figure id="fig3">
+    <div class="panel shot"><img src="manual-screenshots/03-dashboard-procurement.png" alt="A procurement officer's dashboard"></div>
+    <figcaption><b>Figure</b> The layout is the same on every page: your card and the menu on the left, the page title and its main action at the top, and the content below. This is a procurement officer's dashboard.</figcaption>
+  </figure>
+  <table class="first-bold">
+    <thead><tr><th style="width:22%">Element</th><th>How it works</th></tr></thead>
+    <tbody>
+      <tr><td>Menu</td><td>Shows only what your role can do. Sections such as <strong>Sourcing</strong> or <strong>Payables</strong> open one at a time, and the section holding your current page opens by itself. The arrow at the menu's edge collapses it to icons</td></tr>
+      <tr><td>Badges</td><td>An amber count beside a menu item is work waiting for you: approvals, authorisations, activations to decide. A red count on <strong>Notifications</strong> is unread messages. Collapsed, a count becomes a dot</td></tr>
+      <tr><td>Profile</td><td>Click your name on the card above the menu to see your details and change your password. An administrator also sees the organisation's settings there (10.4)</td></tr>
+      <tr><td>Notifications</td><td><span class="path">Notifications</span> lists everything that has reached your step, newest first, each linking to its record. The same events are emailed to you</td></tr>
+      <tr><td>Drawers and wizards</td><td>Creation forms open in a drawer over the list, often in named steps with <span class="btn">Back</span> and <span class="btn">Next</span>. Closing a drawer with unsaved entries asks whether to discard them</td></tr>
+      <tr><td>Lists</td><td>Every list has a search box, a status filter and a <span class="btn">View</span> button per row. Long lists are paged; choose how many rows to show per page at the foot</td></tr>
+      <tr><td>Reasons</td><td>Every rejection, return, cancellation, waiver and override needs a reason. Where a fixed list is offered, pick from it; <em>Other</em> needs an explanation</td></tr>
+      <tr><td>Overdue</td><td>Approval queues mark items that have waited longer than the one-hour target; the RFQ list marks sourcing that has taken longer than two days</td></tr>
+      <tr><td>Numbers and money</td><td>Record numbers are your organisation's own. Values are in your organisation's currency; approval limits are applied in US dollars at the stored exchange rate</td></tr>
+      <tr><td>Signing out</td><td>Use <strong>Logout</strong> at the foot of the menu, always on a shared computer. A session that is left open stays valid for several days</td></tr>
+    </tbody>
+  </table>
+
+  <h3 id="p2-5">2.5 Your dashboard</h3>
+  <p>The dashboard is the first page after sign-in and differs by role. It shows counts for your own pipeline, the items waiting on you under <strong>Needs attention</strong>, and <strong>Quick Actions</strong>. Two things are true for everyone: a count on the dashboard is a link to the list behind it, and an item appears in your queue only when it is at your step. If something you expect is missing, it is still with the person before you. Each role's part describes its dashboard.</p>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/27-notifications.png" alt=""></div>
+    <figcaption><b>Figure</b> Notifications: everything that has reached your step, newest first. Mark all as read clears the red badge.</figcaption>
+  </figure>
+
+</section>

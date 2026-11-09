@@ -21,6 +21,32 @@ export async function resolveCatalogItem(line: any): Promise<any> {
   });
 }
 
+const CATALOG_UNITS = ['each', 'kg', 'litre', 'meter', 'box', 'pack', 'set', 'roll', 'sheet', 'pair'];
+
+/**
+ * The catalogue item an order line's goods are booked to on receipt: the item
+ * named exactly as the line, or a new one.
+ *
+ * Exact, as everywhere else stores match by name, so the store requisition
+ * that later collects the line finds the same item and its stock. A partial
+ * match booked "Bolt" to "Bolt cutter", and an unescaped bracket in a
+ * description failed the receipt after the GRV had been saved.
+ */
+export async function catalogItemForOrderLine(poItem: any): Promise<any> {
+  const existing = await resolveCatalogItem({ description: poItem.description });
+  if (existing) return existing;
+  const itemCount = await Item.countDocuments();
+  const unit = String(poItem.unit || 'each').toLowerCase();
+  return Item.create({
+    code: `ITEM-${String(itemCount + 1).padStart(6, '0')}`,
+    name: poItem.description,
+    description: poItem.description,
+    category: 'General',
+    unit: CATALOG_UNITS.includes(unit) ? unit : 'each',
+    status: 'active'
+  });
+}
+
 /** How much of a line stores still has to supply. */
 const remainingOf = (line: any): number => line.quantity - (line.quantityFulfilledFromStock || 0);
 

@@ -35,13 +35,9 @@ const getPendingDeliveries = async (req: Request, res: Response): Promise<any> =
       });
     });
 
-    const poIdsWithPendingDeliveries = new Set(
-      pendingDeliveries.map(d => d.purchaseOrder.toString())
-    );
-
-    // Filter to only show POs that either:
-    // 1. Have a pending delivery (supplier acknowledged)
-    // 2. Are issued but no delivery record exists yet
+    // Every order with goods still due, including the balance of one already
+    // part-delivered: the supplier's pending delivery is used up by the first
+    // GRV, and leaving those orders out left their balance with no way in.
     const pendingPOs = purchaseOrders.map(po => {
       const poObj = { ...po };
       const pendingDelivery = pendingDeliveriesMap.get(po._id.toString());
@@ -49,10 +45,6 @@ const getPendingDeliveries = async (req: Request, res: Response): Promise<any> =
         (poObj as any).pendingDelivery = pendingDelivery;
       }
       return poObj;
-    }).filter(po => {
-      const hasPendingDelivery = poIdsWithPendingDeliveries.has(po._id.toString());
-      // Show if it has pending delivery OR if it's issued and no delivery exists
-      return hasPendingDelivery || po.status === 'issued';
     });
 
     res.status(200).json({

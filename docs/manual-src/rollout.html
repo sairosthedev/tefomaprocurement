@@ -1,0 +1,333 @@
+<style>
+  /* ---------- rollout plan only ---------- */
+  @page sched { size: A4 landscape; margin: 16mm 18mm 18mm 20mm; }
+  .sched { page: sched; break-before: page; }
+  .sched h3 { margin-top: 0; }
+  .gantt-wrap { position: relative; margin: 2mm 0 0; }
+  .gantt-lines { position: absolute; left: 46mm; right: 0; top: 8.4mm; bottom: 0; pointer-events: none;
+    background:
+      repeating-linear-gradient(90deg, #D5DBE4 0 0.25mm, transparent 0.25mm 11.8333mm),
+      repeating-linear-gradient(90deg, transparent 0 11.8333mm, #F5F7FA 11.8333mm 23.6667mm); }
+  table.gantt { position: relative; table-layout: fixed; width: 100%; border-collapse: collapse; margin: 0; font-size: 7.3pt; line-height: 1.2; background: transparent; }
+  .gantt col.c0 { width: 46mm; }
+  .gantt th { height: 8mm; padding: 0 0 1mm; text-align: center; font-size: 6.4pt; letter-spacing: 0.4pt; border-bottom: 0.4mm solid var(--navy); vertical-align: bottom; }
+  .gantt th:first-child { text-align: left; letter-spacing: 1.4pt; }
+  .gantt th small { display: block; font-size: 5.9pt; letter-spacing: 0; text-transform: none; font-weight: 500; color: var(--muted); margin-top: 0.2mm; }
+  .gantt td { padding: 0; border: 0; height: 4.3mm; vertical-align: middle; }
+  .gantt td.lbl { padding-right: 2mm; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gantt tr.grp td { padding: 1.8mm 0 0.4mm; font-size: 6.4pt; font-weight: 700; letter-spacing: 1.4pt; text-transform: uppercase; color: var(--blue); height: auto; }
+  .gantt tr.ms td { height: 4.4mm; font-size: 6.3pt; font-weight: 700; color: var(--navy); white-space: nowrap; overflow: visible; }
+  .gantt td.r { text-align: right; }
+  .gantt td.l { text-align: left; }
+  .dia { display: inline-block; width: 1.8mm; height: 1.8mm; background: var(--navy); transform: rotate(45deg); margin: 0 1mm; vertical-align: middle; position: relative; top: -0.2mm; }
+  .r .dia { margin-right: -0.9mm; }
+  .l .dia { margin-left: -0.9mm; }
+  .bar { display: block; height: 3.3mm; line-height: 3.3mm; border-radius: 0.7mm; font-size: 6.1pt; font-weight: 600; padding: 0 1.2mm; margin: 0 0.35mm; white-space: nowrap; overflow: hidden; }
+  .bar.infra { background: var(--navy); color: #fff; }
+  .bar.setup { background: var(--blue); color: #fff; }
+  .bar.live { background: #ECFDF3; border: 0.25mm solid #86EFAC; color: #15803D; line-height: 2.8mm; }
+  .bar.fest { background: #F1F4F8; border: 0.25mm dashed #B5BECA; color: var(--muted); line-height: 2.8mm; }
+  .bar.review { background: #8E9AAB; color: #fff; }
+  .bar.prep { background: #F59E0B; color: #fff; }
+  .bar.prov { border: 0.3mm dashed; line-height: 2.7mm; }
+  .bar.setup.prov { background: #E8F0FF; border-color: var(--blue); color: var(--blue); }
+  .bar.live.prov { border-color: #4ADE80; }
+  .legend { display: flex; flex-wrap: wrap; gap: 1.5mm 6mm; font-size: 6.8pt; color: var(--body); margin-top: 3mm; padding-top: 2.2mm; border-top: 0.25mm solid var(--hair); }
+  .legend span { display: inline-flex; align-items: center; gap: 1.6mm; white-space: nowrap; }
+  .legend i { display: inline-block; width: 6mm; height: 3mm; border-radius: 0.7mm; }
+  .legend i.dia { width: 1.8mm; height: 1.8mm; border-radius: 0; }
+  table.phases td:nth-child(2) { white-space: nowrap; }
+  .dates b { color: var(--navy); }
+  .keep { break-inside: avoid; }
+  /* a short contents list reads better in one column */
+  .toc-cols { column-count: 1; }
+  .toc-cols .toc-row { grid-template-columns: 18mm 1fr 10mm; }
+  #r3 .panel.shot.narrow img { width: 54%; }
+  #r3 .keep h3 { margin-top: 5mm; }
+  #r3 figure { margin-bottom: 4mm; }
+</style>
+
+<section class="page" id="glance">
+  <span class="kicker-sm">Summary</span>
+  <h2>At a glance</h2>
+  <p class="lead">Procureline is the group's procurement system. Each business unit has its own address and its own private data, with the group's procurement rules built in. This plan says in what order the fifteen units go live and on which dates, starting <strong>Monday 16 November 2026</strong>.</p>
+  <div class="tiles">
+    <div class="tile-stat"><b>15</b><span>Business units, each at its own address</span></div>
+    <div class="tile-stat"><b>7 Dec</b><span>Pilot units live: Fossil Contracting and Dokuma</span></div>
+    <div class="tile-stat"><b>1 Mar</b><span>Every Zimbabwe unit live, 2027</span></div>
+    <div class="tile-stat"><b>18</b><span>Weeks from the start to the last unit</span></div>
+  </div>
+  <table class="kv">
+    <tbody>
+      <tr><td>Product</td><td>Procureline, a procurement and stores system used in a web browser, at <strong>www.procureline.co.zw</strong></td></tr>
+      <tr><td>Unit address</td><td>Its own subdomain, for example <strong>fossil.procureline.co.zw</strong>, and its own database that no other unit can see</td></tr>
+      <tr><td>Start</td><td><strong>Monday 16 November 2026:</strong> two weeks of infrastructure work, signed off on Friday 27 November</td></tr>
+      <tr><td>Pilot</td><td>Fossil Contracting and Dokuma, set up from 30 November, live on real purchases from <strong>Monday 7 December</strong></td></tr>
+      <tr><td>Then</td><td>Khayah Cement, Titan and Kurima Centre on <strong>25 January 2027</strong>; seven more Zimbabwe units two a week through February, the last on <strong>1 March</strong>; South Africa on <strong>15 March</strong>, provisionally</td></tr>
+      <tr><td>Festive period</td><td>21 December to 1 January: the pilot units keep buying through Procureline; nothing else is set up or goes live</td></tr>
+      <tr><td>Decisions</td><td>Gate signed off 27 November; go decision after the pilot on <strong>15 January 2027</strong>; the 5 March review confirms South Africa</td></tr>
+      <tr><td>Done when</td><td>Every unit raises its requisitions in Procureline and has closed its old process after the one-month fallback</td></tr>
+    </tbody>
+  </table>
+  <div class="note"><b>Reading the dates.</b> Weeks run Monday to Friday; W1 is 16 to 20 November 2026. A unit spends one week on set-up and training, goes live on the following Monday and stays live, with its old process as a fallback for one month. Provisional dates are confirmed at the review on 5 March 2027. How a unit is set up is in the <strong>Launch Manual</strong>; how each role works is in the <strong>User Manual</strong>.</div>
+</section>
+
+<section class="page" id="r1">
+  <span class="kicker-sm">Part 1</span>
+  <h2>How it works</h2>
+  <p class="lead">Every business unit runs on the same system and is kept completely separate from the others. The order of go-lives is chosen so that each wave proves something the next one depends on.</p>
+
+  <h3 id="r1-1">1.1 One address per business unit</h3>
+  <table class="first-bold">
+    <thead><tr><th style="width:22%">Item</th><th>How it works</th></tr></thead>
+    <tbody>
+      <tr><td>Address</td><td>A subdomain of procureline.co.zw, for example <strong>fossil.procureline.co.zw</strong>. All fifteen addresses already answer over HTTPS</td></tr>
+      <tr><td>Sign-in</td><td>The address identifies the unit, so users never choose one. Email and password, then a six-digit code sent by email</td></tr>
+      <tr><td>Data</td><td>Each unit has its own database. A script check proves that no unit can see another's records</td></tr>
+      <tr><td>Rules</td><td>The approval chain, the COO limit, the exchange rate and the supplier document rules are set per unit, so a unit's own delegation of authority is what the system enforces</td></tr>
+      <tr><td>Suppliers</td><td>Suppliers register and quote through the unit's own address. A supplier that serves two units registers with each</td></tr>
+    </tbody>
+  </table>
+
+  <h3 id="r1-2">1.2 Launch order</h3>
+  <table class="first-bold">
+    <thead><tr><th style="width:18%">Phase</th><th style="width:36%">Business units</th><th>Why in this order</th></tr></thead>
+    <tbody>
+      <tr><td>0. Infrastructure gate</td><td>All</td><td>Nothing goes live on test accounts. Backups, real email and two-factor sign-in come first</td></tr>
+      <tr><td>1. Pilot</td><td>Fossil Contracting, Dokuma</td><td>The units the system was built with. Real purchases over the festive period prove it before anyone else depends on it</td></tr>
+      <tr><td>2. Second wave</td><td>Khayah Cement, Titan, Kurima Centre</td><td>Cement, services and retail: three different kinds of buying, three weeks after the go decision</td></tr>
+      <tr><td>3. Third wave</td><td>Mandfar, Masimba, Persimmon, ProPlastics, Rhopower, The Grain Hub, Trends</td><td>Two units a week, each after its own rehearsal purchase, once set-up has become routine</td></tr>
+      <tr><td>4. South Africa</td><td>Enviro Plastic, Mangethe, Thando Kinetics</td><td>Rand pricing and South African supplier documents are prepared during the third wave and confirmed at its review</td></tr>
+    </tbody>
+  </table>
+
+  <h3 id="r1-3">1.3 Built-in controls</h3>
+  <p>These apply in every unit from the day it goes live. They are the procurement procedure, enforced by the system rather than by memory.</p>
+  <table class="first-bold">
+    <thead><tr><th style="width:26%">Control</th><th>What it means</th></tr></thead>
+    <tbody>
+      <tr><td>Three quotations</td><td>Fewer than three needs a recorded waiver with a reason, approved by the COO</td></tr>
+      <tr><td>Approvals</td><td>Every purchase order is approved by the Head of Procurement, then Finance, and above the unit's limit (USD 5,000 unless set otherwise) by the COO</td></tr>
+      <tr><td>Three-way match</td><td>No invoice is approved unless the order, the goods received and the invoice agree</td></tr>
+      <tr><td>Activated suppliers</td><td>Only a supplier with complete documents, checked by Procurement and approved by a second person, can be awarded work</td></tr>
+      <tr><td>Separate units</td><td>Each unit's data is kept apart, and a session from one address is refused at another</td></tr>
+      <tr><td>Audit log</td><td>Every action is recorded with who did it and when, and cannot be edited</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="page" id="r2">
+  <span class="kicker-sm">Part 2</span>
+  <h2>Where it stands</h2>
+  <p class="lead">The software is finished and deployed. What remains before live use is set-up, not development: the infrastructure gate below, done in the first two weeks of the plan and signed off on Friday 27 November 2026.</p>
+
+  <h3 id="r2-1">2.1 Live today</h3>
+  <table class="first-bold">
+    <thead><tr><th style="width:24%">Item</th><th>Status on 6 November 2026</th></tr></thead>
+    <tbody>
+      <tr><td>Deployment</td><td>Live. All fifteen business units answer over HTTPS at their own addresses</td></tr>
+      <tr><td>End-to-end proof</td><td>The full purchase cycle ran against the live system on 26 October 2026 with no failures. The scripted cycle now also covers two-person supplier activation and is re-run in the gate</td></tr>
+      <tr><td>Data separation</td><td>Units cannot see each other's data; a script check proves it</td></tr>
+      <tr><td>Documents</td><td>The Launch Manual and the User Manual, version 1.0 of 6 November 2026, with screenshots of the released system</td></tr>
+      <tr><td>Accounts</td><td>Fossil Contracting is loaded. The other fourteen units exist as empty units waiting for their set-up week</td></tr>
+    </tbody>
+  </table>
+
+  <h3 id="r2-2">2.2 The infrastructure gate: 16 to 27 November</h3>
+  <p>Nothing goes live until every item is done and the gate is signed off by the technical lead and the rollout lead. Until two-factor sign-in is on, anyone who knows an email address and password can act as that person, Finance included. That is acceptable for testing and not for live purchasing. The detail of each item is in the Launch Manual, 1.2.</p>
+  <table class="check">
+    <thead><tr><th>#</th><th style="width:40%">Task</th><th style="width:15%">Owner</th><th style="width:27%">Done when</th><th>Week</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>The group owns its domain, database account, hosting account and email-sending account, each with two administrators. Nothing is on a personal account</td><td>IT, technical team</td><td>Each account is held by the group and has two administrators</td><td>W1</td></tr>
+      <tr><td>2</td><td>Daily database backups with a copy kept elsewhere, and a restore performed into a scratch environment and timed</td><td>Technical team</td><td>A restore has actually been done, not only configured</td><td>W1&ndash;W2</td></tr>
+      <tr><td>3</td><td>Real email sending switched on, with the address used in email links correct for every unit</td><td>Technical team</td><td>A notification email links to a working page</td><td>W1</td></tr>
+      <tr><td>4</td><td>Two-factor sign-in on: a real six-digit code required by email</td><td>Technical team</td><td>Sign-in cannot complete without the emailed code</td><td>W1</td></tr>
+      <tr><td>5</td><td>The hourly alert jobs scheduled on the hosted API, for every unit</td><td>Technical team</td><td>The audit log shows the jobs running each hour</td><td>W2</td></tr>
+      <tr><td>6</td><td>Suppliers imported from the older register have their permanent supplier codes</td><td>Technical team</td><td>Every supplier shows a code such as <code>FOSSIL-SUP-00001</code></td><td>W2</td></tr>
+      <tr><td>7</td><td>A separate test environment, so testing never touches live data</td><td>Technical team</td><td>Testers sign in somewhere other than a live address</td><td>W2</td></tr>
+      <tr><td>8</td><td>The scripted full cycle re-run on the live system, including two-person supplier activation</td><td>Technical team</td><td>Every step passes; the result is filed with the sign-off</td><td>W2</td></tr>
+    </tbody>
+  </table>
+  <div class="note ok"><b>Exit test, Friday 27 November.</b> An administrator signs out, requests a password reset, receives the email, sets a new password, and signs back in with a real emailed code, at a unit's own address. Then the gate is signed off and the pilot set-up starts on Monday.</div>
+  <div class="note warn"><b>If the gate slips, the pilot slips.</b> Every week lost here moves the whole schedule by a week. Nobody goes live on the test set-up to make up time.</div>
+</section>
+
+<section class="page" id="r3">
+  <span class="kicker-sm">Part 3</span>
+  <h2>What the system does</h2>
+  <p class="lead">A short tour of the released system, so the reader of this plan knows what each unit is being given. The User Manual covers every screen step by step.</p>
+
+  <div class="keep">
+  <h3 id="r3-1">3.1 Signing in</h3>
+  <p>Each unit signs in at its own address with email, password and a six-digit code sent by email. Suppliers register themselves through the same address.</p>
+  <figure><div class="panel shot narrow"><img src="manual-screenshots/01-sign-in.png" alt=""></div><figcaption><b>Figure</b> The sign-in page at a unit's own address</figcaption></figure>
+  </div>
+
+  <div class="keep">
+  <h3 id="r3-2">3.2 Dashboards</h3>
+  <p>Each role sees its own work: Procurement sees sourcing in progress, Finance sees what awaits approval, staff see their own requests and notifications.</p>
+  <figure><div class="panel shot narrow"><img src="manual-screenshots/03-dashboard-procurement.png" alt=""></div><figcaption><b>Figure</b> A procurement officer's dashboard: the pipeline from pending acceptance to ordered</figcaption></figure>
+  </div>
+
+  <div class="keep">
+  <h3 id="r3-3">3.3 Requisitions</h3>
+  <p>Any member of staff raises a requisition. The department head approves it against the budget, Stores checks whether the items are in stock, and Procurement takes the rest forward.</p>
+  <figure><div class="panel shot narrow"><img src="manual-screenshots/05-new-requisition.png" alt=""></div><figcaption><b>Figure</b> Raising a requisition</figcaption></figure>
+  </div>
+
+  <div class="keep">
+  <h3 id="r3-4">3.4 Quotations and awards</h3>
+  <p>Procurement publishes a request for quotation to activated suppliers, who respond online. Quotations are compared side by side; the award is authorised by the Head of Procurement, and fewer than three quotations needs a waiver.</p>
+  <figure><div class="panel shot narrow"><img src="manual-screenshots/13-create-rfq.png" alt=""></div><figcaption><b>Figure</b> Creating a request for quotation</figcaption></figure>
+  </div>
+
+  <div class="keep">
+  <h3 id="r3-5">3.5 Stores</h3>
+  <p>Stores issues from stock where it can, records each delivery against the order, accepts or rejects it, and tracks stock across sites.</p>
+  <figure><div class="panel shot narrow"><img src="manual-screenshots/10-inventory.png" alt=""></div><figcaption><b>Figure</b> Stock on hand, with reorder levels</figcaption></figure>
+  </div>
+
+  <div class="keep">
+  <h3 id="r3-6">3.6 Invoices, payments and budgets</h3>
+  <p>An invoice is paid only when it matches the order and the goods received. Spending is tracked against each department's annual budget as it is committed and as it is paid.</p>
+  <figure><div class="panel shot narrow"><img src="manual-screenshots/21-budgets.png" alt=""></div><figcaption><b>Figure</b> Department budgets: allocated, committed, paid and available</figcaption></figure>
+  </div>
+
+  <div class="keep">
+  <h3 id="r3-7">3.7 Suppliers</h3>
+  <p>A supplier uploads its compliance documents through its own portal. Procurement checks them and a second person, the Head of Procurement or the COO, approves the activation. Expired documents block an award by themselves.</p>
+  <figure><div class="panel shot narrow"><img src="manual-screenshots/35-supplier-kys.png" alt=""></div><figcaption><b>Figure</b> A supplier's compliance documents, seen from the supplier portal</figcaption></figure>
+  </div>
+
+  <div class="keep">
+  <h3 id="r3-8">3.8 Administration and audit</h3>
+  <p>Each unit's administrator manages users, departments, sites and the approval limit. Every important action is logged with who did it and when.</p>
+  <figure><div class="panel shot narrow"><img src="manual-screenshots/30-audit-logs.png" alt=""></div><figcaption><b>Figure</b> The audit log</figcaption></figure>
+  </div>
+</section>
+
+<section class="page" id="r4">
+  <span class="kicker-sm">Part 4</span>
+  <h2>Rollout plan</h2>
+  <p class="lead">Five phases from Monday 16 November 2026. Each phase finishes with a decision that is written down before the next begins: proceed, fix first, or stop.</p>
+
+  <h3 id="r4-1">4.1 Phases and dates</h3>
+  <table class="first-bold phases">
+    <thead><tr><th style="width:15%">Phase</th><th style="width:14%">Dates</th><th style="width:8%">Weeks</th><th style="width:20%">Business units</th><th>What happens</th></tr></thead>
+    <tbody>
+      <tr><td>0. Infrastructure gate</td><td>16&ndash;27 Nov 2026</td><td>W1&ndash;W2</td><td>All</td><td>The eight items in 2.2. Exit test and sign-off on Friday 27 November</td></tr>
+      <tr><td>1. Pilot</td><td>30 Nov 2026 &ndash; 15 Jan 2027</td><td>W3&ndash;W9</td><td>Fossil Contracting, Dokuma</td><td>Set up and train 30 November to 4 December. <strong>Live Monday 7 December.</strong> Festive period 21 December to 1 January. Exit tests assessed 4 to 8 January. Review and <strong>go decision Friday 15 January</strong></td></tr>
+      <tr><td>2. Second wave</td><td>18&ndash;29 Jan 2027</td><td>W10&ndash;W11</td><td>Khayah Cement, Titan, Kurima Centre</td><td>Set up and train 18 to 22 January. <strong>Live Monday 25 January</strong></td></tr>
+      <tr><td>3. Third wave</td><td>1 Feb &ndash; 5 Mar 2027</td><td>W12&ndash;W16</td><td>Mandfar, Masimba, Persimmon, ProPlastics, Rhopower, The Grain Hub, Trends</td><td>Two units a week. Live on Mondays: Mandfar and Masimba <strong>8 February</strong>; Persimmon and ProPlastics <strong>15 February</strong>; Rhopower and The Grain Hub <strong>22 February</strong>; Trends <strong>1 March</strong>. Review on Friday 5 March</td></tr>
+      <tr><td>4. South Africa <span class="st">provisional</span></td><td>8&ndash;19 Mar 2027</td><td>W17&ndash;W18</td><td>Enviro Plastic, Mangethe, Thando Kinetics</td><td>Rand exchange rate and South African supplier document rules prepared during the third wave. Set up and train 8 to 12 March. <strong>Live Monday 15 March</strong>, confirmed at the 5 March review</td></tr>
+    </tbody>
+  </table>
+  <div class="note"><b>The festive period, 21 December to 1 January.</b> The pilot falls across it on purpose: the units buy less, so a problem found then costs little, and the two live weeks before it already produce real purchases. During the break nothing new is set up, nobody else goes live, and the technical team is reachable by telephone. The pilot's third full week of purchasing is 4 to 8 January, and the exit tests count everything from 7 December.</div>
+  <div class="note"><b>Fallback.</b> Each unit keeps its old process available for one month after its go-live, for that unit alone. Purchases already under way when it goes live finish in the old process; new requisitions are raised only in Procureline. The pilot units close their fallback at the go decision on 15 January.</div>
+
+  <h3 id="r4-2">4.2 One week of set-up, for every unit</h3>
+  <p>The same week for every unit, pilot or wave. The unit's administrator coordinates; the owner column says who does each day. The steps are the launch checklist in the Launch Manual, 1.3.</p>
+  <table class="first-bold tight">
+    <thead><tr><th style="width:10%">Day</th><th>Task</th><th style="width:26%">Owner</th></tr></thead>
+    <tbody>
+      <tr><td>Monday</td><td>Create the unit's administrator; sites and departments, each with its head and deputy; users, one per role, each with a real email address</td><td>Technical team, unit administrator</td></tr>
+      <tr><td>Tuesday</td><td><strong>Confirm the approval limit and the approval chain against the unit's own delegation of authority.</strong> Set the exchange rate for a rand unit</td><td>Finance, COO</td></tr>
+      <tr><td>Wednesday</td><td>Suppliers: create or import, complete their documents, submit for activation and approve. Load the item catalogue, opening stock per site and the annual budget per department</td><td>Procurement, Head of Procurement, Stores, Finance</td></tr>
+      <tr><td>Thursday</td><td>Training, one session per role, on the unit's own suppliers, items and departments. Invited suppliers register and sign in at least once</td><td>Trainers, Procurement</td></tr>
+      <tr><td>Friday</td><td>One rehearsal purchase from requisition to payment, including an order above the limit. Confirm that no other unit's data is visible. <strong>Go or no-go for Monday</strong></td><td>All roles, technical team</td></tr>
+    </tbody>
+  </table>
+  <p>A unit whose rehearsal purchase fails on Friday does not go live on Monday. It repeats the failed step the following week and takes the next slot; the other units in its wave keep their dates.</p>
+
+  <h3 id="r4-3">4.3 Pilot exit tests</h3>
+  <p>Assessed in the week of 4 January 2027 with the results in front of the review on 15 January. All six must be true for the second wave to start on 18 January.</p>
+  <table class="check tight keep">
+    <thead><tr><th>#</th><th>Exit test</th><th style="width:28%">Evidence</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>At least ten real requisitions have reached payment in each pilot unit</td><td>Payments list</td></tr>
+      <tr><td>2</td><td>At least one order above the COO limit has passed every approval stage</td><td>The order's approval history</td></tr>
+      <tr><td>3</td><td>At least one invoice has been correctly refused for goods not receipted</td><td>The rejected invoice and its reason</td></tr>
+      <tr><td>4</td><td>Stock figures agree with a physical count</td><td>Inventory against the count sheet</td></tr>
+      <tr><td>5</td><td>Finance confirms the budget figures match its own records</td><td>Budgets page</td></tr>
+      <tr><td>6</td><td>No unresolved issue rated urgent</td><td>The issue list</td></tr>
+    </tbody>
+  </table>
+  <p>The review decides one of three things and writes it down: proceed on 18 January; proceed after named fixes, which moves every later date by the same number of weeks; or stop and revert the pilot units to their old process.</p>
+
+  <h3 id="r4-4">4.4 Main risks</h3>
+  <table class="first-bold">
+    <thead><tr><th style="width:34%">Risk</th><th>Response</th></tr></thead>
+    <tbody>
+      <tr><td>The gate is not passed by 27 November</td><td>The pilot moves a week for every week lost. Nobody goes live on the test set-up to make up time</td></tr>
+      <tr><td>Low purchase volumes over the festive period</td><td>Two live weeks come before it and one after. If the exit tests are still short on 8 January, the review extends the pilot by two weeks rather than lowering the bar</td></tr>
+      <tr><td>A unit's approval rules do not fit the default</td><td>The limit and chain are set per unit on the Tuesday of its set-up week, before anyone is trained on them</td></tr>
+      <tr><td>Suppliers do not register</td><td>Invitations go out two weeks before each unit's set-up week. Without three suppliers who can quote, the three-quotation control quietly lapses</td></tr>
+      <tr><td>Two units a week proves too fast</td><td>A unit that fails its Friday rehearsal takes the next week's slot. The third wave has a spare week (W16) before the review, so it absorbs one slip without moving South Africa</td></tr>
+      <tr><td>Data loss</td><td>Off-site backups and a restore that has been performed and timed, before the pilot starts</td></tr>
+      <tr><td>South African rules not ready</td><td>Phase 4 stays provisional. It is confirmed, moved or re-planned at the 5 March review, and the Zimbabwe dates do not depend on it</td></tr>
+      <tr><td>Key people on leave in December</td><td>Each pilot unit names a deputy for its department heads and its approvers before 4 December; the system lets the administrator assign one in a minute</td></tr>
+    </tbody>
+  </table>
+
+  <div class="sched">
+  <h3 id="r4-5">4.5 Launch schedule</h3>
+  <p>The whole rollout on one page, from Monday 16 November 2026. Each unit spends one week on set-up and training, goes live on the following Monday and stays live. South Africa is provisional until the review on 5 March.</p>
+  <div class="gantt-wrap">
+    <div class="gantt-lines"></div>
+    <table class="gantt">
+      <colgroup><col class="c0"><col span="18"></colgroup>
+      <thead>
+        <tr>
+          <th>Week</th>
+          <th>W1<small>16 Nov</small></th><th>W2<small>23 Nov</small></th><th>W3<small>30 Nov</small></th><th>W4<small>7 Dec</small></th><th>W5<small>14 Dec</small></th><th>W6<small>21 Dec</small></th><th>W7<small>28 Dec</small></th><th>W8<small>4 Jan</small></th><th>W9<small>11 Jan</small></th><th>W10<small>18 Jan</small></th><th>W11<small>25 Jan</small></th><th>W12<small>1 Feb</small></th><th>W13<small>8 Feb</small></th><th>W14<small>15 Feb</small></th><th>W15<small>22 Feb</small></th><th>W16<small>1 Mar</small></th><th>W17<small>8 Mar</small></th><th>W18<small>15 Mar</small></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="ms"><td class="lbl"></td><td colspan="2" class="r">Gate passed<i class="dia"></i></td><td></td><td colspan="2" class="l"><i class="dia"></i>Pilot live</td><td colspan="4" class="r">Go decision<i class="dia"></i></td><td colspan="6" class="r">All Zimbabwe live<i class="dia"></i></td><td colspan="2" class="r">South Africa live<i class="dia"></i></td><td></td></tr>
+
+        <tr class="grp"><td colspan="19">Infrastructure gate</td></tr>
+        <tr><td class="lbl">Accounts, backups, restore test</td><td colspan="2"><div class="bar infra"></div></td><td colspan="16"></td></tr>
+        <tr><td class="lbl">Email, sign-in codes, hourly jobs</td><td colspan="2"><div class="bar infra"></div></td><td colspan="16"></td></tr>
+        <tr><td class="lbl">Codes, test environment, re-run</td><td></td><td><div class="bar infra"></div></td><td colspan="16"></td></tr>
+
+        <tr class="grp"><td colspan="19">Pilot</td></tr>
+        <tr><td class="lbl">Fossil Contracting</td><td colspan="2"></td><td><div class="bar setup">Set up</div></td><td colspan="15"><div class="bar live">Live</div></td></tr>
+        <tr><td class="lbl">Dokuma</td><td colspan="2"></td><td><div class="bar setup">Set up</div></td><td colspan="15"><div class="bar live">Live</div></td></tr>
+        <tr><td class="lbl">Festive period</td><td colspan="5"></td><td colspan="2"><div class="bar fest">21 Dec &ndash; 1 Jan</div></td><td colspan="11"></td></tr>
+        <tr><td class="lbl">Exit tests, review, go decision</td><td colspan="7"></td><td colspan="2"><div class="bar review">Review</div></td><td colspan="9"></td></tr>
+
+        <tr class="grp"><td colspan="19">Second wave</td></tr>
+        <tr><td class="lbl">Khayah Cement</td><td colspan="9"></td><td><div class="bar setup">Set up</div></td><td colspan="8"><div class="bar live">Live</div></td></tr>
+        <tr><td class="lbl">Titan</td><td colspan="9"></td><td><div class="bar setup">Set up</div></td><td colspan="8"><div class="bar live">Live</div></td></tr>
+        <tr><td class="lbl">Kurima Centre</td><td colspan="9"></td><td><div class="bar setup">Set up</div></td><td colspan="8"><div class="bar live">Live</div></td></tr>
+
+        <tr class="grp"><td colspan="19">Third wave</td></tr>
+        <tr><td class="lbl">Mandfar</td><td colspan="11"></td><td><div class="bar setup">Set up</div></td><td colspan="6"><div class="bar live">Live</div></td></tr>
+        <tr><td class="lbl">Masimba</td><td colspan="11"></td><td><div class="bar setup">Set up</div></td><td colspan="6"><div class="bar live">Live</div></td></tr>
+        <tr><td class="lbl">Persimmon</td><td colspan="12"></td><td><div class="bar setup">Set up</div></td><td colspan="5"><div class="bar live">Live</div></td></tr>
+        <tr><td class="lbl">ProPlastics</td><td colspan="12"></td><td><div class="bar setup">Set up</div></td><td colspan="5"><div class="bar live">Live</div></td></tr>
+        <tr><td class="lbl">Rhopower</td><td colspan="13"></td><td><div class="bar setup">Set up</div></td><td colspan="4"><div class="bar live">Live</div></td></tr>
+        <tr><td class="lbl">The Grain Hub</td><td colspan="13"></td><td><div class="bar setup">Set up</div></td><td colspan="4"><div class="bar live">Live</div></td></tr>
+        <tr><td class="lbl">Trends</td><td colspan="14"></td><td><div class="bar setup">Set up</div></td><td colspan="3"><div class="bar live">Live</div></td></tr>
+        <tr><td class="lbl">Third-wave review</td><td colspan="15"></td><td><div class="bar review">Review</div></td><td colspan="2"></td></tr>
+
+        <tr class="grp"><td colspan="19">South Africa (provisional)</td></tr>
+        <tr><td class="lbl">Rand rate, supplier document rules</td><td colspan="11"></td><td colspan="5"><div class="bar prep">Prepare</div></td><td colspan="2"></td></tr>
+        <tr><td class="lbl">Enviro Plastic</td><td colspan="16"></td><td><div class="bar setup prov">Set up</div></td><td><div class="bar live prov">Live</div></td></tr>
+        <tr><td class="lbl">Mangethe</td><td colspan="16"></td><td><div class="bar setup prov">Set up</div></td><td><div class="bar live prov">Live</div></td></tr>
+        <tr><td class="lbl">Thando Kinetics</td><td colspan="16"></td><td><div class="bar setup prov">Set up</div></td><td><div class="bar live prov">Live</div></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="legend">
+    <span><i style="background:#0B1E3F"></i>Infrastructure gate</span>
+    <span><i style="background:#1D5EFF"></i>Set up and train</span>
+    <span><i style="background:#ECFDF3;border:0.25mm solid #86EFAC"></i>Live on Procureline</span>
+    <span><i style="background:#F1F4F8;border:0.25mm dashed #B5BECA"></i>Festive period</span>
+    <span><i style="background:#8E9AAB"></i>Review</span>
+    <span><i style="background:#F59E0B"></i>Preparation</span>
+    <span><i style="background:#E8F0FF;border:0.3mm dashed #1D5EFF"></i>Provisional</span>
+    <span><i class="dia"></i>Milestone</span>
+  </div>
+  </div>
+</section>

@@ -2,12 +2,12 @@ import type { Request, Response } from 'express';
 import { PurchaseRequisition, PurchaseOrder, Quotation, Delivery } from '../../models/index.js';
 import { buildDepartmentFilter } from '../../lib/departmentScope.js';
 import { escapeRegex } from '../../lib/regex.js';
-import { DELIVERED_TO_STORES, collectionState, storeRequisitionsByRequisition, type LinkedStoreRequisition } from '../../lib/requisitionLinks.js';
+import { DELIVERED_TO_STORES, collectionState, storeRequisitionsByRequisition, unitsReceivedOn, type LinkedStoreRequisition } from '../../lib/requisitionLinks.js';
 
 // This feeds the requisitions table, so it returns only what a row shows or
 // acts on. Everything else comes from GET /requisitions/:id.
 const ROW_FIELDS = 'requisitionNumber title priority status createdAt requestedBy rfq items._id budgetCheck';
-const PO_FIELDS = 'poNumber status financeApproved cooApproved supplier purchaseRequisition rfq quotation';
+const PO_FIELDS = 'poNumber status financeApproved cooApproved supplier purchaseRequisition rfq quotation items.quantityReceived';
 
 const idOf = (value: any): string | null => value?._id?.toString() || value?.toString() || null;
 
@@ -159,7 +159,7 @@ const getRequisitions = async (req: Request, res: Response): Promise<any> => {
           supplier: po.supplier ? { companyName: po.supplier.companyName } : null
         };
         row.itemsDeliveredToStores = poWithDeliveries.has(po._id.toString());
-        const collection = collectionState(storeRequisitions.get(r._id.toString()));
+        const collection = collectionState(storeRequisitions.get(r._id.toString()), unitsReceivedOn(po));
         row.itemsCollected = collection.itemsCollected;
         row.storeRequisition = collection.storeRequisition;
 

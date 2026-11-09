@@ -1,0 +1,241 @@
+
+<!-- ================= PART 6 ================= -->
+<section class="page" id="p6">
+  <span class="kicker-sm">Part 6</span>
+  <h2>Sourcing and orders</h2>
+  <p class="lead">Procurement takes a requisition from acceptance to a signed-off order: invite suppliers, collect sealed quotations, pick the winner with a reason, have the award authorised, and raise the order. The system will not let a step be skipped, so the quickest path is the correct one.</p>
+
+  <h3 id="p6-1">6.1 Your dashboard</h3>
+  <p>Open RFQs, Pending Quotations, Active Suppliers and Purchase Orders, plus a <strong>Requisition pipeline</strong> with tiles for Pending Acceptance, Accepted, In Sourcing and Ordered. <strong>Needs attention</strong> lists requisitions awaiting acceptance, quotations awaiting evaluation and open RFQs collecting quotations. The Head of Procurement also sees suppliers awaiting their activation approval. Quick actions: Create New RFQ, Review Quotations, Manage Suppliers, Purchase Orders.</p>
+
+  <h3 id="p6-2">6.2 Accept a requisition</h3>
+  <span class="who">Procurement officer</span>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/12-rfqs.png" alt=""></div>
+    <figcaption><b>Figure</b> RFQs (Enquiries): every request for quotation with its status, deadline and number of invited suppliers. Create RFQ is above the list.</figcaption>
+  </figure>
+
+  <ol class="steps">
+    <li>Open <span class="path">Sourcing &rsaquo; Requisitions</span> (titled <em>Purchase Requisitions</em>). Rows at <span class="st amber">Pending Acceptance</span> have <span class="btn">Accept</span> and <span class="btn">Reject</span>.</li>
+    <li>Open it with <span class="btn">View</span> if you want to trim it: while it is with you, lines can be edited or removed, with the hint <em>Remove any item you don't want purchased before approving</em>.</li>
+    <li>Click <span class="btn">Accept</span> and confirm. To refuse it, click <span class="btn">Reject</span> with a <strong>Reason for Rejection</strong>; the requester is told.</li>
+  </ol>
+  <p class="result">Toast <b>Requisition accepted — now create its RFQ</b>, and the Create RFQ drawer opens with the requisition's lines already in it. The two-day sourcing clock starts; the RFQ list shows <em>overdue</em> after that.</p>
+
+  <h3 id="p6-3">6.3 Create and publish an RFQ</h3>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/13-create-rfq.png" alt=""></div>
+    <figcaption><b>Figure</b> The Create RFQ drawer: Details, Items, Suppliers, Review &amp; send. Title and submission deadline are required.</figcaption>
+  </figure>
+
+  <ol class="steps">
+    <li>From the accepted requisition click <span class="btn">Create RFQ</span>, or open <span class="path">Sourcing &rsaquo; RFQs</span> and click <span class="btn dark">Create RFQ</span>. The drawer has four steps.</li>
+    <li><b>Details.</b> <strong>RFQ Title</strong> and <strong>Submission Deadline</strong> are required. Add <strong>Description / Requirements</strong>, <strong>Delivery Required By</strong> and <strong>Terms &amp; Conditions</strong>.</li>
+    <li><b>Items.</b> The lines come locked from the requisition and cannot be changed here. If they are wrong, reject the requisition instead.</li>
+    <li><b>Suppliers.</b> Suppliers in the requisition's categories are pre-selected. Use <span class="btn">Add n related</span> to top up from related categories, or search by name. The drawer warns when fewer than three suppliers are invited and when two records look like the same company. Invite at least three; a closed RFQ with fewer than three quotes needs a waiver (6.5).</li>
+    <li><b>Review &amp; send.</b> Check everything; each block has <span class="btn">Edit</span>. Click <span class="btn dark">Publish RFQ</span>, or <span class="btn">Save as Draft</span>.</li>
+  </ol>
+  <p class="result">Toast <b>RFQ created and sent to suppliers</b>. Every invited supplier gets a notification and an email headed <em>New RFQ</em>, and a reminder in the 48 hours before the deadline. A draft is published later from the RFQ's own page with <span class="btn dark">Publish RFQ</span>.</p>
+  <div class="note">Until the deadline, bids are sealed: the RFQ page says <em>Bids are sealed</em>, the Quotations list shows <em>Sealed bid</em> instead of the supplier and amount, and nobody in the organisation can open one. This is deliberate.</div>
+
+  <h3 id="p6-4">6.4 Close the RFQ and compare bids</h3>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/14-quotations.png" alt=""></div>
+    <figcaption><b>Figure</b> Quotations: one row per supplier response. Until the RFQ closes a row reads Sealed bid.</figcaption>
+  </figure>
+
+  <ol class="steps">
+    <li>Open the RFQ and click <span class="btn dark">Close RFQ &amp; Reveal Bids</span>. Confirm; suppliers can no longer submit.</li>
+    <li>Read the <strong>Response Ranking</strong> panel: each quotation is scored out of 100 (price 50, delivery 20, past performance 20, completeness 10) with tags such as <em>Lowest price</em> and <em>Fastest delivery</em>, the lowest price and the spread. The ranking is advice, not a decision.</li>
+    <li>Open each quotation with <span class="btn">View quotation</span> to read the lines, brands, any <em>Alternative offered</em> note, delivery days, payment terms and validity.</li>
+  </ol>
+  <p class="result">Toast <b>RFQ closed — bids are now visible</b>. The RFQ shows <span class="st">Closed</span>, and the requisition's RFQ card reads <em>Under evaluation</em>.</p>
+
+  <h3 id="p6-5">6.5 Fewer than three quotations</h3>
+  <p>If the RFQ closed with fewer than three quotations, the award is blocked until the COO or the Head of Procurement approves a waiver. The COO and Head of Procurement are notified at closing so it does not sit unnoticed. On the quotation page, the <strong>Acceptance Authorization</strong> panel's first step, <em>Minimum 3 competitive quotations</em>, offers the waiver; on the award matrix each short line has <span class="btn">Waiver</span>. The approver picks a type: Single/sole source, Insufficient quotations received, Existing service agreement, Approved framework / contract, Unique / proprietary product, Custom manufacture / bespoke item, COO directed procurement, COO written instruction, or Other, and clicks <span class="btn dark">Approve waiver</span>. A procurement officer cannot approve their own waiver.</p>
+
+  <h3 id="p6-6">6.6 Select the winner</h3>
+  <span class="who">Procurement officer</span>
+  <p>There are two ways to award: the whole RFQ to one quotation, or line by line to different suppliers.</p>
+  <h4>Whole quotation</h4>
+  <ol class="steps">
+    <li>Open <span class="path">Sourcing &rsaquo; Quotations</span> and <span class="btn">View</span> the winning quotation.</li>
+    <li>In <strong>Acceptance Authorization</strong>, step <em>Procurement selection with justification</em>, write the <strong>Justification for selecting this quotation</strong> and click <span class="btn dark">Select this quotation</span>.</li>
+  </ol>
+  <p class="result">Toast <b>Quotation selected. Waiting for the Head of Procurement to authorize.</b> The Head of Procurement sees it under Authorizations (8.1). You cannot authorise your own selection.</p>
+  <h4>Line by line (split award)</h4>
+  <ol class="steps">
+    <li>On the RFQ click <span class="btn">Split Award</span>. The matrix shows one row per line and one column per supplier, cheapest first, with the spread per line.</li>
+    <li>Click the price you are awarding on each line and type the <strong>Justification</strong> when asked. The line shows <span class="st amber">Awarded (needs auth)</span>.</li>
+    <li>The Head of Procurement authorises each line with <span class="btn">Authorize</span>. Then click <span class="btn dark">Generate POs for authorized lines</span>: one order is created per supplier.</li>
+    <li>Lines nobody quoted, or that you did not award, go back out with <span class="btn">Re-source unquoted / unawarded lines</span>, which creates a new RFQ and notifies its invitees.</li>
+  </ol>
+  <div class="note warn"><b>The supplier must be ready.</b> An award is refused if the supplier is not activated (7.5), its KYS is incomplete for its tier, or a required document has expired. Check the supplier's facts strip (<em>Spend authorisation: Authorised</em>) before you select.</div>
+
+  <h3 id="p6-7">6.7 Request a price revision</h3>
+  <p>On a quotation that is submitted or under review, <span class="btn">Request Revision</span> asks the supplier for a better price with a <strong>Reason for revision</strong> and optional target. The quotation shows <span class="st amber">Revision Requested</span>; the supplier's new quote supersedes the old one. Use this before selection, not after.</p>
+
+  <h3 id="p6-8">6.8 Accept and raise the order</h3>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/16-purchase-orders.png" alt=""></div>
+    <figcaption><b>Figure</b> Purchase Orders: each order with supplier, amount, expected delivery and approval status; Create PO from Quotation is above the list.</figcaption>
+  </figure>
+
+  <ol class="steps">
+    <li>Once the panel says <em>Fully authorized — you can now accept this quotation</em>, click <span class="btn dark">Accept</span> and confirm. The other suppliers are told their quotation was not selected.</li>
+    <li>Click <span class="btn dark">Create Purchase Order</span> on the quotation, or <span class="btn dark">Create PO from Quotation</span> on <span class="path">Sourcing &rsaquo; Purchase Orders</span>. The drawer has four steps: <strong>Quotation</strong> (pick the accepted quotation), <strong>Delivery</strong> (address and <strong>Expected Delivery Date</strong>), <strong>Terms</strong> and <strong>Review</strong>. Click <span class="btn dark">Create Purchase Order</span>.</li>
+    <li>Open the order and click <span class="btn dark">Submit for Approval</span>.</li>
+  </ol>
+  <p class="result">Toast <b>Purchase order submitted to the Head of Procurement for approval</b>. The order shows <span class="st amber">Pending Head of Procurement</span>. One quotation can have only one order.</p>
+
+  <h3 id="p6-9">6.9 Approval, issue and delivery</h3>
+  <table class="first-bold tight">
+    <thead><tr><th style="width:30%">Order status</th><th>What is happening</th></tr></thead>
+    <tbody>
+      <tr><td><span class="st amber">Pending Head of Procurement</span></td><td>First approval (8.2)</td></tr>
+      <tr><td><span class="st amber">Pending Finance</span></td><td>Second approval (9.1)</td></tr>
+      <tr><td><span class="st amber">Pending COO</span></td><td>Only when the order is at or above the organisation's COO limit in US dollars. An order in another currency is converted at the stored rate; if there is no rate on file, the order goes to the COO regardless</td></tr>
+      <tr><td><span class="st green">Approved</span></td><td>The last approver's click emails the order PDF to the supplier and notifies them. Nothing more for you to do</td></tr>
+      <tr><td><span class="st blue">Issued</span></td><td>The supplier has acknowledged the order; a pending delivery is created for Stores</td></tr>
+      <tr><td><span class="st blue">Partially Received</span>, <span class="st green">Completed</span></td><td>Stores has received some or all of the goods on a GRV</td></tr>
+      <tr><td><span class="st red">Rejected</span></td><td>An approver rejected it, with a reason on the order. Fix and resubmit, or cancel</td></tr>
+    </tbody>
+  </table>
+  <p>To cancel, open the order and click <span class="btn">Cancel PO</span> with a reason from the list (supplier unable to deliver, price or terms changed, goods no longer required, duplicate, linked requisition cancelled, supplier default, other). Cancellation is blocked once goods have been received or an invoice is active. The supplier is notified.</p>
+
+  <h3 id="p6-10">6.10 Evaluate the supplier</h3>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/26-evaluations.png" alt=""></div>
+    <figcaption><b>Figure</b> Evaluations: the Due for review tab lists suppliers never evaluated or past their review date, each with an Evaluate button.</figcaption>
+  </figure>
+
+  <p>After delivery, score the supplier under <span class="path">Suppliers &rsaquo; Evaluations</span>. The <strong>Due for review</strong> tab lists suppliers that are overdue or never evaluated. Click <span class="btn">Evaluate</span>: score the seven criteria from 1 to 5 (credit terms, contracts in place, market reputation, pricing, delivery, ease of dealing, consistent quality), choose the <strong>Evaluation type</strong> and a <strong>Recommendation</strong> (Approve, Conditional approval, Re-evaluate later, Reject), add notes and <span class="btn dark">Save evaluation</span>. The score feeds the <em>past performance</em> part of future rankings and the Performance view. Re-evaluation falls due every 3, 6, 12 or 24 months by tier.</p>
+</section>
+
+<!-- ================= PART 7 ================= -->
+<section class="page" id="p7">
+  <span class="kicker-sm">Part 7</span>
+  <h2>Supplier management</h2>
+  <p class="lead">A supplier can be asked for a price while its checks are in progress, because a quote commits nothing. It cannot win an award or receive an order until its Know Your Supplier (KYS) checks are complete, a second person has approved its activation, and it is marked spend-authorised.</p>
+  <figure id="fig5">
+    <div class="panel">
+    <svg viewBox="0 0 800 212" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Supplier statuses">
+      <g font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" transform="translate(0,16)">
+        <rect x="6" y="20" width="150" height="54" rx="6" fill="#fff" stroke="#B5BECA" stroke-width="1.2"/><text x="81" y="42" fill="#0B1E3F" font-weight="700" font-size="11.5" text-anchor="middle">Pending</text><text x="81" y="60" fill="#6B7686" text-anchor="middle">registered or created</text>
+        <path d="M158 47 L188 47" stroke="#6B7686" stroke-width="1.6" marker-end="url(#arr)"/><text x="173" y="38" fill="#6B7686" font-size="8.5" text-anchor="middle">KYS, tier</text>
+        <rect x="190" y="20" width="170" height="54" rx="6" fill="#E8F0FF" stroke="#1D5EFF" stroke-width="1.4"/><text x="275" y="42" fill="#0B1E3F" font-weight="700" font-size="11.5" text-anchor="middle">Awaiting approval</text><text x="275" y="60" fill="#2B3445" text-anchor="middle">submitted by Procurement</text>
+        <path d="M362 47 L392 47" stroke="#6B7686" stroke-width="1.6" marker-end="url(#arr)"/><text x="377" y="38" fill="#6B7686" font-size="8.5" text-anchor="middle">approve</text>
+        <rect x="394" y="20" width="150" height="54" rx="6" fill="#ECFDF3" stroke="#15803D" stroke-width="1.4"/><text x="469" y="42" fill="#15803D" font-weight="700" font-size="11.5" text-anchor="middle">Active</text><text x="469" y="60" fill="#2B3445" text-anchor="middle">spend-authorised</text>
+        <path d="M275 20 C 275 -4, 81 -4, 81 18" fill="none" stroke="#6B7686" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#arr)"/><text x="178" y="-3" fill="#6B7686" font-size="8.5" text-anchor="middle">returned with a reason</text>
+        <text x="600" y="30" fill="#6B7686" font-size="8.5" font-weight="700" letter-spacing="1">BY PROCUREMENT, WITH A REASON</text>
+        <rect x="560" y="38" width="110" height="34" rx="6" fill="#FFF7E6" stroke="#B45309"/><text x="615" y="59" fill="#B45309" font-weight="700" text-anchor="middle">Suspended</text>
+        <rect x="684" y="38" width="110" height="34" rx="6" fill="#F4F6F9" stroke="#B5BECA"/><text x="739" y="59" fill="#2B3445" font-weight="700" text-anchor="middle">Dormant</text>
+        <path d="M546 47 L558 47" stroke="#6B7686" stroke-width="1.4" marker-end="url(#arr)"/>
+        <rect x="6" y="130" width="150" height="44" rx="6" fill="#FEF2F2" stroke="#B91C1C"/><text x="81" y="149" fill="#B91C1C" font-weight="700" text-anchor="middle">Rejected</text><text x="81" y="164" fill="#6B7686" font-size="8.5" text-anchor="middle">registration, by HoP or COO</text>
+        <path d="M81 76 L81 128" stroke="#6B7686" stroke-width="1.4" marker-end="url(#arr)"/><text x="118" y="106" fill="#6B7686" font-size="8.5">reject · reopen</text>
+        <rect x="190" y="130" width="170" height="44" rx="6" fill="#FEF2F2" stroke="#B91C1C"/><text x="275" y="149" fill="#B91C1C" font-weight="700" text-anchor="middle">Blacklisted</text><text x="275" y="164" fill="#6B7686" font-size="8.5" text-anchor="middle">lifting returns it to Pending</text>
+        <rect x="394" y="130" width="400" height="44" rx="6" fill="#fff" stroke="#DCE1E8"/><text x="594" y="149" fill="#0B1E3F" font-weight="700" text-anchor="middle">Reactivate: suspended or dormant back to Active, by Procurement</text><text x="594" y="164" fill="#6B7686" font-size="8.5" text-anchor="middle">Not onboarding, so no second approval is needed</text>
+      </g>
+    </svg>
+    </div>
+    <figcaption><b>Figure</b> Supplier statuses. Activation takes two people: Procurement submits, the Head of Procurement or the COO approves. Every change is logged with who made it and why.</figcaption>
+  </figure>
+
+  <h3 id="p7-1">7.1 Add a supplier</h3>
+  <span class="who">Procurement officer</span>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/23-suppliers.png" alt=""></div>
+    <figcaption><b>Figure</b> Suppliers: search by name, code or registration number, filter by status, Add Supplier and Bulk Import. The code sits under each name.</figcaption>
+  </figure>
+
+  <p>Suppliers can register themselves (Part 11), or you can create them. Either way they start as <span class="st amber">Pending</span>.</p>
+  <ol class="steps">
+    <li>Open <span class="path">Suppliers &rsaquo; All Suppliers</span> and click <span class="btn dark">Add Supplier</span>. Four steps: <strong>Company &amp; login</strong>, <strong>Business</strong>, <strong>Banking</strong>, <strong>Review</strong>.</li>
+    <li><b>Company &amp; login.</b> Company Name, Registration Number, contact First Name and Last Name, and Email are required. Leave <strong>Password</strong> blank to have one generated.</li>
+    <li><b>Business.</b> Optional: trading name, phone, tax and VAT numbers, <strong>Business Type</strong> (manufacturer, distributor, wholesaler, retailer, service provider, contractor, other), <strong>Entity Type</strong> (company, individual), address, and <strong>Categories of Supply</strong>. Categories are what match a supplier to RFQs, so set them.</li>
+    <li><b>Banking.</b> Optional first bank account. Later changes go through bank-change approval (7.7).</li>
+    <li><b>Review</b> and click <span class="btn dark">Create Supplier</span>.</li>
+  </ol>
+  <p class="result">Toast <b>Supplier created — complete KYS to activate them</b>. If a password was generated, the <strong>Supplier created</strong> box shows it once; it is also emailed to the supplier, who should change it at first sign-in. <span class="btn">Continue to KYS</span> opens the profile on the Documents tab. The supplier gets a permanent code such as <code>ORG-SUP-00042</code> (your organisation's code, then a running number), shown under its name.</p>
+  <div class="note">A company can be registered once. The registration number is compared ignoring case, spaces and hyphens, so a second record for the same company is refused.</div>
+
+  <h3 id="p7-2">7.2 Bulk import</h3>
+  <p><span class="btn">Bulk Import</span> on the supplier list takes an Excel, CSV or JSON file, or pasted CSV with a header row. Required columns: <code>companyName</code>, <code>registrationNumber</code>, <code>contactPerson</code>, <code>email</code>, <code>phone</code>; <code>categories</code> is optional. The preview highlights cells missing a required value; those rows are rejected and the rest imported. Imported suppliers start as pending and still need KYS and activation. Use this for the supplier register at launch.</p>
+
+  <h3 id="p7-3">7.3 KYS documents and checklist</h3>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/24-supplier-detail.png" alt=""></div>
+    <figcaption><b>Figure</b> A pending supplier on its Documents tab: the facts strip shows KYS progress, tier and spend authorisation; the wizard runs Documents, Checklist, Activate.</figcaption>
+  </figure>
+
+  <p>Open the supplier and the <strong>Documents</strong> tab. It is a three-step wizard: <strong>Documents</strong>, <strong>Checklist</strong>, <strong>Activate</strong>.</p>
+  <ol class="steps">
+    <li><b>Documents.</b> The list is split into <strong>Mandatory documents</strong> for the supplier's tier and <strong>Optional documents</strong>. Suppliers upload their own (11.2); you can also <span class="btn">Upload</span> or <span class="btn">Replace</span> for them. Each file is PDF, image, Word or Excel, up to 5 MB. Tax clearance, NSSA, insurance, ISO, industry licences and NEC need an <strong>Expiry date</strong>.</li>
+    <li><b>Check each file.</b> Open it with <span class="btn">View</span>, then <span class="btn">Verify</span> it, or <span class="btn">Reject</span> it with a reason the supplier sees. A rejected or expired file shows why.</li>
+    <li><b>Checklist.</b> Tick each item as satisfied; the tick saves at once. The counter shows required items done against the tier's requirement. Items are grouped: registration and statutory (CR14, CR6), tax clearance, NSSA and NEC, licences and ISO, company capability (profile, three client referrals), financial standing (audited statements, bank references, payment terms, liquidity), commercial and operations, and health, safety and environment (safety records, environmental policy, insurance, disaster plan).</li>
+  </ol>
+  <div class="note warn"><b>Expiry matters on its own.</b> A required document that has passed its expiry date blocks awards and orders to that supplier, whether or not anyone has noticed. Reminders go to the supplier and to Procurement 60, 30 and 7 days before.</div>
+
+  <h3 id="p7-4">7.4 Set the diligence tier</h3>
+  <p>On the <strong>Activate</strong> step, the <strong>Diligence tier</strong> panel sets how deep the check must be. An unclassified supplier is treated as full depth, so low risk is never assumed. Click the tier and give the reason when asked. The panel suggests a tier from what it knows.</p>
+  <table class="first-bold tight">
+    <thead><tr><th style="width:18%">Tier</th><th>Meaning</th><th style="width:30%">KYS required</th><th style="width:14%">Re-evaluate</th></tr></thead>
+    <tbody>
+      <tr><td>Critical</td><td>Sole source, or the business stops if they fail</td><td>All 16 required items</td><td>3 months</td></tr>
+      <tr><td>Strategic</td><td>High spend or long-term partner</td><td>All 16 required items</td><td>6 months</td></tr>
+      <tr><td>Tactical</td><td>Routine, bought competitively</td><td>CR14, CR6, tax clearance, NSSA, insurance</td><td>12 months</td></tr>
+      <tr><td>Transactional</td><td>Low value, low risk, easily replaced</td><td>CR14, tax clearance</td><td>24 months</td></tr>
+      <tr><td>Unclassified</td><td>Not yet assessed</td><td>All 16 required items</td><td>3 months</td></tr>
+    </tbody>
+  </table>
+
+  <h3 id="p7-5">7.5 Submit for activation</h3>
+  <span class="who">Procurement officer or Head of Procurement</span>
+  <ol class="steps">
+    <li>On the <strong>Activate</strong> step, click <span class="btn dark">Submit for activation</span>. The box reminds you that the Head of Procurement or the COO, not you, approves it, and that the supplier stays pending until then.</li>
+    <li>If KYS is short of the tier's requirement, the box lists what is missing and a <strong>Reason for the KYS override</strong> is required; the approver sees it and, by approving, takes the override in their own name. Otherwise add <strong>Notes for the approver</strong> if useful.</li>
+    <li>Click <span class="btn dark">Submit</span>.</li>
+  </ol>
+  <p class="result">Toast <b>Submitted for activation</b>. The supplier shows <span class="st blue">Awaiting approval</span> with a banner naming you and the date. Every Head of Procurement and COO other than you is notified. If it comes back <em>returned</em>, the banner shows the reason; close the gap and submit again.</p>
+  <p>The supplier list filter <strong>Awaiting approval</strong> shows every open request; approvers also have <strong>Awaiting my approval</strong>. The approver's steps are in 8.4.</p>
+
+  <h3 id="p7-6">7.6 Suspend, blacklist, reactivate</h3>
+  <p>The buttons sit beside the status badge on the supplier's page. Each asks for a reason and confirmation, and each is written to the audit log and the supplier's status history.</p>
+  <table class="first-bold tight">
+    <thead><tr><th style="width:22%">Button</th><th style="width:22%">When shown</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td>Suspend</td><td>Active</td><td>No new invitations, awards or orders until reactivated</td></tr>
+      <tr><td>Mark dormant</td><td>Active</td><td>Stays on the register but set aside until reactivated</td></tr>
+      <tr><td>Reactivate</td><td>Suspended or dormant</td><td>Back to active. Not onboarding, so no second approval</td></tr>
+      <tr><td>Blacklist</td><td>Any status</td><td>Cannot be invited, quote, be awarded or register again; the reason is shown on the record</td></tr>
+      <tr><td>Lift blacklisting</td><td>Blacklisted</td><td>Back to pending. It must be submitted for activation and approved by someone else before it can win work</td></tr>
+    </tbody>
+  </table>
+  <p>Rejecting or reopening a registration is for the Head of Procurement or the COO (8.5). Rejection says nothing against the company, unlike blacklisting.</p>
+
+  <h3 id="p7-7">7.7 Bank-detail changes</h3>
+  <span class="who">Procurement officer, two different people</span>
+  <figure>
+    <div class="panel shot"><img src="manual-screenshots/25-bank-changes.png" alt=""></div>
+    <figcaption><b>Figure</b> Supplier banking changes: open requests with the old and new details side by side, Record callback, then Approve by a second person.</figcaption>
+  </figure>
+
+  <p>A change to where a supplier is paid is the classic fraud, so it is handled on <span class="path">Suppliers &rsaquo; Banking Changes</span> with a call-back and a second person. Payments to the supplier are held while a change is open.</p>
+  <ol class="steps">
+    <li>The supplier changes its bank details on its Company Profile (or you edit the Banking tab for them). The change is held as a request, shown as <span class="st amber">pending verification</span> with the old and new values side by side.</li>
+    <li><b>Call back.</b> Telephone the supplier on a number that was <em>already on file before the request</em>. The numbers on file are frozen while the request is open, so a number supplied with the change can never be the one called. Then click <span class="btn">Record callback</span>, enter the number you called and who confirmed the change. Calling a number not on file needs an override reason and is logged.</li>
+    <li><b>Approve.</b> A different person, who is neither the requester nor the caller, clicks <span class="btn dark">Approve</span>. Or <span class="btn">Reject</span> with a reason.</li>
+  </ol>
+  <p class="result">Toast <b>Banking change approved and applied. Payments have resumed.</b> The supplier is told either way and sees the outcome on its profile.</p>
+
+  <h3 id="p7-8">7.8 Vetting record</h3>
+  <p>On the supplier's <strong>Vetting</strong> tab, record how the supplier joined the register (<strong>Onboarding method</strong>: newspaper invitation, direct application, referral, existing supplier, other) and the <strong>Site visit</strong>: status, date, who conducted it and notes. Click <span class="btn dark">Save vetting record</span>. The <strong>Directors</strong> and <strong>References</strong> tabs hold contacts and at least three trade references, which the KYS checklist expects.</p>
+
+  <h3 id="p7-9">7.9 Compliance and performance views</h3>
+  <ul>
+    <li><span class="path">Suppliers &rsaquo; Compliance</span>: KYS verified and pending counts, coverage, suppliers pending activation, and a <strong>Compliance watchlist</strong> with incomplete KYS first. Start here each week.</li>
+    <li><span class="path">Suppliers &rsaquo; Performance</span>: scores from evaluations, bands from Excellent to Low, top suppliers, and who is <strong>Due for evaluation</strong>.</li>
+    <li><span class="path">Suppliers &rsaquo; Evaluations</span>: record and browse evaluations (6.10).</li>
+    <li><span class="path">Reports</span>, <strong>Suppliers</strong> tab: the registry with status, KYS, score, orders and spend per supplier, exportable to CSV.</li>
+  </ul>
+</section>
