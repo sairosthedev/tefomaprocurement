@@ -11,12 +11,26 @@ const LOCAL_ORIGINS = [
   'http://127.0.0.1:4173'
 ];
 
+/**
+ * The same site with and without "www.". The front door is served on both
+ * www.procureline.co.zw and the bare procureline.co.zw, so CLIENT_URL naming
+ * one must let the other call the API too.
+ */
+function withWwwTwin(origin: string): string[] {
+  const match = /^(https?:\/\/)(www\.)?([^/:]+)(:\d+)?$/i.exec(origin);
+  if (!match) return [origin];
+  const [, scheme, www, host, port = ''] = match;
+  // A bare IP or a single-label host such as localhost has no www form.
+  if (!host.includes('.') || /^[\d.]+$/.test(host)) return [origin];
+  return [origin, www ? `${scheme}${host}${port}` : `${scheme}www.${host}${port}`];
+}
+
 function parseAllowedOrigins(): Set<string> {
   const origins = new Set<string>([DEFAULT_CLIENT_URL, ...LOCAL_ORIGINS]);
 
   const clientUrl = process.env.CLIENT_URL?.trim();
   if (clientUrl) {
-    origins.add(clientUrl.replace(/\/$/, ''));
+    withWwwTwin(clientUrl.replace(/\/$/, '')).forEach((origin) => origins.add(origin));
   }
 
   const extra = process.env.CORS_ORIGINS?.split(',').map((o) => o.trim()).filter(Boolean) || [];

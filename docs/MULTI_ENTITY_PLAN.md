@@ -86,7 +86,7 @@ An automated test boots two SBU databases and asserts that every endpoint called
 | `group.<base-domain>` | Group roles | Framework contracts, cross-SBU reports, supplier and catalogue reconciliation, SBU administration |
 | `suppliers.<base-domain>` | Suppliers | One portal showing RFQs and POs from every SBU the supplier is approved for |
 
-`<base-domain>` is **procureline.co.zw**, bought 2026-11-10 to match the product name. It replaces sourceline.co.zw (registered 2026-10-07), which keeps working while people move over. The front door is `www.procureline.co.zw`; the bare domain redirects there. Staging uses `staging.procureline.co.zw`, development `dev.procureline.co.zw`, so the three environments never share a hostname.
+`<base-domain>` is **procureline.co.zw**, bought 2026-11-10 to match the product name. It replaces sourceline.co.zw (registered 2026-10-07), which keeps working while people move over. The front door is `www.procureline.co.zw`, and the bare `procureline.co.zw` serves the same site. Staging uses `staging.procureline.co.zw`, development `dev.procureline.co.zw`, so the three environments never share a hostname.
 
 **Deployment:** one client build and one API, as today. All domains are attached to the same Vercel client project. At the registrar, one wildcard DNS record covers every SBU subdomain; on Vercel each SBU hostname is added by name, because a Vercel wildcard needs Vercel's nameservers and the DNS stays with the registrar (webzim). Custom domains are added individually and verified by the SBU's DNS admin.
 
