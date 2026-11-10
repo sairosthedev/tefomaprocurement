@@ -7,12 +7,18 @@ import Drawer from './Drawer';
 import { ConfirmModal } from './Modal';
 import { FormSteps, FormStepNav } from './FormSteps';
 import { Loader2, AlertTriangle, CheckCircle } from 'lucide-react';
+import { validateInvoice, type InvoiceInput } from '@fossil/shared';
+import FieldError from './FieldError';
+import { serverFieldErrors, useFormValidation } from '../lib/useFormValidation';
 
 const STEPS = [
   { label: 'Order & invoice', description: 'Which PO you are billing' },
   { label: 'Lines & VAT', description: 'What you are charging for' },
   { label: 'Review & submit', description: 'Check it against the PO' }
 ];
+
+/** The step that shows a field, so a problem can be brought into view. */
+const stepOfField = (field: string) => (field === 'items' || field.startsWith('items.') || field === 'vatAmount' ? 1 : 0);
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -64,6 +70,12 @@ const InvoiceForm = forwardRef<InvoiceFormHandle, {
   const poVat = selectedPo ? Math.max(0, round2((Number(selectedPo.totalAmount) || 0) - poSubtotal)) : 0;
   const invoiceSubtotal = items.reduce((s, i) => s + i.totalPrice, 0);
   const invoiceTotal = invoiceSubtotal + (Number(vatAmount) || 0);
+
+  const values: InvoiceInput = { purchaseOrderId, vendorInvoiceNumber, invoiceDate, items, vatAmount };
+  const validation = useFormValidation(validateInvoice, values);
+  // A problem with one line, shown under that line of the table.
+  const lineError = (index: number) =>
+    Object.entries(validation.errors).find(([field]) => field.startsWith(`items.${index}.`))?.[1];
 
   // Anything entered beyond the order the form was opened with.
   const dirty =
@@ -130,38 +142,32 @@ const InvoiceForm = forwardRef<InvoiceFormHandle, {
     }
   };
 
-  const goTo = (index: number) => {
-    setStep(index);
+  const scrollToTop = () => {
     // Scrolls whichever container holds the form, page or drawer.
     topRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   };
 
-  const validateStep = (index: number) => {
-    if (index === 0) {
-      if (!purchaseOrderId) {
-        showToast('Select the purchase order you are billing', 'error');
-        return false;
-      }
-      if (!invoiceDate) {
-        showToast('Enter the invoice date', 'error');
-        return false;
-      }
-    }
-    if (index === 1) {
-      if (!items.length) {
-        showToast('Select a PO and add line items', 'error');
-        return false;
-      }
-      if ((Number(vatAmount) || 0) < 0) {
-        showToast('VAT cannot be negative', 'error');
-        return false;
-      }
-    }
-    return true;
+  const goTo = (index: number) => {
+    setStep(index);
+    validation.reset();
+    scrollToTop();
+  };
+
+  /**
+   * Checks the steps up to and including `through`. When one has a problem it
+   * is brought into view with its fields marked, and false is returned.
+   */
+  const checkThrough = (through: number) => {
+    const failing = Object.keys(validateInvoice(values)).map(stepOfField).filter((s) => s <= through);
+    if (!failing.length) return true;
+    const first = Math.min(...failing);
+    if (first !== step) goTo(first);
+    validation.check();
+    return false;
   };
 
   const handleNext = () => {
-    if (validateStep(step)) goTo(Math.min(step + 1, STEPS.length - 1));
+    if (checkThrough(step)) goTo(Math.min(step + 1, STEPS.length - 1));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -171,15 +177,12 @@ const InvoiceForm = forwardRef<InvoiceFormHandle, {
       handleNext();
       return;
     }
-    if (!purchaseOrderId || !items.length) {
-      showToast('Select a PO and add line items', 'error');
-      return;
-    }
+    if (!checkThrough(STEPS.length - 1)) return;
     try {
       setSubmitting(true);
       await supplierAPI.submitInvoice({
         purchaseOrderId,
-        vendorInvoiceNumber,
+        vendorInvoiceNumber: vendorInvoiceNumber.trim(),
         invoiceDate,
         items,
         vatAmount: Number(vatAmount) || 0
@@ -187,7 +190,17 @@ const InvoiceForm = forwardRef<InvoiceFormHandle, {
       showToast('Invoice submitted successfully', 'success');
       onSaved();
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to submit invoice', 'error');
+      if (validation.fromServer(error)) {
+        // Show the step holding the first field the server refused.
+        const fields = Object.keys(serverFieldErrors(error) || {});
+        const first = Math.min(...fields.map(stepOfField));
+        if (first !== step) {
+          setStep(first);
+          scrollToTop();
+        }
+      } else {
+        showToast(error.response?.data?.message || 'Failed to submit invoice', 'error');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -205,7 +218,7 @@ const InvoiceForm = forwardRef<InvoiceFormHandle, {
         <>
           <FormSteps steps={STEPS} current={step} onSelect={goTo} variant="track" />
 
-          <form onSubmit={handleSubmit}>
+          <form ref={validation.formRef} onSubmit={handleSubmit} noValidate>
             {step === 0 && (
               <div className="space-y-4">
                 <div>
@@ -214,6 +227,7 @@ const InvoiceForm = forwardRef<InvoiceFormHandle, {
                     value={purchaseOrderId}
                     onChange={(e) => setPurchaseOrderId(e.target.value)}
                     className="w-full border rounded-lg px-3 py-2"
+                    {...validation.invalid('purchaseOrderId')}
                   >
                     <option value="">Select PO...</option>
                     {orders.map((o) => (
@@ -222,6 +236,7 @@ const InvoiceForm = forwardRef<InvoiceFormHandle, {
                       </option>
                     ))}
                   </select>
+                  <FieldError message={validation.errors.purchaseOrderId} />
                   {!orders.length && (
                     <p className="text-xs text-gray-500 mt-1">
                       No purchase orders are ready to invoice. An order can be invoiced once it has been issued to you.
@@ -237,7 +252,10 @@ const InvoiceForm = forwardRef<InvoiceFormHandle, {
                     onChange={(e) => setVendorInvoiceNumber(e.target.value)}
                     className="w-full border rounded-lg px-3 py-2"
                     placeholder="Vendor invoice #"
+                    maxLength={50}
+                    {...validation.invalid('vendorInvoiceNumber')}
                   />
+                  <FieldError message={validation.errors.vendorInvoiceNumber} />
                 </div>
 
                 <div>
@@ -247,7 +265,9 @@ const InvoiceForm = forwardRef<InvoiceFormHandle, {
                     value={invoiceDate}
                     onChange={(e) => setInvoiceDate(e.target.value)}
                     className="w-full border rounded-lg px-3 py-2"
+                    {...validation.invalid('invoiceDate')}
                   />
+                  <FieldError message={validation.errors.invoiceDate} />
                 </div>
               </div>
             )}
@@ -266,14 +286,24 @@ const InvoiceForm = forwardRef<InvoiceFormHandle, {
                     </thead>
                     <tbody>
                       {items.map((item, i) => (
-                        <tr key={i} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
-                          <td className="py-2 px-3 border-b border-gray-100">{item.description}</td>
-                          <td className="py-2 px-3 border-b border-gray-100 text-right">{item.quantity}</td>
-                          <td className="py-2 px-3 border-b border-gray-100 text-right">{formatCurrency(item.totalPrice, selectedCurrency)}</td>
-                        </tr>
+                        <React.Fragment key={i}>
+                          <tr className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                            <td className="py-2 px-3 border-b border-gray-100">{item.description}</td>
+                            <td className="py-2 px-3 border-b border-gray-100 text-right">{item.quantity}</td>
+                            <td className="py-2 px-3 border-b border-gray-100 text-right">{formatCurrency(item.totalPrice, selectedCurrency)}</td>
+                          </tr>
+                          {lineError(i) && (
+                            <tr>
+                              <td colSpan={3} className="px-3 pb-2 border-b border-gray-100">
+                                <FieldError message={`Line ${i + 1}: ${lineError(i)}`} />
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
                       ))}
                     </tbody>
                   </table>
+                  <FieldError message={validation.errors.items} />
                   <p className="text-sm text-gray-500 mt-2">
                     Subtotal: {formatCurrency(invoiceSubtotal, selectedCurrency)}
                   </p>
@@ -288,7 +318,9 @@ const InvoiceForm = forwardRef<InvoiceFormHandle, {
                     value={vatAmount}
                     onChange={(e) => setVatAmount(e.target.value)}
                     className="w-full border rounded-lg px-3 py-2"
+                    {...validation.invalid('vatAmount')}
                   />
+                  <FieldError message={validation.errors.vatAmount} />
                   <p className="text-xs text-gray-500 mt-1">
                     The purchase order carries {formatCurrency(poVat, selectedCurrency)} VAT. Charge the same, or the
                     invoice will not match.

@@ -1,11 +1,12 @@
 import type { Request, Response } from 'express';
-import { isValidCategoryCode } from '@fossil/shared';
+import { isValidCategoryCode, validateSupplierProfileUpdate } from '@fossil/shared';
 import { User, SupplierProfile, SupplierBankChangeRequest } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole } from '../../services/notification.service.js';
 import { sendEmailNotification } from '../../services/email.service.js';
 import { brandSubject, getProductName } from '../../lib/branding.js';
 import { emailPaths } from '../../lib/emailLinks.js';
+import { refuseInvalid } from '../../lib/validation.js';
 import {
   applySupplierClassification,
   readSupplierClassification
@@ -85,6 +86,14 @@ const updateSupplier = async (req: Request, res: Response): Promise<any> => {
       return res.status(404).json({ success: false, message: 'Supplier not found' });
     }
 
+    // The profile editor's own checks, on the fields sent (see
+    // packages/shared/src/validation/suppliers.ts). The login part is ignored
+    // below for a supplier without one, so it is not checked for them either;
+    // the country on record decides the account-number format for a
+    // banking-only edit.
+    const profileEdit = supplier.user ? req.body : { ...req.body, user: undefined };
+    if (refuseInvalid(res, validateSupplierProfileUpdate(profileEdit, { country: supplier.address?.country }))) return;
+
     // `supplierCode` is deliberately not read from the body: it is assigned
     // once and is permanent.
     const classification = readSupplierClassification(req.body);
@@ -114,7 +123,8 @@ const updateSupplier = async (req: Request, res: Response): Promise<any> => {
       if (existing) {
         return res.status(400).json({
           success: false,
-          message: `A user with email ${userEdit.email} already exists`
+          message: `A user with email ${userEdit.email} already exists`,
+          errors: { 'user.email': 'This email is already in use. Use another email' }
         });
       }
     }

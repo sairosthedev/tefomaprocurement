@@ -8,10 +8,15 @@
  * With --sbu every request carries X-Sbu-Code, so the whole flow runs inside
  * that business unit's database. Seed it first with:
  *      npm run seed:all -w api -- --sbu DOKUMA
+ *
+ * When the unit's budget for the year is used up, the department head's
+ * approval asks for a reason. --budget-override sends one so the run can go on:
+ *      npm run e2e:local -w api -- --sbu DOKUMA --budget-override
  */
 const args = process.argv.slice(2);
 const sbuIndex = args.indexOf('--sbu');
 const SBU = sbuIndex === -1 ? null : args[sbuIndex + 1];
+const BUDGET_OVERRIDE = args.includes('--budget-override') ? 'E2E run on the dev unit' : undefined;
 const baseArg = args.find((a) => a.startsWith('http'));
 const BASE = (baseArg || 'http://localhost:3001').replace(/\/$/, '');
 const API = `${BASE}/api`;
@@ -188,7 +193,8 @@ async function main() {
 
   const hodToken = await login('mac@fossilzim.com');
   const hodApprove = await api('PUT', `/department/requisitions/${ctx.prId}/approve`, hodToken, {
-    comments: 'Approved for E2E test'
+    comments: 'Approved for E2E test',
+    ...(BUDGET_OVERRIDE ? { budgetOverrideReason: BUDGET_OVERRIDE } : {})
   });
   step('ICT HOD approves requisition', hodApprove.status === 200);
 

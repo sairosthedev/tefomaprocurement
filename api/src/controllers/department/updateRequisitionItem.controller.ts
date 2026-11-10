@@ -1,9 +1,10 @@
 import type { Request, Response } from 'express';
-import { isProcurementHead } from '@fossil/shared';
+import { isProcurementHead, validateRequisitionLineQuantity } from '@fossil/shared';
 import { PurchaseRequisition } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { createNotification } from '../../services/notification.service.js';
 import { canActOnDepartment } from '../../lib/departmentScope.js';
+import { refuseInvalid } from '../../lib/validation.js';
 
 /**
  * Update a single line item on a requisition during an approval stage — currently
@@ -18,10 +19,9 @@ const updateRequisitionItem = async (req: Request, res: Response): Promise<any> 
     const { id, itemId } = req.params;
     const { quantity } = req.body;
 
+    // A whole number above 0, as the line was raised with.
+    if (refuseInvalid(res, validateRequisitionLineQuantity(req.body))) return;
     const parsedQty = Number(quantity);
-    if (!Number.isFinite(parsedQty) || parsedQty < 1) {
-      return res.status(400).json({ success: false, message: 'Quantity must be a whole number of at least 1.' });
-    }
 
     const requisition = await PurchaseRequisition.findById(id);
     if (!requisition || requisition.isDeleted) {
@@ -62,7 +62,11 @@ const updateRequisitionItem = async (req: Request, res: Response): Promise<any> 
 
     const previousQty = item.quantity;
     if (parsedQty === previousQty) {
-      return res.status(400).json({ success: false, message: 'Quantity is unchanged.' });
+      return res.status(400).json({
+        success: false,
+        message: 'Quantity is unchanged.',
+        errors: { quantity: 'Enter a different quantity, or cancel' }
+      });
     }
 
     const wholeQty = Math.floor(parsedQty);

@@ -2,12 +2,15 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { isProcurementHead } from '@fossil/shared';
+import { TEXT_LIMITS, isProcurementHead, validateLineSelection, validateLineWaiver } from '@fossil/shared';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
 import { formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
 import Modal from '../components/Modal';
+import FieldError from '../components/FieldError';
+import { usePrompt } from '../components/PromptModal';
+import { useFormValidation } from '../lib/useFormValidation';
 import { Loader2, CheckCircle, Circle, ShieldCheck, DollarSign, Package, RefreshCw, Send, Sparkles, AlertTriangle, Clock } from 'lucide-react';
 
 const bidPrice = (amount: number, currency?: string) =>
@@ -44,6 +47,13 @@ export default function AwardMatrix() {
   const [waiverLine, setWaiverLine] = useState<any>(null);
   const [waiverType, setWaiverType] = useState('');
   const [waiverReason, setWaiverReason] = useState('');
+  const waiverForm = useFormValidation(validateLineWaiver, {
+    rfqLineId: waiverLine?.rfqLineId,
+    waiverType,
+    reason: waiverReason
+  });
+  // Asks for the justification when a line is awarded.
+  const { ask, promptElement } = usePrompt();
 
   const load = async () => {
     try {
@@ -72,7 +82,7 @@ export default function AwardMatrix() {
     }
   };
 
-  const selectLine = (line: any, bid: any) => {
+  const selectLine = async (line: any, bid: any) => {
     // Make the benchmark explicit in the prompt: an award above the lowest bid
     // is exactly the case an auditor will want the justification to address.
     const context = bid.isLowest
@@ -80,14 +90,32 @@ export default function AwardMatrix() {
       : bid.percentAboveLowest
       ? ` (+${bid.percentAboveLowest}% above the lowest bid of ${bidPrice(line.lowestUnitPrice, bid.currency)})`
       : '';
-    const justification = window.prompt(
-      `Justification for awarding "${line.description}" to ${bid.supplierName} at ${bidPrice(bid.unitPrice, bid.currency)}${context}:`
-    );
-    if (!justification?.trim()) return;
+    // The API's own check on the award, so the prompt says what the API would.
+    const justificationProblem = (justification: string) =>
+      validateLineSelection({ rfqLineId: line.rfqLineId, quotationId: bid.quotationId, justification }).justification || '';
+    const answer = await ask({
+      title: 'Award this line',
+      subtitle: line.description,
+      message: `Award "${line.description}" to ${bid.supplierName} at ${bidPrice(bid.unitPrice, bid.currency)}${context}.`,
+      fields: [
+        {
+          name: 'justification',
+          label: 'Justification',
+          multiline: true,
+          placeholder: 'Why this supplier, at this price',
+          requiredMessage: justificationProblem(''),
+          // The shared check sets the length limit, in its own words.
+          maxLength: Number.POSITIVE_INFINITY,
+          validate: justificationProblem
+        }
+      ],
+      confirmLabel: 'Award line'
+    });
+    if (!answer) return;
     act(
       () => procurementAPI.selectLine(id, {
         rfqLineId: line.rfqLineId, quotationId: bid.quotationId, supplierId: bid.supplierId,
-        unitPrice: bid.unitPrice, justification
+        unitPrice: bid.unitPrice, justification: answer.justification
       }),
       'Line awarded (selection recorded)'
     );
@@ -99,20 +127,28 @@ export default function AwardMatrix() {
   const waiveLine = (line: any) => {
     setWaiverType('');
     setWaiverReason('');
+    waiverForm.reset();
     setWaiverLine(line);
   };
 
-  const submitWaiver = () => {
-    if (!waiverLine || !waiverType || !waiverReason.trim()) return;
-    act(async () => {
+  const submitWaiver = async () => {
+    if (!waiverLine || !waiverForm.check()) return;
+    try {
+      setBusy(true);
       await procurementAPI.waiveLine(id, {
         rfqLineId: waiverLine.rfqLineId,
         reason: waiverReason.trim(),
         waiverType
       });
+      showToast('Line waiver approved', 'success');
       // Closed only once it is approved, so a refusal leaves the entry to correct.
       setWaiverLine(null);
-    }, 'Line waiver approved');
+      await load();
+    } catch (e: any) {
+      if (!waiverForm.fromServer(e)) showToast(e.response?.data?.message || 'Action failed', 'error');
+    } finally {
+      setBusy(false);
+    }
   };
 
   // The new orders are submitted for approval from their own pages, so go
@@ -345,7 +381,7 @@ export default function AwardMatrix() {
             <button
               type="button"
               onClick={submitWaiver}
-              disabled={busy || !waiverType || !waiverReason.trim()}
+              disabled={busy}
               className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
@@ -354,26 +390,36 @@ export default function AwardMatrix() {
           </>
         }
       >
-        <div className="space-y-3">
-          <select
-            value={waiverType}
-            onChange={(e: any) => setWaiverType(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
-          >
-            <option value="">Select waiver type…</option>
-            {WAIVER_TYPES.map((w) => (
-              <option key={w.value} value={w.value}>{w.label}</option>
-            ))}
-          </select>
-          <textarea
-            value={waiverReason}
-            onChange={(e: any) => setWaiverReason(e.target.value)}
-            rows={3}
-            placeholder="Justification for waiving the 3-quotation requirement on this line..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
+        <div ref={waiverForm.formRef} className="space-y-3">
+          <div>
+            <select
+              value={waiverType}
+              onChange={(e: any) => setWaiverType(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+              {...waiverForm.invalid('waiverType')}
+            >
+              <option value="">Select waiver type…</option>
+              {WAIVER_TYPES.map((w) => (
+                <option key={w.value} value={w.value}>{w.label}</option>
+              ))}
+            </select>
+            <FieldError message={waiverForm.errors.waiverType} />
+          </div>
+          <div>
+            <textarea
+              value={waiverReason}
+              onChange={(e: any) => setWaiverReason(e.target.value)}
+              rows={3}
+              placeholder="Justification for waiving the 3-quotation requirement on this line..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              maxLength={TEXT_LIMITS.long}
+              {...waiverForm.invalid('reason')}
+            />
+            <FieldError message={waiverForm.errors.reason || waiverForm.errors.rfqLineId} />
+          </div>
         </div>
       </Modal>
+      {promptElement}
     </div>
   );
 }

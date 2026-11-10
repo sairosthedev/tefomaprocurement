@@ -12,8 +12,18 @@ import {
   stockStatus,
   suggestedRestockQuantity,
   categoryCodeForStock,
-  USAGE_WINDOW_DAYS
+  USAGE_WINDOW_DAYS,
+  STORES_TEXT_LIMITS,
+  TEXT_LIMITS,
+  hasErrors,
+  validateInventoryImport,
+  validateInventoryItem,
+  validateInventoryLevels,
+  validateRestock,
+  type FieldErrors
 } from '@fossil/shared';
+import FieldError from '../components/FieldError';
+import { serverFieldErrors, useFormValidation } from '../lib/useFormValidation';
 import PageHeader from '../components/PageHeader';
 import ViewButton from '../components/ViewButton';
 import Modal from '../components/Modal';
@@ -57,6 +67,10 @@ const ADD_STEPS = [
   { label: 'Stock', description: 'Price, quantity, reorder level' },
   { label: 'Review & add', description: 'Check, then add' }
 ];
+
+/** The add form's second step holds the stock fields; everything else is on the first. */
+const ADD_STOCK_FIELDS = ['unit', 'unitPrice', 'currentQuantity', 'quantity', 'reorderLevel', 'location'];
+const addStepOf = (field: string) => (ADD_STOCK_FIELDS.includes(field) ? 1 : 0);
 
 const IMPORT_STEPS = [
   { label: 'Upload', description: 'Choose the spreadsheet' },
@@ -122,6 +136,31 @@ export default function Inventory() {
   const [addStep, setAddStep] = useState(0);
   const [adding, setAdding] = useState(false);
   const addTopRef = useRef<HTMLDivElement>(null);
+
+  // Next checks the step on screen; the last step checks them all.
+  const addCheck = useFormValidation((data: any) => {
+    const errors = validateInventoryItem(data);
+    if (addStep >= ADD_STEPS.length - 1) return errors;
+    return Object.fromEntries(Object.entries(errors).filter(([field]) => addStepOf(field) === addStep));
+  }, formData);
+  const levelsCheck = useFormValidation(validateInventoryLevels, levelsForm);
+  const restockValues = {
+    inventoryId: restockFor?._id,
+    quantity: restockQty,
+    category: restockCategory,
+    justification: restockNote
+  };
+  const restockCheck = useFormValidation(validateRestock, restockValues);
+  const importCheck = useFormValidation(validateInventoryImport, { items: importRows });
+  // Each problem in the sheet, by row as the import's results number them (header is row 1).
+  const importProblems = Object.entries(importCheck.errors).map(([field, message]) => {
+    const match = /^items\.(\d+)\./.exec(field);
+    if (!match) return { field, row: -1, label: '', message };
+    const row = Number(match[1]);
+    const name = importRows[row]?.name || importRows[row]?.code;
+    return { field, row, label: `Row ${row + 2}${name ? ` (${name})` : ''}`, message };
+  });
+  const importRowsWithProblems = new Set(importProblems.map((problem) => problem.row));
 
   const issueContext = useMemo(() => {
     const prId = searchParams.get('prId');
@@ -230,35 +269,33 @@ export default function Inventory() {
 
   const openAddModal = () => {
     setAddStep(0);
+    addCheck.reset();
     setShowAddModal(true);
   };
 
-  const goToAddStep = (step: number) => {
+  /** Moves to a step; its messages start afresh unless the move is to show them. */
+  const goToAddStep = (step: number, keepErrors = false) => {
     setAddStep(step);
+    if (!keepErrors) addCheck.reset();
     addTopRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   };
 
-  const validateItemStep = () => {
-    if (!formData.name.trim()) {
-      showToast('Please enter item name', 'error');
-      return false;
-    }
-    if (!formData.category) {
-      showToast('Please select a category', 'error');
-      return false;
-    }
-    return true;
+  const nextAddStep = () => {
+    if (addCheck.check()) goToAddStep(addStep + 1);
   };
 
-  const nextAddStep = () => {
-    if (addStep === 0 && !validateItemStep()) return;
-    goToAddStep(addStep + 1);
+  /** Opens the earliest step with a problem, so its messages show. */
+  const showFirstAddProblem = (errors: FieldErrors) => {
+    const step = Math.min(...Object.keys(errors).map(addStepOf));
+    if (step !== addStep) goToAddStep(step, true);
   };
 
   const handleAddItem = async () => {
     try {
-      if (!validateItemStep()) {
-        goToAddStep(0);
+      const all = validateInventoryItem(formData);
+      if (hasErrors(all)) {
+        showFirstAddProblem(all);
+        addCheck.check();
         return;
       }
 
@@ -282,7 +319,13 @@ export default function Inventory() {
       setPage(1);
       fetchInventory({ page: 1, search: '', category: '', lowStock: false });
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to add item', 'error');
+      const fields = serverFieldErrors(error);
+      if (fields) {
+        showFirstAddProblem(fields);
+        addCheck.fromServer(error);
+      } else {
+        showToast(error.response?.data?.message || 'Failed to add item', 'error');
+      }
     } finally {
       setAdding(false);
     }
@@ -324,17 +367,22 @@ export default function Inventory() {
       if (rows.length === 0) {
         setParseError('No valid rows found. Make sure your file has a "name" column.');
         setImportRows([]);
+        importCheck.reset();
         return;
       }
       setImportRows(rows);
+      // Check the rows straight away, so any problems show with the preview.
+      importCheck.check({ items: rows });
     } catch (err: any) {
       setParseError('Could not read this file. Use the .xlsx or .csv template.');
       setImportRows([]);
+      importCheck.reset();
     }
   };
 
   const doImport = async () => {
     if (importRows.length === 0) return;
+    if (!importCheck.check()) return;
     try {
       setImporting(true);
       const res = await api.post('/stores/inventory/bulk', { items: importRows });
@@ -346,7 +394,9 @@ export default function Inventory() {
       setPage(1);
       fetchInventory({ page: 1, search: '', category: '', lowStock: false });
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Import failed', 'error');
+      if (!importCheck.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Import failed', 'error');
+      }
     } finally {
       setImporting(false);
     }
@@ -358,6 +408,7 @@ export default function Inventory() {
     setImportFileName('');
     setImportResult(null);
     setParseError('');
+    importCheck.reset();
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -389,19 +440,13 @@ export default function Inventory() {
     // when it cannot be told (e.g. "Consumables").
     setRestockCategory(categoryCodeForStock(inv.item?.category));
     setRestockNote('');
+    restockCheck.reset();
   };
 
   const submitRestock = async () => {
     if (!restockFor) return;
-    const quantity = parseInt(restockQty, 10);
-    if (!Number.isInteger(quantity) || quantity < 1) {
-      showToast('Enter a quantity of at least 1', 'error');
-      return;
-    }
-    if (!restockCategory) {
-      showToast('Choose a category so procurement can find suppliers', 'error');
-      return;
-    }
+    if (!restockCheck.check()) return;
+    const quantity = Number(restockQty);
     try {
       setRestocking(true);
       const res = await storesAPI.createRestock({
@@ -414,7 +459,9 @@ export default function Inventory() {
       setRestockFor(null);
       fetchInventory();
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Could not request a restock', 'error');
+      if (!restockCheck.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Could not request a restock', 'error');
+      }
     } finally {
       setRestocking(false);
     }
@@ -428,6 +475,7 @@ export default function Inventory() {
       reorderQuantity: typeof selectedItem.reorderQuantity === 'number' ? String(selectedItem.reorderQuantity) : ''
     });
     setUsage(null);
+    levelsCheck.reset();
     storesAPI
       .getInventoryUsage(selectedItem._id)
       .then((res: any) => setUsage(res.data?.data || null))
@@ -436,6 +484,7 @@ export default function Inventory() {
 
   const saveLevels = async () => {
     if (!selectedItem) return;
+    if (!levelsCheck.check()) return;
     try {
       setSavingLevels(true);
       const res = await storesAPI.updateInventoryLevels(selectedItem._id, {
@@ -446,7 +495,9 @@ export default function Inventory() {
       setShowViewModal(false);
       fetchInventory();
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Could not save the levels', 'error');
+      if (!levelsCheck.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Could not save the levels', 'error');
+      }
     } finally {
       setSavingLevels(false);
     }
@@ -779,6 +830,8 @@ export default function Inventory() {
         size="lg"
       >
         <form
+          ref={addCheck.formRef}
+          noValidate
           onSubmit={(e) => {
             e.preventDefault();
             // Enter on an earlier step moves on rather than adding early.
@@ -798,9 +851,12 @@ export default function Inventory() {
                     type="text"
                     value={formData.itemCode}
                     onChange={(e: any) => setFormData({ ...formData, itemCode: e.target.value })}
+                    maxLength={STORES_TEXT_LIMITS.itemCode}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
                     placeholder="Auto-generated if empty"
+                    {...addCheck.invalid('itemCode')}
                   />
+                  <FieldError message={addCheck.errors.itemCode} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
@@ -809,8 +865,10 @@ export default function Inventory() {
                     onChange={(code) => setFormData({ ...formData, category: code })}
                     placeholder="Select Category"
                     required
+                    invalid={!!addCheck.errors.category}
                     className="w-full flex items-center justify-between px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
                   />
+                  <FieldError message={addCheck.errors.category} />
                 </div>
               </div>
 
@@ -820,9 +878,12 @@ export default function Inventory() {
                   type="text"
                   value={formData.name}
                   onChange={(e: any) => setFormData({ ...formData, name: e.target.value })}
+                  maxLength={STORES_TEXT_LIMITS.itemName}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
                   placeholder="e.g., A4 Paper"
+                  {...addCheck.invalid('name')}
                 />
+                <FieldError message={addCheck.errors.name} />
               </div>
 
               <div>
@@ -830,9 +891,12 @@ export default function Inventory() {
                 <textarea
                   value={formData.description}
                   onChange={(e: any) => setFormData({ ...formData, description: e.target.value })}
+                  maxLength={TEXT_LIMITS.long}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-none"
                   rows={2}
+                  {...addCheck.invalid('description')}
                 />
+                <FieldError message={addCheck.errors.description} />
               </div>
 
             </>
@@ -862,7 +926,9 @@ export default function Inventory() {
                     value={formData.unitPrice}
                     onChange={(e: any) => setFormData({ ...formData, unitPrice: parseFloat(e.target.value) || 0 })}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    {...addCheck.invalid('unitPrice')}
                   />
+                  <FieldError message={addCheck.errors.unitPrice} />
                 </div>
               </div>
 
@@ -875,7 +941,9 @@ export default function Inventory() {
                     value={formData.currentQuantity}
                     onChange={(e: any) => setFormData({ ...formData, currentQuantity: parseInt(e.target.value) || 0 })}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    {...addCheck.invalid('currentQuantity')}
                   />
+                  <FieldError message={addCheck.errors.currentQuantity} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Reorder Level</label>
@@ -885,7 +953,9 @@ export default function Inventory() {
                     value={formData.reorderLevel}
                     onChange={(e: any) => setFormData({ ...formData, reorderLevel: parseInt(e.target.value) || 0 })}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    {...addCheck.invalid('reorderLevel')}
                   />
+                  <FieldError message={addCheck.errors.reorderLevel} />
                 </div>
               </div>
 
@@ -996,7 +1066,7 @@ export default function Inventory() {
               </p>
             </div>
 
-            <div className="border-t border-gray-100 pt-4">
+            <div ref={levelsCheck.formRef} className="border-t border-gray-100 pt-4">
               <h3 className="text-sm font-semibold text-gray-900">Levels at {selectedItem.site?.name || 'this site'}</h3>
               <p className="text-xs text-gray-500 mt-0.5 mb-3">
                 Leave a box blank to use the catalogue level
@@ -1013,7 +1083,9 @@ export default function Inventory() {
                     onChange={(e: any) => setLevelsForm((f) => ({ ...f, reorderLevel: e.target.value }))}
                     placeholder={String(levelOf(selectedItem).level)}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    {...levelsCheck.invalid('reorderLevel')}
                   />
+                  <FieldError message={levelsCheck.errors.reorderLevel} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Reorder quantity</label>
@@ -1024,7 +1096,9 @@ export default function Inventory() {
                     onChange={(e: any) => setLevelsForm((f) => ({ ...f, reorderQuantity: e.target.value }))}
                     placeholder="Suggested"
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    {...levelsCheck.invalid('reorderQuantity')}
                   />
+                  <FieldError message={levelsCheck.errors.reorderQuantity} />
                 </div>
               </div>
               <p className="text-xs text-gray-500 mt-2">
@@ -1057,7 +1131,7 @@ export default function Inventory() {
         title="Request a restock"
       >
         {restockFor && (
-          <div className="space-y-4">
+          <div ref={restockCheck.formRef} className="space-y-4">
             <div className="rounded-xl bg-gray-50 border border-gray-100 p-3 text-sm">
               <p className="font-medium text-gray-900">{restockFor.item?.name}</p>
               <p className="text-gray-600">
@@ -1089,8 +1163,10 @@ export default function Inventory() {
                 value={restockQty}
                 onChange={(e: any) => setRestockQty(e.target.value)}
                 className="w-40 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                {...restockCheck.invalid('quantity')}
               />
               <span className="ml-2 text-sm text-gray-500">{restockFor.item?.unit || 'each'}</span>
+              <FieldError message={restockCheck.errors.quantity} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
@@ -1098,8 +1174,10 @@ export default function Inventory() {
                 value={restockCategory}
                 onChange={setRestockCategory}
                 placeholder="Choose the supplier category"
+                invalid={!!restockCheck.errors.category}
                 className="w-full flex items-center justify-between px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white"
               />
+              <FieldError message={restockCheck.errors.category} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1109,9 +1187,12 @@ export default function Inventory() {
                 rows={2}
                 value={restockNote}
                 onChange={(e: any) => setRestockNote(e.target.value)}
+                maxLength={TEXT_LIMITS.long}
                 placeholder="Leave blank to say how low it is"
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
+                {...restockCheck.invalid('justification')}
               />
+              <FieldError message={restockCheck.errors.justification} />
             </div>
             <p className="text-xs text-gray-500">
               It goes to your department head for approval, then to procurement to buy. When it is delivered it goes
@@ -1167,7 +1248,7 @@ export default function Inventory() {
         }
       >
         <FormSteps steps={IMPORT_STEPS} current={importResult ? 2 : importRows.length > 0 ? 1 : 0} variant="track" />
-        <div className="space-y-4">
+        <div ref={importCheck.formRef} className="space-y-4">
           {!importResult && (
             <>
               <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-800">
@@ -1211,6 +1292,22 @@ export default function Inventory() {
                 </p>
               )}
 
+              {importProblems.length > 0 && (
+                <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  <p className="font-medium">
+                    Fix {importProblems.length === 1 ? 'this' : `these ${importProblems.length} problems`} in the spreadsheet, then choose it again
+                  </p>
+                  <ul className="mt-1 max-h-40 overflow-y-auto space-y-0.5">
+                    {importProblems.map((problem) => (
+                      <li key={problem.field}>
+                        {problem.label ? `${problem.label}: ` : ''}
+                        {problem.message}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {importRows.length > 0 && (
                 <div>
                   <p className="text-sm font-medium text-gray-700 mb-2">
@@ -1229,7 +1326,14 @@ export default function Inventory() {
                       </thead>
                       <tbody>
                         {importRows.slice(0, 50).map((r: any, i: number) => (
-                          <tr key={i} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
+                          <tr
+                            key={i}
+                            className={
+                              importRowsWithProblems.has(i)
+                                ? 'bg-red-50 text-red-700'
+                                : 'odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors'
+                            }
+                          >
                             <td className="py-2 px-3 border-b border-gray-100 text-gray-900">{r.name || r.code}</td>
                             <td className="py-2 px-3 border-b border-gray-100 text-gray-500">{r.category || '—'}</td>
                             <td className="py-2 px-3 border-b border-gray-100 text-gray-500">{r.unit || 'each'}</td>

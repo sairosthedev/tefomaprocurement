@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
-import { computeKysCompletionForTier, getChecklistKeyForDocType } from '@fossil/shared';
+import { computeKysCompletionForTier, getChecklistKeyForDocType, validateKysDocumentReview } from '@fossil/shared';
 import { SupplierProfile } from '../../models/index.js';
+import { refuseInvalid } from '../../lib/validation.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifySupplier } from '../../services/notification.service.js';
 import { isExpired } from '../../services/documentExpiry.service.js';
@@ -21,15 +22,12 @@ import { withoutFileBody } from '../../services/supplierDocuments.service.js';
 export const verifySupplierDocument = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id, docId } = req.params;
-    const { verified, notes } = req.body as { verified?: boolean; notes?: string };
+    // Rejecting needs a reason (see validateKysDocumentReview).
+    if (refuseInvalid(res, validateKysDocumentReview(req.body))) return;
+    const { verified } = req.body as { verified?: boolean };
+    const notes = req.body.notes == null ? undefined : String(req.body.notes);
 
     const isRejection = verified === false;
-    if (isRejection && !notes?.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'A reason is required when rejecting a document'
-      });
-    }
 
     const supplier = await SupplierProfile.findById(id);
     if (!supplier || supplier.isDeleted) {

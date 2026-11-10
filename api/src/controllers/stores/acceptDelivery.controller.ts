@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express';
+import { validateDeliveryAcceptance } from '@fossil/shared';
 
 import { Delivery, PurchaseOrder, PurchaseRequisition, StoreTransaction } from '../../models/index.js';
+import { refuseInvalid } from '../../lib/validation.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { resolveSiteId, findOrCreateInventory } from '../../lib/siteScope.js';
 import { notifySupplier } from '../../services/notification.service.js';
@@ -26,13 +28,7 @@ const acceptDelivery = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    const validStatuses = ['accepted', 'partially_accepted', 'rejected'];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
-      });
-    }
+    if (refuseInvalid(res, validateDeliveryAcceptance(req.body))) return;
 
     const previousStatus = delivery.status;
     const po = delivery.purchaseOrder;

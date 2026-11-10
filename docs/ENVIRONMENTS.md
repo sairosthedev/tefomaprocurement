@@ -6,8 +6,8 @@ separate databases; nothing is shared between them.
 | | Development | Staging | Production |
 |---|---|---|---|
 | **Purpose** | Your machine, while building | Shared testing before release | The live system Tefoma uses |
-| **Front-end** | `http://localhost:5173` | `tefomaprocurement-staging.vercel.app` | `tefomaprocurement.vercel.app` |
-| **API** | `http://localhost:3001` | `tefomaprocurement-api-staging.vercel.app` | `tefomaprocurement-api.vercel.app` |
+| **Front-end** | `http://localhost:5173` | `tefomaprocurement-staging.vercel.app` | `www.procureline.co.zw`, each unit at `<unit>.procureline.co.zw` |
+| **API** | `http://localhost:3001` | `tefomaprocurement-api-staging.vercel.app` | `api.procureline.co.zw` |
 | **Database** | `fossil-procure-dev` | `fossil-procure-staging` | `fossil-procure` |
 | **Data** | Yours, disposable | Test data, wiped freely | Real. Never test here. |
 | **OTP in server log** | Yes | No | No |

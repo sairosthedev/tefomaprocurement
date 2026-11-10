@@ -1,7 +1,8 @@
 import type { Request, Response } from 'express';
-import { getCategoryName, isValidCategoryCode } from '@fossil/shared';
+import { getCategoryName, validateRequisitionLineCategory } from '@fossil/shared';
 import { PurchaseRequisition } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { refuseInvalid } from '../../lib/validation.js';
 
 /**
  * Stores sets the category of one IR line during review. Requesters describe
@@ -11,15 +12,9 @@ import { createAuditLog } from '../../middleware/index.js';
 const setRequisitionLineCategory = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
+    if (refuseInvalid(res, validateRequisitionLineCategory(req.body))) return;
     const lineIndex = Number(req.body.lineIndex);
     const category = String(req.body.category || '').trim();
-
-    if (!Number.isInteger(lineIndex) || lineIndex < 0) {
-      return res.status(400).json({ success: false, message: 'Valid lineIndex is required' });
-    }
-    if (!isValidCategoryCode(category)) {
-      return res.status(400).json({ success: false, message: 'Choose a category from the list' });
-    }
 
     const requisition = await PurchaseRequisition.findOne({ _id: id, isDeleted: false });
     if (!requisition) {

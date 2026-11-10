@@ -5,8 +5,10 @@ import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
-import { PR_CANCELLATION_REASONS, isProcurementHead } from '@fossil/shared';
+import { PR_CANCELLATION_REASONS, isProcurementHead, validateRequisitionLineQuantity } from '@fossil/shared';
 import PageHeader from '../components/PageHeader';
+import FieldError from '../components/FieldError';
+import { serverFieldErrors, useFormValidation } from '../lib/useFormValidation';
 import CancelWorkflowModal from '../components/CancelWorkflowModal';
 import EquipmentDetailsView from '../components/EquipmentDetailsView';
 import { canCancelRequisition, requisitionCancelApiBase } from '../lib/cancellationAccess';
@@ -90,6 +92,7 @@ export default function RequisitionDetail() {
   const [editingItemId, setEditingItemId] = useState<any>(null);
   const [editQty, setEditQty] = useState<any>('');
   const [savingQty, setSavingQty] = useState<any>(false);
+  const qtyValidation = useFormValidation(validateRequisitionLineQuantity, { quantity: editQty });
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelling, setCancelling] = useState(false);
 
@@ -218,6 +221,7 @@ export default function RequisitionDetail() {
   const startEditQty = (item: any) => {
     setEditingItemId(item._id);
     setEditQty(String(item.quantity ?? ''));
+    qtyValidation.reset();
   };
 
   const cancelEditQty = () => {
@@ -227,12 +231,9 @@ export default function RequisitionDetail() {
 
   const handleSaveQty = async (item: any) => {
     if (!requisition) return;
+    if (!qtyValidation.check()) return;
     const qty = Number(editQty);
-    if (!Number.isFinite(qty) || qty < 1) {
-      showToast('Quantity must be a whole number of at least 1.', 'error');
-      return;
-    }
-    if (Math.floor(qty) === item.quantity) {
+    if (qty === item.quantity) {
       cancelEditQty();
       return;
     }
@@ -241,7 +242,7 @@ export default function RequisitionDetail() {
       setSavingQty(true);
       const base = requisition.status === 'pending_acceptance' ? '/procurement' : '/department';
       const response = await api.patch(`${base}/requisitions/${requisition._id}/items/${item._id}`, {
-        quantity: Math.floor(qty)
+        quantity: qty
       });
       if (response.data.success) {
         showToast(response.data.message || 'Quantity updated', 'success');
@@ -249,7 +250,9 @@ export default function RequisitionDetail() {
         fetchRequisition();
       }
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to update quantity', 'error');
+      if (!qtyValidation.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Failed to update quantity', 'error');
+      }
     } finally {
       setSavingQty(false);
     }
@@ -274,7 +277,10 @@ export default function RequisitionDetail() {
       showToast('Requisition cancelled', 'success');
       fetchRequisition();
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to cancel requisition', 'error');
+      // A refused field shows under it in the cancel form instead.
+      if (!serverFieldErrors(error)) {
+        showToast(error.response?.data?.message || 'Failed to cancel requisition', 'error');
+      }
       throw error;
     } finally {
       setCancelling(false);
@@ -491,6 +497,7 @@ export default function RequisitionDetail() {
                         <td className="py-2 px-3 border-b border-gray-100 text-gray-600">{item.unit}</td>
                         <td className="py-2 px-3 border-b border-gray-100 text-right">
                           {canEditItems && editingItemId === item._id ? (
+                            <div ref={qtyValidation.formRef}>
                             <div className="flex items-center justify-end gap-1.5">
                               <input
                                 type="number"
@@ -503,7 +510,9 @@ export default function RequisitionDetail() {
                                   if (e.key === 'Enter') handleSaveQty(item);
                                   if (e.key === 'Escape') cancelEditQty();
                                 }}
+                                aria-label="Quantity"
                                 className="w-20 px-2 py-1 text-sm border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary"
+                                {...qtyValidation.invalid('quantity')}
                               />
                               <span className="text-xs text-gray-500">{item.unit}</span>
                               <button
@@ -524,6 +533,8 @@ export default function RequisitionDetail() {
                                 <X className="h-3 w-3" />
                                 Cancel
                               </button>
+                            </div>
+                            <FieldError message={qtyValidation.errors.quantity} />
                             </div>
                           ) : (
                             <div className="flex items-center justify-end gap-2">

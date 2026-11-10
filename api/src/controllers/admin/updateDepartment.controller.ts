@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express';
 import { Department } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { validateDepartment } from '@fossil/shared';
+import { refuseInvalid } from '../../lib/validation.js';
 
 const updateDepartment = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -14,6 +16,12 @@ const updateDepartment = async (req: Request, res: Response): Promise<any> => {
         message: 'Department not found'
       });
     }
+    // Only the fields sent are checked; a code left as it was is not checked again.
+    if (
+      refuseInvalid(res, validateDepartment(req.body ?? {}, { isNew: false, currentCode: department.code }))
+    ) {
+      return;
+    }
 
     // Check if name already exists (for another department)
     if (name && name !== department.name) {
@@ -21,7 +29,8 @@ const updateDepartment = async (req: Request, res: Response): Promise<any> => {
       if (existingByName) {
         return res.status(400).json({
           success: false,
-          message: 'Department with this name already exists'
+          message: 'Department with this name already exists',
+          errors: { name: 'A department with this name already exists' }
         });
       }
     }
@@ -35,7 +44,8 @@ const updateDepartment = async (req: Request, res: Response): Promise<any> => {
       if (existingByCode) {
         return res.status(400).json({
           success: false,
-          message: 'Department with this code already exists'
+          message: 'Department with this code already exists',
+          errors: { code: `${code.trim().toUpperCase()} is already used by ${existingByCode.name}` }
         });
       }
     }

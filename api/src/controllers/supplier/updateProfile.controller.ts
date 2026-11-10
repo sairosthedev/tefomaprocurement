@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { isValidCategoryCode } from '@fossil/shared';
+import { isValidCategoryCode, validateSupplierProfileUpdate } from '@fossil/shared';
 import { SupplierProfile, SupplierBankChangeRequest } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole } from '../../services/notification.service.js';
@@ -11,6 +11,7 @@ import {
   phoneNumbersDiffer
 } from '../../services/bankChange.service.js';
 import { supplierSafeProfile } from './getMyProfile.controller.js';
+import { refuseInvalid } from '../../lib/validation.js';
 import {
   applySupplierClassification,
   readSupplierClassification
@@ -44,6 +45,16 @@ const updateProfile = async (req: Request, res: Response): Promise<any> => {
         message: `Your account is ${profile.status} and cannot be edited. Contact procurement.`
       });
     }
+
+    // The company profile screen's own checks (see
+    // packages/shared/src/validation/suppliers.ts), on the fields this update
+    // reads. A banking change is checked here, before any request is raised.
+    const { businessType, entityType } = req.body;
+    const editErrors = validateSupplierProfileUpdate(
+      { tradingName, address, contactPersons, bankDetails, categories, businessType, entityType },
+      { country: profile.address?.country }
+    );
+    if (refuseInvalid(res, editErrors)) return;
 
     // Validate category codes — this check existed in every other write path
     // but not here, letting a supplier self-assign categories they were never

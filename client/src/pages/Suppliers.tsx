@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { procurementAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
-import { isProcurementHead } from '@fossil/shared';
+import { isProcurementHead, validateNewSupplier, type FieldErrors } from '@fossil/shared';
 import FilterSelect from '../components/FilterSelect';
 import PageHeader from '../components/PageHeader';
 import Modal, { ModalFooter } from '../components/Modal';
@@ -41,6 +41,8 @@ import {
   type SupplierImportRow
 } from '../lib/supplierImport';
 import { useDebouncedValue } from '../lib/useDebouncedValue';
+import FieldError from '../components/FieldError';
+import { serverFieldErrors, useFormValidation } from '../lib/useFormValidation';
 import {
   BUSINESS_TYPE_OPTIONS,
   ENTITY_TYPE_OPTIONS,
@@ -76,6 +78,32 @@ const ADD_SUPPLIER_STEPS = [
   { label: 'Business', description: 'Contact, tax and categories' },
   { label: 'Banking', description: 'First bank account' },
   { label: 'Review', description: 'Check, then create' }
+];
+
+/** The fields on each Add Supplier step: Next checks its own, and a problem found later opens its step. */
+const ADD_STEP_FIELDS: string[][] = [
+  ['companyName', 'registrationNumber', 'firstName', 'lastName', 'email', 'password'],
+  ['tradingAs', 'phone', 'taxNumber', 'vatNumber', 'businessType', 'entityType', 'categories', 'physicalAddress', 'city', 'province', 'postalCode'],
+  ['bankName', 'bankAccountName', 'bankAccountNumber', 'bankBranchCode'],
+  []
+];
+
+/** The earliest Add Supplier step (0-based) holding one of these fields, or -1. */
+function firstAddStepWith(errors: FieldErrors): number {
+  const steps = Object.keys(errors)
+    .map((field) => ADD_STEP_FIELDS.findIndex((fields) => fields.includes(field)))
+    .filter((n) => n >= 0);
+  return steps.length ? Math.min(...steps) : -1;
+}
+
+/** The import review grid's columns, with the longest value each accepts. */
+const IMPORT_GRID_FIELDS: { field: keyof SupplierImportRow; maxLength?: number }[] = [
+  { field: 'companyName', maxLength: 200 },
+  { field: 'registrationNumber', maxLength: 50 },
+  { field: 'contactPerson', maxLength: 120 },
+  { field: 'email', maxLength: 254 },
+  { field: 'phone', maxLength: 30 },
+  { field: 'categories' }
 ];
 
 const EMPTY_SUPPLIER_FORM = {
@@ -243,31 +271,37 @@ export default function Suppliers() {
     }));
   };
 
+  // Next checks the step on screen (the first holds every required field);
+  // Create, on the review step, checks them all.
+  const addValidation = useFormValidation((values: any) => {
+    const errors = validateNewSupplier(values);
+    if (addStep >= ADD_SUPPLIER_STEPS.length - 1) return errors;
+    const fields = ADD_STEP_FIELDS[addStep];
+    return Object.fromEntries(Object.entries(errors).filter(([field]) => fields.includes(field)));
+  }, formData);
+
+  const openAddModal = () => {
+    addValidation.reset();
+    setShowAddModal(true);
+  };
+
   const closeAddModal = () => {
     if (submitting) return;
     setShowAddModal(false);
     setFormData(EMPTY_SUPPLIER_FORM);
     setShowPassword(false);
     setAddStep(0);
+    addValidation.reset();
   };
 
-  /** The first step holds every required field; the others are optional. */
-  const companyStepValid = () => {
-    if (!formData.companyName || !formData.email || !formData.firstName || !formData.lastName || !formData.registrationNumber) {
-      showToast('Company name, email, first name, last name, and registration number are required', 'error');
-      return false;
-    }
-    // Optional: left blank, the server generates one.
-    if (formData.password && formData.password.length < 6) {
-      showToast('Password must be at least 6 characters, or leave it blank to generate one', 'error');
-      return false;
-    }
-    return true;
+  const goToAddStep = (next: number) => {
+    addValidation.reset();
+    setAddStep(next);
   };
 
   const nextAddStep = () => {
-    if (addStep === 0 && !companyStepValid()) return;
-    setAddStep((s: number) => Math.min(ADD_SUPPLIER_STEPS.length - 1, s + 1));
+    if (!addValidation.check()) return;
+    goToAddStep(Math.min(ADD_SUPPLIER_STEPS.length - 1, addStep + 1));
   };
 
   const handleSubmit = async (e: any) => {
@@ -279,8 +313,10 @@ export default function Suppliers() {
       return;
     }
 
-    if (!companyStepValid()) {
-      setAddStep(0);
+    if (!addValidation.check()) {
+      // Open the step holding the first problem; its messages show there.
+      const target = firstAddStepWith(validateNewSupplier(formData));
+      if (target >= 0) setAddStep(target);
       return;
     }
 
@@ -323,10 +359,16 @@ export default function Suppliers() {
       }
     } catch (error: any) {
       console.error('Error creating supplier:', error);
-      showToast(
-        error.response?.data?.message || 'Failed to create supplier',
-        'error'
-      );
+      const fields = serverFieldErrors(error);
+      const target = fields ? firstAddStepWith(fields) : -1;
+      if (target >= 0 && addValidation.fromServer(error)) {
+        setAddStep(target);
+      } else {
+        showToast(
+          error.response?.data?.message || 'Failed to create supplier',
+          'error'
+        );
+      }
     } finally {
       setSubmitting(false);
     }
@@ -417,7 +459,7 @@ export default function Suppliers() {
             <>
               <button
                 type="button"
-                onClick={() => setShowAddModal(true)}
+                onClick={openAddModal}
                 className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors whitespace-nowrap shrink-0"
               >
                 <Plus className="h-4 w-4" />
@@ -580,8 +622,8 @@ export default function Suppliers() {
         title="Add New Supplier"
         size="xl"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <FormSteps steps={ADD_SUPPLIER_STEPS} current={addStep} onSelect={setAddStep} />
+        <form ref={addValidation.formRef} onSubmit={handleSubmit} noValidate className="space-y-4">
+          <FormSteps steps={ADD_SUPPLIER_STEPS} current={addStep} onSelect={goToAddStep} />
 
           {addStep === 0 && (
           <div className="space-y-3">
@@ -596,7 +638,10 @@ export default function Suppliers() {
                   value={formData.companyName}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                  maxLength={200}
+                  {...addValidation.invalid('companyName')}
                 />
+                <FieldError message={addValidation.errors.companyName} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -608,7 +653,10 @@ export default function Suppliers() {
                   value={formData.registrationNumber}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                  maxLength={50}
+                  {...addValidation.invalid('registrationNumber')}
                 />
+                <FieldError message={addValidation.errors.registrationNumber} />
               </div>
             </div>
 
@@ -623,7 +671,10 @@ export default function Suppliers() {
                   value={formData.firstName}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                  maxLength={120}
+                  {...addValidation.invalid('firstName')}
                 />
+                <FieldError message={addValidation.errors.firstName} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -635,7 +686,10 @@ export default function Suppliers() {
                   value={formData.lastName}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                  maxLength={120}
+                  {...addValidation.invalid('lastName')}
                 />
+                <FieldError message={addValidation.errors.lastName} />
               </div>
             </div>
 
@@ -649,7 +703,10 @@ export default function Suppliers() {
                 value={formData.email}
                 onChange={handleInputChange}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                maxLength={254}
+                {...addValidation.invalid('email')}
               />
+              <FieldError message={addValidation.errors.email} />
             </div>
 
             <div>
@@ -665,6 +722,7 @@ export default function Suppliers() {
                   autoComplete="new-password"
                   placeholder="Leave blank to generate one"
                   className="w-full px-3 py-2 pr-10 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                  {...addValidation.invalid('password')}
                 />
                 <button
                   type="button"
@@ -674,6 +732,7 @@ export default function Suppliers() {
                   {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                 </button>
               </div>
+              <FieldError message={addValidation.errors.password} />
               <p className="text-xs text-gray-500 mt-0.5">Leave blank to generate one. It is shown to you once and emailed to the supplier.</p>
             </div>
           </div>
@@ -691,7 +750,10 @@ export default function Suppliers() {
                       value={formData.tradingAs}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                      maxLength={200}
+                      {...addValidation.invalid('tradingAs')}
                     />
+                    <FieldError message={addValidation.errors.tradingAs} />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Phone</label>
@@ -701,7 +763,10 @@ export default function Suppliers() {
                       value={formData.phone}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                      maxLength={30}
+                      {...addValidation.invalid('phone')}
                     />
+                    <FieldError message={addValidation.errors.phone} />
                   </div>
                 </div>
 
@@ -714,7 +779,10 @@ export default function Suppliers() {
                       value={formData.taxNumber}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                      maxLength={50}
+                      {...addValidation.invalid('taxNumber')}
                     />
+                    <FieldError message={addValidation.errors.taxNumber} />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">VAT Number</label>
@@ -724,7 +792,10 @@ export default function Suppliers() {
                       value={formData.vatNumber}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                      maxLength={50}
+                      {...addValidation.invalid('vatNumber')}
                     />
+                    <FieldError message={addValidation.errors.vatNumber} />
                   </div>
                 </div>
 
@@ -736,12 +807,14 @@ export default function Suppliers() {
                       value={formData.businessType}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
+                      {...addValidation.invalid('businessType')}
                     >
                       <option value="">Not specified</option>
                       {BUSINESS_TYPE_OPTIONS.map((o) => (
                         <option key={o.value} value={o.value}>{o.label}</option>
                       ))}
                     </select>
+                    <FieldError message={addValidation.errors.businessType} />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Entity Type</label>
@@ -750,12 +823,14 @@ export default function Suppliers() {
                       value={formData.entityType}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
+                      {...addValidation.invalid('entityType')}
                     >
                       <option value="">Not specified</option>
                       {ENTITY_TYPE_OPTIONS.map((o) => (
                         <option key={o.value} value={o.value}>{o.label}</option>
                       ))}
                     </select>
+                    <FieldError message={addValidation.errors.entityType} />
                   </div>
                 </div>
 
@@ -767,7 +842,9 @@ export default function Suppliers() {
                     value={Array.isArray(formData.categories) ? formData.categories : []}
                     onChange={(codes) => setFormData((prev: any) => ({ ...prev, categories: codes }))}
                     placeholder="Select categories this supplier provides…"
+                    invalid={!!addValidation.errors.categories}
                   />
+                  <FieldError message={addValidation.errors.categories} />
                   <p className="text-[11px] text-gray-400 mt-1">
                     Used to match suppliers to RFQs by category.
                   </p>
@@ -782,32 +859,50 @@ export default function Suppliers() {
                     onChange={handleInputChange}
                     placeholder="Street address"
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none mb-2"
+                    maxLength={200}
+                    {...addValidation.invalid('physicalAddress')}
                   />
+                  <FieldError message={addValidation.errors.physicalAddress} />
                   <div className="grid grid-cols-3 gap-2">
-                    <input
-                      type="text"
-                      name="city"
-                      value={formData.city}
-                      onChange={handleInputChange}
-                      placeholder="City"
-                      className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                    />
-                    <input
-                      type="text"
-                      name="province"
-                      value={formData.province}
-                      onChange={handleInputChange}
-                      placeholder="Province"
-                      className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                    />
-                    <input
-                      type="text"
-                      name="postalCode"
-                      value={formData.postalCode}
-                      onChange={handleInputChange}
-                      placeholder="Postal Code"
-                      className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                    />
+                    <div>
+                      <input
+                        type="text"
+                        name="city"
+                        value={formData.city}
+                        onChange={handleInputChange}
+                        placeholder="City"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                        maxLength={80}
+                        {...addValidation.invalid('city')}
+                      />
+                      <FieldError message={addValidation.errors.city} />
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        name="province"
+                        value={formData.province}
+                        onChange={handleInputChange}
+                        placeholder="Province"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                        maxLength={80}
+                        {...addValidation.invalid('province')}
+                      />
+                      <FieldError message={addValidation.errors.province} />
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        name="postalCode"
+                        value={formData.postalCode}
+                        onChange={handleInputChange}
+                        placeholder="Postal Code"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                        maxLength={20}
+                        {...addValidation.invalid('postalCode')}
+                      />
+                      <FieldError message={addValidation.errors.postalCode} />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -825,7 +920,10 @@ export default function Suppliers() {
                       value={formData.bankName}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                      maxLength={120}
+                      {...addValidation.invalid('bankName')}
                     />
+                    <FieldError message={addValidation.errors.bankName} />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Account Name</label>
@@ -835,7 +933,10 @@ export default function Suppliers() {
                       value={formData.bankAccountName}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                      maxLength={200}
+                      {...addValidation.invalid('bankAccountName')}
                     />
+                    <FieldError message={addValidation.errors.bankAccountName} />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Account Number</label>
@@ -845,7 +946,10 @@ export default function Suppliers() {
                       value={formData.bankAccountNumber}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                      maxLength={42}
+                      {...addValidation.invalid('bankAccountNumber')}
                     />
+                    <FieldError message={addValidation.errors.bankAccountNumber} />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Branch Code</label>
@@ -855,7 +959,10 @@ export default function Suppliers() {
                       value={formData.bankBranchCode}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                      maxLength={40}
+                      {...addValidation.invalid('bankBranchCode')}
                     />
+                    <FieldError message={addValidation.errors.bankBranchCode} />
                   </div>
                 </div>
                 </div>
@@ -900,7 +1007,7 @@ export default function Suppliers() {
                 <div key={section.title} className="rounded-xl border border-gray-100 p-3">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{section.title}</p>
-                    <button type="button" onClick={() => setAddStep(section.step)} className="text-xs font-medium text-primary hover:underline">
+                    <button type="button" onClick={() => goToAddStep(section.step)} className="text-xs font-medium text-primary hover:underline">
                       Edit
                     </button>
                   </div>
@@ -923,7 +1030,7 @@ export default function Suppliers() {
           <FormStepNav
             current={addStep}
             total={ADD_SUPPLIER_STEPS.length}
-            onBack={() => setAddStep((s: number) => Math.max(0, s - 1))}
+            onBack={() => goToAddStep(Math.max(0, addStep - 1))}
             onNext={nextAddStep}
             onCancel={closeAddModal}
             finishLabel={submitting ? 'Creating...' : 'Create Supplier'}
@@ -1039,7 +1146,7 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
                       <span className="font-medium">{importRows.length}</span> row(s) ready
                       {importFileName && <span className="text-gray-500"> from {importFileName}</span>}
                       {(() => {
-                        const bad = importRows.filter((r) => rowIssues(r).length > 0).length;
+                        const bad = importRows.filter((r) => Object.keys(rowIssues(r)).length > 0).length;
                         return bad > 0 ? (
                           <span className="text-amber-700"> · {bad} need attention</span>
                         ) : null;
@@ -1066,7 +1173,7 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
                       <thead className="sticky top-0">
                         <tr>
                           <th className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap w-8">#</th>
-                          {(['companyName', 'registrationNumber', 'contactPerson', 'email', 'phone', 'categories'] as (keyof SupplierImportRow)[]).map((f) => (
+                          {IMPORT_GRID_FIELDS.map(({ field: f }) => (
                             <th key={f} className="text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap">
                               {f === 'companyName' ? 'Company' :
                                f === 'registrationNumber' ? 'Reg no' :
@@ -1081,21 +1188,38 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
                       <tbody>
                         {importRows.map((row, i) => {
                           const issues = rowIssues(row);
+                          // Problems with columns the grid does not show (address, banking, types).
+                          const elsewhere = Object.entries(issues)
+                            .filter(([field]) => !IMPORT_GRID_FIELDS.some((c) => c.field === field))
+                            .map(([, message]) => message);
                           return (
-                            <tr key={i} className={issues.length > 0 ? 'bg-amber-50/50' : 'odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors'}>
-                              <td className="py-1 px-2 border-b border-gray-100 text-gray-400">{i + 1}</td>
-                              {(['companyName', 'registrationNumber', 'contactPerson', 'email', 'phone', 'categories'] as (keyof SupplierImportRow)[]).map((f) => (
-                                <td key={f} className="py-1 px-1 border-b border-gray-100">
+                            <React.Fragment key={i}>
+                            <tr className={Object.keys(issues).length > 0 ? 'bg-amber-50/50' : 'odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors'}>
+                              <td className="py-1 px-2 border-b border-gray-100 text-gray-400 align-top">{i + 1}</td>
+                              {IMPORT_GRID_FIELDS.map(({ field: f, maxLength }) => (
+                                <td key={f} className="py-1 px-1 border-b border-gray-100 align-top">
                                   <input
                                     value={row[f]}
                                     onChange={(e) => updateImportCell(i, f, e.target.value)}
+                                    maxLength={maxLength}
+                                    aria-invalid={issues[f] ? true : undefined}
                                     className={`w-full px-1.5 py-1 rounded border text-xs focus:outline-none focus:ring-1 focus:ring-primary ${
-                                      issues.includes(f as any) ? 'border-amber-400 bg-amber-50' : 'border-transparent hover:border-gray-200'
+                                      issues[f] ? 'border-amber-400 bg-amber-50' : 'border-transparent hover:border-gray-200'
                                     }`}
                                   />
+                                  <FieldError message={issues[f]} className="text-[11px] leading-tight" />
                                 </td>
                               ))}
                             </tr>
+                            {elsewhere.length > 0 && (
+                              <tr className="bg-amber-50/50">
+                                <td className="border-b border-gray-100" />
+                                <td colSpan={IMPORT_GRID_FIELDS.length} className="pb-1.5 px-2 border-b border-gray-100 text-[11px] text-red-600">
+                                  Fix in the file: {elsewhere.join('; ')}
+                                </td>
+                              </tr>
+                            )}
+                            </React.Fragment>
                           );
                         })}
                       </tbody>
@@ -1103,7 +1227,7 @@ Quote any cell containing a comma, e.g. "Smith, Jones & Co"`}
                   </div>
 
                   <p className="text-xs text-gray-500">
-                    Highlighted cells are missing a required value — those rows will be rejected. Edit them here, or import and fix the rest afterwards.
+                    Rows with a problem are highlighted, with what to fix — those rows will be rejected. Edit them here, or import and fix the rest afterwards.
                   </p>
                 </>
               )}

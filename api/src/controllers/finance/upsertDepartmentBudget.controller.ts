@@ -1,21 +1,17 @@
 import type { Request, Response } from 'express';
 import { DepartmentBudget } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { validateDepartmentBudget } from '@fossil/shared';
+import { refuseInvalid } from '../../lib/validation.js';
 
 const upsertDepartmentBudget = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { departmentId, fiscalYear, allocatedAmount, notes } = req.body;
+    if (refuseInvalid(res, validateDepartmentBudget(req.body ?? {}))) return;
 
-    if (!departmentId) {
-      return res.status(400).json({ success: false, message: 'Department is required' });
-    }
+    const { departmentId, fiscalYear, allocatedAmount, notes } = req.body;
 
     const year = Number(fiscalYear) || new Date().getFullYear();
     const amount = Number(allocatedAmount);
-
-    if (Number.isNaN(amount) || amount < 0) {
-      return res.status(400).json({ success: false, message: 'Allocated amount must be a non-negative number' });
-    }
 
     const budget = await DepartmentBudget.findOneAndUpdate(
       { department: departmentId, fiscalYear: year, isDeleted: false },

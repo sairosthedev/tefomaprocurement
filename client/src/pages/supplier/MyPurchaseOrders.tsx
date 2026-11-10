@@ -14,6 +14,9 @@ import { formatCurrency } from '../../lib/constants';
 import { getCurrentSbuCurrency } from '../../lib/sbu';
 import { supplierPoNext } from '../../lib/supplierJourney';
 import { SubmitInvoiceDrawer } from '../../components/InvoiceForm';
+import { dateKey, todayKey, validatePurchaseOrderAcknowledgement } from '@fossil/shared';
+import FieldError from '../../components/FieldError';
+import { useFormValidation } from '../../lib/useFormValidation';
 
 const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
@@ -45,6 +48,7 @@ export default function MyPurchaseOrders() {
     deliveryNoteNumber: '',
     expectedDeliveryDate: ''
   });
+  const acknowledgeForm = useFormValidation(validatePurchaseOrderAcknowledgement, acknowledgeData);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
@@ -108,16 +112,21 @@ export default function MyPurchaseOrders() {
 
   const openAcknowledgeModal = (po: any) => {
     setSelectedPO(po);
+    // The order's own date is offered only while it is still ahead; once it
+    // has passed, the supplier gives a new one or leaves it blank.
+    const ordered = po.expectedDeliveryDate ? new Date(po.expectedDeliveryDate).toISOString().split('T')[0] : '';
     setAcknowledgeData({
       deliveryNoteNumber: '',
-      expectedDeliveryDate: po.expectedDeliveryDate ? new Date(po.expectedDeliveryDate).toISOString().split('T')[0] : ''
+      expectedDeliveryDate: ordered && (dateKey(ordered) || '') >= todayKey() ? ordered : ''
     });
+    acknowledgeForm.reset();
     setShowAcknowledgeModal(true);
   };
 
   const handleAcknowledge = async () => {
     if (!selectedPO) return;
-    
+    if (!acknowledgeForm.check()) return;
+
     try {
       await api.put(`/supplier/purchase-orders/${selectedPO._id}/acknowledge`, {
         deliveryNoteNumber: acknowledgeData.deliveryNoteNumber.trim() || undefined,
@@ -131,7 +140,9 @@ export default function MyPurchaseOrders() {
       setSelectedPO({ ...selectedPO, isAcknowledged: true });
       setShowViewModal(true);
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to acknowledge', 'error');
+      if (!acknowledgeForm.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Failed to acknowledge', 'error');
+      }
     }
   };
 
@@ -322,7 +333,7 @@ export default function MyPurchaseOrders() {
               </p>
             </div>
 
-            <div className="space-y-3">
+            <div ref={acknowledgeForm.formRef} className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Delivery Note Number <span className="text-gray-400">(Optional)</span>
@@ -333,7 +344,10 @@ export default function MyPurchaseOrders() {
                   onChange={(e: any) => setAcknowledgeData({ ...acknowledgeData, deliveryNoteNumber: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
                   placeholder="Enter delivery note number if available"
+                  maxLength={50}
+                  {...acknowledgeForm.invalid('deliveryNoteNumber')}
                 />
+                <FieldError message={acknowledgeForm.errors.deliveryNoteNumber} />
               </div>
 
               <div>
@@ -344,8 +358,11 @@ export default function MyPurchaseOrders() {
                   type="date"
                   value={acknowledgeData.expectedDeliveryDate}
                   onChange={(e: any) => setAcknowledgeData({ ...acknowledgeData, expectedDeliveryDate: e.target.value })}
+                  min={todayKey()}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                  {...acknowledgeForm.invalid('expectedDeliveryDate')}
                 />
+                <FieldError message={acknowledgeForm.errors.expectedDeliveryDate} />
               </div>
             </div>
 

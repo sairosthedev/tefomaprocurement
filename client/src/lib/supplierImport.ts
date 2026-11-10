@@ -1,4 +1,6 @@
 
+import { validateSupplierImportRow, type FieldErrors } from '@fossil/shared';
+
 /**
  * Parsing for the supplier bulk import.
  *
@@ -345,7 +347,11 @@ export async function parseSupplierFile(
   return { rows: [], warning: `Unsupported file type. Use .csv, .xlsx, .xls, .json or .sql.` };
 }
 
-/** Fields missing from a row, for the review grid. */
-export function rowIssues(row: SupplierImportRow): string[] {
-  return REQUIRED_FIELDS.filter((f) => !String(row[f] || '').trim());
+/**
+ * What is wrong with a row, field by field, for the review grid: the same
+ * checks the server runs on each row (validateSupplierImportRow), so a row
+ * shown clean here is not rejected for its shape.
+ */
+export function rowIssues(row: SupplierImportRow): FieldErrors {
+  return validateSupplierImportRow(row);
 }

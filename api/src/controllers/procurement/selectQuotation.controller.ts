@@ -1,9 +1,10 @@
 import type { Request, Response } from 'express';
 import { RFQ, Quotation, User } from '../../models/index.js';
-import { isProcurementHead } from '@fossil/shared';
+import { isProcurementHead, validateQuotationSelection } from '@fossil/shared';
 import { meetsMinimumQuotations } from '../../services/quotationCompliance.service.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { createNotifications } from '../../services/notification.service.js';
+import { refuseInvalid } from '../../lib/validation.js';
 
 /**
  * Procurement selects the winning quotation, with a justification.
@@ -17,12 +18,7 @@ const selectQuotation = async (req: Request, res: Response): Promise<any> => {
     const { id } = req.params;
     const { quotationId, justification } = req.body;
 
-    if (!quotationId || !justification?.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Quotation ID and selection justification are required'
-      });
-    }
+    if (refuseInvalid(res, validateQuotationSelection(req.body))) return;
 
     const rfq = await RFQ.findById(id);
     if (!rfq || rfq.isDeleted) {

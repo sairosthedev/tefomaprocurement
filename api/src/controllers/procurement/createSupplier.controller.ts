@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import crypto from 'crypto';
 
-import { isValidCategoryCode } from '@fossil/shared';
+import { isValidCategoryCode, validateNewSupplier } from '@fossil/shared';
 import { User, SupplierProfile, Notification } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { sendNotificationEmail } from '../../services/email.service.js';
@@ -11,6 +11,7 @@ import {
   readSupplierClassification
 } from '../../services/supplierClassification.service.js';
 import { getProductName } from '../../lib/branding.js';
+import { refuseInvalid } from '../../lib/validation.js';
 
 const createSupplier = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -36,6 +37,9 @@ const createSupplier = async (req: Request, res: Response): Promise<any> => {
       bankAccountNumber,
       bankBranchCode
     } = req.body;
+
+    // The Add Supplier form's own checks (see packages/shared/src/validation/suppliers.ts).
+    if (refuseInvalid(res, validateNewSupplier(req.body))) return;
 
     // Validate required fields
     if (!companyName || !email || !firstName || !lastName || !registrationNumber) {
@@ -73,7 +77,8 @@ const createSupplier = async (req: Request, res: Response): Promise<any> => {
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: `A user with email ${email} already exists`
+        message: `A user with email ${email} already exists`,
+        errors: { email: 'This email is already in use. Use another email' }
       });
     }
 
@@ -82,7 +87,11 @@ const createSupplier = async (req: Request, res: Response): Promise<any> => {
     // lookup by `email`, a field the profile does not have, so it never matched.)
     const conflict = await registrationConflict(registrationNumber);
     if (conflict) {
-      return res.status(409).json({ success: false, message: conflict.message });
+      return res.status(409).json({
+        success: false,
+        message: conflict.message,
+        errors: { registrationNumber: conflict.message }
+      });
     }
 
     // Never fall back to a shared, guessable password: when none is given,

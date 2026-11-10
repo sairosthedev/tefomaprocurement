@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express';
+import { validateBankChangeCallback, validateBankChangeRejection } from '@fossil/shared';
 import { SupplierBankChangeRequest, SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { refuseInvalid } from '../../lib/validation.js';
 import { notifySupplier, notifyUsersByRole } from '../../services/notification.service.js';
 import {
   approverIsIndependent,
@@ -83,14 +85,13 @@ export const getBankChangeRequests = async (req: Request, res: Response): Promis
 export const verifyBankChangeCallback = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
-    const { numberCalled, confirmedBy, notes, overrideNumberCheck, overrideReason } = req.body;
-
-    if (!numberCalled?.trim() || !confirmedBy?.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'numberCalled and confirmedBy are required to record a callback'
-      });
-    }
+    // The number called (a phone number), who confirmed it, and a reason for
+    // any override (see validateBankChangeCallback).
+    if (refuseInvalid(res, validateBankChangeCallback(req.body))) return;
+    const { notes, overrideNumberCheck } = req.body;
+    const numberCalled = String(req.body.numberCalled);
+    const confirmedBy = String(req.body.confirmedBy);
+    const overrideReason = req.body.overrideReason == null ? undefined : String(req.body.overrideReason);
 
     const request = await SupplierBankChangeRequest.findById(id);
     if (!request) {
@@ -126,7 +127,8 @@ export const verifyBankChangeCallback = async (req: Request, res: Response): Pro
         return res.status(400).json({
           success: false,
           message:
-            'The number called is not on file for this supplier: it must be one held on the supplier record before this change was requested. Call one of those, or supply overrideNumberCheck with an overrideReason.'
+            'The number called is not on file for this supplier: it must be one held on the supplier record before this change was requested. Call one of those, or supply overrideNumberCheck with an overrideReason.',
+          errors: { numberCalled: 'Call a number already on the supplier record' }
         });
       }
     }
@@ -250,11 +252,8 @@ export const approveBankChange = async (req: Request, res: Response): Promise<an
 export const rejectBankChange = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
-    const { reason } = req.body;
-
-    if (!reason?.trim()) {
-      return res.status(400).json({ success: false, message: 'A rejection reason is required' });
-    }
+    if (refuseInvalid(res, validateBankChangeRejection(req.body))) return;
+    const reason = String(req.body.reason);
 
     const request = await SupplierBankChangeRequest.findById(id);
     if (!request) {

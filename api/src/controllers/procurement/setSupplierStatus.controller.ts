@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express';
+import { validateSupplierStatusChange } from '@fossil/shared';
 
 import { SupplierProfile } from '../../models/index.js';
+import { refuseInvalid } from '../../lib/validation.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { createNotification } from '../../services/notification.service.js';
 import { transitionSupplierStatus } from '../../services/supplierEligibility.service.js';
@@ -8,26 +10,13 @@ import { withoutDocumentFiles } from '../../services/supplierDocuments.service.j
 
 type TargetStatus = 'active' | 'suspended' | 'dormant';
 
-const ALLOWED_TARGETS: TargetStatus[] = ['active', 'suspended', 'dormant'];
-
 const setSupplierStatus = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
-    const { status, reason } = req.body as { status?: TargetStatus; reason?: string };
-
-    if (!status || !ALLOWED_TARGETS.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid status. Allowed values: ${ALLOWED_TARGETS.join(', ')}`
-      });
-    }
-
-    if (status === 'suspended' && !reason) {
-      return res.status(400).json({
-        success: false,
-        message: 'A reason is required to suspend a supplier'
-      });
-    }
+    // A known status, and a reason when suspending (see validateSupplierStatusChange).
+    if (refuseInvalid(res, validateSupplierStatusChange(req.body))) return;
+    const status = req.body.status as TargetStatus;
+    const reason = typeof req.body.reason === 'string' && req.body.reason.trim() ? req.body.reason.trim() : undefined;
 
     const supplier = await SupplierProfile.findById(id).populate('user');
     if (!supplier || supplier.isDeleted) {

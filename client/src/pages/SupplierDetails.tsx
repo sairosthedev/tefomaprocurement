@@ -6,7 +6,20 @@ import { useAuth } from '../context/AuthContext';
 import Tabs from '../components/Tabs';
 import KysDocuments from '../components/KysDocuments';
 import { requiredDocumentTypesForTier } from '../components/supplier/kysRequirements';
-import { KYS_CHECKLIST_ITEMS, getRequiredChecklistKeys, isProcurementHead } from '@fossil/shared';
+import {
+  KYS_CHECKLIST_ITEMS,
+  TEXT_LIMITS,
+  getRequiredChecklistKeys,
+  isProcurementHead,
+  validateActivationSubmission,
+  validateKysOverride,
+  validateSupplierDecision,
+  validateTierAssignment,
+  type SupplierReviewDecision
+} from '@fossil/shared';
+import FieldError from '../components/FieldError';
+import { usePrompt } from '../components/PromptModal';
+import { useFormValidation } from '../lib/useFormValidation';
 import SupplierEditableSection from '../components/supplier/SupplierEditableSection';
 import {
   draftPayloadForSection,
@@ -249,8 +262,9 @@ export default function SupplierDetails() {
     }
   };
 
-  const saveProfileSection = async () => {
-    if (!supplier || !profileDraft || !EDITABLE_SUPPLIER_TABS.includes(tab as typeof EDITABLE_SUPPLIER_TABS[number])) return;
+  /** Resolves with the error when the save fails, so the section can show it under the field. */
+  const saveProfileSection = async (): Promise<unknown> => {
+    if (!supplier || !profileDraft || !EDITABLE_SUPPLIER_TABS.includes(tab as typeof EDITABLE_SUPPLIER_TABS[number])) return undefined;
     try {
       setProfileSaving(true);
       const payload = draftPayloadForSection(tab, profileDraft);
@@ -262,8 +276,9 @@ export default function SupplierDetails() {
       setProfileEditing(false);
       // A banking edit becomes a held change request; say so rather than "saved".
       showToast(res.data?.message || 'Supplier profile saved', 'success');
+      return undefined;
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to save supplier profile', 'error');
+      return error;
     } finally {
       setProfileSaving(false);
     }
@@ -282,6 +297,25 @@ export default function SupplierDetails() {
       missing: requiredKeys.filter((key: string) => !checklist[key])
     };
   }, [checklist, supplier?.tier]);
+
+  // The confirm dialog for status changes and onboarding decisions.
+  const decisionForm = useFormValidation(
+    (values: { reason: string }) =>
+      pendingAction ? validateSupplierDecision(pendingAction as SupplierReviewDecision, values) : {},
+    { reason: actionReason }
+  );
+  // Submit for activation: KYS short of the tier needs an override reason.
+  const submitForm = useFormValidation(
+    (values: { notes: string; kysOverrideReason: string }) =>
+      validateActivationSubmission(values, { overrideRequired: !completion.isComplete }),
+    { notes: submitNotes, kysOverrideReason: completion.isComplete ? '' : submitOverrideReason }
+  );
+  // Activate without KYS (a suspended or dormant supplier).
+  const overrideForm = useFormValidation(
+    (values: { reason: string }) => validateKysOverride({ overrideKys: true, reason: values.reason }),
+    { reason: overrideReason }
+  );
+  const { ask, promptElement } = usePrompt();
 
   const checklistSections = useMemo(() => {
     type KysItem = (typeof KYS_CHECKLIST_ITEMS)[number];
@@ -336,11 +370,27 @@ export default function SupplierDetails() {
 
   const assignTier = async (tier: string) => {
     if (!supplier) return;
-    const reason = window.prompt(`Why is ${supplier.companyName} classified as ${tier}?`);
-    if (!reason?.trim()) return;
+    const tierReason = (value: string) => validateTierAssignment({ tier, reason: value }).reason || '';
+    const answer = await ask({
+      title: `Classify as ${tier}`,
+      subtitle: supplier.companyName,
+      message: `Why is ${supplier.companyName} classified as ${tier}?`,
+      fields: [
+        {
+          name: 'reason',
+          label: 'Reason',
+          multiline: true,
+          maxLength: TEXT_LIMITS.long,
+          requiredMessage: tierReason(''),
+          validate: tierReason
+        }
+      ],
+      confirmLabel: 'Set tier'
+    });
+    if (!answer) return;
     try {
       setTierSaving(true);
-      await procurementAPI.setSupplierTier(supplier._id, { tier, reason: reason.trim() });
+      await procurementAPI.setSupplierTier(supplier._id, { tier, reason: answer.reason });
       showToast(`Classified as ${tier}`, 'success');
       await load();
     } catch (error: any) {
@@ -370,10 +420,7 @@ export default function SupplierDetails() {
       showToast(isBlacklisted ? 'Lift the blacklisting first.' : 'This supplier is already active.', 'error');
       return;
     }
-    if (overrideKys && !overrideReason.trim()) {
-      showToast('A reason is required to activate without KYS', 'error');
-      return;
-    }
+    if (overrideKys && !overrideForm.check()) return;
     try {
       setKysSaving(true);
       const res = await procurementAPI.verifyKys(supplier._id, {
@@ -388,7 +435,9 @@ export default function SupplierDetails() {
       );
       await load();
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Verification failed', 'error');
+      if (!(overrideKys && overrideForm.fromServer(error))) {
+        showToast(error.response?.data?.message || 'Verification failed', 'error');
+      }
     } finally {
       setKysSaving(false);
     }
@@ -400,14 +449,16 @@ export default function SupplierDetails() {
       setSaving(true);
       const res = await procurementAPI.setSupplierStatus(supplier._id, {
         status,
-        reason: actionReason || undefined
+        reason: actionReason.trim() || undefined
       });
       showToast(res.data.message || 'Supplier status updated', 'success');
       refreshSupplier(res.data.data);
       setPendingAction(null);
       setActionReason('');
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to update supplier', 'error');
+      if (!decisionForm.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Failed to update supplier', 'error');
+      }
     } finally {
       setSaving(false);
     }
@@ -415,21 +466,19 @@ export default function SupplierDetails() {
 
   const runBlacklist = async () => {
     if (!supplier) return;
-    if (!actionReason.trim()) {
-      showToast('A reason is required to blacklist a supplier', 'error');
-      return;
-    }
     try {
       setSaving(true);
       const res = await procurementAPI.blacklistSupplier(supplier._id, {
-        reason: actionReason
+        reason: actionReason.trim()
       });
       showToast('Supplier blacklisted', 'success');
       refreshSupplier(res.data.data);
       setPendingAction(null);
       setActionReason('');
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to blacklist supplier', 'error');
+      if (!decisionForm.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Failed to blacklist supplier', 'error');
+      }
     } finally {
       setSaving(false);
     }
@@ -438,10 +487,6 @@ export default function SupplierDetails() {
   // Returns the supplier to pending; re-approval then goes through KYS.
   const runReinstate = async () => {
     if (!supplier) return;
-    if (!actionReason.trim()) {
-      showToast('A reason is required to lift a blacklisting', 'error');
-      return;
-    }
     try {
       setSaving(true);
       const res = await procurementAPI.reinstateSupplier(supplier._id, { reason: actionReason.trim() });
@@ -450,20 +495,24 @@ export default function SupplierDetails() {
       setPendingAction(null);
       setActionReason('');
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to lift the blacklisting', 'error');
+      if (!decisionForm.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Failed to lift the blacklisting', 'error');
+      }
     } finally {
       setSaving(false);
     }
+  };
+
+  const openSubmitModal = () => {
+    submitForm.reset();
+    setShowSubmitModal(true);
   };
 
   // Maker: put a pending supplier forward. KYS short of its tier needs an
   // override reason, which the approver sees.
   const submitForActivation = async () => {
     if (!supplier) return;
-    if (!completion.isComplete && !submitOverrideReason.trim()) {
-      showToast('KYS is incomplete — a KYS override reason is required', 'error');
-      return;
-    }
+    if (!submitForm.check()) return;
     try {
       setKysSaving(true);
       const res = await procurementAPI.submitSupplierActivation(supplier._id, {
@@ -476,7 +525,9 @@ export default function SupplierDetails() {
       setSubmitOverrideReason('');
       await load();
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Could not submit for activation', 'error');
+      if (!submitForm.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Could not submit for activation', 'error');
+      }
     } finally {
       setKysSaving(false);
     }
@@ -493,13 +544,22 @@ export default function SupplierDetails() {
       setActionReason('');
       await load();
     } catch (error: any) {
-      showToast(error.response?.data?.message || fallback, 'error');
+      if (!decisionForm.fromServer(error)) {
+        showToast(error.response?.data?.message || fallback, 'error');
+      }
     } finally {
       setSaving(false);
     }
   };
 
+  const openPendingAction = (action: SupplierReviewDecision) => {
+    setActionReason('');
+    decisionForm.reset();
+    setPendingAction(action);
+  };
+
   const confirmPendingAction = () => {
+    if (!decisionForm.check()) return;
     if (pendingAction === 'suspend') return runSetStatus('suspended');
     if (pendingAction === 'reactivate') return runSetStatus('active');
     if (pendingAction === 'dormant') return runSetStatus('dormant');
@@ -643,37 +703,37 @@ export default function SupplierDetails() {
             </span>
             {/* While a request waits, these decisions sit on its banner instead. */}
             {canDecide && isPending && !awaiting && (
-              <button type="button" onClick={() => setPendingAction('rejectRegistration')} className={`${actionButton} text-red-700 border-red-200 hover:bg-red-50`}>
+              <button type="button" onClick={() => openPendingAction('rejectRegistration')} className={`${actionButton} text-red-700 border-red-200 hover:bg-red-50`}>
                 <XCircle className="h-4 w-4" />
                 Reject registration
               </button>
             )}
             {canManage && (supplier.status === 'suspended' || supplier.status === 'dormant') && (
-              <button type="button" onClick={() => setPendingAction('reactivate')} className={`${actionButton} bg-primary border-primary text-white hover:bg-primary-dark`}>
+              <button type="button" onClick={() => openPendingAction('reactivate')} className={`${actionButton} bg-primary border-primary text-white hover:bg-primary-dark`}>
                 <CheckCircle className="h-4 w-4" />
                 Reactivate
               </button>
             )}
             {canManage && supplier.status === 'active' && (
               <>
-                <button type="button" onClick={() => setPendingAction('suspend')} className={`${actionButton} text-gray-700 border-gray-300 hover:bg-gray-50`}>
+                <button type="button" onClick={() => openPendingAction('suspend')} className={`${actionButton} text-gray-700 border-gray-300 hover:bg-gray-50`}>
                   <Ban className="h-4 w-4" />
                   Suspend
                 </button>
-                <button type="button" onClick={() => setPendingAction('dormant')} className={`${actionButton} text-gray-700 border-gray-300 hover:bg-gray-50`}>
+                <button type="button" onClick={() => openPendingAction('dormant')} className={`${actionButton} text-gray-700 border-gray-300 hover:bg-gray-50`}>
                   <Clock className="h-4 w-4" />
                   Mark dormant
                 </button>
               </>
             )}
             {canManage && supplier.status !== 'blacklisted' && (
-              <button type="button" onClick={() => setPendingAction('blacklist')} className={`${actionButton} text-red-700 border-red-200 hover:bg-red-50`}>
+              <button type="button" onClick={() => openPendingAction('blacklist')} className={`${actionButton} text-red-700 border-red-200 hover:bg-red-50`}>
                 <XCircle className="h-4 w-4" />
                 Blacklist
               </button>
             )}
             {canManage && isBlacklisted && (
-              <button type="button" onClick={() => setPendingAction('reinstate')} className={`${actionButton} text-gray-700 border-gray-300 hover:bg-gray-50`}>
+              <button type="button" onClick={() => openPendingAction('reinstate')} className={`${actionButton} text-gray-700 border-gray-300 hover:bg-gray-50`}>
                 <CheckCircle className="h-4 w-4" />
                 Lift blacklisting
               </button>
@@ -710,15 +770,15 @@ export default function SupplierDetails() {
             </div>
             {canDecideThis && (
               <div className="flex flex-wrap gap-2 shrink-0">
-                <button type="button" onClick={() => setPendingAction('approveActivation')} className={`${actionButton} bg-primary border-primary text-white hover:bg-primary-dark`}>
+                <button type="button" onClick={() => openPendingAction('approveActivation')} className={`${actionButton} bg-primary border-primary text-white hover:bg-primary-dark`}>
                   <CheckCircle className="h-4 w-4" />
                   Approve activation
                 </button>
-                <button type="button" onClick={() => setPendingAction('returnActivation')} className={`${actionButton} bg-white text-gray-700 border-gray-300 hover:bg-gray-50`}>
+                <button type="button" onClick={() => openPendingAction('returnActivation')} className={`${actionButton} bg-white text-gray-700 border-gray-300 hover:bg-gray-50`}>
                   <RotateCcw className="h-4 w-4" />
                   Return
                 </button>
-                <button type="button" onClick={() => setPendingAction('rejectRegistration')} className={`${actionButton} bg-white text-red-700 border-red-200 hover:bg-red-50`}>
+                <button type="button" onClick={() => openPendingAction('rejectRegistration')} className={`${actionButton} bg-white text-red-700 border-red-200 hover:bg-red-50`}>
                   <XCircle className="h-4 w-4" />
                   Reject registration
                 </button>
@@ -737,7 +797,7 @@ export default function SupplierDetails() {
               {supplier.rejectionReason && <p><span className="font-medium">Reason: </span>{supplier.rejectionReason}</p>}
             </div>
             {canDecide && (
-              <button type="button" onClick={() => setPendingAction('reopenRegistration')} className={`${actionButton} shrink-0 bg-white text-gray-700 border-gray-300 hover:bg-gray-50`}>
+              <button type="button" onClick={() => openPendingAction('reopenRegistration')} className={`${actionButton} shrink-0 bg-white text-gray-700 border-gray-300 hover:bg-gray-50`}>
                 <RotateCcw className="h-4 w-4" />
                 Reopen registration
               </button>
@@ -938,7 +998,7 @@ export default function SupplierDetails() {
                       // Onboarding takes two people: this puts the supplier
                       // forward, and someone else approves it.
                       <div className="space-y-2">
-                        <button type="button" onClick={() => setShowSubmitModal(true)} disabled={kysSaving}
+                        <button type="button" onClick={openSubmitModal} disabled={kysSaving}
                           className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50">
                           <Send className="h-4 w-4" />
                           Submit for activation
@@ -949,17 +1009,21 @@ export default function SupplierDetails() {
                         </p>
                       </div>
                     ) : showOverrideConfirm ? (
-                      <div className="space-y-3">
-                        <textarea value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)}
-                          rows={3} placeholder="Reason for KYS override (required)"
-                          className="w-full px-3 py-2 border border-amber-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-200 resize-none" />
+                      <div ref={overrideForm.formRef} className="space-y-3">
+                        <div>
+                          <textarea value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)}
+                            rows={3} placeholder="Reason for KYS override (required)" maxLength={TEXT_LIMITS.long}
+                            className="w-full px-3 py-2 border border-amber-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-200 resize-none"
+                            {...overrideForm.invalid('reason')} />
+                          <FieldError message={overrideForm.errors.reason} />
+                        </div>
                         <div className="flex gap-2">
                           <button type="button" disabled={kysSaving}
                             onClick={() => { setShowOverrideConfirm(false); setOverrideReason(''); }}
                             className="flex-1 px-3 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50">
                             Cancel
                           </button>
-                          <button type="button" disabled={kysSaving || !overrideReason.trim()} onClick={() => verifyKys(true)}
+                          <button type="button" disabled={kysSaving} onClick={() => verifyKys(true)}
                             className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark disabled:opacity-50">
                             {kysSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
                             Confirm
@@ -974,7 +1038,7 @@ export default function SupplierDetails() {
                           {kysSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                           Verify KYS &amp; activate
                         </button>
-                        <button type="button" onClick={() => setShowOverrideConfirm(true)} disabled={kysSaving}
+                        <button type="button" onClick={() => { overrideForm.reset(); setShowOverrideConfirm(true); }} disabled={kysSaving}
                           className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
                           Activate without KYS
                         </button>
@@ -1129,7 +1193,7 @@ export default function SupplierDetails() {
             <button
               type="button"
               onClick={confirmPendingAction}
-              disabled={saving || (REASONED_ACTIONS.includes(pendingAction) && !actionReason.trim())}
+              disabled={saving}
               className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 ${
                 pendingAction === 'blacklist' || pendingAction === 'rejectRegistration'
                   ? 'border border-red-200 text-red-700 hover:bg-red-50'
@@ -1142,6 +1206,7 @@ export default function SupplierDetails() {
           </>
         }
       >
+        <div ref={decisionForm.formRef}>
         {pendingAction === 'approveActivation' ? (
           <div className="space-y-2 text-sm text-gray-600">
             <p>
@@ -1187,8 +1252,11 @@ export default function SupplierDetails() {
                         : pendingAction === 'reopenRegistration' ? 'Reason for reopening (required)'
                           : 'Reason for suspension (required)'
               }
+              maxLength={TEXT_LIMITS.long}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              {...decisionForm.invalid('reason')}
             />
+            <FieldError message={decisionForm.errors.reason} />
           </>
         ) : (
           <p className="text-sm text-gray-600">
@@ -1197,6 +1265,11 @@ export default function SupplierDetails() {
               : 'The supplier stays on the register but is set aside until reactivated.'}
           </p>
         )}
+        {/* Approving sends no reason; anything the API says about it shows here. */}
+        {!(pendingAction === 'suspend' || REASONED_ACTIONS.includes(pendingAction)) && (
+          <FieldError message={decisionForm.errors.reason || decisionForm.errors.notes} />
+        )}
+        </div>
       </Modal>
 
       <Modal
@@ -1217,7 +1290,7 @@ export default function SupplierDetails() {
             <button
               type="button"
               onClick={submitForActivation}
-              disabled={kysSaving || (!completion.isComplete && !submitOverrideReason.trim())}
+              disabled={kysSaving}
               className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary-dark transition-colors disabled:opacity-50"
             >
               {kysSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
@@ -1226,7 +1299,7 @@ export default function SupplierDetails() {
           </>
         }
       >
-        <div className="space-y-3 text-sm">
+        <div ref={submitForm.formRef} className="space-y-3 text-sm">
           <p className="text-gray-600">
             The Head of Procurement or the COO — not you — approves the activation. Until then the supplier stays pending: it may be invited to quote, but not awarded work.
           </p>
@@ -1241,23 +1314,34 @@ export default function SupplierDetails() {
             </div>
           )}
           {!completion.isComplete && (
-            <textarea
-              value={submitOverrideReason}
-              onChange={(e) => setSubmitOverrideReason(e.target.value)}
-              rows={3}
-              placeholder="Reason for the KYS override (required) — the approver sees it"
-              className="w-full px-3 py-2 border border-amber-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-200"
-            />
+            <div>
+              <textarea
+                value={submitOverrideReason}
+                onChange={(e) => setSubmitOverrideReason(e.target.value)}
+                rows={3}
+                maxLength={TEXT_LIMITS.long}
+                placeholder="Reason for the KYS override (required) — the approver sees it"
+                className="w-full px-3 py-2 border border-amber-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-200"
+                {...submitForm.invalid('kysOverrideReason')}
+              />
+              <FieldError message={submitForm.errors.kysOverrideReason} />
+            </div>
           )}
-          <textarea
-            value={submitNotes}
-            onChange={(e) => setSubmitNotes(e.target.value)}
-            rows={2}
-            placeholder="Notes for the approver (optional)"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
+          <div>
+            <textarea
+              value={submitNotes}
+              onChange={(e) => setSubmitNotes(e.target.value)}
+              rows={2}
+              maxLength={TEXT_LIMITS.long}
+              placeholder="Notes for the approver (optional)"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              {...submitForm.invalid('notes')}
+            />
+            <FieldError message={submitForm.errors.notes} />
+          </div>
         </div>
       </Modal>
+      {promptElement}
     </div>
   );
 }

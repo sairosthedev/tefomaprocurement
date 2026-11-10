@@ -1,8 +1,8 @@
 import type { Request, Response } from 'express';
 import { RFQ } from '../../models/index.js';
-import { QUOTATION_WAIVER_TYPES } from '../../models/RFQ.model.js';
 import { createAuditLog } from '../../middleware/index.js';
-import { isProcurementHead, MIN_QUOTATIONS_REQUIRED } from '@fossil/shared';
+import { isProcurementHead, MIN_QUOTATIONS_REQUIRED, validateLineSelection, validateLineWaiver } from '@fossil/shared';
+import { refuseInvalid } from '../../lib/validation.js';
 import {
   buildLineAwards,
   findLiveQuotations,
@@ -132,9 +132,7 @@ export const selectLine = async (req: Request, res: Response): Promise<any> => {
     // Older clients also send supplierId and unitPrice. Both are ignored: they
     // are read from the quotation itself, so the award cannot be priced by hand.
     const { rfqLineId, quotationId, justification } = req.body;
-    if (!rfqLineId || !quotationId || !justification?.trim()) {
-      return res.status(400).json({ success: false, message: 'rfqLineId, quotationId and justification are required' });
-    }
+    if (refuseInvalid(res, validateLineSelection(req.body))) return;
 
     const { rfq, award, lineBids } = await loadLine(id, rfqLineId);
     if (!rfq) return res.status(404).json({ success: false, message: 'RFQ not found' });
@@ -245,12 +243,7 @@ export const waiveLine = async (req: Request, res: Response): Promise<any> => {
     if (!isProcurementHead(req.user) && req.user!.role !== 'coo') {
       return res.status(403).json({ success: false, message: 'Only the COO or the Head of Procurement can approve a waiver' });
     }
-    if (!reason?.trim()) {
-      return res.status(400).json({ success: false, message: 'Waiver reason is required' });
-    }
-    if (waiverType !== undefined && !QUOTATION_WAIVER_TYPES.includes(waiverType)) {
-      return res.status(400).json({ success: false, message: `Invalid waiver type. Allowed: ${QUOTATION_WAIVER_TYPES.join(', ')}` });
-    }
+    if (refuseInvalid(res, validateLineWaiver(req.body))) return;
     const { rfq, award, lineBids } = await loadLine(id, rfqLineId);
     if (!rfq) return res.status(404).json({ success: false, message: 'RFQ not found' });
     if (!award) return res.status(404).json({ success: false, message: 'RFQ line not found' });

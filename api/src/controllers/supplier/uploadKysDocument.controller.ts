@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express';
+import { validateKysDocumentUpload } from '@fossil/shared';
 import { SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { refuseInvalid } from '../../lib/validation.js';
 import { addComplianceDocument, withoutDocumentFiles } from '../../services/supplierDocuments.service.js';
 import { notifyUsersByRole } from '../../services/notification.service.js';
 
@@ -10,6 +12,11 @@ const uploadKysDocument = async (req: Request, res: Response): Promise<any> => {
     if (!supplier || supplier.isDeleted) {
       return res.status(404).json({ success: false, message: 'Supplier profile not found' });
     }
+    // Refused before anything changes: a known type, a file of 5 MB or less,
+    // and an expiry date after today where the type has one. The size is
+    // judged from the file that arrived, never from a size the caller states.
+    const { documentType, fileName, fileData, expiryDate, notes } = req.body || {};
+    if (refuseInvalid(res, validateKysDocumentUpload({ documentType, fileName, fileData, expiryDate, notes }))) return;
 
     const result = addComplianceDocument(supplier, req.body, req.user!._id);
     if (!result.ok) {

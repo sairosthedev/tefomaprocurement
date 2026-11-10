@@ -10,6 +10,9 @@ import { FormSteps, FormStepNav } from './FormSteps';
 import { ConfirmModal } from './Modal';
 import Drawer from './Drawer';
 import FactsCard from './supplier/FactsCard';
+import FieldError from './FieldError';
+import { serverFieldErrors, useFormValidation } from '../lib/useFormValidation';
+import { TEXT_LIMITS, firstError, hasErrors, lineField, validateQuotation, type FieldErrors } from '@fossil/shared';
 
 const STEPS = [
   { label: 'Prices', description: 'A unit price for every item' },
@@ -19,6 +22,20 @@ const STEPS = [
 
 // Terms a new quotation starts with; changing any of them counts as unsaved work.
 const DEFAULT_TERMS = { deliveryDays: 7, paymentTerms: 'Net 30', validityDays: 30 };
+
+const STEP_PRICES = 0;
+const STEP_TERMS = 1;
+const TERM_FIELDS = ['deliveryPeriod', 'paymentTerms', 'validityPeriod', 'notes'];
+
+/** The step a field is entered on, so a refused field can be shown; -1 for none. */
+function stepOfField(field: string): number {
+  if (field === 'currency' || field === 'items' || field.startsWith('items.')) return STEP_PRICES;
+  return TERM_FIELDS.includes(field) ? STEP_TERMS : -1;
+}
+
+/** A typed number as a number, so the API gets one; anything else as it was, for the check to name. */
+const asNumber = (value: any) =>
+  typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value)) ? Number(value) : value;
 
 export interface QuotationFormHandle {
   /** Close the form, first asking to discard when anything has been entered. */
@@ -76,7 +93,7 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
             specifications: item.specifications,
             equipment: item.equipment,
             attachments: item.attachments,
-            unitPrice: 0,
+            unitPrice: '',
             brand: '',
             notes: ''
           }))
@@ -101,9 +118,9 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
         (item.quoteAttachments || []).length > 0
     ) ||
     formData.currency !== getCurrentSbuCurrency() ||
-    formData.deliveryDays !== DEFAULT_TERMS.deliveryDays ||
+    String(formData.deliveryDays) !== String(DEFAULT_TERMS.deliveryDays) ||
     formData.paymentTerms !== DEFAULT_TERMS.paymentTerms ||
-    formData.validityDays !== DEFAULT_TERMS.validityDays ||
+    String(formData.validityDays) !== String(DEFAULT_TERMS.validityDays) ||
     !!formData.notes.trim();
 
   // A stray click on the backdrop should not throw away entered prices, and
@@ -115,12 +132,6 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
   };
 
   useImperativeHandle(ref, () => ({ requestClose }));
-
-  const goTo = (index: number) => {
-    setStep(index);
-    // Scrolls whichever container holds the form, page or drawer.
-    topRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
-  };
 
   const updateItemPrice = (index: any, field: any, value: any) => {
     const newItems = [...formData.items];
@@ -134,25 +145,60 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
     );
   };
 
-  const validateStep = (index: number) => {
-    if (index === 0) {
-      const invalidItems = formData.items.filter((item: any) => !item.unitPrice || item.unitPrice <= 0);
-      if (invalidItems.length > 0) {
-        showToast('Please enter unit price for all items', 'error');
-        return false;
-      }
-    }
-    if (index === 1) {
-      if (!(formData.deliveryDays >= 1) || !(formData.validityDays >= 1)) {
-        showToast('Delivery and validity must each be at least 1 day', 'error');
-        return false;
-      }
-    }
+  // What is sent to the API, and what the shared check reads.
+  const toPayload = (data: any) => ({
+    rfqId: rfqId,
+    currency: data.currency,
+    deliveryPeriod: asNumber(data.deliveryDays),
+    paymentTerms: data.paymentTerms,
+    validityPeriod: asNumber(data.validityDays),
+    notes: data.notes,
+    items: data.items.map((item: any) => ({
+      rfqLineId: item.itemId,
+      description: item.description,
+      quantity: item.quantity,
+      unit: item.unit,
+      unitPrice: asNumber(item.unitPrice),
+      totalPrice: item.quantity * (parseFloat(item.unitPrice) || 0),
+      brand: item.brand,
+      notes: item.notes,
+      vatIncluded: false,
+      isAlternative: Boolean(item.isAlternative),
+      alternativeDescription: item.alternativeDescription,
+      alternativePartNumber: item.alternativePartNumber,
+      attachments: item.quoteAttachments
+    })),
+    totalAmount: calculateTotal()
+  });
+
+  const validation = useFormValidation(validateQuotation, toPayload(formData));
+
+  /** Moves to a step. Its messages start afresh unless `keepMessages`, as when showing a refused field. */
+  const goTo = (index: number, keepMessages = false) => {
+    if (!keepMessages) validation.reset();
+    setStep(index);
+    // Scrolls whichever container holds the form, page or drawer.
+    topRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  };
+
+  /** Opens the earliest step holding a refused field. False when no step shows one. */
+  const openStepWithError = (errors: FieldErrors): boolean => {
+    const steps = Object.keys(errors).map(stepOfField).filter((s) => s >= 0);
+    if (steps.length === 0) return false;
+    const target = Math.min(...steps);
+    if (target !== step) goTo(target, true);
     return true;
   };
 
+  // Next checks this step's fields; later steps wait their turn.
   const handleNext = () => {
-    if (validateStep(step)) goTo(Math.min(step + 1, STEPS.length - 1));
+    const payload = toPayload(formData);
+    const errors = validateQuotation(payload);
+    if (Object.keys(errors).some((field) => stepOfField(field) === step)) {
+      validation.check(payload);
+      return;
+    }
+    goTo(Math.min(step + 1, STEPS.length - 1));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -162,43 +208,24 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
       handleNext();
       return;
     }
+    const payload = toPayload(formData);
+    const errors = validateQuotation(payload);
+    if (hasErrors(errors)) {
+      if (!openStepWithError(errors)) showToast(firstError(errors), 'error');
+      validation.check(payload);
+      return;
+    }
     try {
-      // Validate
-      if (!validateStep(0)) {
-        goTo(0);
-        return;
-      }
-
       setSubmitting(true);
-      await api.post('/supplier/quotations', {
-        rfqId: rfqId,
-        currency: formData.currency,
-        deliveryPeriod: formData.deliveryDays,
-        paymentTerms: formData.paymentTerms,
-        validityPeriod: formData.validityDays,
-        notes: formData.notes,
-        items: formData.items.map((item: any) => ({
-          rfqLineId: item.itemId,
-          description: item.description,
-          quantity: item.quantity,
-          unit: item.unit,
-          unitPrice: parseFloat(item.unitPrice),
-          totalPrice: item.quantity * parseFloat(item.unitPrice),
-          brand: item.brand,
-          notes: item.notes,
-          vatIncluded: false,
-          isAlternative: Boolean(item.isAlternative),
-          alternativeDescription: item.alternativeDescription,
-          alternativePartNumber: item.alternativePartNumber,
-          attachments: item.quoteAttachments
-        })),
-        totalAmount: calculateTotal()
-      });
+      await api.post('/supplier/quotations', payload);
 
       showToast('Quotation submitted successfully', 'success');
       onSaved();
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to submit quotation', 'error');
+      // Field errors show under their field, on its step; anything else is a toast.
+      const fields = serverFieldErrors(error);
+      if (fields && openStepWithError(fields)) validation.fromServer(error);
+      else showToast(error.response?.data?.message || 'Failed to submit quotation', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -229,7 +256,7 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form ref={validation.formRef} onSubmit={handleSubmit} noValidate>
         <div className="space-y-6">
         {/* RFQ Info */}
         <div className="bg-gray-50 rounded-xl p-4">
@@ -246,11 +273,13 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
                   value={formData.currency}
                   onChange={(e: any) => setFormData({ ...formData, currency: e.target.value })}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  {...validation.invalid('currency')}
                 >
                   {CURRENCIES.map((curr: any) => (
                     <option key={curr.code} value={curr.code}>{curr.code} - {curr.name}</option>
                   ))}
                 </select>
+                <FieldError message={validation.errors.currency} />
               </div>
             </div>
 
@@ -296,6 +325,15 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
                             onChange={(e: any) => updateItemPrice(index, 'unitPrice', e.target.value)}
                             className="w-28 px-3 py-1.5 border border-gray-200 rounded-lg text-sm"
                             placeholder="0.00"
+                            {...validation.invalid(lineField('items', index, 'unitPrice'))}
+                          />
+                          <FieldError
+                            className="max-w-[9rem]"
+                            message={
+                              validation.errors[lineField('items', index, 'unitPrice')] ||
+                              validation.errors[lineField('items', index, 'quantity')] ||
+                              validation.errors[lineField('items', index, 'rfqLineId')]
+                            }
                           />
                         </td>
                         <td className="py-2 px-3">
@@ -305,7 +343,10 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
                             onChange={(e: any) => updateItemPrice(index, 'brand', e.target.value)}
                             className="w-32 px-3 py-1.5 border border-gray-200 rounded-lg text-sm"
                             placeholder="Brand name"
+                            maxLength={TEXT_LIMITS.name}
+                            {...validation.invalid(lineField('items', index, 'brand'))}
                           />
+                          <FieldError className="max-w-[9rem]" message={validation.errors[lineField('items', index, 'brand')]} />
                         </td>
                         <td className="py-2 px-3 font-medium text-gray-900">
                           {formatCurrency(item.quantity * (parseFloat(item.unitPrice) || 0), formData.currency)}
@@ -335,7 +376,10 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
                                   onChange={(e: any) => updateItemPrice(index, 'alternativeDescription', e.target.value)}
                                   placeholder="e.g. Donaldson equivalent filter"
                                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                                  maxLength={TEXT_LIMITS.short}
+                                  {...validation.invalid(lineField('items', index, 'alternativeDescription'))}
                                 />
+                                <FieldError message={validation.errors[lineField('items', index, 'alternativeDescription')]} />
                               </div>
                               <div>
                                 <label className="block text-xs text-gray-500 mb-1">
@@ -347,13 +391,16 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
                                   onChange={(e: any) => updateItemPrice(index, 'alternativePartNumber', e.target.value)}
                                   placeholder="e.g. P552100"
                                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                                  maxLength={TEXT_LIMITS.name}
+                                  {...validation.invalid(lineField('items', index, 'alternativePartNumber'))}
                                 />
+                                <FieldError message={validation.errors[lineField('items', index, 'alternativePartNumber')]} />
                               </div>
                               <div className="md:col-span-2">
                                 <QuoteLinePhotos
                                   attachments={item.quoteAttachments || []}
                                   onChange={(next: any[]) => updateItemPrice(index, 'quoteAttachments', next)}
-                                  onError={(m: string) => showToast(m, 'error')}
+                                  error={validation.errors[lineField('items', index, 'attachments')]}
                                 />
                               </div>
                             </div>
@@ -375,6 +422,7 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
                   </tfoot>
                 </table>
               </div>
+              <FieldError message={validation.errors.items} />
             </div>
           </>
         )}
@@ -388,10 +436,13 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
                 <input
                   type="number"
                   min="1"
+                  step="1"
                   value={formData.deliveryDays}
-                  onChange={(e: any) => setFormData({ ...formData, deliveryDays: parseInt(e.target.value) || 1 })}
+                  onChange={(e: any) => setFormData({ ...formData, deliveryDays: e.target.value })}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  {...validation.invalid('deliveryPeriod')}
                 />
+                <FieldError message={validation.errors.deliveryPeriod} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Payment Terms</label>
@@ -399,6 +450,7 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
                   value={formData.paymentTerms}
                   onChange={(e: any) => setFormData({ ...formData, paymentTerms: e.target.value })}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  {...validation.invalid('paymentTerms')}
                 >
                   <option value="Cash">Cash</option>
                   <option value="Net 7">Net 7</option>
@@ -406,16 +458,20 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
                   <option value="Net 30">Net 30</option>
                   <option value="Net 60">Net 60</option>
                 </select>
+                <FieldError message={validation.errors.paymentTerms} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Valid For (Days)</label>
                 <input
                   type="number"
                   min="1"
+                  step="1"
                   value={formData.validityDays}
-                  onChange={(e: any) => setFormData({ ...formData, validityDays: parseInt(e.target.value) || 1 })}
+                  onChange={(e: any) => setFormData({ ...formData, validityDays: e.target.value })}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  {...validation.invalid('validityPeriod')}
                 />
+                <FieldError message={validation.errors.validityPeriod} />
               </div>
             </div>
 
@@ -428,7 +484,10 @@ const QuotationForm = forwardRef<QuotationFormHandle, {
                 rows={3}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
                 placeholder="Any additional information about your quotation..."
+                maxLength={TEXT_LIMITS.long}
+                {...validation.invalid('notes')}
               />
+              <FieldError message={validation.errors.notes} />
             </div>
           </>
         )}

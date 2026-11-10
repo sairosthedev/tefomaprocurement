@@ -3,6 +3,8 @@ import { Loader2, Plus, Save, Trash2 } from 'lucide-react';
 import { CategoryMultiSelect } from '../CategorySelect';
 import { PROVINCES, BANKS, ACCOUNT_TYPES } from '../../lib/constants';
 import { BUSINESS_TYPE_OPTIONS, ENTITY_TYPE_OPTIONS } from '../../lib/supplierTypes';
+import { validateSupplierProfileUpdate, type FieldErrors } from '@fossil/shared';
+import FieldError from '../FieldError';
 
 export type ContactPersonDraft = {
   name: string;
@@ -179,6 +181,18 @@ export function draftPayloadForSection(section: string, draft: SupplierDraft): R
   }
 }
 
+/**
+ * What is wrong with a section's edit: the checks the API runs on the same
+ * payload. `hasLogin` is false for a supplier without a sign-in, whose login
+ * fields the API ignores.
+ */
+export function draftErrors(section: string, draft: SupplierDraft, hasLogin = true): FieldErrors {
+  const payload = draftPayloadForSection(section, draft);
+  return validateSupplierProfileUpdate(hasLogin ? payload : { ...payload, user: undefined }, {
+    country: draft.address.country
+  });
+}
+
 const inputClass =
   'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30';
 const labelClass = 'block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1';
@@ -189,9 +203,12 @@ type FieldProps = {
   onChange: (value: string) => void;
   type?: string;
   placeholder?: string;
+  /** The message under the field when its check failed. */
+  error?: string;
+  maxLength?: number;
 };
 
-function Field({ label, value, onChange, type = 'text', placeholder }: FieldProps) {
+function Field({ label, value, onChange, type = 'text', placeholder, error, maxLength }: FieldProps) {
   return (
     <div>
       <label className={labelClass}>{label}</label>
@@ -200,8 +217,11 @@ function Field({ label, value, onChange, type = 'text', placeholder }: FieldProp
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        maxLength={maxLength}
+        aria-invalid={error ? true : undefined}
         className={inputClass}
       />
+      <FieldError message={error} />
     </div>
   );
 }
@@ -210,32 +230,43 @@ function SelectField({
   label,
   value,
   onChange,
-  options
+  options,
+  error
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: ReadonlyArray<{ value: string; label: string }>;
+  error?: string;
 }) {
   return (
     <div>
       <label className={labelClass}>{label}</label>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className={inputClass}>
+      <select value={value} onChange={(e) => onChange(e.target.value)} aria-invalid={error ? true : undefined} className={inputClass}>
         <option value="">Not specified</option>
         {options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
         ))}
       </select>
+      <FieldError message={error} />
     </div>
   );
 }
 
 /** Business and entity type: optional, edited on Overview and Corporate. */
-function ClassificationFields({ draft, patch }: { draft: SupplierDraft; patch: (p: Partial<SupplierDraft>) => void }) {
+function ClassificationFields({
+  draft,
+  patch,
+  errors
+}: {
+  draft: SupplierDraft;
+  patch: (p: Partial<SupplierDraft>) => void;
+  errors: FieldErrors;
+}) {
   return (
     <>
-      <SelectField label="Business type" value={draft.businessType} onChange={(v) => patch({ businessType: v })} options={BUSINESS_TYPE_OPTIONS} />
-      <SelectField label="Entity type" value={draft.entityType} onChange={(v) => patch({ entityType: v })} options={ENTITY_TYPE_OPTIONS} />
+      <SelectField label="Business type" value={draft.businessType} onChange={(v) => patch({ businessType: v })} options={BUSINESS_TYPE_OPTIONS} error={errors.businessType} />
+      <SelectField label="Entity type" value={draft.entityType} onChange={(v) => patch({ entityType: v })} options={ENTITY_TYPE_OPTIONS} error={errors.entityType} />
     </>
   );
 }
@@ -248,9 +279,20 @@ type Props = {
   onCancel?: () => void;
   saving: boolean;
   showActions?: boolean;
+  /** Messages from the section's check (see draftErrors), keyed by payload path. */
+  errors?: FieldErrors;
 };
 
-export default function SupplierProfileEditor({ section, draft, onChange, onSave, onCancel, saving, showActions = true }: Props) {
+export default function SupplierProfileEditor({
+  section,
+  draft,
+  onChange,
+  onSave,
+  onCancel,
+  saving,
+  showActions = true,
+  errors = {}
+}: Props) {
   const patch = (partial: Partial<SupplierDraft>) => onChange({ ...draft, ...partial });
   const patchAddress = (partial: Partial<SupplierDraft['address']>) =>
     onChange({ ...draft, address: { ...draft.address, ...partial } });
@@ -301,23 +343,24 @@ export default function SupplierProfileEditor({ section, draft, onChange, onSave
     return (
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="Company name" value={draft.companyName} onChange={(v) => patch({ companyName: v })} />
-          <Field label="Trading name" value={draft.tradingName} onChange={(v) => patch({ tradingName: v })} />
-          <Field label="Registration no." value={draft.registrationNumber} onChange={(v) => patch({ registrationNumber: v })} />
-          <Field label="Tax number" value={draft.taxNumber} onChange={(v) => patch({ taxNumber: v })} />
-          <Field label="VAT number" value={draft.vatNumber} onChange={(v) => patch({ vatNumber: v })} />
-          <ClassificationFields draft={draft} patch={patch} />
-          <Field label="Email" value={draft.email} onChange={(v) => patch({ email: v })} type="email" />
-          <Field label="Phone" value={draft.phone} onChange={(v) => patch({ phone: v })} />
-          <Field label="Contact first name" value={draft.firstName} onChange={(v) => patch({ firstName: v })} />
-          <Field label="Contact last name" value={draft.lastName} onChange={(v) => patch({ lastName: v })} />
-          <Field label="Street address" value={draft.address.street} onChange={(v) => patchAddress({ street: v })} />
-          <Field label="City" value={draft.address.city} onChange={(v) => patchAddress({ city: v })} />
+          <Field label="Company name" value={draft.companyName} onChange={(v) => patch({ companyName: v })} error={errors.companyName} maxLength={200} />
+          <Field label="Trading name" value={draft.tradingName} onChange={(v) => patch({ tradingName: v })} error={errors.tradingName} maxLength={200} />
+          <Field label="Registration no." value={draft.registrationNumber} onChange={(v) => patch({ registrationNumber: v })} error={errors.registrationNumber} maxLength={50} />
+          <Field label="Tax number" value={draft.taxNumber} onChange={(v) => patch({ taxNumber: v })} error={errors.taxNumber} maxLength={50} />
+          <Field label="VAT number" value={draft.vatNumber} onChange={(v) => patch({ vatNumber: v })} error={errors.vatNumber} maxLength={50} />
+          <ClassificationFields draft={draft} patch={patch} errors={errors} />
+          <Field label="Email" value={draft.email} onChange={(v) => patch({ email: v })} type="email" error={errors['user.email']} maxLength={254} />
+          <Field label="Phone" value={draft.phone} onChange={(v) => patch({ phone: v })} error={errors['user.phone']} maxLength={30} />
+          <Field label="Contact first name" value={draft.firstName} onChange={(v) => patch({ firstName: v })} error={errors['user.firstName']} maxLength={120} />
+          <Field label="Contact last name" value={draft.lastName} onChange={(v) => patch({ lastName: v })} error={errors['user.lastName']} maxLength={120} />
+          <Field label="Street address" value={draft.address.street} onChange={(v) => patchAddress({ street: v })} error={errors['address.street']} maxLength={200} />
+          <Field label="City" value={draft.address.city} onChange={(v) => patchAddress({ city: v })} error={errors['address.city']} maxLength={80} />
           <div>
             <label className={labelClass}>Province</label>
             <select
               value={draft.address.province}
               onChange={(e) => patchAddress({ province: e.target.value })}
+              aria-invalid={errors['address.province'] ? true : undefined}
               className={inputClass}
             >
               <option value="">Select province</option>
@@ -325,16 +368,19 @@ export default function SupplierProfileEditor({ section, draft, onChange, onSave
                 <option key={p} value={p}>{p}</option>
               ))}
             </select>
+            <FieldError message={errors['address.province']} />
           </div>
-          <Field label="Postal code" value={draft.address.postalCode} onChange={(v) => patchAddress({ postalCode: v })} />
-          <Field label="Country" value={draft.address.country} onChange={(v) => patchAddress({ country: v })} />
+          <Field label="Postal code" value={draft.address.postalCode} onChange={(v) => patchAddress({ postalCode: v })} error={errors['address.postalCode']} maxLength={20} />
+          <Field label="Country" value={draft.address.country} onChange={(v) => patchAddress({ country: v })} error={errors['address.country']} maxLength={80} />
         </div>
         <div>
           <label className={labelClass}>Categories</label>
           <CategoryMultiSelect
             value={draft.categories}
             onChange={(categories: string[]) => patch({ categories })}
+            invalid={!!errors.categories}
           />
+          <FieldError message={errors.categories} />
         </div>
         {saveBar}
       </div>
@@ -345,15 +391,15 @@ export default function SupplierProfileEditor({ section, draft, onChange, onSave
     return (
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="Legal name" value={draft.companyName} onChange={(v) => patch({ companyName: v })} />
-          <Field label="Trading name" value={draft.tradingName} onChange={(v) => patch({ tradingName: v })} />
-          <Field label="Registration no." value={draft.registrationNumber} onChange={(v) => patch({ registrationNumber: v })} />
-          <Field label="Tax number" value={draft.taxNumber} onChange={(v) => patch({ taxNumber: v })} />
-          <Field label="VAT number" value={draft.vatNumber} onChange={(v) => patch({ vatNumber: v })} />
-          <Field label="Incorporation date" value={draft.incorporationDate} onChange={(v) => patch({ incorporationDate: v })} type="date" />
-          <ClassificationFields draft={draft} patch={patch} />
-          <Field label="Country" value={draft.address.country} onChange={(v) => patchAddress({ country: v })} />
-          <Field label="Website" value={draft.website} onChange={(v) => patch({ website: v })} placeholder="https://..." />
+          <Field label="Legal name" value={draft.companyName} onChange={(v) => patch({ companyName: v })} error={errors.companyName} maxLength={200} />
+          <Field label="Trading name" value={draft.tradingName} onChange={(v) => patch({ tradingName: v })} error={errors.tradingName} maxLength={200} />
+          <Field label="Registration no." value={draft.registrationNumber} onChange={(v) => patch({ registrationNumber: v })} error={errors.registrationNumber} maxLength={50} />
+          <Field label="Tax number" value={draft.taxNumber} onChange={(v) => patch({ taxNumber: v })} error={errors.taxNumber} maxLength={50} />
+          <Field label="VAT number" value={draft.vatNumber} onChange={(v) => patch({ vatNumber: v })} error={errors.vatNumber} maxLength={50} />
+          <Field label="Incorporation date" value={draft.incorporationDate} onChange={(v) => patch({ incorporationDate: v })} type="date" error={errors.incorporationDate} />
+          <ClassificationFields draft={draft} patch={patch} errors={errors} />
+          <Field label="Country" value={draft.address.country} onChange={(v) => patchAddress({ country: v })} error={errors['address.country']} maxLength={80} />
+          <Field label="Website" value={draft.website} onChange={(v) => patch({ website: v })} placeholder="https://..." error={errors.website} maxLength={200} />
         </div>
         <div>
           <label className={labelClass}>Services / products description</label>
@@ -361,16 +407,21 @@ export default function SupplierProfileEditor({ section, draft, onChange, onSave
             value={draft.notes}
             onChange={(e) => patch({ notes: e.target.value })}
             rows={3}
+            maxLength={2000}
+            aria-invalid={errors.notes ? true : undefined}
             className={inputClass}
             placeholder="Business description, services, or products supplied"
           />
+          <FieldError message={errors.notes} />
         </div>
         <div>
           <label className={labelClass}>Categories</label>
           <CategoryMultiSelect
             value={draft.categories}
             onChange={(categories: string[]) => patch({ categories })}
+            invalid={!!errors.categories}
           />
+          <FieldError message={errors.categories} />
         </div>
         {saveBar}
       </div>
@@ -386,6 +437,7 @@ export default function SupplierProfileEditor({ section, draft, onChange, onSave
             <select
               value={draft.bankDetails.bankName}
               onChange={(e) => patchBank({ bankName: e.target.value })}
+              aria-invalid={errors['bankDetails.bankName'] ? true : undefined}
               className={inputClass}
             >
               <option value="">Select bank</option>
@@ -393,15 +445,17 @@ export default function SupplierProfileEditor({ section, draft, onChange, onSave
                 <option key={bank} value={bank}>{bank}</option>
               ))}
             </select>
+            <FieldError message={errors['bankDetails.bankName']} />
           </div>
-          <Field label="Account name" value={draft.bankDetails.accountName} onChange={(v) => patchBank({ accountName: v })} />
-          <Field label="Account number" value={draft.bankDetails.accountNumber} onChange={(v) => patchBank({ accountNumber: v })} />
-          <Field label="Branch code" value={draft.bankDetails.branchCode} onChange={(v) => patchBank({ branchCode: v })} />
+          <Field label="Account name" value={draft.bankDetails.accountName} onChange={(v) => patchBank({ accountName: v })} error={errors['bankDetails.accountName']} maxLength={200} />
+          <Field label="Account number" value={draft.bankDetails.accountNumber} onChange={(v) => patchBank({ accountNumber: v })} error={errors['bankDetails.accountNumber']} maxLength={42} />
+          <Field label="Branch code" value={draft.bankDetails.branchCode} onChange={(v) => patchBank({ branchCode: v })} error={errors['bankDetails.branchCode']} maxLength={40} />
           <div>
             <label className={labelClass}>Account type</label>
             <select
               value={draft.bankDetails.accountType}
               onChange={(e) => patchBank({ accountType: e.target.value })}
+              aria-invalid={errors['bankDetails.accountType'] ? true : undefined}
               className={inputClass}
             >
               <option value="">Select type</option>
@@ -409,6 +463,7 @@ export default function SupplierProfileEditor({ section, draft, onChange, onSave
                 <option key={type.value} value={type.value}>{type.label}</option>
               ))}
             </select>
+            <FieldError message={errors['bankDetails.accountType']} />
           </div>
         </div>
         {saveBar}
@@ -420,21 +475,24 @@ export default function SupplierProfileEditor({ section, draft, onChange, onSave
     return (
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="Proposed business" value={draft.proposedBusiness} onChange={(v) => patch({ proposedBusiness: v })} />
-          <Field label="Volume / quantity" value={draft.tradeVolume} onChange={(v) => patch({ tradeVolume: v })} />
+          <Field label="Proposed business" value={draft.proposedBusiness} onChange={(v) => patch({ proposedBusiness: v })} error={errors.proposedBusiness} maxLength={200} />
+          <Field label="Volume / quantity" value={draft.tradeVolume} onChange={(v) => patch({ tradeVolume: v })} error={errors.tradeVolume} maxLength={200} />
         </div>
         <Field
           label="Products / goods (comma-separated)"
           value={draft.tradeProductsText}
           onChange={(v) => patch({ tradeProductsText: v })}
           placeholder="e.g. Cement, Steel, Aggregates"
+          error={errors.tradeProducts}
         />
         <div>
           <label className={labelClass}>Supply categories</label>
           <CategoryMultiSelect
             value={draft.categories}
             onChange={(categories: string[]) => patch({ categories })}
+            invalid={!!errors.categories}
           />
+          <FieldError message={errors.categories} />
         </div>
         {saveBar}
       </div>
@@ -466,22 +524,22 @@ export default function SupplierProfileEditor({ section, draft, onChange, onSave
                 const next = [...draft.contactPersons];
                 next[idx] = { ...person, name: v };
                 patch({ contactPersons: next });
-              }} />
+              }} error={errors[`contactPersons.${idx}.name`]} maxLength={120} />
               <Field label="Position" value={person.position} onChange={(v) => {
                 const next = [...draft.contactPersons];
                 next[idx] = { ...person, position: v };
                 patch({ contactPersons: next });
-              }} />
+              }} error={errors[`contactPersons.${idx}.position`]} maxLength={120} />
               <Field label="Email" value={person.email} onChange={(v) => {
                 const next = [...draft.contactPersons];
                 next[idx] = { ...person, email: v };
                 patch({ contactPersons: next });
-              }} type="email" />
+              }} type="email" error={errors[`contactPersons.${idx}.email`]} maxLength={254} />
               <Field label="Phone" value={person.phone} onChange={(v) => {
                 const next = [...draft.contactPersons];
                 next[idx] = { ...person, phone: v };
                 patch({ contactPersons: next });
-              }} />
+              }} error={errors[`contactPersons.${idx}.phone`]} maxLength={30} />
             </div>
             <label className="inline-flex items-center gap-2 text-sm text-gray-700">
               <input
@@ -537,22 +595,22 @@ export default function SupplierProfileEditor({ section, draft, onChange, onSave
                 const next = [...draft.clientReferrals];
                 next[idx] = { ...ref, clientName: v };
                 patch({ clientReferrals: next });
-              }} />
+              }} error={errors[`clientReferrals.${idx}.clientName`]} maxLength={200} />
               <Field label="Contact person" value={ref.contactPerson} onChange={(v) => {
                 const next = [...draft.clientReferrals];
                 next[idx] = { ...ref, contactPerson: v };
                 patch({ clientReferrals: next });
-              }} />
+              }} error={errors[`clientReferrals.${idx}.contactPerson`]} maxLength={120} />
               <Field label="Email" value={ref.contactEmail} onChange={(v) => {
                 const next = [...draft.clientReferrals];
                 next[idx] = { ...ref, contactEmail: v };
                 patch({ clientReferrals: next });
-              }} type="email" />
+              }} type="email" error={errors[`clientReferrals.${idx}.contactEmail`]} maxLength={254} />
               <Field label="Phone" value={ref.contactPhone} onChange={(v) => {
                 const next = [...draft.clientReferrals];
                 next[idx] = { ...ref, contactPhone: v };
                 patch({ clientReferrals: next });
-              }} />
+              }} error={errors[`clientReferrals.${idx}.contactPhone`]} maxLength={30} />
             </div>
             <div>
               <label className={labelClass}>Project description</label>
@@ -564,8 +622,11 @@ export default function SupplierProfileEditor({ section, draft, onChange, onSave
                   patch({ clientReferrals: next });
                 }}
                 rows={2}
+                maxLength={2000}
+                aria-invalid={errors[`clientReferrals.${idx}.projectDescription`] ? true : undefined}
                 className={inputClass}
               />
+              <FieldError message={errors[`clientReferrals.${idx}.projectDescription`]} />
             </div>
           </div>
         ))}

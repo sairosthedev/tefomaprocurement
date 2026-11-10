@@ -13,6 +13,9 @@ import {
   businessTypeLabel,
   entityTypeLabel
 } from '../lib/supplierTypes';
+import { validateSupplierRegistration, type FieldErrors } from '@fossil/shared';
+import FieldError from '../components/FieldError';
+import { serverFieldErrors, useFormValidation } from '../lib/useFormValidation';
 
 const STEPS = [
   { label: 'Account', description: 'Who is signing up' },
@@ -21,6 +24,23 @@ const STEPS = [
   { label: 'Banking', description: 'Where you are paid' },
   { label: 'Review', description: 'Check, then register' }
 ];
+
+/** The fields on each step: Next checks its own, and a problem found later opens its step. */
+const STEP_FIELDS: string[][] = [
+  ['firstName', 'lastName', 'email', 'phone', 'password', 'confirmPassword'],
+  ['companyName', 'tradingName', 'registrationNumber', 'vatNumber', 'businessType', 'entityType', 'categories'],
+  ['street', 'city', 'province', 'postalCode', 'country', 'countryOther'],
+  ['bankName', 'accountName', 'accountNumber', 'branchCode', 'accountType'],
+  []
+];
+
+/** The earliest step (1-based) holding one of these fields, or 0 when none is on a step. */
+function firstStepWith(errors: FieldErrors): number {
+  const steps = Object.keys(errors)
+    .map((field) => STEP_FIELDS.findIndex((fields) => fields.includes(field)) + 1)
+    .filter((n) => n > 0);
+  return steps.length ? Math.min(...steps) : 0;
+}
 
 export default function Register() {
   const [step, setStep] = useState<any>(1);
@@ -80,53 +100,68 @@ export default function Register() {
 
   const isZimbabwe = formData.country === 'Zimbabwe';
 
-  const validateStep = () => {
-    if (step === 1) {
-      if (!formData.email || !formData.password || !formData.firstName || !formData.lastName) {
-        showToast('Please fill in all required fields', 'error', 4000);
-        return false;
-      }
-      // Your profile's primary contact needs a phone number; the server refuses without one.
-      if (!formData.phone.trim()) {
-        showToast('Please enter a contact phone number', 'error', 4000);
-        return false;
-      }
-      if (formData.password !== formData.confirmPassword) {
-        showToast('Passwords do not match', 'error', 4000);
-        return false;
-      }
-      if (formData.password.length < 6) {
-        showToast('Password must be at least 6 characters', 'error', 4000);
-        return false;
-      }
+  /** What is sent to register. */
+  const toPayload = (values: any) => ({
+    email: values.email,
+    password: values.password,
+    firstName: values.firstName,
+    lastName: values.lastName,
+    phone: values.phone.trim(),
+    role: 'supplier',
+    companyDetails: {
+      companyName: values.companyName,
+      tradingName: values.tradingName,
+      registrationNumber: values.registrationNumber,
+      vatNumber: values.vatNumber,
+      businessType: values.businessType || undefined,
+      entityType: values.entityType || undefined,
+      address: {
+        street: values.street,
+        city: values.city,
+        province: values.province,
+        postalCode: values.postalCode,
+        country: values.country === 'Other' ? values.countryOther.trim() : values.country
+      },
+      bankDetails: {
+        bankName: values.bankName,
+        accountNumber: values.accountNumber,
+        branchCode: values.branchCode,
+        accountType: values.accountType
+      },
+      categories: values.categories
     }
+  });
 
-    if (step === 2) {
-      if (!formData.companyName || !formData.registrationNumber) {
-        showToast('Company name and registration number are required', 'error', 4000);
-        return false;
-      }
-    }
+  /** Every problem with the form: the payload, plus what only the screen asks (confirmation, the "Other" country). */
+  const allErrors = (values: any) => {
+    const payload = toPayload(values);
+    return validateSupplierRegistration(
+      {
+        ...payload,
+        confirmPassword: values.confirmPassword,
+        countryOther: values.countryOther,
+        companyDetails: { ...payload.companyDetails, address: { ...payload.companyDetails.address, country: values.country } }
+      },
+      { requireCountry: true }
+    );
+  };
 
-    if (step === 3) {
-      const country = resolvedCountry();
-      if (!formData.country) {
-        showToast('Please select your country', 'error', 4000);
-        return false;
-      }
-      if (formData.country === 'Other' && !country) {
-        showToast('Please enter your country name', 'error', 4000);
-        return false;
-      }
-    }
+  // Next checks the step on screen; Register, on the review step, checks them all.
+  const validation = useFormValidation((values: any) => {
+    const errors = allErrors(values);
+    if (step >= STEPS.length) return errors;
+    const fields = STEP_FIELDS[step - 1];
+    return Object.fromEntries(Object.entries(errors).filter(([field]) => fields.includes(field)));
+  }, formData);
 
-    return true;
+  const goToStep = (next: number) => {
+    validation.reset();
+    setStep(next);
   };
 
   const nextStep = () => {
-    if (validateStep()) {
-      setStep((prev: any) => Math.min(prev + 1, STEPS.length));
-    }
+    if (!validation.check()) return;
+    goToStep(Math.min(step + 1, STEPS.length));
   };
 
   useEffect(() => {
@@ -134,7 +169,7 @@ export default function Register() {
   }, [step]);
 
   const prevStep = () => {
-    setStep((prev: any) => prev - 1);
+    goToStep(step - 1);
   };
 
   const handleSubmit = async (e: any) => {
@@ -144,45 +179,27 @@ export default function Register() {
       nextStep();
       return;
     }
-    if (!validateStep()) return;
+    if (!validation.check()) {
+      // Open the step holding the first problem; its messages show there.
+      const target = firstStepWith(allErrors(formData));
+      if (target) setStep(target);
+      return;
+    }
 
     setLoading(true);
 
     try {
-      await authAPI.register({
-        email: formData.email,
-        password: formData.password,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        phone: formData.phone.trim(),
-        role: 'supplier',
-        companyDetails: {
-          companyName: formData.companyName,
-          tradingName: formData.tradingName,
-          registrationNumber: formData.registrationNumber,
-          vatNumber: formData.vatNumber,
-          businessType: formData.businessType || undefined,
-          entityType: formData.entityType || undefined,
-          address: {
-            street: formData.street,
-            city: formData.city,
-            province: formData.province,
-            postalCode: formData.postalCode,
-            country: resolvedCountry()
-          },
-          bankDetails: {
-            bankName: formData.bankName,
-            accountNumber: formData.accountNumber,
-            branchCode: formData.branchCode,
-            accountType: formData.accountType
-          },
-          categories: formData.categories
-        }
-      });
+      await authAPI.register(toPayload(formData));
 
       setSuccess(true);
     } catch (err: any) {
-      showToast(err.response?.data?.message || 'Registration failed. Please try again.', 'error', 5000);
+      const fields = serverFieldErrors(err);
+      const target = fields ? firstStepWith(fields) : 0;
+      if (target && validation.fromServer(err)) {
+        setStep(target);
+      } else {
+        showToast(err.response?.data?.message || 'Registration failed. Please try again.', 'error', 5000);
+      }
     } finally {
       setLoading(false);
     }
@@ -233,11 +250,11 @@ export default function Register() {
 
         {/* Progress Steps */}
         <div className="px-8 pt-6">
-          <FormSteps steps={STEPS} current={step - 1} onSelect={(i) => setStep(i + 1)} />
+          <FormSteps steps={STEPS} current={step - 1} onSelect={(i) => goToStep(i + 1)} />
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-8">
+        <form ref={validation.formRef} onSubmit={handleSubmit} noValidate className="p-8">
 
           {/* Step 1: Account Info */}
           {step === 1 && (
@@ -253,7 +270,10 @@ export default function Register() {
                     onChange={handleChange}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                     required
+                    maxLength={120}
+                    {...validation.invalid('firstName')}
                   />
+                  <FieldError message={validation.errors.firstName} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
@@ -264,7 +284,10 @@ export default function Register() {
                     onChange={handleChange}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                     required
+                    maxLength={120}
+                    {...validation.invalid('lastName')}
                   />
+                  <FieldError message={validation.errors.lastName} />
                 </div>
               </div>
               <div>
@@ -276,7 +299,10 @@ export default function Register() {
                   onChange={handleChange}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                   required
+                  maxLength={254}
+                  {...validation.invalid('email')}
                 />
+                <FieldError message={validation.errors.email} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
@@ -287,7 +313,10 @@ export default function Register() {
                   onChange={handleChange}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                   required
+                  maxLength={30}
+                  {...validation.invalid('phone')}
                 />
+                <FieldError message={validation.errors.phone} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -300,6 +329,7 @@ export default function Register() {
                       onChange={handleChange}
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none pr-16"
                       required
+                      {...validation.invalid('password')}
                     />
                     <button
                       type="button"
@@ -310,6 +340,7 @@ export default function Register() {
                       {showPassword ? 'HIDE' : 'SHOW'}
                     </button>
                   </div>
+                  <FieldError message={validation.errors.password} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password *</label>
@@ -320,7 +351,9 @@ export default function Register() {
                     onChange={handleChange}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                     required
+                    {...validation.invalid('confirmPassword')}
                   />
+                  <FieldError message={validation.errors.confirmPassword} />
                 </div>
               </div>
             </div>
@@ -339,7 +372,10 @@ export default function Register() {
                   onChange={handleChange}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                   required
+                  maxLength={200}
+                  {...validation.invalid('companyName')}
                 />
+                <FieldError message={validation.errors.companyName} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Trading Name (if different)</label>
@@ -349,7 +385,10 @@ export default function Register() {
                   value={formData.tradingName}
                   onChange={handleChange}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                  maxLength={200}
+                  {...validation.invalid('tradingName')}
                 />
+                <FieldError message={validation.errors.tradingName} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -362,7 +401,10 @@ export default function Register() {
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                     placeholder="e.g., 2024/123456/07"
                     required
+                    maxLength={50}
+                    {...validation.invalid('registrationNumber')}
                   />
+                  <FieldError message={validation.errors.registrationNumber} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">VAT Number</label>
@@ -372,7 +414,10 @@ export default function Register() {
                     value={formData.vatNumber}
                     onChange={handleChange}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    maxLength={50}
+                    {...validation.invalid('vatNumber')}
                   />
+                  <FieldError message={validation.errors.vatNumber} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -383,12 +428,14 @@ export default function Register() {
                     value={formData.businessType}
                     onChange={handleChange}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
+                    {...validation.invalid('businessType')}
                   >
                     <option value="">Select (optional)</option>
                     {BUSINESS_TYPE_OPTIONS.map((o) => (
                       <option key={o.value} value={o.value}>{o.label}</option>
                     ))}
                   </select>
+                  <FieldError message={validation.errors.businessType} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Entity Type</label>
@@ -397,12 +444,14 @@ export default function Register() {
                     value={formData.entityType}
                     onChange={handleChange}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
+                    {...validation.invalid('entityType')}
                   >
                     <option value="">Select (optional)</option>
                     {ENTITY_TYPE_OPTIONS.map((o) => (
                       <option key={o.value} value={o.value}>{o.label}</option>
                     ))}
                   </select>
+                  <FieldError message={validation.errors.entityType} />
                 </div>
               </div>
               <div>
@@ -412,7 +461,9 @@ export default function Register() {
                   onChange={(codes) => setFormData((prev: any) => ({ ...prev, categories: codes }))}
                   placeholder="Select categories your company supplies…"
                   placement="top"
+                  invalid={!!validation.errors.categories}
                 />
+                <FieldError message={validation.errors.categories} />
               </div>
             </div>
           )}
@@ -429,7 +480,10 @@ export default function Register() {
                   value={formData.street}
                   onChange={handleChange}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                  maxLength={200}
+                  {...validation.invalid('street')}
                 />
+                <FieldError message={validation.errors.street} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -440,7 +494,10 @@ export default function Register() {
                     value={formData.city}
                     onChange={handleChange}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    maxLength={80}
+                    {...validation.invalid('city')}
                   />
+                  <FieldError message={validation.errors.city} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -452,6 +509,7 @@ export default function Register() {
                       value={formData.province}
                       onChange={handleChange}
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
+                      {...validation.invalid('province')}
                     >
                       <option value="">Select Province</option>
                       {PROVINCES.map((province: string) => (
@@ -466,8 +524,11 @@ export default function Register() {
                       onChange={handleChange}
                       placeholder="e.g. California, Gauteng, Ontario"
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                      maxLength={80}
+                      {...validation.invalid('province')}
                     />
                   )}
+                  <FieldError message={validation.errors.province} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -479,7 +540,10 @@ export default function Register() {
                     value={formData.postalCode}
                     onChange={handleChange}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    maxLength={20}
+                    {...validation.invalid('postalCode')}
                   />
+                  <FieldError message={validation.errors.postalCode} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Country *</label>
@@ -489,12 +553,14 @@ export default function Register() {
                     onChange={handleChange}
                     required
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
+                    {...validation.invalid('country')}
                   >
                     <option value="">Select Country</option>
                     {COUNTRIES.map((country: string) => (
                       <option key={country} value={country}>{country}</option>
                     ))}
                   </select>
+                  <FieldError message={validation.errors.country} />
                 </div>
               </div>
               {formData.country === 'Other' && (
@@ -508,7 +574,10 @@ export default function Register() {
                     placeholder="Enter your country"
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                     required
+                    maxLength={80}
+                    {...validation.invalid('countryOther')}
                   />
+                  <FieldError message={validation.errors.countryOther} />
                 </div>
               )}
             </div>
@@ -529,6 +598,7 @@ export default function Register() {
                     value={formData.bankName}
                     onChange={handleChange}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
+                    {...validation.invalid('bankName')}
                   >
                     <option value="">Select Bank</option>
                     {BANKS.map((bank: string) => (
@@ -543,8 +613,11 @@ export default function Register() {
                     onChange={handleChange}
                     placeholder="Enter your bank name"
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    maxLength={120}
+                    {...validation.invalid('bankName')}
                   />
                 )}
+                <FieldError message={validation.errors.bankName} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -555,7 +628,10 @@ export default function Register() {
                     value={formData.accountNumber}
                     onChange={handleChange}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    maxLength={42}
+                    {...validation.invalid('accountNumber')}
                   />
+                  <FieldError message={validation.errors.accountNumber} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -567,7 +643,10 @@ export default function Register() {
                     value={formData.branchCode}
                     onChange={handleChange}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    maxLength={40}
+                    {...validation.invalid('branchCode')}
                   />
+                  <FieldError message={validation.errors.branchCode} />
                 </div>
               </div>
               <div>
@@ -577,11 +656,13 @@ export default function Register() {
                   value={formData.accountType}
                   onChange={handleChange}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
+                  {...validation.invalid('accountType')}
                 >
                   {ACCOUNT_TYPES.map((type: { value: string; label: string }) => (
                     <option key={type.value} value={type.value}>{type.label}</option>
                   ))}
                 </select>
+                <FieldError message={validation.errors.accountType} />
               </div>
             </div>
           )}
@@ -638,7 +719,7 @@ export default function Register() {
                 <div key={section.title} className="rounded-xl border border-gray-200 p-4">
                   <div className="flex items-center justify-between mb-2">
                     <p className="font-semibold text-gray-900">{section.title}</p>
-                    <button type="button" onClick={() => setStep(section.to)} className="text-sm font-medium text-primary hover:underline">
+                    <button type="button" onClick={() => goToStep(section.to)} className="text-sm font-medium text-primary hover:underline">
                       Edit
                     </button>
                   </div>

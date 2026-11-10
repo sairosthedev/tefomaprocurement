@@ -32,10 +32,13 @@ const submitRequisition = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
+    // The draft's lines were checked when it was saved (validateRequisition);
+    // submitting adds only the need for at least one of them.
     if (!hasEnteredLineItems(requisition.items)) {
       return res.status(400).json({
         success: false,
-        message: 'At least one item is required before submitting'
+        message: 'At least one item is required before submitting',
+        errors: { items: 'Add at least one item' }
       });
     }
 

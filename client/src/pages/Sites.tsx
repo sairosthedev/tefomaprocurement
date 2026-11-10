@@ -7,6 +7,9 @@ import Drawer from '../components/Drawer';
 import TableSkeleton from '../components/TableSkeleton';
 import { MapPin, Plus } from 'lucide-react';
 import { PROVINCES } from '../lib/constants';
+import { validateSite } from '@fossil/shared';
+import FieldError from '../components/FieldError';
+import { useFormValidation } from '../lib/useFormValidation';
 
 const emptyForm = {
   code: '',
@@ -29,6 +32,24 @@ export default function Sites() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
 
+  const toPayload = (values: typeof emptyForm) => ({
+    code: values.code.trim(),
+    name: values.name.trim(),
+    type: values.type,
+    hasLocalStore: values.hasLocalStore,
+    status: values.status,
+    address: {
+      street: values.street.trim(),
+      city: values.city.trim(),
+      province: values.province,
+      postalCode: values.postalCode.trim()
+    }
+  });
+  const validation = useFormValidation(
+    (values: typeof emptyForm) => validateSite(toPayload(values), { isNew: !editing }),
+    form
+  );
+
   useEffect(() => {
     load();
   }, []);
@@ -48,6 +69,7 @@ export default function Sites() {
   const openCreate = () => {
     setEditing(null);
     setForm(emptyForm);
+    validation.reset();
     setShowModal(true);
   };
 
@@ -64,28 +86,13 @@ export default function Sites() {
       province: site.address?.province || '',
       postalCode: site.address?.postalCode || ''
     });
+    validation.reset();
     setShowModal(true);
   };
 
   const handleSave = async () => {
-    if (!form.code.trim() || !form.name.trim()) {
-      showToast('Code and name are required', 'error');
-      return;
-    }
-
-    const payload = {
-      code: form.code.trim(),
-      name: form.name.trim(),
-      type: form.type,
-      hasLocalStore: form.hasLocalStore,
-      status: form.status,
-      address: {
-        street: form.street.trim(),
-        city: form.city.trim(),
-        province: form.province,
-        postalCode: form.postalCode.trim()
-      }
-    };
+    if (!validation.check()) return;
+    const payload = toPayload(form);
 
     try {
       setSaving(true);
@@ -99,7 +106,9 @@ export default function Sites() {
       setShowModal(false);
       load();
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to save site', 'error');
+      if (!validation.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Failed to save site', 'error');
+      }
     } finally {
       setSaving(false);
     }
@@ -202,7 +211,7 @@ export default function Sites() {
       </div>
 
       <Drawer isOpen={showModal} onClose={() => setShowModal(false)} title={editing ? 'Edit site' : 'Add site'} size="lg">
-        <div className="space-y-4">
+        <div ref={validation.formRef} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Code</label>
@@ -212,7 +221,10 @@ export default function Sites() {
                 disabled={Boolean(editing)}
                 className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm disabled:bg-gray-50"
                 placeholder="HQ"
+                maxLength={20}
+                {...validation.invalid('code')}
               />
+              <FieldError message={validation.errors.code} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
@@ -232,7 +244,10 @@ export default function Sites() {
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"
+              maxLength={120}
+              {...validation.invalid('name')}
             />
+            <FieldError message={validation.errors.name} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -241,7 +256,9 @@ export default function Sites() {
                 value={form.city}
                 onChange={(e) => setForm({ ...form, city: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"
+                {...validation.invalid('city')}
               />
+              <FieldError message={validation.errors.city} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Province</label>

@@ -1,13 +1,18 @@
 import type { Request, Response } from 'express';
+import { validateRequisitionRejection } from '@fossil/shared';
 import { PurchaseRequisition } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { createNotification } from '../../services/notification.service.js';
 import { canActOnDepartment } from '../../lib/departmentScope.js';
+import { refuseInvalid } from '../../lib/validation.js';
 
 const rejectRequisition = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
-    const { comments } = req.body;
+    // The screen sends the reason as both `reason` and `comments`; either will do.
+    const { reason, comments } = req.body;
+    if (refuseInvalid(res, validateRequisitionRejection({ reason: reason || comments, comments }))) return;
+    const rejectionReason = String(reason || comments).trim();
 
     const requisition = await PurchaseRequisition.findById(id);
     if (!requisition || requisition.isDeleted) {
@@ -37,7 +42,7 @@ const rejectRequisition = async (req: Request, res: Response): Promise<any> => {
       action: 'rejected',
       by: req.user!._id,
       role: req.user!.role,
-      comments: comments || 'Rejected by Department Head'
+      comments: rejectionReason
     });
 
     await requisition.save();
@@ -58,7 +63,7 @@ const rejectRequisition = async (req: Request, res: Response): Promise<any> => {
       recipient: requisition.requestedBy,
       type: 'requisition_rejected',
       title: 'Requisition Rejected',
-      message: `Your requisition ${requisition.requisitionNumber} was rejected by the Department Head.${comments ? ` Reason: ${comments}` : ''}`,
+      message: `Your requisition ${requisition.requisitionNumber} was rejected by the Department Head. Reason: ${rejectionReason}`,
       entity: 'PurchaseRequisition',
       entityId: requisition._id,
       relatedUser: req.user!._id

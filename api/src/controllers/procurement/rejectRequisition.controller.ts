@@ -1,20 +1,17 @@
 import type { Request, Response } from 'express';
+import { validateRequisitionRejection } from '@fossil/shared';
 
 import { PurchaseRequisition } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { refuseInvalid } from '../../lib/validation.js';
 import { createNotification } from '../../services/notification.service.js';
 
 const rejectRequisition = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
     const { reason, comments } = req.body;
-
-    if (!reason && !comments) {
-      return res.status(400).json({
-        success: false,
-        message: 'Rejection reason is required'
-      });
-    }
+    // The reason may come as `reason` or as `comments`.
+    if (refuseInvalid(res, validateRequisitionRejection({ reason: reason || comments, comments }))) return;
 
     const requisition = await PurchaseRequisition.findById(id);
     if (!requisition || requisition.isDeleted) {

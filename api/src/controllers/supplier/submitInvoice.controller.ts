@@ -9,6 +9,8 @@ import { syncPurchaseOrderFinancials } from '../../services/purchaseOrderFinanci
 import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole } from '../../services/notification.service.js';
 import { escapeRegex } from '../../lib/regex.js';
+import { validateInvoice } from '@fossil/shared';
+import { refuseInvalid } from '../../lib/validation.js';
 
 const submitInvoice = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -27,12 +29,7 @@ const submitInvoice = async (req: Request, res: Response): Promise<any> => {
       notes
     } = req.body;
 
-    if (!purchaseOrderId || !items?.length || !invoiceDate) {
-      return res.status(400).json({
-        success: false,
-        message: 'Purchase order, invoice date, and line items are required'
-      });
-    }
+    if (refuseInvalid(res, validateInvoice(req.body))) return;
 
     const po = await PurchaseOrder.findById(purchaseOrderId);
     if (!po || po.isDeleted) {
@@ -64,9 +61,11 @@ const submitInvoice = async (req: Request, res: Response): Promise<any> => {
         vendorInvoiceNumber: { $regex: `^\\s*${escapeRegex(vendorNumber)}\\s*$`, $options: 'i' }
       }).select('invoiceNumber');
       if (duplicate) {
+        const message = `You have already submitted invoice number ${vendorNumber} (${duplicate.invoiceNumber}). Use a new invoice number, or ask finance to reject the earlier one first.`;
         return res.status(409).json({
           success: false,
-          message: `You have already submitted invoice number ${vendorNumber} (${duplicate.invoiceNumber}). Use a new invoice number, or ask finance to reject the earlier one first.`
+          message,
+          errors: { vendorInvoiceNumber: message }
         });
       }
     }

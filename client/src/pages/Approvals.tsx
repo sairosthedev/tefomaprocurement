@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { isProcurementHead } from '@fossil/shared';
+import { TEXT_LIMITS, isProcurementHead, validatePurchaseOrderDecision } from '@fossil/shared';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import api from '../lib/api';
@@ -14,6 +14,8 @@ import { getCurrentSbuCurrency } from '../lib/sbu';
 import Pagination from '../components/Pagination';
 import TableSkeleton from '../components/TableSkeleton';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
+import FieldError from '../components/FieldError';
+import { useFormValidation } from '../lib/useFormValidation';
 
 /** High-value flag compares the USD equivalent, so it means the same in every SBU. */
 const HIGH_VALUE_USD = 10000;
@@ -61,6 +63,18 @@ export default function Approvals() {
   const [showModal, setShowModal] = useState<any>(false);
   const [actionLoading, setActionLoading] = useState<any>(false);
   const [comment, setComment] = useState<any>('');
+  // Which button was pressed: comments are optional to approve, a reason is needed to reject.
+  const [decision, setDecision] = useState<'approve' | 'reject'>('approve');
+  const validation = useFormValidation(validatePurchaseOrderDecision, { decision, comment });
+  const commentError = validation.errors.reason || validation.errors.comments;
+
+  const openReview = (item: any) => {
+    setSelectedItem(item);
+    setComment('');
+    setDecision('approve');
+    validation.reset();
+    setShowModal(true);
+  };
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
@@ -105,6 +119,8 @@ export default function Approvals() {
   };
 
   const handleApprove = async () => {
+    setDecision('approve');
+    if (!validation.check({ decision: 'approve', comment })) return;
     try {
       setActionLoading(true);
       let endpoint = '';
@@ -134,18 +150,16 @@ export default function Approvals() {
       setComment('');
       fetchPendingApprovals();
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to approve', 'error');
+      if (!validation.fromServer(error)) showToast(error.response?.data?.message || 'Failed to approve', 'error');
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleReject = async () => {
-    if (!comment.trim()) {
-      showToast('Please provide a reason for rejection', 'error');
-      return;
-    }
-    
+    setDecision('reject');
+    if (!validation.check({ decision: 'reject', comment })) return;
+
     try {
       setActionLoading(true);
       let endpoint = '';
@@ -170,7 +184,7 @@ export default function Approvals() {
       setComment('');
       fetchPendingApprovals();
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to reject', 'error');
+      if (!validation.fromServer(error)) showToast(error.response?.data?.message || 'Failed to reject', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -327,7 +341,7 @@ export default function Approvals() {
                     </td>
                     <td className="py-2 px-3 border-b border-gray-100">
                       <button
-                        onClick={() => { setSelectedItem(item); setShowModal(true); }}
+                        onClick={() => openReview(item)}
                         className="px-2 py-1 text-xs border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors"
                       >
                         Review
@@ -520,17 +534,21 @@ export default function Approvals() {
             )}
 
             {/* Comment */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div ref={validation.formRef}>
+              <label htmlFor="po-review-comment" className="block text-sm font-medium text-gray-700 mb-2">
                 Comments (required for rejection)
               </label>
               <textarea
+                id="po-review-comment"
                 value={comment}
                 onChange={(e: any) => setComment(e.target.value)}
                 rows={3}
+                maxLength={TEXT_LIMITS.long}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
                 placeholder="Add your comments or reason for decision..."
+                {...(commentError ? { 'aria-invalid': true as const } : {})}
               />
+              <FieldError message={commentError} />
             </div>
 
             {/* Actions */}

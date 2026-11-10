@@ -5,8 +5,10 @@ import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency } from '../lib/constants';
 import { cooThresholdLabel, usdEquivalentLabel } from '../lib/cooApproval';
-import { PO_CANCELLATION_REASONS, isProcurementHead } from '@fossil/shared';
+import { PO_CANCELLATION_REASONS, TEXT_LIMITS, isProcurementHead, validatePurchaseOrderDecision } from '@fossil/shared';
 import PageHeader from '../components/PageHeader';
+import FieldError from '../components/FieldError';
+import { serverFieldErrors, useFormValidation } from '../lib/useFormValidation';
 import Modal from '../components/Modal';
 import CancelWorkflowModal from '../components/CancelWorkflowModal';
 import { canCancelPurchaseOrder, purchaseOrderCancelApiBase } from '../lib/cancellationAccess';
@@ -59,6 +61,11 @@ export default function PurchaseOrderDetail() {
   const [decision, setDecision] = useState<'approve' | 'reject' | null>(null);
   const [decisionComment, setDecisionComment] = useState('');
   const [deciding, setDeciding] = useState(false);
+  // Comments are optional when approving; rejecting needs a reason.
+  const decisionValidation = useFormValidation(validatePurchaseOrderDecision, {
+    decision,
+    comment: decisionComment
+  });
 
   // The Head of Procurement is stored as a department_head but raises POs too.
   // Admins read POs but take no step on them.
@@ -128,7 +135,10 @@ export default function PurchaseOrderDetail() {
       showToast('Purchase order cancelled', 'success');
       fetchPurchaseOrder();
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to cancel purchase order', 'error');
+      // A refused field shows under it in the cancel form instead.
+      if (!serverFieldErrors(error)) {
+        showToast(error.response?.data?.message || 'Failed to cancel purchase order', 'error');
+      }
       throw error;
     } finally {
       setCancelling(false);
@@ -147,6 +157,12 @@ export default function PurchaseOrderDetail() {
           ? 'coo'
           : null;
 
+  const openDecision = (next: 'approve' | 'reject') => {
+    setDecision(next);
+    setDecisionComment('');
+    decisionValidation.reset();
+  };
+
   const closeDecision = () => {
     setDecision(null);
     setDecisionComment('');
@@ -154,10 +170,7 @@ export default function PurchaseOrderDetail() {
 
   const handleDecision = async () => {
     if (!approvalApi || !decision) return;
-    if (decision === 'reject' && !decisionComment.trim()) {
-      showToast('Give a reason for rejecting', 'error');
-      return;
-    }
+    if (!decisionValidation.check()) return;
     try {
       setDeciding(true);
       const comment = decisionComment.trim();
@@ -172,7 +185,9 @@ export default function PurchaseOrderDetail() {
       closeDecision();
       fetchPurchaseOrder();
     } catch (error: any) {
-      showToast(error.response?.data?.message || `Failed to ${decision} the purchase order`, 'error');
+      if (!decisionValidation.fromServer(error)) {
+        showToast(error.response?.data?.message || `Failed to ${decision} the purchase order`, 'error');
+      }
     } finally {
       setDeciding(false);
     }
@@ -239,7 +254,7 @@ export default function PurchaseOrderDetail() {
               <>
                 <button
                   type="button"
-                  onClick={() => setDecision('approve')}
+                  onClick={() => openDecision('approve')}
                   className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
                 >
                   <CheckCircle className="h-4 w-4" />
@@ -247,7 +262,7 @@ export default function PurchaseOrderDetail() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setDecision('reject')}
+                  onClick={() => openDecision('reject')}
                   className="px-4 py-2 text-sm font-medium border border-red-200 text-red-700 rounded-lg hover:bg-red-50 transition-colors flex items-center gap-2"
                 >
                   <XCircle className="h-4 w-4" />
@@ -302,7 +317,7 @@ export default function PurchaseOrderDetail() {
             <button
               type="button"
               onClick={handleDecision}
-              disabled={deciding || (decision === 'reject' && !decisionComment.trim())}
+              disabled={deciding}
               className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 ${
                 decision === 'reject' ? 'border border-red-200 text-red-700 hover:bg-red-50' : 'bg-primary text-white hover:bg-primary-dark'
               }`}
@@ -313,13 +328,19 @@ export default function PurchaseOrderDetail() {
           </>
         }
       >
-        <textarea
-          value={decisionComment}
-          onChange={(e) => setDecisionComment(e.target.value)}
-          rows={3}
-          placeholder={decision === 'reject' ? 'Reason for rejecting (required)' : 'Comments (optional)'}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-        />
+        <div ref={decisionValidation.formRef}>
+          <textarea
+            value={decisionComment}
+            onChange={(e) => setDecisionComment(e.target.value)}
+            rows={3}
+            maxLength={TEXT_LIMITS.long}
+            aria-label={decision === 'reject' ? 'Reason for rejecting' : 'Comments'}
+            placeholder={decision === 'reject' ? 'Reason for rejecting (required)' : 'Comments (optional)'}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            {...(decisionValidation.errors.reason || decisionValidation.errors.comments ? { 'aria-invalid': true as const } : {})}
+          />
+          <FieldError message={decisionValidation.errors.reason || decisionValidation.errors.comments} />
+        </div>
       </Modal>
 
       <CancelWorkflowModal

@@ -3,18 +3,15 @@ import { User } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { verifyLoginOtp } from '../../services/otp.service.js';
 import { finalizeUserLogin } from '../../services/authLogin.service.js';
+import { validateLoginOtp } from '@fossil/shared';
+import { refuseInvalid } from '../../lib/validation.js';
 
 const verifyOtp = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { email, otp, code } = req.body;
+    const { email, otp, code } = req.body ?? {};
     const otpCode = (otp || code || '').toString().trim();
 
-    if (!email || !otpCode) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email and verification code are required'
-      });
-    }
+    if (refuseInvalid(res, validateLoginOtp({ email, otp: otpCode }))) return;
 
     const result = await verifyLoginOtp(email, otpCode);
     if (result.status !== 'success') {

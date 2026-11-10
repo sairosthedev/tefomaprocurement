@@ -6,7 +6,8 @@ import {
   checkItemAvailability,
   suggestAction
 } from '../../services/inventoryAvailability.service.js';
-import { hasEnteredLineItems } from '../../lib/lineItems.js';
+import { validateRequisition } from '@fossil/shared';
+import { refuseInvalid } from '../../lib/validation.js';
 import { sanitiseEquipment, sanitiseAttachments } from '../../services/lineAttachments.service.js';
 import { submitRequisitionForApproval } from '../../services/requisitionApproval.service.js';
 
@@ -25,20 +26,9 @@ const createRequisition = async (req: Request, res: Response): Promise<any> => {
       status
     } = req.body;
 
-    if (!title?.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Title is required'
-      });
-    }
-
+    // A draft needs a title and whole lines; submitting also needs an item.
     const isSubmitting = status === 'pending';
-    if (isSubmitting && !hasEnteredLineItems(items)) {
-      return res.status(400).json({
-        success: false,
-        message: 'At least one item is required before submitting'
-      });
-    }
+    if (refuseInvalid(res, validateRequisition(req.body, { submit: isSubmitting }))) return;
 
     // Calculate estimated prices and process items
     const siteId = await resolveSiteId(req.user, req.body.siteId);

@@ -22,7 +22,9 @@ import Pagination from '../components/Pagination';
 import TableSkeleton from '../components/TableSkeleton';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 import { useDebouncedValue } from '../lib/useDebouncedValue';
-import { isProcurementDepartment, isProcurementHead } from '@fossil/shared';
+import { ACCOUNT_LIMITS, TEXT_LIMITS, isProcurementDepartment, isProcurementHead, validateStaffUser } from '@fossil/shared';
+import FieldError from '../components/FieldError';
+import { useFormValidation } from '../lib/useFormValidation';
 
 const roleColors: any = {
   admin: 'bg-purple-100 text-purple-700',
@@ -84,6 +86,10 @@ export default function Users() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
+  const validation = useFormValidation(
+    (values: any) => validateStaffUser(values, { isNew: !editingUser, currentPhone: editingUser?.phone || '' }),
+    formData
+  );
 
   useEffect(() => {
     setPage(1);
@@ -149,27 +155,13 @@ export default function Users() {
       setEditingUser(null);
       resetForm();
     }
+    validation.reset();
     setShowModal(true);
   };
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
-    
-    // Validation
-    if (!editingUser && !formData.password) {
-      addToast('Password is required', 'error');
-      return;
-    }
-
-    if (formData.password && formData.password.length < 6) {
-      addToast('Password must be at least 6 characters', 'error');
-      return;
-    }
-
-    if (formData.password && formData.password !== formData.confirmPassword) {
-      addToast('Passwords do not match', 'error');
-      return;
-    }
+    if (!validation.check()) return;
 
     setSaving(true);
 
@@ -208,7 +200,9 @@ export default function Users() {
       resetForm();
       fetchUsers();
     } catch (error: any) {
-      addToast(error.response?.data?.message || 'Failed to save user', 'error');
+      if (!validation.fromServer(error)) {
+        addToast(error.response?.data?.message || 'Failed to save user', 'error');
+      }
     } finally {
       setSaving(false);
     }
@@ -381,7 +375,7 @@ export default function Users() {
         title={editingUser ? 'Edit User' : 'Add New User'}
         size="lg"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form ref={validation.formRef} onSubmit={handleSubmit} noValidate className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
@@ -391,7 +385,10 @@ export default function Users() {
                 onChange={(e: any) => setFormData({ ...formData, firstName: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                 required
+                maxLength={TEXT_LIMITS.name}
+                {...validation.invalid('firstName')}
               />
+              <FieldError message={validation.errors.firstName} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
@@ -401,7 +398,10 @@ export default function Users() {
                 onChange={(e: any) => setFormData({ ...formData, lastName: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                 required
+                maxLength={TEXT_LIMITS.name}
+                {...validation.invalid('lastName')}
               />
+              <FieldError message={validation.errors.lastName} />
             </div>
           </div>
 
@@ -413,8 +413,11 @@ export default function Users() {
               onChange={(e: any) => setFormData({ ...formData, email: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
               required
+              maxLength={TEXT_LIMITS.email}
               disabled={!!editingUser}
+              {...validation.invalid('email')}
             />
+            <FieldError message={validation.errors.email} />
             {editingUser && (
               <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
             )}
@@ -432,7 +435,9 @@ export default function Users() {
                 className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                 required={!editingUser}
                 minLength={6}
+                maxLength={ACCOUNT_LIMITS.password}
                 placeholder={editingUser ? '••••••••' : 'Min 6 characters'}
+                {...validation.invalid('password')}
               />
               <button
                 type="button"
@@ -442,6 +447,7 @@ export default function Users() {
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+            <FieldError message={validation.errors.password} />
           </div>
 
           {formData.password && (
@@ -453,8 +459,11 @@ export default function Users() {
                 onChange={(e: any) => setFormData({ ...formData, confirmPassword: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                 required={!!formData.password}
+                maxLength={ACCOUNT_LIMITS.password}
                 placeholder="Confirm password"
+                {...validation.invalid('confirmPassword')}
               />
+              <FieldError message={validation.errors.confirmPassword} />
             </div>
           )}
 
@@ -466,11 +475,13 @@ export default function Users() {
                 onChange={(e: any) => setFormData({ ...formData, role: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
                 required
+                {...validation.invalid('role')}
               >
                 {roleOptions.map((role: any) => (
                   <option key={role.value} value={role.value}>{role.label}</option>
                 ))}
               </select>
+              <FieldError message={validation.errors.role} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
@@ -478,12 +489,14 @@ export default function Users() {
                 value={formData.department}
                 onChange={(e: any) => setFormData({ ...formData, department: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
+                {...validation.invalid('department')}
               >
                 <option value="">No Department</option>
                 {departments.map((dept: any) => (
                   <option key={dept._id} value={dept._id}>{dept.name}</option>
                 ))}
               </select>
+              <FieldError message={validation.errors.department} />
             </div>
           </div>
 
@@ -511,7 +524,10 @@ export default function Users() {
                 onChange={(e: any) => setFormData({ ...formData, phone: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                 placeholder="+263..."
+                maxLength={TEXT_LIMITS.phone}
+                {...validation.invalid('phone')}
               />
+              <FieldError message={validation.errors.phone} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
@@ -519,11 +535,13 @@ export default function Users() {
                 value={formData.status}
                 onChange={(e: any) => setFormData({ ...formData, status: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
+                {...validation.invalid('status')}
               >
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
                 <option value="suspended">Suspended</option>
               </select>
+              <FieldError message={validation.errors.status} />
             </div>
           </div>
 

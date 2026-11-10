@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express';
+import { validateRequisitionStoresForward } from '@fossil/shared';
 import { PurchaseRequisition } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { refuseInvalid } from '../../lib/validation.js';
 import { notifyUsersByRole } from '../../services/notification.service.js';
 import { linesStillOpen, missingCategoryMessage } from '../../services/storesRequisitionProcess.service.js';
 
@@ -20,6 +22,9 @@ const forwardRequisitionToProcurement = async (req: Request, res: Response): Pro
         message: 'Requisition is not in stores review'
       });
     }
+
+    // Every line still owed needs a category (`items.0.category`), and notes stay short.
+    if (refuseInvalid(res, validateRequisitionStoresForward({ notes, items: requisition.items }))) return;
 
     const missingCategory = missingCategoryMessage(linesStillOpen(requisition));
     if (missingCategory) {

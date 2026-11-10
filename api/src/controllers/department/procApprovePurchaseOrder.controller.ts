@@ -2,7 +2,8 @@ import type { Request, Response } from 'express';
 import { PurchaseOrder } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole } from '../../services/notification.service.js';
-import { isProcurementHead } from '@fossil/shared';
+import { isProcurementHead, validatePurchaseOrderApproval } from '@fossil/shared';
+import { refuseInvalid } from '../../lib/validation.js';
 
 /**
  * The Head of Procurement's approval, the first step after a PO is submitted.
@@ -17,6 +18,7 @@ const procApprovePurchaseOrder = async (req: Request, res: Response): Promise<an
   try {
     const { id } = req.params;
     const { comments } = req.body;
+    if (refuseInvalid(res, validatePurchaseOrderApproval(req.body))) return;
 
     if (!isProcurementHead(req.user)) {
       return res.status(403).json({

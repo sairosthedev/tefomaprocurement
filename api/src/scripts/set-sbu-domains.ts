@@ -6,26 +6,26 @@
  * already said which business unit the user wants. Until then everything falls
  * back to the X-Sbu-Code header.
  *
- *   npm run sbu:domains -- --base sourceline.co.zw --dry-run
- *   npm run sbu:domains -- --base sourceline.co.zw
- *   APP_ENV=staging npx tsx api/src/scripts/set-sbu-domains.ts --base staging.sourceline.co.zw
+ *   npm run sbu:domains -- --base procureline.co.zw --dry-run
+ *   npm run sbu:domains -- --base procureline.co.zw
+ *   APP_ENV=staging npx tsx api/src/scripts/set-sbu-domains.ts --base staging.procureline.co.zw
  *
  * Idempotent: it adds the hostname if missing and leaves any others alone.
  * --replace discards an SBU's existing hostnames instead of adding to them.
  *
  * --dns prints the DNS records these hostnames need, and writes nothing:
  *
- *   npm run sbu:domains -- --base sourceline.co.zw --dns
+ *   npm run sbu:domains -- --base procureline.co.zw --dns
  *
  * --check resolves each hostname and reports which are live, so the DNS can be
  * confirmed before anyone tries to sign in:
  *
- *   npm run sbu:domains -- --base sourceline.co.zw --check
+ *   npm run sbu:domains -- --base procureline.co.zw --check
  *
  * --only limits every mode to named business units, for going live in waves
  * or when the registrar caps how many records can be added:
  *
- *   npm run sbu:domains -- --base sourceline.co.zw --only FOSSIL,DOKUMA --dns
+ *   npm run sbu:domains -- --base procureline.co.zw --only FOSSIL,DOKUMA --dns
  *
  * An SBU without a hostname is not cut off — it is reached by choosing it on
  * the login page, exactly as every SBU is today.
@@ -108,7 +108,7 @@ async function main(): Promise<void> {
   const replace = process.argv.includes('--replace');
 
   if (!base) {
-    throw new Error('--base is required, e.g. --base sourceline.co.zw');
+    throw new Error('--base is required, e.g. --base procureline.co.zw');
   }
   const baseDomain = base.trim().toLowerCase().replace(/^\.+|\.+$/g, '');
 
@@ -237,9 +237,13 @@ async function main(): Promise<void> {
     console.log('\nMX and any SPF/DKIM/DMARC TXT records stay untouched for the same reason.');
 
     console.log(`\n${hosts.length} business unit record(s) plus ${PORTAL_SUBDOMAINS.length} portal record(s).`);
-    console.log('\nIn Vercel: add the apex and *.' + baseDomain + ' to the client project,');
-    console.log('and api.' + baseDomain + ' to the API project. Then set CLIENT_URL on the API');
-    console.log('project to https://' + baseDomain + '.');
+    console.log('\nIn Vercel: add www.' + baseDomain + ', the apex (redirecting to www) and every');
+    console.log('business unit hostname above to the client project, and api.' + baseDomain + ' to the');
+    console.log('API project. A wildcard on Vercel needs Vercel nameservers; while DNS stays with');
+    console.log('the registrar, each hostname is added by name.');
+    console.log('Once they answer over HTTPS, set CLIENT_URL on the API project to https://www.' + baseDomain);
+    console.log('and VITE_API_URL on the client project to https://api.' + baseDomain + ', then');
+    console.log('redeploy the API, then the client.');
     await mongoose.disconnect();
     return;
   }

@@ -8,6 +8,11 @@ import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
 import TableSkeleton from '../components/TableSkeleton';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
+import { ACCOUNT_LIMITS, TEXT_LIMITS, validateDepartment } from '@fossil/shared';
+import FieldError from '../components/FieldError';
+import { useFormValidation } from '../lib/useFormValidation';
+
+const emptyForm = { name: '', code: '', description: '', head: '', deputyHead: '' };
 
 export default function Departments() {
   const { showToast } = useToast();
@@ -27,6 +32,11 @@ export default function Departments() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
+  const validation = useFormValidation(
+    (values: typeof emptyForm) =>
+      validateDepartment(values, { isNew: !editingDepartment, currentCode: editingDepartment?.code }),
+    formData
+  );
 
   useEffect(() => {
     fetchDepartments();
@@ -62,12 +72,8 @@ export default function Departments() {
   };
 
   const handleSave = async () => {
+    if (!validation.check()) return;
     try {
-      if (!formData.name.trim()) {
-        showToast('Please enter department name', 'error');
-        return;
-      }
-
       if (editingDepartment) {
         await api.put(`/admin/departments/${editingDepartment._id}`, formData);
         showToast('Department updated successfully', 'success');
@@ -78,11 +84,20 @@ export default function Departments() {
 
       setShowModal(false);
       setEditingDepartment(null);
-      setFormData({ name: '', code: '', description: '', head: '', deputyHead: '' });
+      setFormData(emptyForm);
       fetchDepartments();
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to save department', 'error');
+      if (!validation.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Failed to save department', 'error');
+      }
     }
+  };
+
+  const openCreate = () => {
+    setEditingDepartment(null);
+    setFormData(emptyForm);
+    validation.reset();
+    setShowModal(true);
   };
 
   const handleEdit = (dept: any) => {
@@ -94,6 +109,7 @@ export default function Departments() {
       head: dept.head?._id || '',
       deputyHead: dept.deputyHead?._id || ''
     });
+    validation.reset();
     setShowModal(true);
   };
 
@@ -120,7 +136,7 @@ export default function Departments() {
       <div className="mb-4 flex items-center gap-3">
         <button
           type="button"
-          onClick={() => { setEditingDepartment(null); setFormData({ name: '', code: '', description: '', head: '', deputyHead: '' }); setShowModal(true); }}
+          onClick={openCreate}
           className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors whitespace-nowrap shrink-0"
         >
           <Plus className="h-4 w-4" />
@@ -147,7 +163,7 @@ export default function Departments() {
             <tbody><tr><td colSpan={6} className="text-center py-12 text-gray-500">
               <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
               <p>No departments found</p>
-              <button onClick={() => setShowModal(true)} className="mt-4 text-primary font-medium hover:underline">Create your first department</button>
+              <button onClick={openCreate} className="mt-4 text-primary font-medium hover:underline">Create your first department</button>
             </td></tr></tbody>
           ) : (
             <tbody>
@@ -199,7 +215,7 @@ export default function Departments() {
         title={editingDepartment ? 'Edit Department' : 'Add Department'}
         size="md"
       >
-        <div className="space-y-4">
+        <div ref={validation.formRef} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Department Name <span className="text-red-500">*</span>
@@ -210,7 +226,10 @@ export default function Departments() {
               onChange={(e: any) => setFormData({ ...formData, name: e.target.value })}
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               placeholder="e.g., Finance"
+              maxLength={TEXT_LIMITS.name}
+              {...validation.invalid('name')}
             />
+            <FieldError message={validation.errors.name} />
           </div>
 
           <div>
@@ -221,8 +240,10 @@ export default function Departments() {
               onChange={(e: any) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               placeholder="e.g., FIN"
-              maxLength={10}
+              maxLength={ACCOUNT_LIMITS.departmentCode}
+              {...validation.invalid('code')}
             />
+            <FieldError message={validation.errors.code} />
           </div>
 
           <div>
@@ -233,7 +254,10 @@ export default function Departments() {
               rows={3}
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
               placeholder="Brief description of the department..."
+              maxLength={TEXT_LIMITS.long}
+              {...validation.invalid('description')}
             />
+            <FieldError message={validation.errors.description} />
           </div>
 
           <div>
@@ -250,6 +274,7 @@ export default function Departments() {
                 value={formData.head}
                 onChange={(e: any) => setFormData({ ...formData, head: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white"
+                {...validation.invalid('head')}
               >
                 <option value="">Select a department head (optional)</option>
                 {departmentHeads.map((user: any) => (
@@ -259,6 +284,7 @@ export default function Departments() {
                 ))}
               </select>
             )}
+            <FieldError message={validation.errors.head} />
           </div>
 
           <div>
@@ -275,6 +301,7 @@ export default function Departments() {
                 value={formData.deputyHead}
                 onChange={(e: any) => setFormData({ ...formData, deputyHead: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white"
+                {...validation.invalid('deputyHead')}
               >
                 <option value="">Select a deputy HOD (optional)</option>
                 {departmentHeads.map((user: any) => (
@@ -284,6 +311,7 @@ export default function Departments() {
                 ))}
               </select>
             )}
+            <FieldError message={validation.errors.deputyHead} />
           </div>
 
           <ModalFooter>

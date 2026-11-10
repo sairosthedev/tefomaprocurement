@@ -1,9 +1,9 @@
 import type { Request, Response } from 'express';
 import { RFQ } from '../../models/index.js';
-import { QUOTATION_WAIVER_TYPES } from '../../models/RFQ.model.js';
 import { createAuditLog } from '../../middleware/index.js';
-import { isProcurementHead, MIN_QUOTATIONS_REQUIRED } from '@fossil/shared';
+import { isProcurementHead, MIN_QUOTATIONS_REQUIRED, validateQuotationWaiver } from '@fossil/shared';
 import { countSubmittedQuotations } from '../../services/quotationCompliance.service.js';
+import { refuseInvalid } from '../../lib/validation.js';
 
 /** Waiver when fewer than 3 quotations */
 const approveQuotationWaiver = async (req: Request, res: Response): Promise<any> => {
@@ -16,18 +16,9 @@ const approveQuotationWaiver = async (req: Request, res: Response): Promise<any>
       return res.status(404).json({ success: false, message: 'RFQ not found' });
     }
 
-    if (!reason?.trim()) {
-      return res.status(400).json({ success: false, message: 'Waiver reason is required' });
-    }
-
-    // Validate waiverType up front so a bad value returns a clear 400 rather than
-    // an opaque 500 from the Mongoose enum validator at save time.
-    if (waiverType !== undefined && !QUOTATION_WAIVER_TYPES.includes(waiverType)) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid waiver type. Allowed: ${QUOTATION_WAIVER_TYPES.join(', ')}`
-      });
-    }
+    // The waiver type is checked up front so a bad value returns a clear 400
+    // rather than an opaque 500 from the Mongoose enum validator at save time.
+    if (refuseInvalid(res, validateQuotationWaiver(req.body))) return;
 
     // The head of the Procurement department carries procurement-officer authority
     // across the app. Waiving the three-quotation rule is an exception to

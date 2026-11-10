@@ -1,7 +1,8 @@
 import type { Request, Response } from 'express';
 import { SupplierProfile } from '../../models/index.js';
-import { computeKysCompletionForTier } from '@fossil/shared';
+import { computeKysCompletionForTier, validateKysOverride } from '@fossil/shared';
 import { createAuditLog } from '../../middleware/index.js';
+import { refuseInvalid } from '../../lib/validation.js';
 import { transitionSupplierStatus } from '../../services/supplierEligibility.service.js';
 import { withoutDocumentFiles } from '../../services/supplierDocuments.service.js';
 import { ACTIVATION_APPROVERS, submitActivationRequest } from '../../services/supplierActivation.service.js';
@@ -15,6 +16,8 @@ const verifyKys = async (req: Request, res: Response): Promise<any> => {
     if (!supplier || supplier.isDeleted) {
       return res.status(404).json({ success: false, message: 'Supplier not found' });
     }
+    // Activating without KYS (an override) needs a reason.
+    if (refuseInvalid(res, validateKysOverride(req.body))) return;
 
     // A blacklisted supplier must be reinstated through the explicit
     // reinstatement route, which returns them to `pending` for re-approval.

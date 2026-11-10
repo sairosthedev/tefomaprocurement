@@ -4,18 +4,15 @@ import { Quotation, RFQ } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifySupplier } from '../../services/notification.service.js';
 import { canSeeBids } from '../../lib/rfqVisibility.js';
+import { refuseInvalid } from '../../lib/validation.js';
+import { validateQuotationRejection } from '@fossil/shared';
 
 const rejectQuotation = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
     const { reason, comments } = req.body;
 
-    if (!reason) {
-      return res.status(400).json({
-        success: false,
-        message: 'Rejection reason is required'
-      });
-    }
+    if (refuseInvalid(res, validateQuotationRejection(req.body))) return;
 
     const quotation = await Quotation.findById(id).populate('rfq');
     if (!quotation || quotation.isDeleted) {

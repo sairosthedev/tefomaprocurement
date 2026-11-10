@@ -1,6 +1,8 @@
 ﻿import { useEffect, useState } from 'react';
+import { TEXT_LIMITS, validateBankChangeCallback, validateBankChangeRejection } from '@fossil/shared';
 import { procurementAPI } from '../services/procurement.service';
 import { useToast } from '../components/Toast';
+import { usePrompt } from '../components/PromptModal';
 import PageHeader from '../components/PageHeader';
 import FilterSelect from '../components/FilterSelect';
 import TableSkeleton from '../components/TableSkeleton';
@@ -16,12 +18,19 @@ import { Loader2, ShieldCheck, ShieldX, Phone, AlertTriangle, Landmark } from 'l
  */
 const personName = (p: any) => (p ? `${p.firstName || ''} ${p.lastName || ''}`.trim() : undefined);
 
+/** A callback prompt field, checked by the same validator as the API. */
+const callbackField = (name: 'numberCalled' | 'confirmedBy') => ({
+  requiredMessage: validateBankChangeCallback({})[name],
+  validate: (_value: string, values: Record<string, string>) => validateBankChangeCallback(values)[name] || ''
+});
+
 export default function BankChanges() {
   const { showToast } = useToast();
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('open');
+  const { ask, promptElement } = usePrompt();
 
   const load = async () => {
     try {
@@ -41,38 +50,68 @@ export default function BankChanges() {
   }, [statusFilter]);
 
   const recordCallback = async (request: any) => {
-    const numberCalled = window.prompt(
-      'Which number did you call? It must be one already held on the supplier record — never a number supplied in the change request.'
-    );
-    if (!numberCalled?.trim()) return;
-    const confirmedBy = window.prompt('Who at the supplier confirmed the change?');
-    if (!confirmedBy?.trim()) return;
+    const answer = await ask({
+      title: 'Record callback',
+      subtitle: request.supplier?.companyName,
+      message:
+        'Call a number already held on the supplier record — never a number supplied in the change request.',
+      fields: [
+        {
+          name: 'numberCalled',
+          label: 'Number called',
+          type: 'tel',
+          placeholder: '+263 77 123 4567',
+          ...callbackField('numberCalled')
+        },
+        {
+          name: 'confirmedBy',
+          label: 'Confirmed by',
+          placeholder: 'Who at the supplier confirmed the change',
+          ...callbackField('confirmedBy')
+        }
+      ],
+      confirmLabel: 'Record callback'
+    });
+    if (!answer) return;
+    const callback = { numberCalled: answer.numberCalled, confirmedBy: answer.confirmedBy };
 
     try {
       setBusyId(request._id);
-      await procurementAPI.verifyBankChangeCallback(request._id, {
-        numberCalled: numberCalled.trim(),
-        confirmedBy: confirmedBy.trim()
-      });
+      await procurementAPI.verifyBankChangeCallback(request._id, callback);
       showToast('Callback recorded. A second approver must now authorise it.', 'success');
       await load();
     } catch (error: any) {
       const message = error.response?.data?.message || 'Could not record the callback';
       // The server refuses numbers that are not on file unless overridden.
       if (message.includes('not on file')) {
-        const overrideReason = window.prompt(
-          `${message}\n\nIf you are sure, give a reason for calling a number that is not on file:`
-        );
-        if (!overrideReason?.trim()) {
+        const overrideReason = (value: string) =>
+          validateBankChangeCallback({ ...callback, overrideNumberCheck: true, overrideReason: value }).overrideReason || '';
+        const override = await ask({
+          title: 'Number not on file',
+          subtitle: request.supplier?.companyName,
+          message,
+          fields: [
+            {
+              name: 'overrideReason',
+              label: 'Reason for calling a number that is not on file',
+              multiline: true,
+              maxLength: TEXT_LIMITS.long,
+              requiredMessage: overrideReason(''),
+              validate: overrideReason
+            }
+          ],
+          confirmLabel: 'Record with override',
+          danger: true
+        });
+        if (!override) {
           setBusyId(null);
           return;
         }
         try {
           await procurementAPI.verifyBankChangeCallback(request._id, {
-            numberCalled: numberCalled.trim(),
-            confirmedBy: confirmedBy.trim(),
+            ...callback,
             overrideNumberCheck: true,
-            overrideReason: overrideReason.trim()
+            overrideReason: override.overrideReason
           });
           showToast('Callback recorded with an override.', 'success');
           await load();
@@ -101,11 +140,28 @@ export default function BankChanges() {
   };
 
   const reject = async (request: any) => {
-    const reason = window.prompt('Why is this banking change being rejected?');
-    if (!reason?.trim()) return;
+    const rejectionReason = (value: string) => validateBankChangeRejection({ reason: value }).reason || '';
+    const answer = await ask({
+      title: 'Reject banking change',
+      subtitle: request.supplier?.companyName,
+      message: "The supplier's banking details stay as they were, and the supplier is told the reason.",
+      fields: [
+        {
+          name: 'reason',
+          label: 'Reason',
+          multiline: true,
+          maxLength: TEXT_LIMITS.long,
+          requiredMessage: rejectionReason(''),
+          validate: rejectionReason
+        }
+      ],
+      confirmLabel: 'Reject',
+      danger: true
+    });
+    if (!answer) return;
     try {
       setBusyId(request._id);
-      await procurementAPI.rejectBankChange(request._id, { reason: reason.trim() });
+      await procurementAPI.rejectBankChange(request._id, { reason: answer.reason });
       showToast('Banking change rejected.', 'success');
       await load();
     } catch (error: any) {
@@ -288,6 +344,7 @@ export default function BankChanges() {
           })}
         </div>
       )}
+      {promptElement}
     </div>
   );
 }

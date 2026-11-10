@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express';
+import { validateRequisitionStoresNotes } from '@fossil/shared';
 import { PurchaseRequisition } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { refuseInvalid } from '../../lib/validation.js';
 import { createNotification } from '../../services/notification.service.js';
 import { linesStillOpen } from '../../services/storesRequisitionProcess.service.js';
 
@@ -8,6 +10,7 @@ const fulfillRequisitionFromStock = async (req: Request, res: Response): Promise
   try {
     const { id } = req.params;
     const { notes } = req.body;
+    if (refuseInvalid(res, validateRequisitionStoresNotes(req.body))) return;
 
     const requisition = await PurchaseRequisition.findById(id);
     if (!requisition || requisition.isDeleted) {

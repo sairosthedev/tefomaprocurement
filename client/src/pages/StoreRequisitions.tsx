@@ -15,6 +15,28 @@ import Pagination from '../components/Pagination';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 import { useDebouncedValue } from '../lib/useDebouncedValue';
 import FilterSelect from '../components/FilterSelect';
+import {
+  STORES_TEXT_LIMITS,
+  TEXT_LIMITS,
+  validateStockIssue,
+  validateStoreRequisitionApproval,
+  validateStoreRequisitionRejection
+} from '@fossil/shared';
+import FieldError from '../components/FieldError';
+import { useFormValidation } from '../lib/useFormValidation';
+
+type Collector = { name: string; idNumber: string; department: string; contactNumber: string };
+
+/** Who collected, as sent: left out when nothing was filled in, so an issue is never blocked. */
+const collectorPayload = (c: Collector) =>
+  Object.values(c).some((value) => value.trim())
+    ? {
+        name: c.name.trim(),
+        idNumber: c.idNumber.trim() || undefined,
+        department: c.department.trim() || undefined,
+        contactNumber: c.contactNumber.trim() || undefined
+      }
+    : undefined;
 
 /**
  * Where a store requisition stands, in the words of the hand-over: a new
@@ -81,6 +103,12 @@ export default function StoreRequisitions() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
+  const approveCheck = useFormValidation(validateStoreRequisitionApproval, { comments: actionComment });
+  const rejectCheck = useFormValidation(validateStoreRequisitionRejection, { comments: actionComment });
+  const issueCheck = useFormValidation(
+    (c: Collector) => validateStockIssue({ collectedBy: collectorPayload(c) }),
+    collectedBy
+  );
 
   const isStoresOfficer = user?.role === 'stores_officer';
   // To the department, a new request is simply with stores.
@@ -119,7 +147,8 @@ export default function StoreRequisitions() {
 
   const handleApprove = async () => {
     if (!selectedRequisition) return;
-    
+    if (!approveCheck.check()) return;
+
     try {
       setActionLoading(true);
       await storesAPI.approveStoreRequisition(selectedRequisition._id, { 
@@ -131,18 +160,18 @@ export default function StoreRequisitions() {
       setSelectedRequisition(null);
       fetchRequisitions();
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Could not mark it ready', 'error');
+      if (!approveCheck.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Could not mark it ready', 'error');
+      }
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleReject = async () => {
-    if (!selectedRequisition || !actionComment.trim()) {
-      showToast('Please provide a reason for rejection', 'error');
-      return;
-    }
-    
+    if (!selectedRequisition) return;
+    if (!rejectCheck.check()) return;
+
     try {
       setActionLoading(true);
       await storesAPI.rejectStoreRequisition(selectedRequisition._id, { 
@@ -154,7 +183,9 @@ export default function StoreRequisitions() {
       setSelectedRequisition(null);
       fetchRequisitions();
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to reject requisition', 'error');
+      if (!rejectCheck.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Failed to reject requisition', 'error');
+      }
     } finally {
       setActionLoading(false);
     }
@@ -169,17 +200,11 @@ export default function StoreRequisitions() {
    */
   const handleIssue = async () => {
     if (!selectedRequisition) return;
+    if (!issueCheck.check()) return;
     try {
       setActionLoading(true);
       const res = await storesAPI.issueStock(selectedRequisition._id, {
-        collectedBy: collectedBy.name.trim()
-          ? {
-              name: collectedBy.name.trim(),
-              idNumber: collectedBy.idNumber.trim() || undefined,
-              department: collectedBy.department.trim() || undefined,
-              contactNumber: collectedBy.contactNumber.trim() || undefined
-            }
-          : undefined
+        collectedBy: collectorPayload(collectedBy)
       });
       showToast('Handed over. Print the issue note for them to sign.', 'success');
       setShowIssueModal(false);
@@ -203,7 +228,9 @@ export default function StoreRequisitions() {
       });
       setShowViewModal(true);
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Could not hand the items over', 'error');
+      if (!issueCheck.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Could not hand the items over', 'error');
+      }
     } finally {
       setActionLoading(false);
     }
@@ -331,6 +358,7 @@ export default function StoreRequisitions() {
                             <button
                               onClick={() => {
                                 setSelectedRequisition(req);
+                                approveCheck.reset();
                                 setShowApproveModal(true);
                               }}
                               title="The items are set aside: tell the requester to come and collect"
@@ -341,6 +369,7 @@ export default function StoreRequisitions() {
                             <button
                               onClick={() => {
                                 setSelectedRequisition(req);
+                                rejectCheck.reset();
                                 setShowRejectModal(true);
                               }}
                               className="px-2 py-1 text-xs font-medium border border-red-200 text-red-700 rounded hover:bg-red-50 transition-colors"
@@ -354,6 +383,7 @@ export default function StoreRequisitions() {
                             onClick={() => {
                               setSelectedRequisition(req);
                               setCollectedBy({ name: '', idNumber: '', department: '', contactNumber: '' });
+                              issueCheck.reset();
                               setShowIssueModal(true);
                             }}
                             className="px-2 py-1 text-xs font-medium border border-primary rounded bg-primary text-white hover:bg-primary-dark transition-colors whitespace-nowrap"
@@ -483,21 +513,24 @@ export default function StoreRequisitions() {
         }}
         title="Ready for collection"
       >
-        <div className="space-y-4">
+        <div ref={approveCheck.formRef} className="space-y-4">
           <p className="text-sm text-gray-600">
             Stock is checked at this store, and {selectedRequisition?.requestedBy?.firstName || 'the requester'} is
             told to come and collect. Hand the items over when they arrive.
           </p>
-          
+
           <div>
             <label className="block text-sm text-gray-700 mb-2">Note to the requester (optional)</label>
             <textarea
               value={actionComment}
               onChange={(e: any) => setActionComment(e.target.value)}
               rows={3}
+              maxLength={TEXT_LIMITS.long}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
               placeholder="e.g. Collect from the main store after 2pm"
+              {...approveCheck.invalid('comments')}
             />
+            <FieldError message={approveCheck.errors.comments} />
           </div>
 
           <ModalFooter>
@@ -543,21 +576,23 @@ export default function StoreRequisitions() {
         }}
         title="Reject Store Requisition"
       >
-        <div className="space-y-4">
+        <div ref={rejectCheck.formRef} className="space-y-4">
           <p className="text-sm text-gray-600">
             Please provide a reason for rejecting this store requisition.
           </p>
-          
+
           <div>
             <label className="block text-sm text-gray-700 mb-2">Rejection Reason <span className="text-red-500">*</span></label>
             <textarea
               value={actionComment}
               onChange={(e: any) => setActionComment(e.target.value)}
               rows={3}
-              required
+              maxLength={TEXT_LIMITS.long}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
               placeholder="Explain why this requisition is being rejected..."
+              {...rejectCheck.invalid('comments')}
             />
+            <FieldError message={rejectCheck.errors.comments} />
           </div>
 
           <ModalFooter>
@@ -574,7 +609,7 @@ export default function StoreRequisitions() {
             </button>
             <button
               onClick={handleReject}
-              disabled={actionLoading || !actionComment.trim()}
+              disabled={actionLoading}
               className="px-4 py-2 text-sm border border-red-200 text-red-700 font-medium rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {actionLoading ? (
@@ -604,7 +639,7 @@ export default function StoreRequisitions() {
         title="Hand over"
         size="lg"
       >
-        <div className="space-y-4">
+        <div ref={issueCheck.formRef} className="space-y-4">
           <p className="text-sm text-gray-600">
             Record who is collecting the goods. This prints on the issue note for them to sign,
             and is the record of who took the stock.
@@ -617,9 +652,12 @@ export default function StoreRequisitions() {
                 type="text"
                 value={collectedBy.name}
                 onChange={(e: any) => setCollectedBy((prev) => ({ ...prev, name: e.target.value }))}
+                maxLength={TEXT_LIMITS.name}
                 placeholder="e.g. Tapiwa Ncube"
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                {...issueCheck.invalid('collectedBy.name')}
               />
+              <FieldError message={issueCheck.errors['collectedBy.name']} />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">ID / Employee no.</label>
@@ -627,9 +665,12 @@ export default function StoreRequisitions() {
                 type="text"
                 value={collectedBy.idNumber}
                 onChange={(e: any) => setCollectedBy((prev) => ({ ...prev, idNumber: e.target.value }))}
+                maxLength={STORES_TEXT_LIMITS.idNumber}
                 placeholder="Employee or national ID"
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                {...issueCheck.invalid('collectedBy.idNumber')}
               />
+              <FieldError message={issueCheck.errors['collectedBy.idNumber']} />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Department</label>
@@ -637,9 +678,12 @@ export default function StoreRequisitions() {
                 type="text"
                 value={collectedBy.department}
                 onChange={(e: any) => setCollectedBy((prev) => ({ ...prev, department: e.target.value }))}
+                maxLength={TEXT_LIMITS.name}
                 placeholder="e.g. Workshop"
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                {...issueCheck.invalid('collectedBy.department')}
               />
+              <FieldError message={issueCheck.errors['collectedBy.department']} />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Contact number</label>
@@ -647,9 +691,12 @@ export default function StoreRequisitions() {
                 type="text"
                 value={collectedBy.contactNumber}
                 onChange={(e: any) => setCollectedBy((prev) => ({ ...prev, contactNumber: e.target.value }))}
+                maxLength={TEXT_LIMITS.phone}
                 placeholder="Phone number"
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                {...issueCheck.invalid('collectedBy.contactNumber')}
               />
+              <FieldError message={issueCheck.errors['collectedBy.contactNumber']} />
             </div>
           </div>
 

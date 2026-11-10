@@ -1,6 +1,13 @@
 import type { Request, Response } from 'express';
-import { SUPPLIER_TIERS, computeKysCompletionForTier, getNextReviewDate, getReviewIntervalMonths } from '@fossil/shared';
+import {
+  SUPPLIER_TIERS,
+  computeKysCompletionForTier,
+  getNextReviewDate,
+  getReviewIntervalMonths,
+  validateTierAssignment
+} from '@fossil/shared';
 import { SupplierProfile, PurchaseOrder } from '../../models/index.js';
+import { refuseInvalid } from '../../lib/validation.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { withoutDocumentFiles } from '../../services/supplierDocuments.service.js';
 
@@ -17,20 +24,10 @@ const VALID_TIERS = SUPPLIER_TIERS.map((t) => t.key).filter((k) => k !== 'unclas
 export const setSupplierTier = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
-    const { tier, reason } = req.body as { tier?: string; reason?: string };
-
-    if (!tier || !VALID_TIERS.includes(tier as any)) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid tier. Allowed values: ${VALID_TIERS.join(', ')}`
-      });
-    }
-    if (!reason?.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'A reason is required when setting a supplier tier'
-      });
-    }
+    // A tier other than unclassified, and why (see validateTierAssignment).
+    if (refuseInvalid(res, validateTierAssignment(req.body))) return;
+    const tier = req.body.tier as (typeof VALID_TIERS)[number];
+    const reason = String(req.body.reason);
 
     const supplier = await SupplierProfile.findById(id);
     if (!supplier || supplier.isDeleted) {

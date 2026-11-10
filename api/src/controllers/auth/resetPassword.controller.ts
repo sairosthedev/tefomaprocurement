@@ -2,24 +2,14 @@ import crypto from 'crypto';
 import type { Request, Response } from 'express';
 import { User } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { validateResetPassword } from '@fossil/shared';
+import { refuseInvalid } from '../../lib/validation.js';
 
 const resetPassword = async (req: Request, res: Response): Promise<any> => {
   try {
+    if (refuseInvalid(res, validateResetPassword(req.body ?? {}))) return;
+
     const { token, email, newPassword } = req.body;
-
-    if (!token || !email || !newPassword) {
-      return res.status(400).json({
-        success: false,
-        message: 'Token, email, and new password are required'
-      });
-    }
-
-    if (String(newPassword).length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password must be at least 6 characters'
-      });
-    }
 
     const hashedToken = crypto.createHash('sha256').update(String(token)).digest('hex');
 

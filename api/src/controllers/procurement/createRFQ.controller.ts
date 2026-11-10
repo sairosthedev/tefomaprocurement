@@ -1,7 +1,10 @@
 import type { Request, Response } from 'express';
 
+import { validateRfq } from '@fossil/shared';
+
 import { RFQ, PurchaseRequisition, SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { refuseInvalid } from '../../lib/validation.js';
 import { resolveSiteId } from '../../lib/siteScope.js';
 import { hasEnteredLineItems } from '../../lib/lineItems.js';
 import { proposeInvitationsForRequisition } from '../../services/supplierInvitation.service.js';
@@ -20,6 +23,10 @@ const RFQ_ELIGIBLE_REQUISITION_STATUSES = ['accepted', 'sourcing'];
 
 const createRFQ = async (req: Request, res: Response): Promise<any> => {
   try {
+    // The same checks as the Create RFQ screen. Suppliers are needed only
+    // without a requisition: with one, they are proposed below.
+    if (refuseInvalid(res, validateRfq(req.body))) return;
+
     const { 
       title, 
       description, 

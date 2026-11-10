@@ -5,11 +5,14 @@ import { quotationFullyAuthorized, meetsMinimumQuotations } from '../../services
 import { checkSupplierIdEligibility } from '../../services/supplierEligibility.service.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifySupplier } from '../../services/notification.service.js';
+import { refuseInvalid } from '../../lib/validation.js';
+import { validateQuotationAcceptance } from '@fossil/shared';
 
 const acceptQuotation = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
     const { comments } = req.body;
+    if (refuseInvalid(res, validateQuotationAcceptance(req.body || {}))) return;
 
     const quotation = await Quotation.findById(id).populate('rfq');
     if (!quotation || quotation.isDeleted) {

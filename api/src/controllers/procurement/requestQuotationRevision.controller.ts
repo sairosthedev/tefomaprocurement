@@ -3,6 +3,8 @@ import { Quotation, RFQ } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifySupplier } from '../../services/notification.service.js';
 import { canSeeBids } from '../../lib/rfqVisibility.js';
+import { refuseInvalid } from '../../lib/validation.js';
+import { validateQuotationRevisionRequest } from '@fossil/shared';
 
 /**
  * Procurement requests a revised (usually lower) price from a supplier. The
@@ -16,9 +18,7 @@ const requestQuotationRevision = async (req: Request, res: Response): Promise<an
     const { id } = req.params;
     const { reason, targetNote } = req.body;
 
-    if (!reason?.trim()) {
-      return res.status(400).json({ success: false, message: 'A reason for the revision request is required' });
-    }
+    if (refuseInvalid(res, validateQuotationRevisionRequest(req.body))) return;
 
     const quotation = await Quotation.findById(id).populate('rfq');
     if (!quotation || quotation.isDeleted) {

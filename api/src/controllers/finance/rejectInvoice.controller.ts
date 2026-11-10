@@ -3,13 +3,13 @@ import { Invoice } from '../../models/index.js';
 import { syncPurchaseOrderFinancials } from '../../services/purchaseOrderFinancials.service.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { createNotification } from '../../services/notification.service.js';
+import { validateInvoiceRejection } from '@fossil/shared';
+import { refuseInvalid } from '../../lib/validation.js';
 
 const rejectInvoice = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { reason } = req.body;
-    if (!reason) {
-      return res.status(400).json({ success: false, message: 'Rejection reason is required' });
-    }
+    if (refuseInvalid(res, validateInvoiceRejection(req.body))) return;
+    const reason = String(req.body.reason).trim();
 
     const invoice = await Invoice.findById(req.params.id);
     if (!invoice || invoice.isDeleted) {

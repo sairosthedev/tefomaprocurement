@@ -1,13 +1,16 @@
 import type { Request, Response } from 'express';
+import { validateRequisitionApproval } from '@fossil/shared';
 
 import { PurchaseRequisition } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { refuseInvalid } from '../../lib/validation.js';
 import { createNotification } from '../../services/notification.service.js';
 
 const acceptRequisition = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
     const { comments } = req.body;
+    if (refuseInvalid(res, validateRequisitionApproval({ comments }))) return;
 
     const requisition = await PurchaseRequisition.findById(id);
     if (!requisition || requisition.isDeleted) {

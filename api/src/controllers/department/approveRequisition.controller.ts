@@ -1,12 +1,17 @@
 import type { Request, Response } from 'express';
+import { validateRequisitionApproval } from '@fossil/shared';
 import { PurchaseRequisition } from '../../models/index.js';
 import { canActOnDepartment } from '../../lib/departmentScope.js';
 import { approveAsDepartmentHead, budgetPositionOf } from '../../services/requisitionApproval.service.js';
+import { refuseInvalid } from '../../lib/validation.js';
 
 const approveRequisition = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
     const { comments, budgetOverrideReason } = req.body;
+    // Comments are optional; an over-budget reason, when given, must be a real
+    // one. A missing reason on an over-budget request is asked for below (409).
+    if (refuseInvalid(res, validateRequisitionApproval(req.body))) return;
 
     const requisition = await PurchaseRequisition.findById(id);
     if (!requisition || requisition.isDeleted) {

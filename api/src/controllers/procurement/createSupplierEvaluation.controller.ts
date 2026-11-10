@@ -1,10 +1,14 @@
 import type { Request, Response } from 'express';
-import { SUPPLIER_EVALUATION_CRITERIA, getNextReviewDate, getReviewIntervalMonths } from '@fossil/shared';
+import {
+  SUPPLIER_EVALUATION_CRITERIA,
+  getNextReviewDate,
+  getReviewIntervalMonths,
+  validateSupplierEvaluation
+} from '@fossil/shared';
 import { SupplierProfile, SupplierEvaluation } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { refuseInvalid } from '../../lib/validation.js';
 import { notifyUsersByRole } from '../../services/notification.service.js';
-
-const VALID_RECOMMENDATIONS = ['approve', 'reject', 'conditional', 're_evaluate_later'];
 
 const createSupplierEvaluation = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -16,18 +20,11 @@ const createSupplierEvaluation = async (req: Request, res: Response): Promise<an
       return res.status(404).json({ success: false, message: 'Supplier not found' });
     }
 
-    if (!scores || !recommendation) {
-      return res.status(400).json({ success: false, message: 'Scores and recommendation are required' });
-    }
+    // Every criterion scored 1 to 5, and a recommendation (see validateSupplierEvaluation).
+    if (refuseInvalid(res, validateSupplierEvaluation(req.body))) return;
 
-    if (!VALID_RECOMMENDATIONS.includes(recommendation)) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid recommendation. Allowed values: ${VALID_RECOMMENDATIONS.join(', ')}`
-      });
-    }
-
-    // Range-check here rather than letting the schema throw a 500.
+    // Range-check here rather than letting the schema throw a 500. The
+    // validator allows a score sent as text ("4"); the record stores numbers.
     const badScores = SUPPLIER_EVALUATION_CRITERIA.map((c) => c.key).filter((key) => {
       const value = (scores as any)[key];
       if (value === undefined || value === null) return false;
@@ -36,7 +33,8 @@ const createSupplierEvaluation = async (req: Request, res: Response): Promise<an
     if (badScores.length > 0) {
       return res.status(400).json({
         success: false,
-        message: `Scores must be numbers between 1 and 5. Invalid: ${badScores.join(', ')}`
+        message: `Scores must be numbers between 1 and 5. Invalid: ${badScores.join(', ')}`,
+        errors: Object.fromEntries(badScores.map((key) => [`scores.${key}`, 'Score must be a number from 1 to 5']))
       });
     }
 

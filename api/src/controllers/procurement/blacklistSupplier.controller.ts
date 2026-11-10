@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express';
+import { validateSupplierDecision } from '@fossil/shared';
 
 import { SupplierProfile } from '../../models/index.js';
+import { refuseInvalid } from '../../lib/validation.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { transitionSupplierStatus } from '../../services/supplierEligibility.service.js';
 import { withoutDocumentFiles } from '../../services/supplierDocuments.service.js';
@@ -8,14 +10,8 @@ import { withoutDocumentFiles } from '../../services/supplierDocuments.service.j
 const blacklistSupplier = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
-    const { reason } = req.body;
-
-    if (!reason) {
-      return res.status(400).json({
-        success: false,
-        message: 'Reason for blacklisting is required'
-      });
-    }
+    if (refuseInvalid(res, validateSupplierDecision('blacklist', req.body))) return;
+    const reason = String(req.body.reason).trim();
 
     const supplier = await SupplierProfile.findById(id);
     if (!supplier || supplier.isDeleted) {

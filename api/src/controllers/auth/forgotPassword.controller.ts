@@ -3,14 +3,14 @@ import type { Request, Response } from 'express';
 import { User } from '../../models/index.js';
 import { sendPasswordResetEmail } from '../../services/email.service.js';
 import { getClientUrl } from '../../lib/branding.js';
+import { validateForgotPassword } from '@fossil/shared';
+import { refuseInvalid } from '../../lib/validation.js';
 
 const forgotPassword = async (req: Request, res: Response): Promise<any> => {
   try {
-    const email = String(req.body.email || '').trim().toLowerCase();
+    if (refuseInvalid(res, validateForgotPassword(req.body ?? {}))) return;
 
-    if (!email) {
-      return res.status(400).json({ success: false, message: 'Email is required' });
-    }
+    const email = String(req.body.email || '').trim().toLowerCase();
 
     const user = await User.findOne({ email, isDeleted: false, status: 'active' });
 

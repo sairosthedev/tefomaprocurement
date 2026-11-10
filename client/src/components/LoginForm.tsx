@@ -6,6 +6,9 @@ import { useToast } from './Toast';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import Logo from './Logo';
 import { APP_ENV } from '../lib/env';
+import { ACCOUNT_LIMITS, TEXT_LIMITS, validateLogin, validateLoginOtp } from '@fossil/shared';
+import FieldError from './FieldError';
+import { useFormValidation } from '../lib/useFormValidation';
 
 const config = {
   title: 'Sign in',
@@ -38,6 +41,9 @@ export default function LoginForm() {
   const { showToast } = useToast();
   const navigate = useNavigate();
 
+  const credentialsForm = useFormValidation(validateLogin, formData);
+  const otpForm = useFormValidation(validateLoginOtp, { email: pendingEmail, otp });
+
   const from = '/app';
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -46,6 +52,7 @@ export default function LoginForm() {
 
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!credentialsForm.check()) return;
     setIsLoading(true);
 
     try {
@@ -54,6 +61,7 @@ export default function LoginForm() {
         setPendingEmail(result.email || formData.email);
         otpSubmittedCode.current = '';
         loginRedirecting.current = false;
+        otpForm.reset();
         setStep('otp');
 
         // Outside production the API returns the code, so fill it in rather
@@ -74,7 +82,9 @@ export default function LoginForm() {
       }
       navigate(from, { replace: true });
     } catch (err: any) {
-      showToast(err.response?.data?.message || 'Login failed. Please try again.', 'error', 5000);
+      if (!credentialsForm.fromServer(err)) {
+        showToast(err.response?.data?.message || 'Login failed. Please try again.', 'error', 5000);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -102,9 +112,14 @@ export default function LoginForm() {
         // Full navigation so auth state is read from storage reliably in production.
         window.location.assign(from.startsWith('/') ? from : '/app');
       } catch (err: any) {
-        otpSubmittedCode.current = '';
-        showToast(err.response?.data?.message || 'Invalid verification code', 'error', 5000);
-        setOtp('');
+        // A refused code stays on screen with its message, and is not resent
+        // (otpSubmittedCode still holds it). A wrong or expired code is cleared.
+        // fromServer only uses state setters and a ref, so this callback's copy is current.
+        if (!otpForm.fromServer(err)) {
+          otpSubmittedCode.current = '';
+          showToast(err.response?.data?.message || 'Invalid verification code', 'error', 5000);
+          setOtp('');
+        }
         setIsLoading(false);
         otpVerifyInFlight.current = false;
         requestAnimationFrame(() => otpInputRef.current?.focus());
@@ -127,15 +142,13 @@ export default function LoginForm() {
 
   const handleOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!otp.trim()) {
-      showToast('Enter the verification code from your email', 'error');
-      otpInputRef.current?.focus();
-      return;
-    }
+    if (!otpForm.check()) return;
     await submitOtp(otp);
   };
 
   const backToCredentials = () => {
+    credentialsForm.reset();
+    otpForm.reset();
     setStep('credentials');
     setOtp('');
     setPendingEmail('');
@@ -167,7 +180,7 @@ export default function LoginForm() {
             </div>
 
             {step === 'credentials' ? (
-              <form onSubmit={handleCredentialsSubmit} className="space-y-5">
+              <form ref={credentialsForm.formRef} onSubmit={handleCredentialsSubmit} noValidate className="space-y-5">
                 <SbuSelect disabled={isLoading} />
 
                 <div className="space-y-2">
@@ -181,10 +194,13 @@ export default function LoginForm() {
                     value={formData.email}
                     onChange={handleChange}
                     required
+                    maxLength={TEXT_LIMITS.email}
                     disabled={isLoading}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all duration-200 hover:border-gray-400 placeholder:text-gray-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
                     placeholder="you@example.com"
+                    {...credentialsForm.invalid('email')}
                   />
+                  <FieldError message={credentialsForm.errors.email} />
                 </div>
 
                 <div className="space-y-2">
@@ -199,9 +215,11 @@ export default function LoginForm() {
                       value={formData.password}
                       onChange={handleChange}
                       required
+                      maxLength={ACCOUNT_LIMITS.existingPassword}
                       disabled={isLoading}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all duration-200 hover:border-gray-400 placeholder:text-gray-400 pr-20 disabled:bg-gray-100 disabled:cursor-not-allowed"
                       placeholder="Enter your password"
+                      {...credentialsForm.invalid('password')}
                     />
                     <button
                       type="button"
@@ -212,6 +230,7 @@ export default function LoginForm() {
                       {showPassword ? 'HIDE' : 'SHOW'}
                     </button>
                   </div>
+                  <FieldError message={credentialsForm.errors.password} />
                   <div className="text-right">
                     <Link to="/forgot-password" className="text-sm font-medium text-primary hover:text-primary-dark">
                       Forgot password?
@@ -235,7 +254,7 @@ export default function LoginForm() {
                 </button>
               </form>
             ) : (
-              <form onSubmit={handleOtpSubmit} className="space-y-5">
+              <form ref={otpForm.formRef} onSubmit={handleOtpSubmit} noValidate className="space-y-5">
                 <div className="space-y-2">
                   <label htmlFor="otp" className="block text-sm font-medium text-gray-700">
                     Verification code
@@ -247,20 +266,22 @@ export default function LoginForm() {
                     name="otp"
                     inputMode="numeric"
                     autoComplete="one-time-code"
-                    maxLength={6}
+                    maxLength={ACCOUNT_LIMITS.otp}
                     value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, ACCOUNT_LIMITS.otp))}
                     required
                     disabled={isLoading}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none text-center text-2xl tracking-[0.4em] font-mono disabled:bg-gray-100"
                     placeholder="000000"
+                    {...otpForm.invalid('otp')}
                   />
+                  <FieldError message={otpForm.errors.otp || otpForm.errors.email} className="text-center" />
                   <p className="text-xs text-gray-500 text-center">Code expires in 10 minutes</p>
                 </div>
 
                 <button
                   type="submit"
-                  disabled={isLoading || otp.length < 6}
+                  disabled={isLoading}
                   className="w-full bg-primary text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-70 flex items-center justify-center gap-2"
                 >
                   {isLoading ? (

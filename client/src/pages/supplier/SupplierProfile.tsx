@@ -9,6 +9,10 @@ import { PROVINCES, BANKS } from '../../lib/constants';
 import PageHeader from '../../components/PageHeader';
 import { CategoryMultiSelect } from '../../components/CategorySelect';
 import { BUSINESS_TYPE_OPTIONS, ENTITY_TYPE_OPTIONS } from '../../lib/supplierTypes';
+import { firstError, validateSupplierProfileUpdate, type FieldErrors } from '@fossil/shared';
+import FieldError from '../../components/FieldError';
+import { serverFieldErrors, useFormValidation } from '../../lib/useFormValidation';
+import { useAuth } from '../../context/AuthContext';
 
 /** Where a requested banking change stands, in the supplier's terms. */
 const BANK_CHANGE_STATUS: Record<string, string> = {
@@ -21,6 +25,7 @@ const BANK_CHANGE_STATUS: Record<string, string> = {
 
 export default function SupplierProfile() {
   const { showToast } = useToast();
+  const { user } = useAuth();
   const [loading, setLoading] = useState<any>(true);
   const [saving, setSaving] = useState<any>(false);
   // Banking is only submitted when actually touched: any change raises a
@@ -73,22 +78,46 @@ export default function SupplierProfile() {
     }
   };
 
+  // Send only what the server accepts. Posting the whole profile made the
+  // form look like it saved company name, registration number and so on,
+  // which the controller ignores — the values silently reverted on reload.
+  const toPayload = (values: any) => {
+    const payload: any = {
+      tradingName: values.tradingName,
+      address: values.address,
+      contactPersons: values.contactPersons,
+      // Optional; an empty choice clears it.
+      businessType: values.businessType ?? undefined,
+      entityType: values.entityType ?? undefined
+    };
+    if (categoriesDirty) payload.categories = values.categories;
+    if (bankDirty) payload.bankDetails = values.bankDetails;
+    return payload;
+  };
+
+  // The checks the API runs on the same payload; a banking change is checked before it is requested.
+  const validation = useFormValidation(
+    (values: any) => validateSupplierProfileUpdate(toPayload(values), { country: values.address?.country }),
+    profile
+  );
+
+  /** A problem on a field this page does not show (a second contact, say) is said in a toast instead. */
+  const sayHiddenProblem = (errors: FieldErrors | null) => {
+    setTimeout(() => {
+      if (errors && !validation.formRef.current?.querySelector('[aria-invalid="true"]')) {
+        showToast(firstError(errors), 'error');
+      }
+    }, 0);
+  };
+
   const handleSave = async () => {
+    if (!validation.check()) {
+      sayHiddenProblem(validateSupplierProfileUpdate(toPayload(profile), { country: profile.address?.country }));
+      return;
+    }
     try {
       setSaving(true);
-      // Send only what the server accepts. Posting the whole profile made the
-      // form look like it saved company name, registration number and so on,
-      // which the controller ignores — the values silently reverted on reload.
-      const payload: any = {
-        tradingName: profile.tradingName,
-        address: profile.address,
-        contactPersons: profile.contactPersons,
-        // Optional; an empty choice clears it.
-        businessType: profile.businessType ?? undefined,
-        entityType: profile.entityType ?? undefined
-      };
-      if (categoriesDirty) payload.categories = profile.categories;
-      if (bankDirty) payload.bankDetails = profile.bankDetails;
+      const payload = toPayload(profile);
 
       const response = await api.put('/supplier/profile', payload);
       if (response.data.success) {
@@ -105,7 +134,11 @@ export default function SupplierProfile() {
         }
       }
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to update profile', 'error');
+      if (validation.fromServer(error)) {
+        sayHiddenProblem(serverFieldErrors(error));
+      } else {
+        showToast(error.response?.data?.message || 'Failed to update profile', 'error');
+      }
     } finally {
       setSaving(false);
     }
@@ -164,6 +197,9 @@ export default function SupplierProfile() {
     }
   };
 
+  /** The first contact, when the profile has none: it carries the sign-in email, as the page shows. */
+  const newPrimaryContact = () => ({ isPrimary: true, email: user?.email || '' });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -190,7 +226,7 @@ export default function SupplierProfile() {
         </div>
       )}
 
-      <div className="space-y-6">
+      <div ref={validation.formRef} className="space-y-6">
         {/* Company Information */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
@@ -229,7 +265,10 @@ export default function SupplierProfile() {
                 value={profile.tradingName || ''}
                 onChange={(e: any) => setProfile({ ...profile, tradingName: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                maxLength={200}
+                {...validation.invalid('tradingName')}
               />
+              <FieldError message={validation.errors.tradingName} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Registration Number</label>
@@ -267,12 +306,14 @@ export default function SupplierProfile() {
                 value={profile.businessType || ''}
                 onChange={(e: any) => setProfile({ ...profile, businessType: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                {...validation.invalid('businessType')}
               >
                 <option value="">Not specified</option>
                 {BUSINESS_TYPE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
+              <FieldError message={validation.errors.businessType} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Entity Type</label>
@@ -280,12 +321,14 @@ export default function SupplierProfile() {
                 value={profile.entityType || ''}
                 onChange={(e: any) => setProfile({ ...profile, entityType: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                {...validation.invalid('entityType')}
               >
                 <option value="">Not specified</option>
                 {ENTITY_TYPE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
+              <FieldError message={validation.errors.entityType} />
             </div>
           </div>
         </div>
@@ -308,35 +351,43 @@ export default function SupplierProfile() {
                 value={profile.contactPersons?.[0]?.name || ''}
                 onChange={(e: any) => {
                   const contacts = [...(profile.contactPersons || [])];
-                  contacts[0] = { ...(contacts[0] || { isPrimary: true }), name: e.target.value };
+                  contacts[0] = { ...(contacts[0] || newPrimaryContact()), name: e.target.value };
                   setProfile({ ...profile, contactPersons: contacts });
                 }}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                maxLength={120}
+                {...validation.invalid('contactPersons.0.name')}
               />
+              <FieldError message={validation.errors['contactPersons.0.name']} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
               {/* Login email lives on the User record, not the supplier profile. */}
               <input
                 type="email"
-                value={profile.contactPersons?.[0]?.email || profile.user?.email || ''}
+                value={profile.contactPersons?.[0]?.email || profile.user?.email || user?.email || ''}
                 disabled
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-500"
+                {...validation.invalid('contactPersons.0.email')}
               />
+              <FieldError message={validation.errors['contactPersons.0.email']} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Phone *</label>
               <input
                 type="tel"
                 value={profile.contactPersons?.[0]?.phone || ''}
                 onChange={(e: any) => {
                   const contacts = [...(profile.contactPersons || [])];
-                  contacts[0] = { ...(contacts[0] || { isPrimary: true }), phone: e.target.value };
+                  contacts[0] = { ...(contacts[0] || newPrimaryContact()), phone: e.target.value };
                   setProfile({ ...profile, contactPersons: contacts });
                 }}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 placeholder="+263 77 123 4567"
+                maxLength={30}
+                {...validation.invalid('contactPersons.0.phone')}
               />
+              <FieldError message={validation.errors['contactPersons.0.phone']} />
             </div>
           </div>
         </div>
@@ -356,7 +407,10 @@ export default function SupplierProfile() {
                 value={profile.address?.street || profile.address?.physical || ''}
                 onChange={(e: any) => setProfile({ ...profile, address: { ...profile.address, street: e.target.value } })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                maxLength={200}
+                {...validation.invalid('address.street')}
               />
+              <FieldError message={validation.errors['address.street']} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
@@ -365,7 +419,10 @@ export default function SupplierProfile() {
                 value={profile.address?.city || ''}
                 onChange={(e: any) => setProfile({ ...profile, address: { ...profile.address, city: e.target.value } })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                maxLength={80}
+                {...validation.invalid('address.city')}
               />
+              <FieldError message={validation.errors['address.city']} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Province</label>
@@ -373,12 +430,14 @@ export default function SupplierProfile() {
                 value={profile.address?.province || ''}
                 onChange={(e: any) => setProfile({ ...profile, address: { ...profile.address, province: e.target.value } })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                {...validation.invalid('address.province')}
               >
                 <option value="">Select Province</option>
                 {PROVINCES.map((province: any) => (
                   <option key={province} value={province}>{province}</option>
                 ))}
               </select>
+              <FieldError message={validation.errors['address.province']} />
             </div>
           </div>
         </div>
@@ -400,7 +459,9 @@ export default function SupplierProfile() {
               setProfile({ ...profile, categories: codes });
             }}
             placeholder="Select the categories you supply…"
+            invalid={!!validation.errors.categories}
           />
+          <FieldError message={validation.errors.categories} />
           <p className="text-xs text-gray-400 mt-2">Used to match you to RFQs in these categories.</p>
         </div>
 
@@ -431,12 +492,14 @@ export default function SupplierProfile() {
                 value={profile.bankDetails?.bankName || ''}
                 onChange={(e: any) => { setBankDirty(true); setProfile({ ...profile, bankDetails: { ...profile.bankDetails, bankName: e.target.value } }); }}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                {...validation.invalid('bankDetails.bankName')}
               >
                 <option value="">Select Bank</option>
                 {BANKS.map((bank: any) => (
                   <option key={bank} value={bank}>{bank}</option>
                 ))}
               </select>
+              <FieldError message={validation.errors['bankDetails.bankName']} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Account Name</label>
@@ -445,7 +508,10 @@ export default function SupplierProfile() {
                 value={profile.bankDetails?.accountName || ''}
                 onChange={(e: any) => { setBankDirty(true); setProfile({ ...profile, bankDetails: { ...profile.bankDetails, accountName: e.target.value } }); }}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                maxLength={200}
+                {...validation.invalid('bankDetails.accountName')}
               />
+              <FieldError message={validation.errors['bankDetails.accountName']} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Account Number</label>
@@ -454,7 +520,10 @@ export default function SupplierProfile() {
                 value={profile.bankDetails?.accountNumber || ''}
                 onChange={(e: any) => { setBankDirty(true); setProfile({ ...profile, bankDetails: { ...profile.bankDetails, accountNumber: e.target.value } }); }}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                maxLength={42}
+                {...validation.invalid('bankDetails.accountNumber')}
               />
+              <FieldError message={validation.errors['bankDetails.accountNumber']} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Branch Code</label>
@@ -463,7 +532,10 @@ export default function SupplierProfile() {
                 value={profile.bankDetails?.branchCode || ''}
                 onChange={(e: any) => { setBankDirty(true); setProfile({ ...profile, bankDetails: { ...profile.bankDetails, branchCode: e.target.value } }); }}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                maxLength={40}
+                {...validation.invalid('bankDetails.branchCode')}
               />
+              <FieldError message={validation.errors['bankDetails.branchCode']} />
             </div>
           </div>
         </div>

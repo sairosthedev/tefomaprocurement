@@ -1,21 +1,19 @@
 import type { Request, Response } from 'express';
+import { validateInventoryLevels } from '@fossil/shared';
 
 import { Inventory } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { canAccessAllSites, userSiteId } from '../../lib/siteScope.js';
+import { refuseInvalid } from '../../lib/validation.js';
 
 /**
  * A blank or null value clears the site's own setting, so the catalogue item's
- * level (or the default) applies again. Anything else must be a whole number
- * of zero or more.
+ * level (or the default) applies again. Anything else is a whole number of
+ * zero or more, which validateInventoryLevels has already made sure of.
  */
-function parseLevel(value: unknown, label: string): { ok: true; value: number | null } | { ok: false; message: string } {
-  if (value === null || value === undefined || value === '') return { ok: true, value: null };
-  const n = Number(value);
-  if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) {
-    return { ok: false, message: `${label} must be a whole number of 0 or more, or left blank` };
-  }
-  return { ok: true, value: n };
+function parseLevel(value: unknown): number | null {
+  if (value === null || value === undefined || String(value).trim() === '') return null;
+  return Number(value);
 }
 
 /**
@@ -36,6 +34,8 @@ const updateInventoryLevels = async (req: Request, res: Response): Promise<any> 
       }
     }
 
+    if (refuseInvalid(res, validateInventoryLevels(req.body))) return;
+
     const previous = {
       reorderLevel: inventory.reorderLevel ?? null,
       reorderQuantity: inventory.reorderQuantity ?? null,
@@ -43,14 +43,10 @@ const updateInventoryLevels = async (req: Request, res: Response): Promise<any> 
     };
 
     if ('reorderLevel' in req.body) {
-      const parsed = parseLevel(req.body.reorderLevel, 'Reorder level');
-      if (!parsed.ok) return res.status(400).json({ success: false, message: parsed.message });
-      inventory.reorderLevel = parsed.value;
+      inventory.reorderLevel = parseLevel(req.body.reorderLevel);
     }
     if ('reorderQuantity' in req.body) {
-      const parsed = parseLevel(req.body.reorderQuantity, 'Reorder quantity');
-      if (!parsed.ok) return res.status(400).json({ success: false, message: parsed.message });
-      inventory.reorderQuantity = parsed.value;
+      inventory.reorderQuantity = parseLevel(req.body.reorderQuantity);
     }
     if ('location' in req.body) {
       inventory.location = String(req.body.location || '').trim() || undefined;

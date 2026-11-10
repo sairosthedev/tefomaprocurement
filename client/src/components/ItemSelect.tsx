@@ -21,6 +21,8 @@ interface ItemSelectProps {
   className?: string;
   /** When set, only catalog items in this category are shown. */
   category?: string;
+  /** Marks the search box red when its form found a problem (see useFormValidation). */
+  invalid?: boolean;
 }
 
 /**
@@ -34,7 +36,8 @@ export function ItemSelect({
   freeTextValue = '',
   placeholder = 'Search stock catalog or type description…',
   className = '',
-  category = ''
+  category = '',
+  invalid = false
 }: ItemSelectProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(freeTextValue || value?.name || '');
@@ -97,6 +100,7 @@ export function ItemSelect({
           value={query}
           onChange={(e) => handleInput(e.target.value)}
           onFocus={() => setOpen(true)}
+          aria-invalid={invalid || undefined}
           placeholder={placeholder}
           className={
             className ||

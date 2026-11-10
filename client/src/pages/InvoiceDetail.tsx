@@ -6,6 +6,9 @@ import { getCurrentSbuCurrency } from '../lib/sbu';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
 import { Loader2, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { validateInvoiceApproval, validateInvoiceRejection } from '@fossil/shared';
+import FieldError from '../components/FieldError';
+import { useFormValidation } from '../lib/useFormValidation';
 
 
 export default function InvoiceDetail() {
@@ -18,9 +21,19 @@ export default function InvoiceDetail() {
   const [rejectReason, setRejectReason] = useState('');
   const [overrideReason, setOverrideReason] = useState('');
   const [acting, setActing] = useState(false);
+  // The reason for approving despite a variance, and the reason for rejecting.
+  const overrideForm = useFormValidation(
+    (values: { forceApprove: string }) => validateInvoiceApproval(values, { override: true }),
+    { forceApprove: overrideReason }
+  );
+  const rejectForm = useFormValidation(validateInvoiceRejection, { reason: rejectReason });
 
   useEffect(() => {
-    if (id) load();
+    if (id) {
+      overrideForm.reset();
+      rejectForm.reset();
+      load();
+    }
   }, [id]);
 
   const load = async () => {
@@ -39,35 +52,34 @@ export default function InvoiceDetail() {
   // `force` carries the written reason for overriding a variance; the API
   // rejects an override without one.
   const handleApprove = async (force?: string) => {
-    if (force !== undefined && !force.trim()) {
-      showToast('A reason is required to approve against a variance', 'error');
-      return;
-    }
+    if (force !== undefined && !overrideForm.check()) return;
     try {
       setActing(true);
-      await financeAPI.approveInvoice(id, force ? { forceApprove: force } : {});
+      await financeAPI.approveInvoice(id, force !== undefined ? { forceApprove: force.trim() } : {});
       showToast('Invoice approved for payment', 'success');
       setOverrideReason('');
+      overrideForm.reset();
       load();
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Approval failed', 'error');
+      if (force === undefined || !overrideForm.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Approval failed', 'error');
+      }
     } finally {
       setActing(false);
     }
   };
 
   const handleReject = async () => {
-    if (!rejectReason.trim()) {
-      showToast('Rejection reason is required', 'error');
-      return;
-    }
+    if (!rejectForm.check()) return;
     try {
       setActing(true);
-      await financeAPI.rejectInvoice(id, { reason: rejectReason });
+      await financeAPI.rejectInvoice(id, { reason: rejectReason.trim() });
       showToast('Invoice rejected', 'success');
       navigate('/app/invoices');
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Rejection failed', 'error');
+      if (!rejectForm.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Rejection failed', 'error');
+      }
     } finally {
       setActing(false);
     }
@@ -191,16 +203,21 @@ export default function InvoiceDetail() {
                 Approve
               </button>
               {match && !match.matched && (
-                <div className="w-full flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Reason for approving despite the variance..."
-                    value={overrideReason}
-                    onChange={(e) => setOverrideReason(e.target.value)}
-                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  />
+                <div ref={overrideForm.formRef} className="w-full flex items-start gap-2">
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      placeholder="Reason for approving despite the variance..."
+                      value={overrideReason}
+                      onChange={(e) => setOverrideReason(e.target.value)}
+                      maxLength={2000}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      {...overrideForm.invalid('forceApprove')}
+                    />
+                    <FieldError message={overrideForm.errors.forceApprove} />
+                  </div>
                   <button
-                    disabled={acting || !overrideReason.trim()}
+                    disabled={acting}
                     onClick={() => handleApprove(overrideReason)}
                     className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors disabled:opacity-50 whitespace-nowrap"
                   >
@@ -226,14 +243,19 @@ export default function InvoiceDetail() {
             </button>
           )}
           {canApprove && (
-            <div className="w-full flex gap-2 mt-2">
-              <input
-                type="text"
-                placeholder="Rejection reason..."
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              />
+            <div ref={rejectForm.formRef} className="w-full flex items-start gap-2 mt-2">
+              <div className="flex-1">
+                <input
+                  type="text"
+                  placeholder="Rejection reason..."
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  maxLength={2000}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  {...rejectForm.invalid('reason')}
+                />
+                <FieldError message={rejectForm.errors.reason} />
+              </div>
               <button disabled={acting} onClick={handleReject} className="px-4 py-2 border border-red-200 text-red-700 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50 flex items-center gap-1">
                 <XCircle className="h-4 w-4" /> Reject
               </button>

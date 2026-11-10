@@ -21,7 +21,9 @@ import {
   REQUISITION_STATUS_COLORS as statusColors,
   REQUISITION_STATUS_LABELS as statusLabels
 } from '../lib/requisitionJourney';
-import { isProcurementHead } from '@fossil/shared';
+import { TEXT_LIMITS, isProcurementHead, validateRequisitionDecision } from '@fossil/shared';
+import FieldError from '../components/FieldError';
+import { useFormValidation } from '../lib/useFormValidation';
 import { useDebouncedValue } from '../lib/useDebouncedValue';
 import { OPEN_STORE_REQUISITION, requestDeliveredItems } from '../lib/collectFromStores';
 
@@ -55,6 +57,14 @@ export default function Requisitions() {
   const [budgetWarning, setBudgetWarning] = useState<any>(null);
   const [budgetOverrideReason, setBudgetOverrideReason] = useState<string>('');
   const [actionLoading, setActionLoading] = useState<any>(false);
+  // Comments are optional to approve or accept; rejecting needs a reason, and
+  // so does approving over budget once the figures are on screen.
+  const actionValidation = useFormValidation(
+    (values: { action: string; comments: string; budgetOverrideReason: string }) =>
+      validateRequisitionDecision(values, { overBudget: !!budgetWarning }),
+    { action: actionType, comments: actionComment, budgetOverrideReason }
+  );
+  const commentError = actionValidation.errors.reason || actionValidation.errors.comments;
   const [submittingId, setSubmittingId] = useState<any>(null);
   const [storeRequestedIds, setStoreRequestedIds] = useState<Set<string>>(new Set());
   const [removingItemId, setRemovingItemId] = useState<any>(null);
@@ -214,11 +224,7 @@ export default function Requisitions() {
   };
 
   const handleAction = async () => {
-    const isReject = actionType === 'reject' || actionType === 'hod_reject';
-    if (isReject && !actionComment.trim()) {
-      showToast('Please provide a reason for rejection', 'error');
-      return;
-    }
+    if (!actionValidation.check()) return;
 
     try {
       setActionLoading(true);
@@ -261,7 +267,9 @@ export default function Requisitions() {
         showToast('This requisition is over budget. A reason is required to approve it.', 'error');
         return;
       }
-      showToast(error.response?.data?.message || `Failed to ${actionType}`, 'error');
+      if (!actionValidation.fromServer(error)) {
+        showToast(error.response?.data?.message || `Failed to ${actionType}`, 'error');
+      }
     } finally {
       setActionLoading(false);
     }
@@ -277,6 +285,7 @@ export default function Requisitions() {
     setBudgetWarning(
       type === 'approve' && req?.budgetCheck?.exceedsBudget ? req.budgetCheck : null
     );
+    actionValidation.reset();
     setShowActionModal(true);
   };
 
@@ -550,7 +559,7 @@ export default function Requisitions() {
             : 'Reject Requisition'
         }
       >
-        <div className="space-y-4">
+        <div ref={actionValidation.formRef} className="space-y-4">
           <div className="p-4 bg-gray-50 rounded-xl">
             <p className="text-sm text-gray-600">
               {actionType === 'approve' && sendingOwn
@@ -591,16 +600,20 @@ export default function Requisitions() {
                 </div>
               </dl>
 
-              <label className="mt-4 block text-sm font-medium text-red-800">
+              <label htmlFor="budget-override-reason" className="mt-4 block text-sm font-medium text-red-800">
                 Reason for approving over budget <span className="text-red-600">(required)</span>
               </label>
               <textarea
+                id="budget-override-reason"
                 value={budgetOverrideReason}
                 onChange={(e: any) => setBudgetOverrideReason(e.target.value)}
                 rows={2}
+                maxLength={TEXT_LIMITS.long}
                 className="mt-1 w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:ring-2 focus:ring-red-200 focus:border-red-400 bg-white"
                 placeholder="e.g. Emergency plant breakdown, approved verbally by COO"
+                {...actionValidation.invalid('budgetOverrideReason')}
               />
+              <FieldError message={actionValidation.errors.budgetOverrideReason} />
               <p className="mt-2 text-xs text-red-700">
                 This is recorded against the requisition and Finance is notified.
               </p>
@@ -608,16 +621,20 @@ export default function Requisitions() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="requisition-action-comment" className="block text-sm font-medium text-gray-700 mb-2">
               {actionType === 'approve' || actionType === 'accept' ? 'Comments (Optional)' : 'Reason for Rejection (Required)'}
             </label>
             <textarea
+              id="requisition-action-comment"
               value={actionComment}
               onChange={(e: any) => setActionComment(e.target.value)}
               rows={3}
+              maxLength={TEXT_LIMITS.long}
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
               placeholder={actionType === 'approve' || actionType === 'accept' ? 'Add any comments...' : 'Please provide a reason...'}
+              {...(commentError ? { 'aria-invalid': true as const } : {})}
             />
+            <FieldError message={commentError} />
           </div>
 
           <ModalFooter>
@@ -629,7 +646,7 @@ export default function Requisitions() {
             </button>
             <button
               onClick={handleAction}
-              disabled={actionLoading || (!!budgetWarning && !budgetOverrideReason.trim())}
+              disabled={actionLoading}
               className={`flex-1 py-2.5 rounded-xl font-medium transition-colors ${
                 budgetWarning
                   ? 'border border-red-200 text-red-700 hover:bg-red-50'

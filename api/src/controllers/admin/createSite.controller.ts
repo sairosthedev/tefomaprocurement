@@ -1,29 +1,27 @@
 import type { Request, Response } from 'express';
 import { Site } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { validateSite } from '@fossil/shared';
+import { refuseInvalid } from '../../lib/validation.js';
 
 const createSite = async (req: Request, res: Response): Promise<any> => {
   try {
     const { code, name, type, parentSite, address, manager, hasLocalStore, status } = req.body;
 
-    if (!code || !name) {
-      return res.status(400).json({
-        success: false,
-        message: 'Site code and name are required'
-      });
-    }
+    if (refuseInvalid(res, validateSite(req.body, { isNew: true }))) return;
 
-    const existing = await Site.findOne({ code: code.toUpperCase(), isDeleted: false });
+    const existing = await Site.findOne({ code: String(code).trim().toUpperCase(), isDeleted: false });
     if (existing) {
       return res.status(400).json({
         success: false,
-        message: 'Site code already exists'
+        message: 'Site code already exists',
+        errors: { code: `${String(code).trim().toUpperCase()} is already used by ${existing.name}` }
       });
     }
 
     const site = await Site.create({
-      code: code.toUpperCase(),
-      name,
+      code: String(code).trim().toUpperCase(),
+      name: String(name).trim(),
       type: type || 'site',
       parentSite: parentSite || null,
       address,

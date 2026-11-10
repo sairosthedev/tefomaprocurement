@@ -28,6 +28,9 @@ import Pagination from '../components/Pagination';
 import TableSkeleton from '../components/TableSkeleton';
 import { DEFAULT_PAGE_SIZE, emptyPagination, parsePagination } from '../lib/pagination';
 import { useDebouncedValue } from '../lib/useDebouncedValue';
+import { todayKey, validatePurchaseOrder, validateQuotationRejection } from '@fossil/shared';
+import FieldError from '../components/FieldError';
+import { useFormValidation } from '../lib/useFormValidation';
 
 const statusColors: any = {
   draft: 'bg-gray-100 text-gray-700',
@@ -98,6 +101,13 @@ export default function Quotations() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
+  const rejectForm = useFormValidation(validateQuotationRejection, { reason: rejectReason, comments: rejectComments });
+  // The order copies the quotation's lines, so they are checked with what is typed.
+  const poForm = useFormValidation(validatePurchaseOrder, {
+    quotationId: selectedQuotation?._id,
+    ...poFormData,
+    items: selectedQuotation?.items
+  });
 
   useEffect(() => {
     setPage(1);
@@ -171,16 +181,14 @@ export default function Quotations() {
   };
 
   const handleReject = async () => {
-    if (!selectedQuotation || !rejectReason.trim()) {
-      showToast('Please provide a rejection reason', 'error');
-      return;
-    }
+    if (!selectedQuotation) return;
+    if (!rejectForm.check()) return;
 
     try {
       setProcessing(true);
       await procurementAPI.rejectQuotation(selectedQuotation._id, {
         reason: rejectReason,
-        comments: rejectComments
+        comments: rejectComments.trim()
       });
       showToast('Quotation rejected successfully', 'success');
       setShowRejectModal(false);
@@ -190,7 +198,9 @@ export default function Quotations() {
       setRejectComments('');
       fetchQuotations();
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to reject quotation', 'error');
+      if (!rejectForm.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Failed to reject quotation', 'error');
+      }
     } finally {
       setProcessing(false);
     }
@@ -202,11 +212,7 @@ export default function Quotations() {
 
   const handleCreatePO = async () => {
     if (!selectedQuotation) return;
-    
-    if (!poFormData.expectedDeliveryDate) {
-      showToast('Please select an expected delivery date', 'error');
-      return;
-    }
+    if (!poForm.check()) return;
 
     try {
       setProcessing(true);
@@ -230,7 +236,9 @@ export default function Quotations() {
       // Optionally navigate to purchase orders page
       // navigate('/app/purchase-orders');
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to create purchase order', 'error');
+      if (!poForm.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Failed to create purchase order', 'error');
+      }
     } finally {
       setProcessing(false);
     }
@@ -526,6 +534,7 @@ export default function Quotations() {
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
                 <button
                   onClick={() => {
+                    rejectForm.reset();
                     setShowRejectModal(true);
                   }}
                   disabled={processing}
@@ -578,6 +587,7 @@ export default function Quotations() {
                           ...poFormData,
                           expectedDeliveryDate: deliveryDate.toISOString().split('T')[0]
                         });
+                        poForm.reset();
                         setShowCreatePOModal(true);
                       }}
                       className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-medium rounded-xl hover:bg-primary-dark transition-colors"
@@ -604,7 +614,7 @@ export default function Quotations() {
         title="Reject Quotation"
         size="md"
       >
-        <div className="space-y-4">
+        <div ref={rejectForm.formRef} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Rejection Reason <span className="text-red-500">*</span>
@@ -613,6 +623,7 @@ export default function Quotations() {
               value={rejectReason}
               onChange={(e: any) => setRejectReason(e.target.value)}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
+              {...rejectForm.invalid('reason')}
             >
               <option value="">Select a reason</option>
               <option value="Price too high">Price too high</option>
@@ -621,6 +632,7 @@ export default function Quotations() {
               <option value="Payment terms not acceptable">Payment terms not acceptable</option>
               <option value="Other">Other</option>
             </select>
+            <FieldError message={rejectForm.errors.reason} />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -630,9 +642,12 @@ export default function Quotations() {
               value={rejectComments}
               onChange={(e: any) => setRejectComments(e.target.value)}
               rows={3}
+              maxLength={2000}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary resize-none"
               placeholder="Provide additional details about the rejection..."
+              {...rejectForm.invalid('comments')}
             />
+            <FieldError message={rejectForm.errors.comments} />
           </div>
           <ModalFooter>
             <button
@@ -647,7 +662,7 @@ export default function Quotations() {
             </button>
             <button
               onClick={handleReject}
-              disabled={processing || !rejectReason.trim()}
+              disabled={processing}
               className="flex items-center gap-2 px-6 py-2.5 border border-red-200 text-red-700 font-medium rounded-xl hover:bg-red-50 transition-colors disabled:opacity-50"
             >
               {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
@@ -673,14 +688,21 @@ export default function Quotations() {
         size="lg"
       >
         {selectedQuotation && (
-          <div className="space-y-4">
+          <div ref={poForm.formRef} className="space-y-4">
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
               <p className="text-sm text-blue-800">
-                <strong>From Quotation:</strong> {selectedQuotation.quotationNumber} | 
-                <strong> Supplier:</strong> {selectedQuotation.supplier?.companyName} | 
+                <strong>From Quotation:</strong> {selectedQuotation.quotationNumber} |
+                <strong> Supplier:</strong> {selectedQuotation.supplier?.companyName} |
                 <strong> Total:</strong> {formatCurrency(selectedQuotation.totalAmount, selectedQuotation.currency || getCurrentSbuCurrency())}
               </p>
             </div>
+            <FieldError message={poForm.errors.quotationId || poForm.errors.items} />
+            {/* The quotation's lines have no fields here, so their problems are listed. */}
+            {Object.entries(poForm.errors)
+              .filter(([field]) => field.startsWith('items.'))
+              .map(([field, message]) => (
+                <FieldError key={field} message={`Line ${Number(field.split('.')[1]) + 1}: ${message}`} />
+              ))}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -690,57 +712,78 @@ export default function Quotations() {
                 type="date"
                 value={poFormData.expectedDeliveryDate}
                 onChange={(e: any) => setPOFormData({ ...poFormData, expectedDeliveryDate: e.target.value })}
-                min={new Date().toISOString().split('T')[0]}
+                min={todayKey()}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
-                required
+                {...poForm.invalid('expectedDeliveryDate')}
               />
+              <FieldError message={poForm.errors.expectedDeliveryDate} />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Delivery Address</label>
               <div className="space-y-3">
-                <input
-                  type="text"
-                  placeholder="Street Address"
-                  value={poFormData.deliveryAddress.street}
-                  onChange={(e: any) => setPOFormData({
-                    ...poFormData,
-                    deliveryAddress: { ...poFormData.deliveryAddress, street: e.target.value }
-                  })}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
-                />
-                <div className="grid grid-cols-2 gap-3">
+                <div>
                   <input
                     type="text"
-                    placeholder="City"
-                    value={poFormData.deliveryAddress.city}
+                    placeholder="Street Address"
+                    value={poFormData.deliveryAddress.street}
                     onChange={(e: any) => setPOFormData({
                       ...poFormData,
-                      deliveryAddress: { ...poFormData.deliveryAddress, city: e.target.value }
+                      deliveryAddress: { ...poFormData.deliveryAddress, street: e.target.value }
                     })}
-                    className="px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
+                    maxLength={200}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
+                    {...poForm.invalid('deliveryAddress.street')}
                   />
-                  <input
-                    type="text"
-                    placeholder="Province"
-                    value={poFormData.deliveryAddress.province}
-                    onChange={(e: any) => setPOFormData({
-                      ...poFormData,
-                      deliveryAddress: { ...poFormData.deliveryAddress, province: e.target.value }
-                    })}
-                    className="px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
-                  />
+                  <FieldError message={poForm.errors['deliveryAddress.street']} />
                 </div>
-                <input
-                  type="text"
-                  placeholder="Postal Code"
-                  value={poFormData.deliveryAddress.postalCode}
-                  onChange={(e: any) => setPOFormData({
-                    ...poFormData,
-                    deliveryAddress: { ...poFormData.deliveryAddress, postalCode: e.target.value }
-                  })}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
-                />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="City"
+                      value={poFormData.deliveryAddress.city}
+                      onChange={(e: any) => setPOFormData({
+                        ...poFormData,
+                        deliveryAddress: { ...poFormData.deliveryAddress, city: e.target.value }
+                      })}
+                      maxLength={80}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
+                      {...poForm.invalid('deliveryAddress.city')}
+                    />
+                    <FieldError message={poForm.errors['deliveryAddress.city']} />
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Province"
+                      value={poFormData.deliveryAddress.province}
+                      onChange={(e: any) => setPOFormData({
+                        ...poFormData,
+                        deliveryAddress: { ...poFormData.deliveryAddress, province: e.target.value }
+                      })}
+                      maxLength={80}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
+                      {...poForm.invalid('deliveryAddress.province')}
+                    />
+                    <FieldError message={poForm.errors['deliveryAddress.province']} />
+                  </div>
+                </div>
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Postal Code"
+                    value={poFormData.deliveryAddress.postalCode}
+                    onChange={(e: any) => setPOFormData({
+                      ...poFormData,
+                      deliveryAddress: { ...poFormData.deliveryAddress, postalCode: e.target.value }
+                    })}
+                    maxLength={20}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
+                    {...poForm.invalid('deliveryAddress.postalCode')}
+                  />
+                  <FieldError message={poForm.errors['deliveryAddress.postalCode']} />
+                </div>
               </div>
             </div>
 
@@ -750,9 +793,12 @@ export default function Quotations() {
                 value={poFormData.termsAndConditions}
                 onChange={(e: any) => setPOFormData({ ...poFormData, termsAndConditions: e.target.value })}
                 rows={3}
+                maxLength={2000}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary resize-none"
                 placeholder="Additional terms and conditions for this purchase order..."
+                {...poForm.invalid('termsAndConditions')}
               />
+              <FieldError message={poForm.errors.termsAndConditions} />
             </div>
 
             <div>
@@ -761,9 +807,12 @@ export default function Quotations() {
                 value={poFormData.notes}
                 onChange={(e: any) => setPOFormData({ ...poFormData, notes: e.target.value })}
                 rows={2}
+                maxLength={2000}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary resize-none"
                 placeholder="Internal notes for this purchase order..."
+                {...poForm.invalid('notes')}
               />
+              <FieldError message={poForm.errors.notes} />
             </div>
 
             <ModalFooter>
@@ -783,7 +832,7 @@ export default function Quotations() {
               </button>
               <button
                 onClick={handleCreatePO}
-                disabled={processing || !poFormData.expectedDeliveryDate}
+                disabled={processing}
                 className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-medium rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50"
               >
                 {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}

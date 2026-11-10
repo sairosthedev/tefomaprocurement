@@ -5,11 +5,13 @@ import {
   effectiveReorderLevel,
   getCategoryName,
   isValidCategoryCode,
-  stockStatus
+  stockStatus,
+  validateRestock
 } from '@fossil/shared';
 
 import { Department, Inventory, PurchaseRequisition } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { refuseInvalid } from '../../lib/validation.js';
 import { submitRequisitionForApproval } from '../../services/requisitionApproval.service.js';
 
 const PRIORITIES = ['low', 'medium', 'high', 'urgent'];
@@ -29,11 +31,10 @@ const createRestockRequisition = async (req: Request, res: Response): Promise<an
   try {
     const user = req.user!;
     const { inventoryId, justification, priority } = req.body;
-    const quantity = Number(req.body.quantity);
 
-    if (!Number.isInteger(quantity) || quantity < 1) {
-      return res.status(400).json({ success: false, message: 'Enter a whole quantity of at least 1' });
-    }
+    // A blank category is filled from the item below, so only a given one is checked here.
+    if (refuseInvalid(res, validateRestock(req.body, { categoryFromItem: true }))) return;
+    const quantity = Number(req.body.quantity);
 
     const inventory: any = await Inventory.findOne({ _id: inventoryId, isDeleted: false })
       .populate('item')
@@ -49,7 +50,11 @@ const createRestockRequisition = async (req: Request, res: Response): Promise<an
     // is asked only when it does not.
     const category = String(req.body.category || categoryCodeForStock(item.category) || '').trim();
     if (!isValidCategoryCode(category)) {
-      return res.status(400).json({ success: false, message: `Choose a category for ${item.name}` });
+      return res.status(400).json({
+        success: false,
+        message: `Choose a category for ${item.name}`,
+        errors: { category: `Choose a category for ${item.name}` }
+      });
     }
 
     if (!user.department) {

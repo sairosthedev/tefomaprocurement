@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express';
+import { validateGoodsReceipt } from '@fossil/shared';
 
 import { Delivery, PurchaseOrder, StoreTransaction, PurchaseRequisition } from '../../models/index.js';
+import { refuseInvalid } from '../../lib/validation.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole, notifySupplier, notifyUsersByDepartment, createNotification } from '../../services/notification.service.js';
 import { resolveSiteId, findOrCreateInventory } from '../../lib/siteScope.js';
@@ -72,6 +74,8 @@ const receiveGoods = async (req: Request, res: Response): Promise<any> => {
       msdsReference
     } = req.body;
 
+    if (refuseInvalid(res, validateGoodsReceipt(req.body))) return;
+
     // Rev 9 clause 6.6.2: quality checks are performed by a department
     // representative, who is usually not a system user — hence a name rather
     // than a User reference. Left undefined when nobody attended, so the GRV
@@ -109,9 +113,12 @@ const receiveGoods = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ success: false, message: 'Record at least one line received' });
-    }
+    // A line may not receive more than the order still has due on it.
+    const outstanding: Record<string, number> = {};
+    (po.items as any[]).forEach((poItem: any) => {
+      outstanding[String(poItem._id)] = Math.max(0, (poItem.quantity || 0) - (poItem.quantityReceived || 0));
+    });
+    if (refuseInvalid(res, validateGoodsReceipt(req.body, { outstanding }))) return;
 
     // Each line as counted and judged at the door. Rejected goods stay on the
     // GRV, for the supplier and the record, but are not taken into stock or

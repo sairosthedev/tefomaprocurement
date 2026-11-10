@@ -5,6 +5,18 @@ import { getCategoryName } from '../lib/constants';
 import { ConfirmModal } from './Modal';
 import Drawer from './Drawer';
 import { FormSteps, FormStepNav } from './FormSteps';
+import FieldError from './FieldError';
+import { serverFieldErrors, useFormValidation } from '../lib/useFormValidation';
+import {
+  RFQ_TERMS_MAX_LENGTH,
+  RFQ_TITLE_MAX_LENGTH,
+  TEXT_LIMITS,
+  firstError,
+  hasErrors,
+  lineField,
+  validateRfq,
+  type FieldErrors
+} from '@fossil/shared';
 import {
   Package, Calendar, Users,
   Loader2, X, Search, CheckCircle, AlertCircle,
@@ -30,6 +42,13 @@ const EMPTY_FORM = {
   termsAndConditions: '',
   notes: ''
 };
+
+/** The step a field is entered on, so a refused field can be shown; -1 for none. */
+function stepOfField(field: string): number {
+  if (field === 'items' || field.startsWith('items.')) return STEP_ITEMS;
+  if (field === 'invitedSuppliers') return STEP_SUPPLIERS;
+  return field in EMPTY_FORM ? STEP_DETAILS : -1;
+}
 
 export interface RFQFormHandle {
   /** Close the form, first asking to discard when anything has been entered. */
@@ -84,6 +103,45 @@ const RFQForm = forwardRef<RFQFormHandle, {
   // Set once the officer adds or removes a supplier from the proposed list.
   const [selectionChanged, setSelectionChanged] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+  // Which save the officer last tried: a draft asks for less than publishing.
+  const [mode, setMode] = useState<'draft' | 'open'>('open');
+
+  // What is sent to the API, and what the shared check reads.
+  const buildPayload = (asDraft: boolean) => ({
+    title: formData.title,
+    description: formData.description,
+    purchaseRequisitionId: requisitionId, // Backend expects purchaseRequisitionId, not purchaseRequisition
+    items: requisition?.items?.map((item: any) => ({
+      description: item.description,
+      categoryName: item.category, // carry the canonical category code
+      specifications: item.specification || item.specifications,
+      quantity: item.quantity,
+      unit: item.unit || 'Each',
+      // Machine identification and data-plate photos travel with the line so
+      // suppliers can match the exact part.
+      equipment: item.equipment,
+      attachments: item.attachments?.map((a: any) => ({
+        kind: a.kind,
+        fileName: a.fileName,
+        fileData: a.fileData,
+        mimeType: a.mimeType,
+        caption: a.caption
+      }))
+    })) || [],
+    invitedSuppliers: selectedSuppliers.map((s: any) => s._id),
+    submissionDeadline: formData.submissionDeadline,
+    deliveryRequiredBy: formData.deliveryRequiredBy,
+    termsAndConditions: formData.termsAndConditions,
+    notes: formData.notes,
+    status: asDraft ? 'draft' : 'open'
+  });
+
+  // Suppliers are asked for before publishing; a draft may leave them to the
+  // server's proposal from the requisition.
+  const validation = useFormValidation(
+    (values: ReturnType<typeof buildPayload>) => validateRfq(values, { requireSuppliers: values.status === 'open' }),
+    buildPayload(mode === 'draft')
+  );
 
   const dirty =
     step > STEP_DETAILS ||
@@ -262,26 +320,30 @@ const RFQForm = forwardRef<RFQFormHandle, {
     topRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   }, [step]);
 
-  // Checks a step must pass before the next one opens. The deadline is only
-  // demanded at publishing, as before, so a draft can still be saved without it.
-  const validateStep = (index: number): boolean => {
-    if (index === STEP_DETAILS && !formData.title?.trim()) {
-      showToast('Please enter an RFQ title', 'error');
-      return false;
-    }
-    if (index === STEP_ITEMS && enteredItemCount === 0) {
-      showToast('RFQ must have at least one item before it can be sent to suppliers', 'error');
-      return false;
-    }
-    if (index === STEP_SUPPLIERS && selectedSuppliers.length === 0) {
-      showToast('Please select at least one supplier', 'error');
-      return false;
-    }
+  // Moving to another step starts its messages afresh.
+  const goToStep = (index: number) => {
+    validation.reset();
+    setStep(index);
+  };
+
+  /** Opens the earliest step holding a refused field. False when no step shows one. */
+  const openStepWithError = (errors: FieldErrors): boolean => {
+    const steps = Object.keys(errors).map(stepOfField).filter((s) => s >= 0);
+    if (steps.length === 0) return false;
+    setStep(Math.min(...steps));
     return true;
   };
 
+  // Next checks this step's fields as for publishing; later steps wait their turn.
   const goNext = () => {
-    if (validateStep(step)) setStep((s) => Math.min(s + 1, LAST_STEP));
+    const payload = buildPayload(false);
+    setMode('open');
+    const errors = validateRfq(payload, { requireSuppliers: true });
+    if (Object.keys(errors).some((field) => stepOfField(field) === step)) {
+      validation.check(payload);
+      return;
+    }
+    goToStep(Math.min(step + 1, LAST_STEP));
   };
 
   const handleSubmit = async (e: any, asDraft = false) => {
@@ -293,62 +355,17 @@ const RFQForm = forwardRef<RFQFormHandle, {
       return;
     }
 
-    if (!formData.title?.trim()) {
-      showToast('Please enter an RFQ title', 'error');
-      setStep(STEP_DETAILS);
+    const rfqData = buildPayload(asDraft);
+    setMode(asDraft ? 'draft' : 'open');
+    const errors = validateRfq(rfqData, { requireSuppliers: !asDraft });
+    if (hasErrors(errors)) {
+      if (!openStepWithError(errors)) showToast(firstError(errors), 'error');
+      validation.check(rfqData);
       return;
-    }
-
-    if (!asDraft) {
-      if (selectedSuppliers.length === 0) {
-        showToast('Please select at least one supplier', 'error');
-        setStep(STEP_SUPPLIERS);
-        return;
-      }
-      if (!formData.submissionDeadline) {
-        showToast('Please set a submission deadline', 'error');
-        setStep(STEP_DETAILS);
-        return;
-      }
-      const rfqItems = (requisition?.items || []).filter((item: any) => item.description?.trim());
-      if (rfqItems.length === 0) {
-        showToast('RFQ must have at least one item before it can be sent to suppliers', 'error');
-        setStep(STEP_ITEMS);
-        return;
-      }
     }
 
     try {
       setSubmitting(true);
-
-      const rfqData: any = {
-        title: formData.title,
-        description: formData.description,
-        purchaseRequisitionId: requisitionId, // Backend expects purchaseRequisitionId, not purchaseRequisition
-        items: requisition?.items?.map((item: any) => ({
-          description: item.description,
-          categoryName: item.category, // carry the canonical category code
-          specifications: item.specification || item.specifications,
-          quantity: item.quantity,
-          unit: item.unit || 'Each',
-          // Machine identification and data-plate photos travel with the line so
-          // suppliers can match the exact part.
-          equipment: item.equipment,
-          attachments: item.attachments?.map((a: any) => ({
-            kind: a.kind,
-            fileName: a.fileName,
-            fileData: a.fileData,
-            mimeType: a.mimeType,
-            caption: a.caption
-          }))
-        })) || [],
-        invitedSuppliers: selectedSuppliers.map((s: any) => s._id),
-        submissionDeadline: formData.submissionDeadline,
-        deliveryRequiredBy: formData.deliveryRequiredBy,
-        termsAndConditions: formData.termsAndConditions,
-        notes: formData.notes,
-        status: asDraft ? 'draft' : 'open'
-      };
 
       const created = await procurementAPI.createRFQ(rfqData);
       const rfqId = created.data?.data?._id;
@@ -369,7 +386,10 @@ const RFQForm = forwardRef<RFQFormHandle, {
       onSaved(rfqId);
     } catch (error: any) {
       console.error('Error creating RFQ:', error);
-      showToast(error.response?.data?.message || 'Failed to create RFQ', 'error');
+      // Field errors show under their field, on its step; anything else is a toast.
+      const fields = serverFieldErrors(error);
+      if (fields && openStepWithError(fields)) validation.fromServer(error);
+      else showToast(error.response?.data?.message || 'Failed to create RFQ', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -385,9 +405,9 @@ const RFQForm = forwardRef<RFQFormHandle, {
 
   return (
     <div ref={topRef} className="scroll-mt-6">
-      <FormSteps steps={STEPS} current={step} onSelect={setStep} variant="track" />
+      <FormSteps steps={STEPS} current={step} onSelect={goToStep} variant="track" />
 
-      <form onSubmit={(e: any) => handleSubmit(e, false)}>
+      <form ref={validation.formRef} onSubmit={(e: any) => handleSubmit(e, false)} noValidate>
         <div className="space-y-6">
           {/* Requisition Info Banner */}
           {requisition && step !== LAST_STEP && (
@@ -429,8 +449,11 @@ const RFQForm = forwardRef<RFQFormHandle, {
                   onChange={(e: any) => setFormData({...formData, title: e.target.value})}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   placeholder="Enter RFQ title"
+                  maxLength={RFQ_TITLE_MAX_LENGTH}
                   required
+                  {...validation.invalid('title')}
                 />
+                <FieldError message={validation.errors.title} />
               </div>
 
               <div className="md:col-span-2">
@@ -443,7 +466,10 @@ const RFQForm = forwardRef<RFQFormHandle, {
                   rows={3}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
                   placeholder="Additional details or requirements for suppliers..."
+                  maxLength={TEXT_LIMITS.long}
+                  {...validation.invalid('description')}
                 />
+                <FieldError message={validation.errors.description} />
               </div>
 
               <div>
@@ -456,7 +482,9 @@ const RFQForm = forwardRef<RFQFormHandle, {
                   onChange={(e: any) => setFormData({...formData, submissionDeadline: e.target.value})}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   min={new Date().toISOString().slice(0, 16)}
+                  {...validation.invalid('submissionDeadline')}
                 />
+                <FieldError message={validation.errors.submissionDeadline} />
               </div>
 
               <div>
@@ -468,7 +496,9 @@ const RFQForm = forwardRef<RFQFormHandle, {
                   value={formData.deliveryRequiredBy}
                   onChange={(e: any) => setFormData({...formData, deliveryRequiredBy: e.target.value})}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  {...validation.invalid('deliveryRequiredBy')}
                 />
+                <FieldError message={validation.errors.deliveryRequiredBy} />
               </div>
             </div>
           </div>
@@ -482,7 +512,10 @@ const RFQForm = forwardRef<RFQFormHandle, {
               rows={4}
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
               placeholder="Enter terms and conditions for this RFQ..."
+              maxLength={RFQ_TERMS_MAX_LENGTH}
+              {...validation.invalid('termsAndConditions')}
             />
+            <FieldError message={validation.errors.termsAndConditions} />
           </div>
           </>
           )}
@@ -521,6 +554,14 @@ const RFQForm = forwardRef<RFQFormHandle, {
                         <td className="py-2 px-3 border-b border-gray-100 text-gray-500">{index + 1}</td>
                         <td className="py-2 px-3 border-b border-gray-100">
                           <span className="font-medium text-gray-900">{item.description}</span>
+                          {/* Lines are locked here, so a problem with one is fixed on the requisition. */}
+                          <FieldError
+                            message={
+                              validation.errors[lineField('items', index, 'description')] ||
+                              validation.errors[lineField('items', index, 'quantity')] ||
+                              validation.errors[lineField('items', index, 'unit')]
+                            }
+                          />
                         </td>
                         <td className="py-2 px-3 border-b border-gray-100 text-gray-600">
                           {item.specification || item.specifications || '-'}
@@ -540,6 +581,7 @@ const RFQForm = forwardRef<RFQFormHandle, {
                 <p className="text-gray-500">No items in requisition</p>
               </div>
             )}
+            <FieldError message={validation.errors.items} />
 
             <p className="text-xs text-gray-500 mt-3 flex items-center gap-1">
               <AlertCircle className="h-3 w-3" />
@@ -646,7 +688,11 @@ const RFQForm = forwardRef<RFQFormHandle, {
             </div>
 
             {/* Supplier List */}
-            <div className="border border-gray-200 rounded-xl max-h-64 overflow-y-auto">
+            <div
+              className={`border rounded-xl max-h-64 overflow-y-auto ${
+                validation.errors.invitedSuppliers ? 'border-red-400' : 'border-gray-200'
+              }`}
+            >
               {filteredSuppliers.length === 0 ? (
                 <div className="text-center py-8">
                   <Users className="h-8 w-8 text-gray-300 mx-auto mb-2" />
@@ -722,6 +768,7 @@ const RFQForm = forwardRef<RFQFormHandle, {
                 </div>
               )}
             </div>
+            <FieldError message={validation.errors.invitedSuppliers} />
           </div>
           )}
 
@@ -735,7 +782,7 @@ const RFQForm = forwardRef<RFQFormHandle, {
                 <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                   <FileText className="h-4 w-4 text-primary" /> Details
                 </h3>
-                <button type="button" onClick={() => setStep(STEP_DETAILS)} className="text-xs font-medium text-primary hover:underline">
+                <button type="button" onClick={() => goToStep(STEP_DETAILS)} className="text-xs font-medium text-primary hover:underline">
                   Edit
                 </button>
               </div>
@@ -755,7 +802,7 @@ const RFQForm = forwardRef<RFQFormHandle, {
                   <dd className={`font-medium ${formData.submissionDeadline ? 'text-gray-900' : 'text-red-600'}`}>
                     {formData.submissionDeadline
                       ? new Date(formData.submissionDeadline).toLocaleString()
-                      : 'Not set (required to publish)'}
+                      : 'Not set (required)'}
                   </dd>
                 </div>
                 <div>
@@ -784,7 +831,7 @@ const RFQForm = forwardRef<RFQFormHandle, {
                 <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                   <Package className="h-4 w-4 text-primary" /> Items ({enteredItemCount})
                 </h3>
-                <button type="button" onClick={() => setStep(STEP_ITEMS)} className="text-xs font-medium text-primary hover:underline">
+                <button type="button" onClick={() => goToStep(STEP_ITEMS)} className="text-xs font-medium text-primary hover:underline">
                   View
                 </button>
               </div>
@@ -807,7 +854,7 @@ const RFQForm = forwardRef<RFQFormHandle, {
                 <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                   <Users className="h-4 w-4 text-primary" /> Suppliers invited ({selectedSuppliers.length})
                 </h3>
-                <button type="button" onClick={() => setStep(STEP_SUPPLIERS)} className="text-xs font-medium text-primary hover:underline">
+                <button type="button" onClick={() => goToStep(STEP_SUPPLIERS)} className="text-xs font-medium text-primary hover:underline">
                   Edit
                 </button>
               </div>
@@ -831,7 +878,7 @@ const RFQForm = forwardRef<RFQFormHandle, {
           <FormStepNav
             current={step}
             total={STEPS.length}
-            onBack={() => setStep((s) => Math.max(s - 1, 0))}
+            onBack={() => goToStep(Math.max(step - 1, 0))}
             onNext={goNext}
             onCancel={requestClose}
             finishLabel="Publish RFQ"

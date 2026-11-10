@@ -86,9 +86,9 @@ An automated test boots two SBU databases and asserts that every endpoint called
 | `group.<base-domain>` | Group roles | Framework contracts, cross-SBU reports, supplier and catalogue reconciliation, SBU administration |
 | `suppliers.<base-domain>` | Suppliers | One portal showing RFQs and POs from every SBU the supplier is approved for |
 
-`<base-domain>` is **sourceline.co.zw**, registered 2026-10-07. Staging uses `staging.sourceline.co.zw`, development `dev.sourceline.co.zw`, so the three environments never share a hostname.
+`<base-domain>` is **procureline.co.zw**, bought 2026-11-10 to match the product name. It replaces sourceline.co.zw (registered 2026-10-07), which keeps working while people move over. The front door is `www.procureline.co.zw`; the bare domain redirects there. Staging uses `staging.procureline.co.zw`, development `dev.procureline.co.zw`, so the three environments never share a hostname.
 
-**Deployment:** one client build and one API, as today. All domains are attached to the same Vercel client project (a wildcard `*.<base-domain>` covers SBU subdomains; custom domains are added individually and verified by the SBU's DNS admin).
+**Deployment:** one client build and one API, as today. All domains are attached to the same Vercel client project. At the registrar, one wildcard DNS record covers every SBU subdomain; on Vercel each SBU hostname is added by name, because a Vercel wildcard needs Vercel's nameservers and the DNS stays with the registrar (webzim). Custom domains are added individually and verified by the SBU's DNS admin.
 
 **Resolving the SBU:**
 
@@ -217,7 +217,7 @@ This is the main saving from the full-separation decision — the risky part of 
 
 ## 16. Open questions
 
-1. ~~Base domain for Sourceline~~ — **sourceline.co.zw, registered 2026-10-07.** Remaining: who manages its DNS, and the records still need pointing at Vercel.
+1. ~~Base domain~~ — **procureline.co.zw, bought 2026-11-10**, replacing sourceline.co.zw (registered 2026-10-07). DNS is at webzim. Remaining: the wildcard record, and inbound mail for the domain if it is wanted (the MX points at the bare domain, which now resolves to Vercel).
 2. Which SBUs want their **own custom domain** rather than a Sourceline subdomain?
 3. ~~Users and suppliers in the platform database (D5–D7)~~ — **decided 2026-10-07: fully separate per SBU**, reconciled on **company registration number** (see section 9.1). Open follow-on: do we split the internal vendor code out of `registrationNumber` into its own field, and who backfills the real registration numbers for the 647 existing suppliers?
 4. Who is the **initial admin** for each of the eleven new SBUs?

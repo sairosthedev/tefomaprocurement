@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { TEXT_LIMITS, validateWorkflowCancellation } from '@fossil/shared';
 import { Modal, ModalFooter } from './Modal';
 import { Loader2 } from 'lucide-react';
+import FieldError from './FieldError';
+import { useFormValidation } from '../lib/useFormValidation';
 
 type ReasonOption = { code: string; label: string };
 
@@ -24,6 +27,17 @@ export default function CancelWorkflowModal({
   const [reasonCode, setReasonCode] = useState('');
   const [comments, setComments] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // The same check the API runs: requisitions against PR_CANCELLATION_REASONS,
+  // purchase orders against PO_CANCELLATION_REASONS, whichever `reasons` is.
+  const validation = useFormValidation(
+    (values: { reasonCode: string; comments: string }) => validateWorkflowCancellation(values, reasons),
+    { reasonCode, comments }
+  );
+
+  // Each opening starts clean.
+  useEffect(() => {
+    if (isOpen) validation.reset();
+  }, [isOpen]);
 
   const handleClose = () => {
     if (submitting) return;
@@ -34,8 +48,7 @@ export default function CancelWorkflowModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!reasonCode) return;
-    if (reasonCode === 'other' && !comments.trim()) return;
+    if (!validation.check()) return;
 
     setSubmitting(true);
     try {
@@ -46,6 +59,9 @@ export default function CancelWorkflowModal({
       setReasonCode('');
       setComments('');
       onClose();
+    } catch (error: any) {
+      // The page has already said what went wrong unless it was a field.
+      validation.fromServer(error);
     } finally {
       setSubmitting(false);
     }
@@ -53,7 +69,7 @@ export default function CancelWorkflowModal({
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title={title} size="md">
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form ref={validation.formRef} onSubmit={handleSubmit} noValidate className="space-y-4">
         <p className="text-sm text-gray-600">{description}</p>
 
         <div>
@@ -64,8 +80,8 @@ export default function CancelWorkflowModal({
             id="cancel-reason"
             value={reasonCode}
             onChange={(e) => setReasonCode(e.target.value)}
-            required
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+            {...validation.invalid('reasonCode')}
           >
             <option value="">Select a reason…</option>
             {reasons.map((r) => (
@@ -74,6 +90,7 @@ export default function CancelWorkflowModal({
               </option>
             ))}
           </select>
+          <FieldError message={validation.errors.reasonCode} />
         </div>
 
         <div>
@@ -85,10 +102,12 @@ export default function CancelWorkflowModal({
             value={comments}
             onChange={(e) => setComments(e.target.value)}
             rows={3}
-            required={reasonCode === 'other'}
+            maxLength={TEXT_LIMITS.long}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none resize-none"
             placeholder="Explain why this is being cancelled…"
+            {...validation.invalid('comments')}
           />
+          <FieldError message={validation.errors.comments} />
         </div>
 
         <ModalFooter>
@@ -102,7 +121,7 @@ export default function CancelWorkflowModal({
           </button>
           <button
             type="submit"
-            disabled={submitting || !reasonCode || (reasonCode === 'other' && !comments.trim())}
+            disabled={submitting}
             className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}

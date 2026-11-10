@@ -1,5 +1,16 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
+import {
+  STORES_TEXT_LIMITS,
+  TEXT_LIMITS,
+  firstError,
+  hasErrors,
+  validateDeliveryAcceptance,
+  validateGoodsReceipt,
+  type FieldErrors
+} from '@fossil/shared';
 import { useToast } from '../components/Toast';
+import FieldError from '../components/FieldError';
+import { serverFieldErrors, useFormValidation } from '../lib/useFormValidation';
 import api, { storesAPI } from '../lib/api';
 import {
   Plus, Search, Truck, CheckCircle,
@@ -33,6 +44,29 @@ const RECEIVE_STEPS = [
 ];
 
 const INSPECTED_STATUSES = ['inspected', 'accepted', 'partially_accepted', 'rejected'];
+
+/** The receiving step a field is entered on: delivery and driver, the count, then the inspection. */
+const receiveStepOf = (field: string) =>
+  field === 'items' || field.startsWith('items.')
+    ? 1
+    : /^(inspectedBy|witnesses\.|msdsReference)/.test(field)
+    ? 2
+    : 0;
+
+/** Fields the receiving form has a box for; a problem with any other is shown as a toast. */
+const RECEIVE_FIELDS_WITH_BOXES =
+  /^(deliveryNoteNumber|deliveredBy\.(name|idNumber|vehicleRegistration|contactNumber)|items|items\.\d+\.(quantityReceived|quantityRejected|rejectionReason)|inspectedByName|inspectedByDepartment|witnesses\.(mt|security|sheq)|msdsReference)$/;
+
+/** Line errors keyed by what was sent (`items.0.quantityReceived`), moved onto the rows on screen. */
+function toRowErrors(errors: FieldErrors, rowOf: number[]): FieldErrors {
+  const out: FieldErrors = {};
+  for (const [field, message] of Object.entries(errors)) {
+    const match = /^items\.(\d+)\.(.+)$/.exec(field);
+    const row = match ? rowOf[Number(match[1])] : undefined;
+    out[match && row !== undefined ? `items.${row}.${match[2]}` : field] = message;
+  }
+  return out;
+}
 
 /** A delivery from the supplier's notice to goods in stock. */
 const formatStatus = (status: any) => {
@@ -76,6 +110,67 @@ export default function Deliveries() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pagination, setPagination] = useState(emptyPagination());
+
+  /**
+   * The GRV as sent, for the rows given. The form checks every row, so its
+   * messages land on the right line; only rows with something received are sent.
+   */
+  const receiptPayload = (data: any, rows: number[]) => ({
+    purchaseOrderId: selectedPO?._id,
+    deliveryNoteNumber: String(data.deliveryNote || '').trim(),
+    deliveryDate: new Date().toISOString(),
+    items: rows.map((index) => {
+      const item = data.items[index];
+      return {
+        poItem: item._id, // The PO item ID
+        description: item.description,
+        quantityOrdered: item.quantity,
+        quantityReceived: item.receivedQuantity || 0,
+        quantityRejected: item.rejectedQuantity || 0,
+        rejectionReason: (item.rejectedQuantity || 0) > 0 ? String(item.rejectionReason || '').trim() : undefined,
+        condition: 'good'
+      };
+    }),
+    deliveredBy: {
+      name: String(data.deliveredBy?.name || '').trim(),
+      idNumber: data.deliveredBy?.idNumber?.trim() || undefined,
+      company: data.deliveredBy?.company?.trim() || undefined,
+      vehicleRegistration: data.deliveredBy?.vehicleRegistration?.trim() || undefined,
+      contactNumber: data.deliveredBy?.contactNumber?.trim() || undefined
+    },
+    inspectedByName: data.inspectedByName?.trim() || undefined,
+    inspectedByDepartment: data.inspectedByDepartment?.trim() || undefined,
+    witnesses: {
+      mt: data.witnesses?.mt?.trim() || undefined,
+      security: data.witnesses?.security?.trim() || undefined,
+      sheq: data.witnesses?.sheq?.trim() || undefined
+    },
+    hasHazardousMaterials: Boolean(data.hasHazardousMaterials),
+    msdsReference: data.msdsReference?.trim() || undefined,
+    notes: ''
+  });
+  // What is still due on each order line; a line may not receive more.
+  const outstanding = useMemo(
+    () =>
+      selectedPO
+        ? (Object.fromEntries(
+            (selectedPO.items || []).map((item: any) => [
+              String(item._id),
+              Math.max(0, (item.quantity || 0) - (item.quantityReceived || 0))
+            ])
+          ) as Record<string, number>)
+        : undefined,
+    [selectedPO]
+  );
+  const receiveErrors = (data: any) =>
+    validateGoodsReceipt(receiptPayload(data, (data.items || []).map((_: any, index: number) => index)), { outstanding });
+  // Next checks the step on screen; the last step checks them all.
+  const receiveCheck = useFormValidation((data: any) => {
+    const errors = receiveErrors(data);
+    if (receiveStep >= RECEIVE_STEPS.length - 1) return errors;
+    return Object.fromEntries(Object.entries(errors).filter(([field]) => receiveStepOf(field) === receiveStep));
+  }, receiveData);
+  const acceptCheck = useFormValidation(validateDeliveryAcceptance, { status: acceptStatus, notes: acceptNotes });
 
   useEffect(() => {
     setPage(1);
@@ -135,95 +230,48 @@ export default function Deliveries() {
       }))
     });
     setReceiveStep(0);
+    receiveCheck.reset();
     setShowReceiveModal(true);
   };
 
-  // Each step of the receiving form checks its own fields before moving on;
-  // handleReceive repeats the checks so a jump back and forth cannot skip them.
-  const validateReceiveStep = (step: number) => {
-    if (step === 0) {
-      if (!receiveData.deliveryNote.trim()) {
-        showToast('Please enter delivery note number', 'error');
-        return false;
-      }
-      if (!receiveData.deliveredBy?.name?.trim()) {
-        showToast('Please record who delivered the goods', 'error');
-        return false;
-      }
-    }
-    if (step === 1 && !receiveData.items.some((item: any) => item.receivedQuantity > 0)) {
-      showToast('Enter the quantity received for at least one item', 'error');
-      return false;
-    }
-    if (step === 1) {
-      const over = receiveData.items.find((item: any) => (item.rejectedQuantity || 0) > (item.receivedQuantity || 0));
-      if (over) {
-        showToast(`More rejected than received for ${over.description}`, 'error');
-        return false;
-      }
-      const unexplained = receiveData.items.find(
-        (item: any) => (item.rejectedQuantity || 0) > 0 && !String(item.rejectionReason || '').trim()
-      );
-      if (unexplained) {
-        showToast(`Give a reason for rejecting ${unexplained.description}`, 'error');
-        return false;
-      }
-    }
-    return true;
-  };
-
-  const goToReceiveStep = (step: number) => {
+  /** Moves to a step; its messages start afresh unless the move is to show them. */
+  const goToReceiveStep = (step: number, keepErrors = false) => {
     setReceiveStep(step);
+    if (!keepErrors) receiveCheck.reset();
     receiveTopRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   };
 
+  // Each step of the receiving form checks its own fields before moving on;
+  // handleReceive checks them all so a jump back and forth cannot skip them.
   const nextReceiveStep = () => {
-    if (validateReceiveStep(receiveStep)) goToReceiveStep(receiveStep + 1);
+    if (receiveCheck.check()) goToReceiveStep(receiveStep + 1);
+  };
+
+  /** Opens the earliest step with a problem, so its messages show; a problem with no box is a toast. */
+  const showReceiveProblems = (errors: FieldErrors) => {
+    const boxed = Object.keys(errors).filter((field) => RECEIVE_FIELDS_WITH_BOXES.test(field));
+    if (boxed.length === 0) {
+      showToast(firstError(errors), 'error');
+      return;
+    }
+    const step = Math.min(...boxed.map(receiveStepOf));
+    if (step !== receiveStep) goToReceiveStep(step, true);
   };
 
   const handleReceive = async () => {
+    const all = receiveErrors(receiveData);
+    if (hasErrors(all)) {
+      showReceiveProblems(all);
+      receiveCheck.check();
+      return;
+    }
+    // Only rows with something received are sent; sentRows maps each sent line back to its row.
+    const sentRows = receiveData.items
+      .map((_: any, index: number) => index)
+      .filter((index: number) => receiveData.items[index].receivedQuantity > 0);
     try {
-      for (const step of [0, 1]) {
-        if (!validateReceiveStep(step)) {
-          goToReceiveStep(step);
-          return;
-        }
-      }
-
       setIsReceiving(true);
-      const res = await api.post('/stores/deliveries', {
-        purchaseOrderId: selectedPO._id,
-        deliveryNoteNumber: receiveData.deliveryNote,
-        deliveryDate: new Date().toISOString(),
-        items: receiveData.items
-          .filter((item: any) => item.receivedQuantity > 0) // Only include items with quantity > 0
-          .map((item: any) => ({
-            poItem: item._id, // The PO item ID
-            description: item.description,
-            quantityOrdered: item.quantity,
-            quantityReceived: item.receivedQuantity || 0,
-            quantityRejected: Math.min(item.rejectedQuantity || 0, item.receivedQuantity || 0),
-            rejectionReason: (item.rejectedQuantity || 0) > 0 ? String(item.rejectionReason || '').trim() : undefined,
-            condition: 'good'
-          })),
-        deliveredBy: {
-          name: receiveData.deliveredBy.name.trim(),
-          idNumber: receiveData.deliveredBy.idNumber?.trim() || undefined,
-          company: receiveData.deliveredBy.company?.trim() || undefined,
-          vehicleRegistration: receiveData.deliveredBy.vehicleRegistration?.trim() || undefined,
-          contactNumber: receiveData.deliveredBy.contactNumber?.trim() || undefined
-        },
-        inspectedByName: receiveData.inspectedByName?.trim() || undefined,
-        inspectedByDepartment: receiveData.inspectedByDepartment?.trim() || undefined,
-        witnesses: {
-          mt: receiveData.witnesses?.mt?.trim() || undefined,
-          security: receiveData.witnesses?.security?.trim() || undefined,
-          sheq: receiveData.witnesses?.sheq?.trim() || undefined
-        },
-        hasHazardousMaterials: Boolean(receiveData.hasHazardousMaterials),
-        msdsReference: receiveData.msdsReference?.trim() || undefined,
-        notes: ''
-      });
+      const res = await api.post('/stores/deliveries', receiptPayload(receiveData, sentRows));
 
       showToast(res.data?.message || 'Goods received successfully', 'success');
       setShowReceiveModal(false);
@@ -248,10 +296,18 @@ export default function Deliveries() {
         });
         setAcceptStatus('accepted');
         setAcceptNotes('');
+        acceptCheck.reset();
         setShowViewModal(true);
       }
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to receive goods', 'error');
+      const fields = serverFieldErrors(error);
+      if (fields) {
+        const onRows = toRowErrors(fields, sentRows);
+        showReceiveProblems(onRows);
+        receiveCheck.fromServer({ response: { data: { errors: onRows } } });
+      } else {
+        showToast(error.response?.data?.message || 'Failed to receive goods', 'error');
+      }
     } finally {
       setIsReceiving(false);
     }
@@ -329,11 +385,13 @@ export default function Deliveries() {
     setSelectedDelivery(delivery);
     setAcceptStatus('accepted');
     setAcceptNotes('');
+    acceptCheck.reset();
     setShowViewModal(true);
   };
 
   const handleAcceptDelivery = async () => {
     if (!selectedDelivery) return;
+    if (!acceptCheck.check()) return;
     try {
       setIsAccepting(true);
       await storesAPI.acceptDelivery(selectedDelivery._id, {
@@ -350,7 +408,9 @@ export default function Deliveries() {
       setSelectedDelivery(null);
       fetchData();
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to update delivery', 'error');
+      if (!acceptCheck.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Failed to update delivery', 'error');
+      }
     } finally {
       setIsAccepting(false);
     }
@@ -489,7 +549,7 @@ export default function Deliveries() {
                         <ViewButton
                           size="xs"
                           showIcon={false}
-                          onClick={() => { setSelectedDelivery(delivery); setShowViewModal(true); }}
+                          onClick={() => { setSelectedDelivery(delivery); acceptCheck.reset(); setShowViewModal(true); }}
                         />
                         {canAcceptDelivery(delivery) && (
                           <button
@@ -542,6 +602,8 @@ export default function Deliveries() {
       >
         {selectedPO && (
           <form
+            ref={receiveCheck.formRef}
+            noValidate
             onSubmit={(e) => {
               e.preventDefault();
               // Enter on an earlier step moves on rather than receiving early.
@@ -576,8 +638,11 @@ export default function Deliveries() {
                     value={receiveData.deliveryNote}
                     onChange={(e: any) => setReceiveData({ ...receiveData, deliveryNote: e.target.value })}
                     placeholder={selectedPO.pendingDelivery?.deliveryNoteNumber || "Enter supplier's delivery note number"}
+                    maxLength={STORES_TEXT_LIMITS.documentNumber}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    {...receiveCheck.invalid('deliveryNoteNumber')}
                   />
+                  <FieldError message={receiveCheck.errors.deliveryNoteNumber} />
                   {selectedPO.pendingDelivery?.deliveryNoteNumber && (
                     <>
                       {receiveData.deliveryNote === selectedPO.pendingDelivery.deliveryNoteNumber ? (
@@ -618,9 +683,12 @@ export default function Deliveries() {
                         type="text"
                         value={receiveData.deliveredBy?.name || ''}
                         onChange={(e: any) => updateDeliveredBy('name', e.target.value)}
+                        maxLength={TEXT_LIMITS.name}
                         placeholder="e.g. John Moyo"
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        {...receiveCheck.invalid('deliveredBy.name')}
                       />
+                      <FieldError message={receiveCheck.errors['deliveredBy.name']} />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">ID number</label>
@@ -628,9 +696,12 @@ export default function Deliveries() {
                         type="text"
                         value={receiveData.deliveredBy?.idNumber || ''}
                         onChange={(e: any) => updateDeliveredBy('idNumber', e.target.value)}
+                        maxLength={STORES_TEXT_LIMITS.idNumber}
                         placeholder="National ID / licence"
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        {...receiveCheck.invalid('deliveredBy.idNumber')}
                       />
+                      <FieldError message={receiveCheck.errors['deliveredBy.idNumber']} />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Vehicle registration</label>
@@ -638,9 +709,12 @@ export default function Deliveries() {
                         type="text"
                         value={receiveData.deliveredBy?.vehicleRegistration || ''}
                         onChange={(e: any) => updateDeliveredBy('vehicleRegistration', e.target.value)}
+                        maxLength={STORES_TEXT_LIMITS.vehicle}
                         placeholder="e.g. AEB 1234"
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        {...receiveCheck.invalid('deliveredBy.vehicleRegistration')}
                       />
+                      <FieldError message={receiveCheck.errors['deliveredBy.vehicleRegistration']} />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Contact number</label>
@@ -648,9 +722,12 @@ export default function Deliveries() {
                         type="text"
                         value={receiveData.deliveredBy?.contactNumber || ''}
                         onChange={(e: any) => updateDeliveredBy('contactNumber', e.target.value)}
+                        maxLength={TEXT_LIMITS.phone}
                         placeholder="Phone number"
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        {...receiveCheck.invalid('deliveredBy.contactNumber')}
                       />
+                      <FieldError message={receiveCheck.errors['deliveredBy.contactNumber']} />
                     </div>
                   </div>
                   <p className="text-xs text-gray-500 mt-3">
@@ -696,7 +773,9 @@ export default function Deliveries() {
                                 value={item.receivedQuantity}
                                 onChange={(e: any) => updateReceivedQty(index, e.target.value)}
                                 className="w-24 px-3 py-1.5 border border-gray-200 rounded-lg text-sm"
+                                {...receiveCheck.invalid(`items.${index}.quantityReceived`)}
                               />
+                              <FieldError message={receiveCheck.errors[`items.${index}.quantityReceived`]} />
                             </td>
                             <td className="py-2 px-3 border-b border-gray-100">
                               <input
@@ -706,7 +785,9 @@ export default function Deliveries() {
                                 value={item.rejectedQuantity || 0}
                                 onChange={(e: any) => updateRejectedQty(index, e.target.value)}
                                 className="w-20 px-3 py-1.5 border border-gray-200 rounded-lg text-sm"
+                                {...receiveCheck.invalid(`items.${index}.quantityRejected`)}
                               />
+                              <FieldError message={receiveCheck.errors[`items.${index}.quantityRejected`]} />
                             </td>
                             <td className="py-2 px-3 border-b border-gray-100">
                               <input
@@ -715,14 +796,18 @@ export default function Deliveries() {
                                 onChange={(e: any) => updateRejectionReason(index, e.target.value)}
                                 disabled={!(item.rejectedQuantity > 0)}
                                 placeholder={item.rejectedQuantity > 0 ? 'e.g. damaged in transit' : 'Nothing rejected'}
+                                maxLength={TEXT_LIMITS.short}
                                 className="w-48 px-3 py-1.5 border border-gray-200 rounded-lg text-sm disabled:bg-gray-50 disabled:text-gray-400"
+                                {...receiveCheck.invalid(`items.${index}.rejectionReason`)}
                               />
+                              <FieldError message={receiveCheck.errors[`items.${index}.rejectionReason`]} />
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
+                  <FieldError message={receiveCheck.errors.items} />
                 </div>
 
                 </>
@@ -749,8 +834,11 @@ export default function Deliveries() {
                           setReceiveData((prev: any) => ({ ...prev, inspectedByName: e.target.value }))
                         }
                         placeholder="e.g. Tendai Chikwana"
+                        maxLength={TEXT_LIMITS.name}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        {...receiveCheck.invalid('inspectedByName')}
                       />
+                      <FieldError message={receiveCheck.errors.inspectedByName} />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Department</label>
@@ -761,8 +849,11 @@ export default function Deliveries() {
                           setReceiveData((prev: any) => ({ ...prev, inspectedByDepartment: e.target.value }))
                         }
                         placeholder="e.g. Workshop"
+                        maxLength={TEXT_LIMITS.name}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        {...receiveCheck.invalid('inspectedByDepartment')}
                       />
+                      <FieldError message={receiveCheck.errors.inspectedByDepartment} />
                     </div>
                   </div>
                 </div>
@@ -784,8 +875,11 @@ export default function Deliveries() {
                             }))
                           }
                           placeholder="Name"
+                          maxLength={TEXT_LIMITS.name}
                           className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                          {...receiveCheck.invalid(`witnesses.${role}`)}
                         />
+                        <FieldError message={receiveCheck.errors[`witnesses.${role}`]} />
                       </div>
                     ))}
                   </div>
@@ -814,8 +908,11 @@ export default function Deliveries() {
                           setReceiveData((prev: any) => ({ ...prev, msdsReference: e.target.value }))
                         }
                         placeholder="e.g. MSDS-2026-0042"
+                        maxLength={STORES_TEXT_LIMITS.documentNumber}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        {...receiveCheck.invalid('msdsReference')}
                       />
+                      <FieldError message={receiveCheck.errors.msdsReference} />
                     </div>
                   )}
                 </div>
@@ -1074,7 +1171,7 @@ export default function Deliveries() {
             )}
 
             {canAcceptDelivery(selectedDelivery) && (
-              <div className="border-t border-gray-100 pt-6 space-y-4">
+              <div ref={acceptCheck.formRef} className="border-t border-gray-100 pt-6 space-y-4">
                 <h3 className="font-semibold text-gray-900">Accept into stock</h3>
                 <p className="text-sm text-gray-500">
                   Confirm inspection and move received goods into inventory.
@@ -1085,11 +1182,13 @@ export default function Deliveries() {
                     value={acceptStatus}
                     onChange={(e: any) => setAcceptStatus(e.target.value)}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    {...acceptCheck.invalid('status')}
                   >
                     <option value="accepted">Accept all (good condition)</option>
                     <option value="partially_accepted">Partially accept</option>
                     <option value="rejected">Reject delivery</option>
                   </select>
+                  <FieldError message={acceptCheck.errors.status} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Notes (optional)</label>
@@ -1097,9 +1196,12 @@ export default function Deliveries() {
                     value={acceptNotes}
                     onChange={(e: any) => setAcceptNotes(e.target.value)}
                     rows={2}
+                    maxLength={TEXT_LIMITS.long}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
                     placeholder="Inspection notes..."
+                    {...acceptCheck.invalid('notes')}
                   />
+                  <FieldError message={acceptCheck.errors.notes} />
                 </div>
                 <ModalFooter>
                   <button

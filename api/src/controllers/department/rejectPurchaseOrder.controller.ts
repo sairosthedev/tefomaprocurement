@@ -1,22 +1,18 @@
 import type { Request, Response } from 'express';
 import { PurchaseOrder, PurchaseRequisition } from '../../models/index.js';
-import { isProcurementHead } from '@fossil/shared';
+import { isProcurementHead, validatePurchaseOrderRejection } from '@fossil/shared';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole } from '../../services/notification.service.js';
 import { canActOnDepartment } from '../../lib/departmentScope.js';
+import { refuseInvalid } from '../../lib/validation.js';
 
 const rejectPurchaseOrder = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
     const { reason, comments } = req.body;
-    const rejectionReason = (reason || comments || '').trim();
-
-    if (!rejectionReason) {
-      return res.status(400).json({
-        success: false,
-        message: 'Rejection reason is required'
-      });
-    }
+    // The reason may come as `reason` or as `comments`.
+    if (refuseInvalid(res, validatePurchaseOrderRejection({ reason: reason || comments, comments }))) return;
+    const rejectionReason = String(reason || comments).trim();
 
     const po = await PurchaseOrder.findById(id);
     if (!po || po.isDeleted) {

@@ -5,6 +5,8 @@ import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole } from '../../services/notification.service.js';
 import { resolveSiteId } from '../../lib/siteScope.js';
 import { checkSupplierEligibility } from '../../services/supplierEligibility.service.js';
+import { validatePurchaseOrder } from '@fossil/shared';
+import { refuseInvalid } from '../../lib/validation.js';
 
 const createPurchaseOrder = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -17,12 +19,10 @@ const createPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
       notes
     } = req.body;
 
-    if (!quotationId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Quotation ID is required'
-      });
-    }
+    // What was entered first, so a malformed quotation id is refused before it
+    // is looked up. The lines come from the quotation and are checked once it loads.
+    const input = { quotationId, deliverToSiteId, deliveryAddress, expectedDeliveryDate, termsAndConditions, notes };
+    if (refuseInvalid(res, validatePurchaseOrder(input))) return;
 
     const quotation = await Quotation.findById(quotationId)
       .populate({
@@ -68,6 +68,8 @@ const createPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
         data: existingPO
       });
     }
+
+    if (refuseInvalid(res, validatePurchaseOrder({ ...input, items: quotation.items }))) return;
 
     // Create PO items from quotation items
     const poItems = quotation.items.map(item => ({

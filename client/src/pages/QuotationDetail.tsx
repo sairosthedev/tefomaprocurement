@@ -5,8 +5,17 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
-import { isProcurementHead } from '@fossil/shared';
+import {
+  TEXT_LIMITS,
+  isProcurementHead,
+  validateQuotationRejection,
+  validateQuotationRevisionRequest,
+  validateQuotationSelection,
+  validateQuotationWaiver
+} from '@fossil/shared';
 import PageHeader from '../components/PageHeader';
+import FieldError from '../components/FieldError';
+import { useFormValidation } from '../lib/useFormValidation';
 import EquipmentDetailsView from '../components/EquipmentDetailsView';
 import { 
   FileText, 
@@ -101,6 +110,15 @@ export default function QuotationDetail() {
   const [showCreatePOModal, setShowCreatePOModal] = useState<any>(false);
   const complianceRef = useRef<HTMLDivElement>(null);
 
+  // One check per form on this page, shared with the API.
+  const waiverForm = useFormValidation(validateQuotationWaiver, { waiverType, reason: waiverReason });
+  const selectionForm = useFormValidation(validateQuotationSelection, {
+    quotationId: quotation?._id,
+    justification: hodJustification
+  });
+  const rejectForm = useFormValidation(validateQuotationRejection, { reason: rejectReason, comments: rejectComments });
+  const reviseForm = useFormValidation(validateQuotationRevisionRequest, { reason: reviseReason, targetNote: reviseTarget });
+
   useEffect(() => {
     fetchQuotation();
   }, [id]);
@@ -141,10 +159,7 @@ export default function QuotationDetail() {
   };
 
   const handleHodSelect = async () => {
-    if (!hodJustification.trim()) {
-      showToast('A selection justification is required', 'error');
-      return;
-    }
+    if (!selectionForm.check()) return;
     try {
       setAuthorizing(true);
       await procurementAPI.selectQuotation(quotation.rfq._id, {
@@ -153,23 +168,19 @@ export default function QuotationDetail() {
       });
       showToast('Quotation selected. Waiting for the Head of Procurement to authorize.', 'success');
       setHodJustification('');
+      selectionForm.reset();
       fetchQuotation();
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to select quotation', 'error');
+      if (!selectionForm.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Failed to select quotation', 'error');
+      }
     } finally {
       setAuthorizing(false);
     }
   };
 
   const handleApproveWaiver = async () => {
-    if (!waiverType) {
-      showToast('Please select a waiver type', 'error');
-      return;
-    }
-    if (!waiverReason.trim()) {
-      showToast('A waiver reason is required', 'error');
-      return;
-    }
+    if (!waiverForm.check()) return;
     if (!quotation?.rfq?._id) return;
 
     try {
@@ -181,9 +192,12 @@ export default function QuotationDetail() {
       showToast('Quotation waiver approved', 'success');
       setWaiverReason('');
       setWaiverType('');
+      waiverForm.reset();
       fetchQuotation();
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to approve waiver', 'error');
+      if (!waiverForm.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Failed to approve waiver', 'error');
+      }
     } finally {
       setApprovingWaiver(false);
     }
@@ -219,10 +233,7 @@ export default function QuotationDetail() {
   };
 
   const handleReject = async () => {
-    if (!rejectReason.trim()) {
-      showToast('Please provide a rejection reason', 'error');
-      return;
-    }
+    if (!rejectForm.check()) return;
 
     try {
       setProcessing(true);
@@ -236,17 +247,16 @@ export default function QuotationDetail() {
       setRejectComments('');
       fetchQuotation();
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to reject quotation', 'error');
+      if (!rejectForm.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Failed to reject quotation', 'error');
+      }
     } finally {
       setProcessing(false);
     }
   };
 
   const handleRequestRevision = async () => {
-    if (!reviseReason.trim()) {
-      showToast('Please provide a reason for the revision request', 'error');
-      return;
-    }
+    if (!reviseForm.check()) return;
     try {
       setProcessing(true);
       await procurementAPI.requestQuotationRevision(id, {
@@ -259,7 +269,9 @@ export default function QuotationDetail() {
       setReviseTarget('');
       fetchQuotation();
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to request revision', 'error');
+      if (!reviseForm.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Failed to request revision', 'error');
+      }
     } finally {
       setProcessing(false);
     }
@@ -405,7 +417,10 @@ export default function QuotationDetail() {
                   Accept
                 </button>
                 <button
-                  onClick={() => setShowReviseModal(true)}
+                  onClick={() => {
+                    reviseForm.reset();
+                    setShowReviseModal(true);
+                  }}
                   title="Ask the supplier to submit a revised (lower) price"
                   className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors"
                 >
@@ -413,7 +428,10 @@ export default function QuotationDetail() {
                   Request Revision
                 </button>
                 <button
-                  onClick={() => setShowRejectModal(true)}
+                  onClick={() => {
+                    rejectForm.reset();
+                    setShowRejectModal(true);
+                  }}
                   className="flex items-center gap-2 border border-red-200 text-red-700 hover:bg-red-50 text-sm font-medium py-2 px-4 rounded-lg transition-colors"
                 >
                   <XCircle className="h-4 w-4" />
@@ -506,28 +524,37 @@ export default function QuotationDetail() {
                     {!c.minQuotationsMet && ' — need at least 3 or an approved waiver'}
                   </p>
                   {!c.minQuotationsMet && !c.waived && canApproveWaiver && (
-                    <div className="mt-2 space-y-2">
-                      <select
-                        value={waiverType}
-                        onChange={(e: any) => setWaiverType(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      >
-                        <option value="">Select waiver type…</option>
-                        {WAIVER_TYPES.map((w) => (
-                          <option key={w.value} value={w.value}>{w.label}</option>
-                        ))}
-                      </select>
-                      <textarea
-                        value={waiverReason}
-                        onChange={(e: any) => setWaiverReason(e.target.value)}
-                        rows={2}
-                        placeholder="Justification for waiving the 3-quotation requirement..."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      />
+                    <div ref={waiverForm.formRef} className="mt-2 space-y-2">
+                      <div>
+                        <select
+                          value={waiverType}
+                          onChange={(e: any) => setWaiverType(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          {...waiverForm.invalid('waiverType')}
+                        >
+                          <option value="">Select waiver type…</option>
+                          {WAIVER_TYPES.map((w) => (
+                            <option key={w.value} value={w.value}>{w.label}</option>
+                          ))}
+                        </select>
+                        <FieldError message={waiverForm.errors.waiverType} />
+                      </div>
+                      <div>
+                        <textarea
+                          value={waiverReason}
+                          onChange={(e: any) => setWaiverReason(e.target.value)}
+                          rows={2}
+                          placeholder="Justification for waiving the 3-quotation requirement..."
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          maxLength={TEXT_LIMITS.long}
+                          {...waiverForm.invalid('reason')}
+                        />
+                        <FieldError message={waiverForm.errors.reason} />
+                      </div>
                       <button
                         type="button"
                         onClick={handleApproveWaiver}
-                        disabled={approvingWaiver || !waiverType || !waiverReason.trim()}
+                        disabled={approvingWaiver}
                         className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50"
                       >
                         {approvingWaiver ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
@@ -548,14 +575,19 @@ export default function QuotationDetail() {
                   {c.hodSelected ? (
                     <p className="text-xs text-gray-500 mt-0.5">Justification: {c.hodJustification}</p>
                   ) : canSelect ? (
-                    <div className="mt-2 space-y-2">
-                      <textarea
-                        value={hodJustification}
-                        onChange={(e: any) => setHodJustification(e.target.value)}
-                        rows={2}
-                        placeholder="Justification for selecting this quotation (required)"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      />
+                    <div ref={selectionForm.formRef} className="mt-2 space-y-2">
+                      <div>
+                        <textarea
+                          value={hodJustification}
+                          onChange={(e: any) => setHodJustification(e.target.value)}
+                          rows={2}
+                          placeholder="Justification for selecting this quotation (required)"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          maxLength={TEXT_LIMITS.long}
+                          {...selectionForm.invalid('justification')}
+                        />
+                        <FieldError message={selectionForm.errors.justification || selectionForm.errors.quotationId} />
+                      </div>
                       <button
                         type="button"
                         onClick={handleHodSelect}
@@ -741,7 +773,7 @@ export default function QuotationDetail() {
         }}
         title="Reject Quotation"
       >
-        <div className="space-y-4">
+        <div ref={rejectForm.formRef} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Rejection Reason *
@@ -752,7 +784,10 @@ export default function QuotationDetail() {
               onChange={(e: any) => setRejectReason(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
               placeholder="Enter rejection reason"
+              maxLength={TEXT_LIMITS.long}
+              {...rejectForm.invalid('reason')}
             />
+            <FieldError message={rejectForm.errors.reason} />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Comments</label>
@@ -762,7 +797,10 @@ export default function QuotationDetail() {
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
               placeholder="Additional comments (optional)"
+              maxLength={TEXT_LIMITS.long}
+              {...rejectForm.invalid('comments')}
             />
+            <FieldError message={rejectForm.errors.comments} />
           </div>
         </div>
         <ModalFooter>
@@ -778,7 +816,7 @@ export default function QuotationDetail() {
           </button>
           <button
             onClick={handleReject}
-            disabled={processing || !rejectReason.trim()}
+            disabled={processing}
             className="px-4 py-2 border border-red-200 text-red-700 rounded-xl text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             {processing ? (
@@ -801,7 +839,7 @@ export default function QuotationDetail() {
         }}
         title="Request Price Revision"
       >
-        <div className="space-y-4">
+        <div ref={reviseForm.formRef} className="space-y-4">
           <p className="text-sm text-gray-600">
             The supplier will be notified to resubmit a revised quotation. Their current
             quotation is set aside until they respond; the new price supersedes it.
@@ -816,7 +854,10 @@ export default function QuotationDetail() {
               onChange={(e: any) => setReviseReason(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
               placeholder="e.g. Price above budget — request improved pricing"
+              maxLength={TEXT_LIMITS.long}
+              {...reviseForm.invalid('reason')}
             />
+            <FieldError message={reviseForm.errors.reason} />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -828,7 +869,10 @@ export default function QuotationDetail() {
               rows={2}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
               placeholder={`e.g. Target unit price ${quotation?.currency || getCurrentSbuCurrency()} 550, or a lower total`}
+              maxLength={TEXT_LIMITS.long}
+              {...reviseForm.invalid('targetNote')}
             />
+            <FieldError message={reviseForm.errors.targetNote} />
           </div>
         </div>
         <ModalFooter>
@@ -844,7 +888,7 @@ export default function QuotationDetail() {
           </button>
           <button
             onClick={handleRequestRevision}
-            disabled={processing || !reviseReason.trim()}
+            disabled={processing}
             className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary-dark transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <DollarSign className="h-4 w-4" />}

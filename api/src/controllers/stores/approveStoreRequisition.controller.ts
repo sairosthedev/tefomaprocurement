@@ -1,13 +1,17 @@
 import type { Request, Response } from 'express';
+import { validateStoreRequisitionApproval } from '@fossil/shared';
 
 import { StoreRequisition, Inventory } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { refuseInvalid } from '../../lib/validation.js';
 import { createNotification } from '../../services/notification.service.js';
 
 const approveStoreRequisition = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
     const { comments } = req.body;
+
+    if (refuseInvalid(res, validateStoreRequisitionApproval(req.body))) return;
 
     const requisition = await StoreRequisition.findById(id)
       .populate('items.item');

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { useToast } from './Toast';
 import { UNITS_OF_MEASUREMENT, PACKAGE_TYPES, formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
 import { ItemSelect, type CatalogItem } from './ItemSelect';
 import EquipmentDetailsPanel from './EquipmentDetailsPanel';
 import Drawer from './Drawer';
-import { categoryNeedsEquipmentDetails } from '@fossil/shared';
+import FieldError from './FieldError';
+import { TEXT_LIMITS, categoryNeedsEquipmentDetails, validateRequisitionLine } from '@fossil/shared';
+import { useFormValidation } from '../lib/useFormValidation';
 
 export const emptyItem = () => ({
   description: '',
@@ -26,6 +27,36 @@ export const emptyItem = () => ({
 
 export type RequisitionItem = ReturnType<typeof emptyItem>;
 
+/** A line while it is being typed: the quantity box holds whatever was entered. */
+type DraftItem = Omit<RequisitionItem, 'quantity'> & { quantity: number | string };
+
+/** One line as the API takes it, which is also what the shared validator checks. */
+export const linePayload = (item: DraftItem) => ({
+  itemId: item.catalogItem?._id,
+  description: item.description,
+  category: item.category,
+  package: item.package,
+  quantity: item.quantity,
+  unit: item.unit,
+  estimatedUnitPrice: item.estimatedUnitPrice,
+  specification: item.specification,
+  equipment: item.equipment,
+  attachments: item.attachments
+});
+
+/**
+ * A line without its photos' contents. The form watches its values for
+ * changes, and a few inline images would make that slow on every keystroke.
+ */
+export const withoutFileData = (item: DraftItem) => ({
+  ...item,
+  catalogItem: item.catalogItem?._id || null,
+  attachments: (item.attachments || []).map(({ fileData, ...rest }: any) => ({
+    ...rest,
+    size: String(fileData || '').length
+  }))
+});
+
 /**
  * One requisition line, added or edited in a drawer stacked over the
  * requisition form. Works on a copy, so Cancel leaves the line as it was.
@@ -37,23 +68,20 @@ export default function RequisitionItemDrawer({ item, onClose, onSubmit }: {
   onClose: () => void;
   onSubmit: (item: RequisitionItem) => void;
 }) {
-  const { showToast } = useToast();
   const isEdit = !!item;
-  const [draft, setDraft] = useState<RequisitionItem>(() =>
+  const [draft, setDraft] = useState<DraftItem>(() =>
     item ? { ...item, equipment: { ...(item.equipment || {}) }, attachments: [...(item.attachments || [])] } : emptyItem()
   );
-  const [errors, setErrors] = useState<{ description?: string }>({});
+  // The validator reads the draft itself; the hook is given a light copy to watch.
+  const validation = useFormValidation(() => validateRequisitionLine(linePayload(draft)), withoutFileData(draft));
 
-  const update = (patch: Partial<RequisitionItem>) => setDraft((current) => ({ ...current, ...patch }));
+  const update = (patch: Partial<DraftItem>) => setDraft((current) => ({ ...current, ...patch }));
 
   const lineTotal = (Number(draft.estimatedUnitPrice) || 0) * (Number(draft.quantity) || 0);
 
   const submit = () => {
-    const next: typeof errors = {};
-    if (!draft.description.trim()) next.description = 'Search the catalogue or describe the item';
-    setErrors(next);
-    if (Object.keys(next).length > 0) return;
-    onSubmit({ ...draft, description: draft.description.trim() });
+    if (!validation.check()) return;
+    onSubmit({ ...draft, description: draft.description.trim(), quantity: Number(draft.quantity) });
   };
 
   const inputClass =
@@ -88,6 +116,7 @@ export default function RequisitionItemDrawer({ item, onClose, onSubmit }: {
       {/* Rendered in a portal, but React still bubbles its events to the
           requisition form; keep Enter here from moving that form on a step. */}
       <div
+        ref={validation.formRef}
         className="grid grid-cols-2 gap-4"
         onKeyDown={(e) => {
           e.stopPropagation();
@@ -111,17 +140,14 @@ export default function RequisitionItemDrawer({ item, onClose, onSubmit }: {
                   ? catalogItem.unit.charAt(0).toUpperCase() + catalogItem.unit.slice(1)
                   : draft.unit
               });
-              setErrors({});
             }}
-            onFreeText={(text) => {
-              update({ description: text, category: '' });
-              if (text.trim()) setErrors({});
-            }}
+            onFreeText={(text) => update({ description: text, category: '' })}
             placeholder="Search the stores catalogue…"
             className="w-full pl-8 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            invalid={!!validation.errors.description}
           />
-          {errors.description && <p className="text-xs text-red-600 mt-1">{errors.description}</p>}
-          {!draft.catalogItem && draft.description.trim() && (
+          <FieldError message={validation.errors.description} />
+          {!draft.catalogItem && draft.description.trim() && !validation.errors.description && (
             <p className="text-xs text-gray-500 mt-1">New item: stores will check for it and categorise it.</p>
           )}
         </div>
@@ -132,23 +158,31 @@ export default function RequisitionItemDrawer({ item, onClose, onSubmit }: {
             value={draft.package}
             onChange={(e) => update({ package: e.target.value })}
             className={`${inputClass} bg-white`}
+            {...validation.invalid('package')}
           >
             <option value="">— Select —</option>
             {PACKAGE_TYPES.map((p) => (
               <option key={p} value={p}>{p}</option>
             ))}
           </select>
-          <p className="text-xs text-gray-400 mt-1">The container or pack form the item comes in.</p>
+          {validation.errors.package ? (
+            <FieldError message={validation.errors.package} />
+          ) : (
+            <p className="text-xs text-gray-400 mt-1">The container or pack form the item comes in.</p>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Quantity</label>
           <input
             type="number"
             min="1"
+            step="1"
             value={draft.quantity}
-            onChange={(e) => update({ quantity: parseInt(e.target.value) || 1 })}
+            onChange={(e) => update({ quantity: e.target.value })}
             className={inputClass}
+            {...validation.invalid('quantity')}
           />
+          <FieldError message={validation.errors.quantity} />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Unit</label>
@@ -156,12 +190,17 @@ export default function RequisitionItemDrawer({ item, onClose, onSubmit }: {
             value={draft.unit}
             onChange={(e) => update({ unit: e.target.value })}
             className={`${inputClass} bg-white`}
+            {...validation.invalid('unit')}
           >
             {UNITS_OF_MEASUREMENT.map((unit: any) => (
               <option key={unit} value={unit}>{unit}</option>
             ))}
           </select>
-          <p className="text-xs text-gray-400 mt-1">How the quantity is measured, e.g. Each, Kg, Litre.</p>
+          {validation.errors.unit ? (
+            <FieldError message={validation.errors.unit} />
+          ) : (
+            <p className="text-xs text-gray-400 mt-1">How the quantity is measured, e.g. Each, Kg, Litre.</p>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -175,7 +214,9 @@ export default function RequisitionItemDrawer({ item, onClose, onSubmit }: {
             onChange={(e) => update({ estimatedUnitPrice: e.target.value })}
             placeholder="0.00"
             className={inputClass}
+            {...validation.invalid('estimatedUnitPrice')}
           />
+          <FieldError message={validation.errors.estimatedUnitPrice} />
         </div>
 
         <div className="col-span-2 flex items-center justify-between px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50">
@@ -194,8 +235,11 @@ export default function RequisitionItemDrawer({ item, onClose, onSubmit }: {
             value={draft.specification}
             onChange={(e) => update({ specification: e.target.value })}
             placeholder="e.g., 80gsm white"
+            maxLength={TEXT_LIMITS.long}
             className={inputClass}
+            {...validation.invalid('specification')}
           />
+          <FieldError message={validation.errors.specification} />
         </div>
 
         {/* The panel spans a 12-column grid of its own. */}
@@ -208,7 +252,7 @@ export default function RequisitionItemDrawer({ item, onClose, onSubmit }: {
             }
             onAttachmentsChange={(attachments) => update({ attachments })}
             defaultOpen={categoryNeedsEquipmentDetails(draft.category)}
-            onError={(message) => showToast(message, 'error')}
+            errors={validation.errors}
           />
         </div>
       </div>

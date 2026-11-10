@@ -1,7 +1,9 @@
 import type { Request, Response } from 'express';
+import { validateStockIssue } from '@fossil/shared';
 
 import { StoreRequisition, StoreTransaction } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { refuseInvalid } from '../../lib/validation.js';
 import { createNotification } from '../../services/notification.service.js';
 import { findOrCreateInventory, userSiteId, canAccessAllSites } from '../../lib/siteScope.js';
 
@@ -32,6 +34,14 @@ const issueStock = async (req: Request, res: Response): Promise<any> => {
         message: 'Store requisition not found'
       });
     }
+
+    // The collector, when given, is named; lines, when sent, are this
+    // requisition's own and none hands over more than is still to collect.
+    const remaining: Record<string, number> = {};
+    for (const line of requisition.items as any[]) {
+      remaining[String(line._id)] = Math.max(0, line.quantityRequested - (line.quantityIssued || 0));
+    }
+    if (refuseInvalid(res, validateStockIssue(req.body, { remaining }))) return;
 
     if (!['approved', 'partially_issued'].includes(requisition.status)) {
       return res.status(400).json({

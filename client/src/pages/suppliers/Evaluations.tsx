@@ -7,9 +7,11 @@ import {
   Star,
   X
 } from 'lucide-react'
-import { SUPPLIER_EVALUATION_CRITERIA, isProcurementHead } from '@fossil/shared'
+import { SUPPLIER_EVALUATION_CRITERIA, TEXT_LIMITS, isProcurementHead, validateSupplierEvaluation } from '@fossil/shared'
 import { procurementAPI } from '../../services/procurement.service'
 import { useToast } from '../../components/Toast'
+import FieldError from '../../components/FieldError'
+import { serverFieldErrors, useFormValidation } from '../../lib/useFormValidation'
 import { useAuth } from '../../context/AuthContext'
 import PageHeader, { PageStatCard } from '../../components/PageHeader'
 import Pagination from '../../components/Pagination'
@@ -66,6 +68,11 @@ function supplierName(evaluation: any) {
   return evaluation?.supplier?.companyName || 'Unknown supplier'
 }
 
+/** The step a field is on: scores first, then type, recommendation and notes. */
+function evaluationStepOf(field: string) {
+  return field.startsWith('scores') ? 0 : 1
+}
+
 function emptyScores() {
   return SUPPLIER_EVALUATION_CRITERIA.reduce((acc, criterion) => {
     acc[criterion.key] = 3
@@ -97,6 +104,14 @@ export default function Evaluations() {
   const [scores, setScores] = useState<Record<string, number>>(emptyScores)
   const [otherNotes, setOtherNotes] = useState('')
   const [evalStep, setEvalStep] = useState(0)
+
+  // What is sent, and so what is checked: the notes travel inside the scores.
+  const evaluationPayload = {
+    evaluationType,
+    recommendation,
+    scores: { ...scores, otherNotes }
+  }
+  const evaluationForm = useFormValidation(validateSupplierEvaluation, evaluationPayload)
 
   const canCreate = user?.role === 'procurement_officer' || isProcurementHead(user)
 
@@ -161,6 +176,7 @@ export default function Evaluations() {
     setScores(emptyScores())
     setOtherNotes('')
     setEvalStep(0)
+    evaluationForm.reset()
     setShowCreateModal(true)
   }
 
@@ -169,19 +185,13 @@ export default function Evaluations() {
     setSelectedSupplier(null)
   }
 
-  const scoresValid = () => {
-    const missing = SUPPLIER_EVALUATION_CRITERIA.filter(
-      (criterion) => !scores[criterion.key] || scores[criterion.key] < 1 || scores[criterion.key] > 5
-    )
-    if (missing.length > 0) {
-      showToast('Please score every evaluation criterion (1–5)', 'error')
-      return false
-    }
-    return true
-  }
-
+  // Next checks only the step being left.
   const nextEvalStep = () => {
-    if (evalStep === 0 && !scoresValid()) return
+    const errors = validateSupplierEvaluation(evaluationPayload)
+    if (Object.keys(errors).some((field) => evaluationStepOf(field) === evalStep)) {
+      evaluationForm.check()
+      return
+    }
     setEvalStep((s) => Math.min(EVALUATION_STEPS.length - 1, s + 1))
   }
 
@@ -199,24 +209,28 @@ export default function Evaluations() {
     }
     if (!selectedSupplier?._id) return
 
-    if (!scoresValid()) {
-      setEvalStep(0)
+    // A problem on an earlier step opens that step.
+    const errors = validateSupplierEvaluation(evaluationPayload)
+    const firstField = Object.keys(errors)[0]
+    if (firstField) {
+      setEvalStep(evaluationStepOf(firstField))
+      evaluationForm.check()
       return
     }
 
     try {
       setSubmitting(true)
-      await procurementAPI.createSupplierEvaluation(selectedSupplier._id, {
-        evaluationType,
-        recommendation,
-        scores: { ...scores, otherNotes }
-      })
+      await procurementAPI.createSupplierEvaluation(selectedSupplier._id, evaluationPayload)
       showToast('Evaluation saved', 'success')
       closeCreateModal()
       await refresh()
       setActiveTab('all')
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to save evaluation', 'error')
+      const fieldErrors = serverFieldErrors(error)
+      if (fieldErrors) setEvalStep(evaluationStepOf(Object.keys(fieldErrors)[0]))
+      if (!evaluationForm.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Failed to save evaluation', 'error')
+      }
     } finally {
       setSubmitting(false)
     }
@@ -421,13 +435,14 @@ export default function Evaluations() {
         subtitle={selectedSupplier?.companyName}
         size="lg"
       >
-            <form onSubmit={handleCreateEvaluation} className="space-y-5">
+            <form ref={evaluationForm.formRef} onSubmit={handleCreateEvaluation} noValidate className="space-y-5">
               <FormSteps steps={EVALUATION_STEPS} current={evalStep} onSelect={setEvalStep} />
 
               {evalStep === 0 && (
                 <>
               <div>
                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Scoring criteria (1 = poor, 5 = excellent)</h3>
+                <FieldError message={evaluationForm.errors.scores} className="mb-3" />
                 <div className="space-y-4">
                   {SUPPLIER_EVALUATION_CRITERIA.map((criterion) => (
                     <div key={criterion.key}>
@@ -443,7 +458,9 @@ export default function Evaluations() {
                         value={scores[criterion.key]}
                         onChange={(e) => setScores({ ...scores, [criterion.key]: Number(e.target.value) })}
                         className="w-full accent-primary"
+                        {...evaluationForm.invalid(`scores.${criterion.key}`)}
                       />
+                      <FieldError message={evaluationForm.errors[`scores.${criterion.key}`]} />
                     </div>
                   ))}
                 </div>
@@ -461,11 +478,13 @@ export default function Evaluations() {
                     value={evaluationType}
                     onChange={(e) => setEvaluationType(e.target.value)}
                     className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm"
+                    {...evaluationForm.invalid('evaluationType')}
                   >
                     {EVALUATION_TYPES.map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                   </select>
+                  <FieldError message={evaluationForm.errors.evaluationType} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Recommendation</label>
@@ -473,11 +492,13 @@ export default function Evaluations() {
                     value={recommendation}
                     onChange={(e) => setRecommendation(e.target.value)}
                     className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm"
+                    {...evaluationForm.invalid('recommendation')}
                   >
                     {RECOMMENDATION_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                   </select>
+                  <FieldError message={evaluationForm.errors.recommendation} />
                 </div>
               </div>
 
@@ -487,9 +508,12 @@ export default function Evaluations() {
                   value={otherNotes}
                   onChange={(e) => setOtherNotes(e.target.value)}
                   rows={3}
+                  maxLength={TEXT_LIMITS.long}
                   placeholder="Additional comments..."
                   className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm resize-none"
+                  {...evaluationForm.invalid('otherNotes')}
                 />
+                <FieldError message={evaluationForm.errors.otherNotes} />
               </div>
                 </>
               )}

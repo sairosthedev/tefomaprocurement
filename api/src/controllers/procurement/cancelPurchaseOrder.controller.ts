@@ -1,5 +1,7 @@
 import type { Request, Response } from 'express';
+import { validatePurchaseOrderCancellation } from '@fossil/shared';
 import { createAuditLog } from '../../middleware/index.js';
+import { refuseInvalid } from '../../lib/validation.js';
 import { createNotification, notifySupplier } from '../../services/notification.service.js';
 import {
   cancelPurchaseOrderById,
@@ -10,27 +12,16 @@ const cancelPurchaseOrder = async (req: Request, res: Response): Promise<any> =>
   try {
     const { id } = req.params;
     const { reasonCode, reason, comments } = req.body;
+    // `reason` and `reasonDetails` are older names for the code and the details.
     const code = reasonCode || reason;
-
-    if (!code) {
-      return res.status(400).json({
-        success: false,
-        message: 'Cancellation reason is required'
-      });
-    }
-
-    if (code === 'other' && !(comments || req.body.reasonDetails)?.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide details when selecting "Other"'
-      });
-    }
+    const details = comments || req.body.reasonDetails;
+    if (refuseInvalid(res, validatePurchaseOrderCancellation({ reasonCode: code, comments: details }))) return;
 
     const { po, prUpdated } = await cancelPurchaseOrderById(
       id,
       req.user!,
       code,
-      comments || req.body.reasonDetails
+      details
     );
 
     await createAuditLog({

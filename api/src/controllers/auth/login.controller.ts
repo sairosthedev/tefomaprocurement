@@ -2,17 +2,15 @@ import type { Request, Response } from 'express';
 import { createAuditLog } from '../../middleware/index.js';
 import { findActiveUserByEmail } from '../../services/authLogin.service.js';
 import { createLoginOtp, shouldExposeOtpInResponse } from '../../services/otp.service.js';
+import { validateLogin } from '@fossil/shared';
+import { refuseInvalid } from '../../lib/validation.js';
 
 const login = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { email, password } = req.body;
+    // Presence and length only: an existing account is never refused for its format.
+    if (refuseInvalid(res, validateLogin(req.body ?? {}))) return;
 
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide email and password'
-      });
-    }
+    const { email, password } = req.body;
 
     const user = await findActiveUserByEmail(email);
 

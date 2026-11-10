@@ -1,5 +1,8 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { TEXT_LIMITS, hasErrors, validateStockTransfer, type FieldErrors } from '@fossil/shared';
 import { storesAPI } from '../lib/api';
+import FieldError from '../components/FieldError';
+import { serverFieldErrors, useFormValidation } from '../lib/useFormValidation';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
 import Pagination from '../components/Pagination';
@@ -28,6 +31,37 @@ const CREATE_STEPS = [
 
 const fmtDate = (d?: string) => (d ? new Date(d).toLocaleDateString('en-ZA') : undefined);
 
+type TransferLine = { itemId: string; quantity: number };
+type TransferForm = { fromSiteId: string; toSiteId: string; notes: string; lines: TransferLine[] };
+
+/** The step a field is entered on: the sites first, then the lines and notes. */
+const createStepOf = (field: string) => (field === 'fromSiteId' || field === 'toSiteId' ? 0 : 1);
+
+/** What is sent: lines with no item chosen are left off, as before, so `rowOf` maps each sent line to its row. */
+function transferPayload(form: TransferForm) {
+  const rowOf = form.lines.map((_, index) => index).filter((index) => form.lines[index].itemId);
+  return {
+    rowOf,
+    payload: {
+      fromSiteId: form.fromSiteId,
+      toSiteId: form.toSiteId,
+      notes: form.notes.trim() || undefined,
+      items: rowOf.map((index) => ({ itemId: form.lines[index].itemId, quantity: form.lines[index].quantity }))
+    }
+  };
+}
+
+/** Line errors keyed by what was sent (`items.0.quantity`), moved onto the rows on screen. */
+function toRowErrors(errors: FieldErrors, rowOf: number[]): FieldErrors {
+  const out: FieldErrors = {};
+  for (const [field, message] of Object.entries(errors)) {
+    const match = /^items\.(\d+)\.(.+)$/.exec(field);
+    const row = match ? rowOf[Number(match[1])] : undefined;
+    out[match && row !== undefined ? `items.${row}.${match[2]}` : field] = message;
+  }
+  return out;
+}
+
 
 export default function StockTransfers() {
   const { showToast } = useToast();
@@ -44,10 +78,32 @@ export default function StockTransfers() {
   const [fromSiteId, setFromSiteId] = useState('');
   const [toSiteId, setToSiteId] = useState('');
   const [notes, setNotes] = useState('');
-  const [lines, setLines] = useState([{ itemId: '', quantity: 1 }]);
+  const [lines, setLines] = useState<TransferLine[]>([{ itemId: '', quantity: 1 }]);
   const [creating, setCreating] = useState(false);
   const [createStep, setCreateStep] = useState(0);
   const createTopRef = useRef<HTMLDivElement>(null);
+
+  // What the sending site can spare of each item: on hand less what is held for collection.
+  const available = useMemo(
+    () =>
+      Object.fromEntries(
+        inventory
+          .filter((row: any) => row.item?._id)
+          .map((row: any) => [row.item._id, Math.max(0, (row.quantityOnHand || 0) - (row.quantityReserved || 0))])
+      ) as Record<string, number>,
+    [inventory]
+  );
+  const transferForm: TransferForm = { fromSiteId, toSiteId, notes, lines };
+  const transferErrors = (form: TransferForm) => {
+    const { rowOf, payload } = transferPayload(form);
+    return toRowErrors(validateStockTransfer(payload, { available }), rowOf);
+  };
+  // Next checks the step on screen; the last step checks them all.
+  const createCheck = useFormValidation((form: TransferForm) => {
+    const errors = transferErrors(form);
+    if (createStep >= CREATE_STEPS.length - 1) return errors;
+    return Object.fromEntries(Object.entries(errors).filter(([field]) => createStepOf(field) === createStep));
+  }, transferForm);
 
   useEffect(() => {
     loadTransfers();
@@ -102,48 +158,39 @@ export default function StockTransfers() {
 
   const openCreate = () => {
     setCreateStep(0);
+    createCheck.reset();
     setShowCreate(true);
   };
 
-  const goToCreateStep = (step: number) => {
+  /** Moves to a step; its messages start afresh unless the move is to show them. */
+  const goToCreateStep = (step: number, keepErrors = false) => {
     setCreateStep(step);
+    if (!keepErrors) createCheck.reset();
     createTopRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   };
 
-  // Each step checks its own fields; handleCreate repeats them before saving.
-  const validateCreateStep = (step: number) => {
-    if (step === 0 && (!fromSiteId || !toSiteId)) {
-      showToast('Select source and destination sites', 'error');
-      return false;
-    }
-    if (step === 1 && !lines.some((l) => l.itemId && l.quantity > 0)) {
-      showToast('Add at least one item', 'error');
-      return false;
-    }
-    return true;
+  const nextCreateStep = () => {
+    if (createCheck.check()) goToCreateStep(createStep + 1);
   };
 
-  const nextCreateStep = () => {
-    if (validateCreateStep(createStep)) goToCreateStep(createStep + 1);
+  /** Opens the earliest step with a problem, so its messages show. */
+  const showFirstProblemStep = (errors: FieldErrors) => {
+    const step = Math.min(...Object.keys(errors).map(createStepOf));
+    if (step !== createStep) goToCreateStep(step, true);
   };
 
   const handleCreate = async () => {
-    for (const step of [0, 1]) {
-      if (!validateCreateStep(step)) {
-        goToCreateStep(step);
-        return;
-      }
+    const all = transferErrors(transferForm);
+    if (hasErrors(all)) {
+      showFirstProblemStep(all);
+      createCheck.check();
+      return;
     }
-    const validLines = lines.filter((l) => l.itemId && l.quantity > 0);
+    const { rowOf, payload } = transferPayload(transferForm);
 
     try {
       setCreating(true);
-      await storesAPI.createTransfer({
-        fromSiteId,
-        toSiteId,
-        notes: notes.trim() || undefined,
-        items: validLines.map((l) => ({ itemId: l.itemId, quantity: l.quantity }))
-      });
+      await storesAPI.createTransfer(payload);
       showToast('Transfer created', 'success');
       setShowCreate(false);
       setFromSiteId('');
@@ -156,7 +203,14 @@ export default function StockTransfers() {
       setPage(1);
       setStatusFilter('');
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to create transfer', 'error');
+      const fields = serverFieldErrors(error);
+      if (fields) {
+        const onRows = toRowErrors(fields, rowOf);
+        showFirstProblemStep(onRows);
+        createCheck.fromServer({ response: { data: { errors: onRows } } });
+      } else {
+        showToast(error.response?.data?.message || 'Failed to create transfer', 'error');
+      }
     } finally {
       setCreating(false);
     }
@@ -316,6 +370,8 @@ export default function StockTransfers() {
 
       <Drawer isOpen={showCreate} onClose={() => setShowCreate(false)} title="Create stock transfer" size="lg">
         <form
+          ref={createCheck.formRef}
+          noValidate
           onSubmit={(e) => {
             e.preventDefault();
             // Enter on an earlier step moves on rather than creating early.
@@ -335,12 +391,14 @@ export default function StockTransfers() {
                 value={fromSiteId}
                 onChange={(e) => setFromSiteId(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"
+                {...createCheck.invalid('fromSiteId')}
               >
                 <option value="">Select source</option>
                 {sites.map((s) => (
                   <option key={s._id} value={s._id}>{s.name} ({s.code})</option>
                 ))}
               </select>
+              <FieldError message={createCheck.errors.fromSiteId} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">To site</label>
@@ -348,12 +406,14 @@ export default function StockTransfers() {
                 value={toSiteId}
                 onChange={(e) => setToSiteId(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"
+                {...createCheck.invalid('toSiteId')}
               >
                 <option value="">Select destination</option>
                 {sites.filter((s) => s._id !== fromSiteId).map((s) => (
                   <option key={s._id} value={s._id}>{s.name} ({s.code})</option>
                 ))}
               </select>
+              <FieldError message={createCheck.errors.toSiteId} />
             </div>
           </div>
 
@@ -366,7 +426,8 @@ export default function StockTransfers() {
             <label className="block text-sm font-medium text-gray-700 mb-2">Items</label>
             <div className="space-y-2">
               {lines.map((line, index) => (
-                <div key={index} className="flex gap-2">
+                <div key={index}>
+                <div className="flex gap-2">
                   <select
                     value={line.itemId}
                     onChange={(e) => {
@@ -376,6 +437,7 @@ export default function StockTransfers() {
                     }}
                     className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm"
                     disabled={!fromSiteId}
+                    {...createCheck.invalid(`items.${index}.itemId`)}
                   >
                     <option value="">Select item</option>
                     {inventory.map((row: any) => (
@@ -394,10 +456,16 @@ export default function StockTransfers() {
                       setLines(next);
                     }}
                     className="w-24 px-3 py-2 border border-gray-200 rounded-xl text-sm"
+                    {...createCheck.invalid(`items.${index}.quantity`)}
                   />
+                </div>
+                <FieldError
+                  message={createCheck.errors[`items.${index}.itemId`] || createCheck.errors[`items.${index}.quantity`]}
+                />
                 </div>
               ))}
             </div>
+            <FieldError message={createCheck.errors.items} />
             <button
               type="button"
               onClick={() => setLines([...lines, { itemId: '', quantity: 1 }])}
@@ -413,8 +481,11 @@ export default function StockTransfers() {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
+              maxLength={TEXT_LIMITS.long}
               className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm resize-none"
+              {...createCheck.invalid('notes')}
             />
+            <FieldError message={createCheck.errors.notes} />
           </div>
 
             </>

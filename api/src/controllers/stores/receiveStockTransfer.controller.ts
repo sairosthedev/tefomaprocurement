@@ -1,8 +1,10 @@
 import type { Request, Response } from 'express';
+import { validateTransferQuantities } from '@fossil/shared';
 
 import { StockTransfer, StoreTransaction } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { findOrCreateInventory, userSiteId, canAccessAllSites } from '../../lib/siteScope.js';
+import { refuseInvalid } from '../../lib/validation.js';
 
 const receiveStockTransfer = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -12,6 +14,13 @@ const receiveStockTransfer = async (req: Request, res: Response): Promise<any> =
     if (!transfer || transfer.isDeleted) {
       return res.status(404).json({ success: false, message: 'Transfer not found' });
     }
+
+    // Lines, when sent, are this transfer's own, and none receives more than was shipped and is still due.
+    const remaining: Record<string, number> = {};
+    for (const row of transfer.items as any[]) {
+      remaining[String(row._id)] = Math.max(0, (row.quantityShipped || 0) - (row.quantityReceived || 0));
+    }
+    if (refuseInvalid(res, validateTransferQuantities(req.body, { remaining, action: 'receive' }))) return;
 
     if (transfer.status !== 'in_transit') {
       return res.status(400).json({

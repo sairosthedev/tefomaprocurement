@@ -1,18 +1,14 @@
 import type { Request, Response } from 'express';
+import { validatePurchaseOrderRejection } from '@fossil/shared';
 import { PurchaseOrder } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { refuseInvalid } from '../../lib/validation.js';
 
 const rejectPurchaseOrder = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
-
-    if (!reason) {
-      return res.status(400).json({
-        success: false,
-        message: 'Rejection reason is required'
-      });
-    }
+    if (refuseInvalid(res, validatePurchaseOrderRejection(req.body))) return;
 
     const po = await PurchaseOrder.findById(id);
     if (!po || po.isDeleted) {

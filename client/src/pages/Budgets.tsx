@@ -8,6 +8,9 @@ import { getCurrentSbuCurrency } from '../lib/sbu';
 import PageHeader from '../components/PageHeader';
 import TableSkeleton from '../components/TableSkeleton';
 import Modal, { ModalFooter } from '../components/Modal';
+import { validateDepartmentBudget } from '@fossil/shared';
+import FieldError from '../components/FieldError';
+import { useFormValidation } from '../lib/useFormValidation';
 
 export default function Budgets() {
   const { user } = useAuth();
@@ -24,6 +27,11 @@ export default function Budgets() {
   const [editDept, setEditDept] = useState<any>(null);
   const [editAmount, setEditAmount] = useState('');
   const [saving, setSaving] = useState(false);
+  const validation = useFormValidation(validateDepartmentBudget, {
+    departmentId: editDept?.departmentId,
+    fiscalYear: budgetData.fiscalYear,
+    allocatedAmount: editAmount
+  });
 
   // Finance owns budget allocation (BRD FR-B1, "Finance shall allocate a budget
   // to each department"), and the API already accepts finance on this route.
@@ -53,15 +61,13 @@ export default function Budgets() {
   const openEdit = (dept: any) => {
     setEditDept(dept);
     setEditAmount(String(dept.budget || 0));
+    validation.reset();
   };
 
   const handleSaveAllocation = async () => {
     if (!editDept) return;
+    if (!validation.check()) return;
     const amount = Number(editAmount);
-    if (Number.isNaN(amount) || amount < 0) {
-      showToast('Enter a valid allocation amount', 'error');
-      return;
-    }
 
     try {
       setSaving(true);
@@ -74,7 +80,9 @@ export default function Budgets() {
       setEditDept(null);
       fetchBudgetData();
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to save allocation', 'error');
+      if (!validation.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Failed to save allocation', 'error');
+      }
     } finally {
       setSaving(false);
     }
@@ -306,7 +314,9 @@ export default function Budgets() {
         onClose={() => setEditDept(null)}
         title={`Set budget — ${editDept?.name || ''}`}
       >
-        <div className="space-y-4">
+        <div ref={validation.formRef} className="space-y-4">
+          {/* The department and year come from the row; shown here only if the server refuses them. */}
+          <FieldError message={validation.errors.departmentId || validation.errors.fiscalYear} />
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Allocated amount (FY {budgetData.fiscalYear}, {editDept?.currency || currency})
@@ -318,7 +328,9 @@ export default function Budgets() {
               value={editAmount}
               onChange={(e) => setEditAmount(e.target.value)}
               className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              {...validation.invalid('allocatedAmount')}
             />
+            <FieldError message={validation.errors.allocatedAmount} />
           </div>
           <ModalFooter>
             <button

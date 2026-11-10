@@ -12,23 +12,23 @@ Sign in as that unit's administrator. **Passwords are not in this document** —
 
 | Business unit | Address | Sign in as |
 | --- | --- | --- |
-| Fossil Contracting | fossil.sourceline.co.zw | admin@fossil.sourceline.local |
-| Dokuma | dokuma.sourceline.co.zw | admin@dokuma.sourceline.local |
-| Khayah Cement | khayah.sourceline.co.zw | admin@khayah-cement.sourceline.local |
-| Kurima Centre | kurima.sourceline.co.zw | admin@kurima-centre.sourceline.local |
-| Mandfar | mandfar.sourceline.co.zw | admin@mandfar.sourceline.local |
-| Masimba | masimba.sourceline.co.zw | admin@masimba.sourceline.local |
-| Persimmon | persimmon.sourceline.co.zw | admin@persimmon.sourceline.local |
-| ProPlastics | proplastics.sourceline.co.zw | admin@proplastics.sourceline.local |
-| Rhopower | rhopower.sourceline.co.zw | admin@rhopower.sourceline.local |
-| The Grain Hub | grainhub.sourceline.co.zw | admin@grain-hub.sourceline.local |
-| Titan | titan.sourceline.co.zw | admin@titan.sourceline.local |
-| Trends | trends.sourceline.co.zw | admin@trends.sourceline.local |
-| Enviro Plastic | enviro.sourceline.co.zw | admin@enviro-plastic.sourceline.local |
-| Mangethe | mangethe.sourceline.co.zw | admin@mangethe.sourceline.local |
-| Thando Kinetics | thando.sourceline.co.zw | admin@thando-kinetics.sourceline.local |
+| Fossil Contracting | fossil.procureline.co.zw | admin@fossil.sourceline.local |
+| Dokuma | dokuma.procureline.co.zw | admin@dokuma.sourceline.local |
+| Khayah Cement | khayah.procureline.co.zw | admin@khayah-cement.sourceline.local |
+| Kurima Centre | kurima.procureline.co.zw | admin@kurima-centre.sourceline.local |
+| Mandfar | mandfar.procureline.co.zw | admin@mandfar.sourceline.local |
+| Masimba | masimba.procureline.co.zw | admin@masimba.sourceline.local |
+| Persimmon | persimmon.procureline.co.zw | admin@persimmon.sourceline.local |
+| ProPlastics | proplastics.procureline.co.zw | admin@proplastics.sourceline.local |
+| Rhopower | rhopower.procureline.co.zw | admin@rhopower.sourceline.local |
+| The Grain Hub | grainhub.procureline.co.zw | admin@grain-hub.sourceline.local |
+| Titan | titan.procureline.co.zw | admin@titan.sourceline.local |
+| Trends | trends.procureline.co.zw | admin@trends.sourceline.local |
+| Enviro Plastic | enviro.procureline.co.zw | admin@enviro-plastic.sourceline.local |
+| Mangethe | mangethe.procureline.co.zw | admin@mangethe.sourceline.local |
+| Thando Kinetics | thando.procureline.co.zw | admin@thando-kinetics.sourceline.local |
 
-The API behind all of them is `api.sourceline.co.zw`. `sourceline.co.zw` on its own is the hosting company's page, not this system — do not test against it.
+The API behind all of them is `api.procureline.co.zw`. `www.procureline.co.zw` on its own asks which business unit you are in; test at the unit's own address. The old `sourceline.co.zw` addresses still work while people move over, but report from the procureline ones.
 
 ## 2. How sign-in works here
 
@@ -132,7 +132,7 @@ Each business unit has its own database. Nothing should ever cross between them,
 
 | Check | What should happen |
 | --- | --- |
-| Sign in to Dokuma, then open titan.sourceline.co.zw in the same browser | Titan refuses the session and asks you to sign in again |
+| Sign in to Dokuma, then open titan.procureline.co.zw in the same browser | Titan refuses the session and asks you to sign in again |
 | Create a site with the same code in both units | Both succeed. Codes are unique within a unit, not across the group |
 | Raise a purchase order in each unit | Both may be numbered PO-2026-00001. That is correct — numbering restarts per unit |
 | Search Dokuma for a supplier that exists only in Titan | Not found |
@@ -150,7 +150,7 @@ These are deliberate or already known. Please do not raise them as bugs.
 | No verification email arrives; the code fills itself in | Deliberate and temporary, see section 2 |
 | Business units share no data at all — a supplier registered with one is unknown to the others | By design. Each unit keeps its own suppliers, users and items |
 | The same supplier must be onboarded separately in every unit that uses them | Follows from the above |
-| group.sourceline.co.zw and suppliers.sourceline.co.zw do not work | Group reporting and the shared supplier portal are not built |
+| group.procureline.co.zw and suppliers.procureline.co.zw do not work | Group reporting and the shared supplier portal are not built |
 | Documents print "Fossil Contracting" regardless of which unit issued them | Per-unit branding on printed documents is not built |
 | Purchase order numbers repeat across units | Correct for now. A per-unit prefix is planned but not built |
 | Emails link back to one fixed address, not the unit you are in | Per-unit email links are not built |
@@ -163,7 +163,7 @@ Fossil Contracting is the only unit expected to hold pre-existing data. The othe
 
 Because fifteen separate databases are in play, a report without the business unit usually cannot be reproduced. Include all of these:
 
-- **The address** you were on, in full, for example dokuma.sourceline.co.zw
+- **The address** you were on, in full, for example dokuma.procureline.co.zw
 - **The role** you were signed in as, and the email
 - **The document number** — requisition, RFQ, order, invoice
 - **What you did**, as the numbered step from section 4

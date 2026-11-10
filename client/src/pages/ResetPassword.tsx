@@ -4,6 +4,9 @@ import { authAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import Logo from '../components/Logo';
 import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ACCOUNT_LIMITS, validateResetPassword } from '@fossil/shared';
+import FieldError from '../components/FieldError';
+import { useFormValidation } from '../lib/useFormValidation';
 
 export default function ResetPassword() {
   const { showToast } = useToast();
@@ -15,21 +18,16 @@ export default function ResetPassword() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
+  const validation = useFormValidation(validateResetPassword, {
+    token,
+    email,
+    newPassword: password,
+    confirmPassword: confirm
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password !== confirm) {
-      showToast('Passwords do not match', 'error');
-      return;
-    }
-    if (password.length < 6) {
-      showToast('Password must be at least 6 characters', 'error');
-      return;
-    }
-    if (!token || !email) {
-      showToast('Invalid reset link', 'error');
-      return;
-    }
+    if (!validation.check()) return;
 
     try {
       setLoading(true);
@@ -37,7 +35,9 @@ export default function ResetPassword() {
       showToast('Password updated. You can sign in now.', 'success');
       navigate('/login', { replace: true });
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Reset failed', 'error');
+      if (!validation.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Reset failed', 'error');
+      }
     } finally {
       setLoading(false);
     }
@@ -70,17 +70,22 @@ export default function ResetPassword() {
           <h1 className="text-2xl font-bold text-gray-900">Set new password</h1>
           <p className="text-sm text-gray-500 mt-2">Choose a new password for {email}</p>
 
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <form ref={validation.formRef} onSubmit={handleSubmit} noValidate className="mt-6 space-y-4">
+            {/* The token and email come from the link; a problem with either means a new link is needed. */}
+            <FieldError message={validation.errors.token || validation.errors.email} />
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">New password</label>
               <input
                 type="password"
                 required
                 minLength={6}
+                maxLength={ACCOUNT_LIMITS.password}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                {...validation.invalid('newPassword')}
               />
+              <FieldError message={validation.errors.newPassword} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Confirm password</label>
@@ -88,10 +93,13 @@ export default function ResetPassword() {
                 type="password"
                 required
                 minLength={6}
+                maxLength={ACCOUNT_LIMITS.password}
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                {...validation.invalid('confirmPassword')}
               />
+              <FieldError message={validation.errors.confirmPassword} />
             </div>
             <button
               type="submit"

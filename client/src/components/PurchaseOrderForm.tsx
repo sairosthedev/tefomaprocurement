@@ -8,6 +8,9 @@ import Drawer from './Drawer';
 import { ConfirmModal } from './Modal';
 import { FormSteps, FormStepNav } from './FormSteps';
 import { Loader2, Search } from 'lucide-react';
+import { todayKey, validatePurchaseOrder, type PurchaseOrderInput } from '@fossil/shared';
+import FieldError from './FieldError';
+import { serverFieldErrors, useFormValidation } from '../lib/useFormValidation';
 
 const PICK_STEP = { label: 'Quotation', description: 'Which accepted quote to order' };
 const ORDER_STEPS = [
@@ -37,7 +40,8 @@ function fieldsFromQuotation(quotation: any): OrderFields {
   const site = quotation.site || quotation.rfq?.site;
   return {
     deliveryAddress: {
-      street: site?.address?.street || site?.address || '',
+      // An older site may hold its address as a single line of text.
+      street: typeof site?.address === 'string' ? site.address : site?.address?.street || '',
       city: site?.address?.city || site?.city || '',
       province: site?.address?.province || site?.province || '',
       postalCode: site?.address?.postalCode || site?.postalCode || ''
@@ -86,6 +90,27 @@ const PurchaseOrderForm = forwardRef<PurchaseOrderFormHandle, {
   const [prefilled, setPrefilled] = useState<OrderFields>(EMPTY_FIELDS);
   const [submitting, setSubmitting] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+
+  // The lines are the loaded quotation's, so they are checked as well as what is typed.
+  const values: PurchaseOrderInput = {
+    quotationId,
+    ...fields,
+    items: quotation && quotation._id === quotationId ? quotation.items : undefined
+  };
+  const validation = useFormValidation(validatePurchaseOrder, values);
+
+  /** The step that shows a field, so a problem can be brought into view. */
+  const stepOfField = (field: string) => {
+    if (field === 'quotationId') return 0;
+    if (field === 'termsAndConditions' || field === 'notes') return first + 1;
+    if (field === 'items' || field.startsWith('items.')) return first + 2;
+    return first;
+  };
+
+  // The quotation's lines have no fields here, so their problems are listed on the review.
+  const lineErrors = Object.entries(validation.errors)
+    .filter(([field]) => field.startsWith('items.'))
+    .map(([field, message]) => `Line ${Number(field.split('.')[1]) + 1}: ${message}`);
 
   // Anything entered beyond the quotation the form was opened with and what it filled in.
   const dirty =
@@ -139,33 +164,53 @@ const PurchaseOrderForm = forwardRef<PurchaseOrderFormHandle, {
     return () => { cancelled = true; };
   }, [quotationId]);
 
-  const goTo = (index: number) => {
-    setStep(index);
+  const scrollToTop = () => {
     // Scrolls whichever container holds the form, page or drawer.
     topRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   };
 
-  const validateStep = (index: number) => {
-    if (picking && index === 0) {
-      if (!quotationId || quotation?._id !== quotationId) {
-        showToast('Choose the quotation to order', 'error');
-        return false;
-      }
-      if (quotation.existingPurchaseOrder) {
-        showToast(`This quotation already has ${quotation.existingPurchaseOrder.poNumber}`, 'error');
-        return false;
-      }
+  const goTo = (index: number) => {
+    setStep(index);
+    validation.reset();
+    scrollToTop();
+  };
+
+  /**
+   * Checks the steps up to and including `through`. When one has a problem it
+   * is brought into view with its fields marked, and false is returned.
+   */
+  const checkThrough = (through: number) => {
+    const failing = Object.keys(validatePurchaseOrder(values)).map(stepOfField).filter((s) => s <= through);
+    if (!failing.length) return true;
+    const firstFailing = Math.min(...failing);
+    if (firstFailing !== step) goTo(firstFailing);
+    validation.check();
+    return false;
+  };
+
+  // The chosen quotation has loaded and has no order yet.
+  const quotationReady = () => {
+    if (!picking) return true;
+    if (quotation?._id !== quotationId) {
+      showToast('Choose the quotation to order', 'error');
+      return false;
+    }
+    if (quotation.existingPurchaseOrder) {
+      showToast(`This quotation already has ${quotation.existingPurchaseOrder.poNumber}`, 'error');
+      return false;
     }
     return true;
   };
 
+  const readyThrough = (through: number) => checkThrough(through) && quotationReady();
+
   const handleNext = () => {
-    if (validateStep(step)) goTo(Math.min(step + 1, steps.length - 1));
+    if (readyThrough(step)) goTo(Math.min(step + 1, steps.length - 1));
   };
 
   // Moving ahead by the step track checks each step passed over.
   const selectStep = (index: number) => {
-    if (index > step && picking && step === 0 && !validateStep(0)) return;
+    if (index > step && !readyThrough(index - 1)) return;
     goTo(index);
   };
 
@@ -176,13 +221,24 @@ const PurchaseOrderForm = forwardRef<PurchaseOrderFormHandle, {
       handleNext();
       return;
     }
+    if (!readyThrough(steps.length - 1)) return;
     try {
       setSubmitting(true);
       const created = await procurementAPI.createPurchaseOrder({ quotationId, ...fields });
       showToast('Purchase Order created — submit it for approval', 'success');
       onSaved(created.data?.data?._id);
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to create purchase order', 'error');
+      if (validation.fromServer(error)) {
+        // Show the step holding the first field the server refused.
+        const refused = Object.keys(serverFieldErrors(error) || {});
+        const firstRefused = Math.min(...refused.map(stepOfField));
+        if (firstRefused !== step) {
+          setStep(firstRefused);
+          scrollToTop();
+        }
+      } else {
+        showToast(error.response?.data?.message || 'Failed to create purchase order', 'error');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -206,7 +262,7 @@ const PurchaseOrderForm = forwardRef<PurchaseOrderFormHandle, {
     <div ref={topRef} className="scroll-mt-6">
       <FormSteps steps={steps} current={step} onSelect={selectStep} variant="track" />
 
-      <form onSubmit={handleSubmit}>
+      <form ref={validation.formRef} onSubmit={handleSubmit} noValidate>
         {picking && step === 0 && (
           <div className="space-y-3">
             {loadingCandidates ? (
@@ -242,6 +298,7 @@ const PurchaseOrderForm = forwardRef<PurchaseOrderFormHandle, {
                         checked={quotationId === q._id}
                         onChange={() => setQuotationId(q._id)}
                         className="text-primary focus:ring-primary"
+                        {...validation.invalid('quotationId')}
                       />
                       <div className="min-w-0 flex-1">
                         <p className="font-medium text-gray-900">
@@ -260,6 +317,7 @@ const PurchaseOrderForm = forwardRef<PurchaseOrderFormHandle, {
                     <p className="text-sm text-gray-500 px-3 py-4">No accepted quotation matches “{filter}”.</p>
                   )}
                 </div>
+                <FieldError message={validation.errors.quotationId} />
                 {loadingQuotation && (
                   <p className="flex items-center gap-2 text-xs text-gray-500">
                     <Loader2 className="h-3 w-3 animate-spin" /> Loading the quotation…
@@ -275,29 +333,39 @@ const PurchaseOrderForm = forwardRef<PurchaseOrderFormHandle, {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Delivery Street</label>
-                <input type="text" value={fields.deliveryAddress.street} onChange={(e) => setAddress('street', e.target.value)} className={INPUT} />
+                <input type="text" value={fields.deliveryAddress.street} onChange={(e) => setAddress('street', e.target.value)} className={INPUT} maxLength={200} {...validation.invalid('deliveryAddress.street')} />
+                <FieldError message={validation.errors['deliveryAddress.street']} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
-                <input type="text" value={fields.deliveryAddress.city} onChange={(e) => setAddress('city', e.target.value)} className={INPUT} />
+                <input type="text" value={fields.deliveryAddress.city} onChange={(e) => setAddress('city', e.target.value)} className={INPUT} maxLength={80} {...validation.invalid('deliveryAddress.city')} />
+                <FieldError message={validation.errors['deliveryAddress.city']} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Province</label>
-                <input type="text" value={fields.deliveryAddress.province} onChange={(e) => setAddress('province', e.target.value)} className={INPUT} />
+                <input type="text" value={fields.deliveryAddress.province} onChange={(e) => setAddress('province', e.target.value)} className={INPUT} maxLength={80} {...validation.invalid('deliveryAddress.province')} />
+                <FieldError message={validation.errors['deliveryAddress.province']} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Postal Code</label>
-                <input type="text" value={fields.deliveryAddress.postalCode} onChange={(e) => setAddress('postalCode', e.target.value)} className={INPUT} />
+                <input type="text" value={fields.deliveryAddress.postalCode} onChange={(e) => setAddress('postalCode', e.target.value)} className={INPUT} maxLength={20} {...validation.invalid('deliveryAddress.postalCode')} />
+                <FieldError message={validation.errors['deliveryAddress.postalCode']} />
               </div>
             </div>
+            <FieldError message={validation.errors.deliveryAddress} />
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Expected Delivery Date</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Expected Delivery Date <span className="text-red-500">*</span>
+              </label>
               <input
                 type="date"
                 value={fields.expectedDeliveryDate}
                 onChange={(e) => setFields({ ...fields, expectedDeliveryDate: e.target.value })}
+                min={todayKey()}
                 className={INPUT}
+                {...validation.invalid('expectedDeliveryDate')}
               />
+              <FieldError message={validation.errors.expectedDeliveryDate} />
             </div>
           </div>
         )}
@@ -311,7 +379,10 @@ const PurchaseOrderForm = forwardRef<PurchaseOrderFormHandle, {
                 onChange={(e) => setFields({ ...fields, termsAndConditions: e.target.value })}
                 rows={3}
                 className={INPUT}
+                maxLength={2000}
+                {...validation.invalid('termsAndConditions')}
               />
+              <FieldError message={validation.errors.termsAndConditions} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
@@ -320,7 +391,10 @@ const PurchaseOrderForm = forwardRef<PurchaseOrderFormHandle, {
                 onChange={(e) => setFields({ ...fields, notes: e.target.value })}
                 rows={2}
                 className={INPUT}
+                maxLength={2000}
+                {...validation.invalid('notes')}
               />
+              <FieldError message={validation.errors.notes} />
             </div>
           </div>
         )}
@@ -374,6 +448,10 @@ const PurchaseOrderForm = forwardRef<PurchaseOrderFormHandle, {
                 <p className="font-medium text-gray-900 whitespace-pre-line">{fields.termsAndConditions || '—'}</p>
               </div>
             </div>
+            <FieldError message={validation.errors.items} />
+            {lineErrors.map((message) => (
+              <FieldError key={message} message={message} />
+            ))}
           </div>
         )}
 

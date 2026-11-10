@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import jwt, { type SignOptions } from 'jsonwebtoken';
-import { isValidCategoryCode } from '@fossil/shared';
+import { isValidCategoryCode, validateSupplierRegistration } from '@fossil/shared';
 import { User, SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { registrationConflict } from '../../services/supplierEligibility.service.js';
@@ -9,6 +9,7 @@ import {
   readSupplierClassification
 } from '../../services/supplierClassification.service.js';
 import { getJwtSecret, getJwtExpiry } from '../../config/secrets.js';
+import { refuseInvalid } from '../../lib/validation.js';
 
 const register = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -29,6 +30,9 @@ const register = async (req: Request, res: Response): Promise<any> => {
     // supplied role would let anyone register themselves as an admin. Staff
     // accounts are created by an administrator via POST /admin/users.
     const userRole = 'supplier';
+
+    // The registration screen's own checks (see packages/shared/src/validation/suppliers.ts).
+    if (refuseInvalid(res, validateSupplierRegistration(req.body))) return;
 
     if (!email || !password || !firstName || !lastName) {
       return res.status(400).json({
@@ -61,7 +65,8 @@ const register = async (req: Request, res: Response): Promise<any> => {
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: 'User with this email already exists'
+        message: 'User with this email already exists',
+        errors: { email: 'This email is already registered. Sign in instead, or use another email' }
       });
     }
 
@@ -92,7 +97,11 @@ const register = async (req: Request, res: Response): Promise<any> => {
     // to sign in or contact procurement, like any company already on file.
     const conflict = await registrationConflict(profileData.registrationNumber);
     if (conflict) {
-      return res.status(409).json({ success: false, message: conflict.message });
+      return res.status(409).json({
+        success: false,
+        message: conflict.message,
+        errors: { registrationNumber: conflict.message }
+      });
     }
 
     const user = await User.create({

@@ -5,6 +5,8 @@ import { createAuditLog } from '../../middleware/index.js';
 import { currentBaseCurrency } from '../../tenancy/sbuContext.js';
 import { notifyUsersByRole } from '../../services/notification.service.js';
 import { sanitiseAttachments } from '../../services/lineAttachments.service.js';
+import { refuseInvalid } from '../../lib/validation.js';
+import { validateQuotation } from '@fossil/shared';
 
 /** A JSON number, or a numeric string from a form field; anything else is NaN. */
 const toNumber = (value: any): number =>
@@ -29,6 +31,9 @@ const QUOTING_STATUSES = ['active', 'pending'];
 
 const submitQuotation = async (req: Request, res: Response): Promise<any> => {
   try {
+    // The same checks as the quotation form: terms, and a price on every line sent.
+    if (refuseInvalid(res, validateQuotation(req.body))) return;
+
     const { 
       rfqId, 
       items, 

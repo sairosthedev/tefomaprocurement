@@ -1,27 +1,31 @@
 import { useEffect, useRef, useState } from 'react';
-import { KYS_DOCUMENT_REQUIREMENTS } from '@fossil/shared';
+import {
+  KYS_DOCUMENT_REQUIREMENTS,
+  KYS_EXPIRING_DOCUMENT_TYPES,
+  TEXT_LIMITS,
+  todayKey,
+  validateKysDocumentReview,
+  validateKysDocumentUpload
+} from '@fossil/shared';
 import { useToast } from './Toast';
+import FieldError from './FieldError';
+import { usePrompt } from './PromptModal';
+import { useFormValidation } from '../lib/useFormValidation';
 import { Upload, FileText, Trash2, CheckCircle, Loader2, Download, Eye, X, CalendarClock, AlertTriangle, ShieldCheck, ShieldX } from 'lucide-react';
-
-const MAX_BYTES = 5 * 1024 * 1024;
 
 /**
  * Document types that carry a validity period. These must be uploaded with an
- * expiry date — the server rejects them otherwise, because an expiry date that
- * nothing records is an expiry date nothing can act on.
- * Mirrors EXPIRING_DOCUMENT_TYPES in the API's documentExpiry service.
+ * expiry date after today — the server rejects them otherwise, because an
+ * expiry date that nothing records is an expiry date nothing can act on.
  */
-const EXPIRING_DOCUMENT_TYPES = [
-  'tax_clearance',
-  'nssa_compliance',
-  'insurance',
-  'iso_certification',
-  'industry_licence',
-  'nec_registration',
-  'bee_certificate'
-];
+const isExpiringType = (documentType: string) => KYS_EXPIRING_DOCUMENT_TYPES.includes(documentType);
 
-const isExpiringType = (documentType: string) => EXPIRING_DOCUMENT_TYPES.includes(documentType);
+/** The file last chosen for a document type, as checked before upload. */
+interface UploadAttempt {
+  documentType: string;
+  fileName: string;
+  fileSize: number;
+}
 
 export interface KysDocument {
   _id?: string;
@@ -155,6 +159,15 @@ export default function KysDocuments({
   // Expiry date staged per document type before the file is chosen.
   const [expiryDrafts, setExpiryDrafts] = useState<Record<string, string>>({});
   const inputs = useRef<Record<string, HTMLInputElement | null>>({});
+  // Each row is its own small form; the one last uploaded to shows its problems.
+  const [attempt, setAttempt] = useState<UploadAttempt | null>(null);
+  const upload = useFormValidation(validateKysDocumentUpload, {
+    documentType: attempt?.documentType || '',
+    fileName: attempt?.fileName || '',
+    fileSize: attempt?.fileSize,
+    expiryDate: attempt ? expiryDrafts[attempt.documentType] || '' : ''
+  });
+  const { ask, promptElement } = usePrompt();
 
   const byType = (t: string) => documents?.find((d) => d.documentType === t);
   const isRequired = (req: (typeof KYS_DOCUMENT_REQUIREMENTS)[number]) =>
@@ -224,23 +237,17 @@ export default function KysDocuments({
 
   const handleFile = async (documentType: string, file?: File | null) => {
     if (!file) return;
-    if (file.size > MAX_BYTES) {
-      showToast('File exceeds the 5MB limit', 'error');
-      return;
-    }
+    const clearInput = () => {
+      if (inputs.current[documentType]) inputs.current[documentType]!.value = '';
+    };
 
-    const expiryDate = expiryDrafts[documentType];
-    if (isExpiringType(documentType)) {
-      if (!expiryDate) {
-        showToast('Set the expiry date before uploading this document', 'error');
-        if (inputs.current[documentType]) inputs.current[documentType]!.value = '';
-        return;
-      }
-      if (new Date(expiryDate).getTime() <= Date.now()) {
-        showToast('That expiry date has already passed', 'error');
-        if (inputs.current[documentType]) inputs.current[documentType]!.value = '';
-        return;
-      }
+    // The size, and an expiry date after today for a document that lapses.
+    const expiryDate = expiryDrafts[documentType] || '';
+    const chosen: UploadAttempt = { documentType, fileName: file.name, fileSize: file.size };
+    setAttempt(chosen);
+    if (!upload.check({ ...chosen, expiryDate })) {
+      clearInput();
+      return;
     }
 
     try {
@@ -254,12 +261,16 @@ export default function KysDocuments({
         ...(expiryDate ? { expiryDate } : {})
       });
       setExpiryDrafts((prev) => ({ ...prev, [documentType]: '' }));
+      setAttempt(null);
+      upload.reset();
       showToast('Document uploaded', 'success');
     } catch (error: any) {
-      showToast(error?.response?.data?.message || 'Upload failed', 'error');
+      if (!upload.fromServer(error)) {
+        showToast(error?.response?.data?.message || 'Upload failed', 'error');
+      }
     } finally {
       setBusyType(null);
-      if (inputs.current[documentType]) inputs.current[documentType]!.value = '';
+      clearInput();
     }
   };
 
@@ -267,9 +278,26 @@ export default function KysDocuments({
     if (!onVerify) return;
     let notes: string | undefined;
     if (!verified) {
-      const reason = window.prompt(`Why is "${doc.fileName}" being rejected?`);
-      if (!reason?.trim()) return;
-      notes = reason.trim();
+      const rejectionReason = (value: string) => validateKysDocumentReview({ verified: false, notes: value }).notes || '';
+      const answer = await ask({
+        title: doc.verified ? 'Withdraw verification' : 'Reject document',
+        subtitle: doc.fileName,
+        message: 'The supplier is told the reason and asked for a corrected document.',
+        fields: [
+          {
+            name: 'notes',
+            label: 'Reason',
+            multiline: true,
+            maxLength: TEXT_LIMITS.long,
+            requiredMessage: rejectionReason(''),
+            validate: rejectionReason
+          }
+        ],
+        confirmLabel: doc.verified ? 'Withdraw' : 'Reject',
+        danger: true
+      });
+      if (!answer) return;
+      notes = answer.notes;
     }
     try {
       setBusyType(doc.documentType);
@@ -304,6 +332,11 @@ export default function KysDocuments({
   const renderRow = (req: (typeof KYS_DOCUMENT_REQUIREMENTS)[number]) => {
     const existing = byType(req.documentType);
     const busy = busyType === req.documentType;
+    // Only the row last uploaded to shows its problems.
+    const isAttempted = attempt?.documentType === req.documentType;
+    const rowError = (field: string) => (isAttempted ? upload.errors[field] : undefined);
+    const rowInvalid = (field: string) => (isAttempted ? upload.invalid(field) : {});
+    const fileError = rowError('fileData') || rowError('fileName') || rowError('documentType') || rowError('notes');
     return (
       <div key={req.documentType} className="flex flex-wrap items-center gap-3 p-3 border-b border-gray-100 last:border-b-0">
         <div className="flex-1 min-w-[14rem]">
@@ -358,21 +391,26 @@ export default function KysDocuments({
 
           {/* Documents with a validity period cannot be uploaded without one. */}
           {!readOnly && isExpiringType(req.documentType) && (
-            <div className="flex items-center gap-2 mt-2">
-              <label className="text-[11px] text-gray-500 shrink-0">
-                Expiry date{!existing ? ' *' : ''}
-              </label>
-              <input
-                type="date"
-                value={expiryDrafts[req.documentType] || ''}
-                min={new Date(Date.now() + 86400000).toISOString().slice(0, 10)}
-                onChange={(e) =>
-                  setExpiryDrafts((prev) => ({ ...prev, [req.documentType]: e.target.value }))
-                }
-                className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
+            <div className="mt-2">
+              <div className="flex items-center gap-2">
+                <label className="text-[11px] text-gray-500 shrink-0">
+                  Expiry date{!existing ? ' *' : ''}
+                </label>
+                <input
+                  type="date"
+                  value={expiryDrafts[req.documentType] || ''}
+                  min={todayKey(new Date(Date.now() + 86400000))}
+                  onChange={(e) =>
+                    setExpiryDrafts((prev) => ({ ...prev, [req.documentType]: e.target.value }))
+                  }
+                  className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  {...rowInvalid('expiryDate')}
+                />
+              </div>
+              <FieldError message={rowError('expiryDate')} />
             </div>
           )}
+          {!readOnly && <FieldError message={fileError} />}
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-1.5">
@@ -459,6 +497,7 @@ export default function KysDocuments({
                 onClick={() => inputs.current[req.documentType]?.click()}
                 disabled={busy}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                {...(fileError ? { 'aria-invalid': true as const } : {})}
               >
                 {busy ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -538,7 +577,7 @@ export default function KysDocuments({
   if (includeTypes) {
     return (
       <>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+        <div ref={upload.formRef} className="bg-white rounded-2xl shadow-sm border border-gray-100">
           {title && (
             <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 rounded-t-2xl">
               <h3 className="text-sm font-semibold text-gray-700">{title}</h3>
@@ -551,13 +590,14 @@ export default function KysDocuments({
           )}
         </div>
         {viewerModal}
+        {promptElement}
       </>
     );
   }
 
   return (
     <>
-      <div className="space-y-6">
+      <div ref={upload.formRef} className="space-y-6">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
           <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 rounded-t-2xl">
             <h3 className="text-sm font-semibold text-gray-700">Mandatory documents</h3>
@@ -573,6 +613,7 @@ export default function KysDocuments({
         </div>
       </div>
       {viewerModal}
+      {promptElement}
     </>
   );
 }

@@ -3,11 +3,15 @@ import { ChevronDown, ChevronRight, Camera, X, Loader2, FileText } from 'lucide-
 import {
   EQUIPMENT_FIELDS,
   ATTACHMENT_KIND_OPTIONS,
-  MAX_ATTACHMENT_BYTES,
   MAX_ATTACHMENTS_PER_LINE,
-  ALLOWED_ATTACHMENT_MIME_TYPES,
-  hasEquipmentDetails
+  TEXT_LIMITS,
+  firstError,
+  hasEquipmentDetails,
+  validateRequisitionAttachment,
+  validateRequisitionAttachments,
+  type FieldErrors
 } from '@fossil/shared';
+import FieldError from './FieldError';
 
 interface Props {
   equipment: Record<string, string>;
@@ -16,7 +20,11 @@ interface Props {
   onAttachmentsChange: (attachments: any[]) => void;
   /** Open on first render — set when the line's category is plant/vehicle related. */
   defaultOpen?: boolean;
-  onError?: (message: string) => void;
+  /**
+   * The line's field errors from its form (validateRequisitionLine):
+   * `equipment.make`, `attachments`, `attachments.0.caption` and so on.
+   */
+  errors?: FieldErrors;
 }
 
 /**
@@ -33,11 +41,18 @@ export default function EquipmentDetailsPanel({
   onEquipmentChange,
   onAttachmentsChange,
   defaultOpen = false,
-  onError
+  errors = {}
 }: Props) {
   const [open, setOpen] = useState(defaultOpen);
   const [reading, setReading] = useState(false);
+  // Why a file just picked was not added, in the words the API would use.
+  const [pickError, setPickError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // A problem in here keeps the panel open, so the field it is under can be seen.
+  const hasPanelErrors = Object.keys(errors).some((key) => key.startsWith('equipment.') || key.startsWith('attachments'));
+  const isOpen = open || hasPanelErrors;
+  const attachmentError = (index: number, field: string) => errors[`attachments.${index}.${field}`];
 
   const filled = hasEquipmentDetails(equipment);
   const count = (attachments || []).length;
@@ -53,9 +68,15 @@ export default function EquipmentDetailsPanel({
   const handleFiles = async (event: any) => {
     const files: File[] = Array.from(event.target.files || []);
     if (files.length === 0) return;
+    setPickError('');
 
-    if (count + files.length > MAX_ATTACHMENTS_PER_LINE) {
-      onError?.(`You can attach at most ${MAX_ATTACHMENTS_PER_LINE} photos to one item`);
+    // Counted before anything is read.
+    const tooMany = validateRequisitionAttachments([
+      ...(attachments || []),
+      ...files.map((file) => ({ fileName: file.name, fileData: 'pending' }))
+    ]).attachments;
+    if (tooMany) {
+      setPickError(tooMany);
       event.target.value = '';
       return;
     }
@@ -63,26 +84,27 @@ export default function EquipmentDetailsPanel({
     try {
       setReading(true);
       const added: any[] = [];
+      const problems: string[] = [];
       for (const file of files) {
-        if (file.size > MAX_ATTACHMENT_BYTES) {
-          onError?.(`${file.name} is larger than 5MB`);
-          continue;
-        }
-        if (file.type && !ALLOWED_ATTACHMENT_MIME_TYPES.includes(file.type)) {
-          onError?.(`${file.name} is not a supported image type`);
-          continue;
-        }
-        added.push({
+        const attachment = {
           kind: 'data_plate',
           fileName: file.name,
           fileData: await readFile(file),
           mimeType: file.type,
           caption: ''
-        });
+        };
+        // The type and size checks the API makes.
+        const problem = firstError(validateRequisitionAttachment(attachment));
+        if (problem) {
+          problems.push(`${file.name}: ${problem}`);
+          continue;
+        }
+        added.push(attachment);
       }
       if (added.length) onAttachmentsChange([...(attachments || []), ...added]);
+      if (problems.length) setPickError(problems.join(' '));
     } catch (error: any) {
-      onError?.(error.message || 'Could not read the selected file');
+      setPickError(error.message || 'Could not read the selected file');
     } finally {
       setReading(false);
       event.target.value = '';
@@ -96,6 +118,7 @@ export default function EquipmentDetailsPanel({
   };
 
   const removeAttachment = (index: number) => {
+    setPickError('');
     onAttachmentsChange(attachments.filter((_, i) => i !== index));
   };
 
@@ -103,11 +126,11 @@ export default function EquipmentDetailsPanel({
     <div className="col-span-12 border border-gray-200 rounded-lg bg-white">
       <button
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={() => setOpen(!isOpen)}
         className="w-full flex items-center justify-between px-3 py-2 text-left"
       >
         <span className="flex items-center gap-2 text-xs font-medium text-gray-700">
-          {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           Equipment details &amp; photos
           <span className="font-normal text-gray-400">(optional)</span>
         </span>
@@ -125,7 +148,7 @@ export default function EquipmentDetailsPanel({
         </span>
       </button>
 
-      {open && (
+      {isOpen && (
         <div className="px-3 pb-3 space-y-3 border-t border-gray-100 pt-3">
           <p className="text-xs text-gray-500">
             For plant, vehicle or machinery spares. Fill in only what you know — if the
@@ -142,8 +165,11 @@ export default function EquipmentDetailsPanel({
                   onChange={(e: any) => onEquipmentChange(field.key, e.target.value)}
                   placeholder={field.placeholder}
                   title={field.help}
+                  maxLength={TEXT_LIMITS.name}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  {...(errors[`equipment.${field.key}`] ? { 'aria-invalid': true as const } : {})}
                 />
+                <FieldError message={errors[`equipment.${field.key}`]} />
               </div>
             ))}
           </div>
@@ -172,6 +198,7 @@ export default function EquipmentDetailsPanel({
                 className="hidden"
               />
             </div>
+            <FieldError message={pickError || errors.attachments} className="mb-2" />
 
             {count === 0 ? (
               <p className="text-xs text-gray-400">
@@ -181,7 +208,12 @@ export default function EquipmentDetailsPanel({
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 {attachments.map((att: any, index: number) => (
-                  <div key={index} className="border border-gray-200 rounded-lg p-2 relative">
+                  <div
+                    key={index}
+                    className={`border rounded-lg p-2 relative ${
+                      attachmentError(index, 'fileData') || attachmentError(index, 'mimeType') ? 'border-red-300' : 'border-gray-200'
+                    }`}
+                  >
                     <button
                       type="button"
                       onClick={() => removeAttachment(index)}
@@ -205,6 +237,7 @@ export default function EquipmentDetailsPanel({
                       value={att.kind}
                       onChange={(e: any) => updateAttachment(index, 'kind', e.target.value)}
                       className="w-full mt-1.5 px-1.5 py-1 border border-gray-200 rounded text-[11px] bg-white"
+                      {...(attachmentError(index, 'kind') ? { 'aria-invalid': true as const } : {})}
                     >
                       {ATTACHMENT_KIND_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -215,7 +248,17 @@ export default function EquipmentDetailsPanel({
                       value={att.caption || ''}
                       onChange={(e: any) => updateAttachment(index, 'caption', e.target.value)}
                       placeholder="Caption (optional)"
+                      maxLength={TEXT_LIMITS.short}
                       className="w-full mt-1 px-1.5 py-1 border border-gray-200 rounded text-[11px]"
+                      {...(attachmentError(index, 'caption') ? { 'aria-invalid': true as const } : {})}
+                    />
+                    <FieldError
+                      message={
+                        attachmentError(index, 'fileData') ||
+                        attachmentError(index, 'mimeType') ||
+                        attachmentError(index, 'kind') ||
+                        attachmentError(index, 'caption')
+                      }
                     />
                   </div>
                 ))}

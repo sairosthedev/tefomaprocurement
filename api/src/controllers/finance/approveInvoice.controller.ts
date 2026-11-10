@@ -8,10 +8,14 @@ import {
 } from '../../services/threeWayMatch.service.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { createNotification } from '../../services/notification.service.js';
+import { validateInvoiceApproval } from '@fossil/shared';
+import { refuseInvalid } from '../../lib/validation.js';
 
 const approveInvoice = async (req: Request, res: Response): Promise<any> => {
   try {
     const { comments, forceApprove } = req.body;
+    if (refuseInvalid(res, validateInvoiceApproval(req.body))) return;
+
     const invoice = await Invoice.findById(req.params.id);
     if (!invoice || invoice.isDeleted) {
       return res.status(404).json({ success: false, message: 'Invoice not found' });

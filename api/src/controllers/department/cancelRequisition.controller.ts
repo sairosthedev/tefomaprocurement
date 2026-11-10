@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
-import { PR_CANCELLATION_REASONS, prCancelStatusesFor } from '@fossil/shared';
+import { PR_CANCELLATION_REASONS, prCancelStatusesFor, validateRequisitionCancellation } from '@fossil/shared';
 import { createAuditLog } from '../../middleware/index.js';
+import { refuseInvalid } from '../../lib/validation.js';
 import { createNotification, notifyUsersByRole } from '../../services/notification.service.js';
 import {
   cancelRequisitionById,
@@ -11,20 +12,16 @@ const cancelRequisition = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
     const { reasonCode, reason, comments } = req.body;
+    // `reason` and `reasonDetails` are older names for the code and the details.
     const code = reasonCode || reason;
-
-    if (!code) {
-      return res.status(400).json({
-        success: false,
-        message: 'Cancellation reason is required'
-      });
-    }
+    const details = comments || req.body.reasonDetails;
+    if (refuseInvalid(res, validateRequisitionCancellation({ reasonCode: code, comments: details }))) return;
 
     const result = await cancelRequisitionById(
       id,
       req.user!,
       code,
-      comments || req.body.reasonDetails
+      details
     );
 
     const { requisition, cancelledRfqs, cancelledPos } = result;

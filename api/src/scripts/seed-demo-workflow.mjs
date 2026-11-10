@@ -9,7 +9,7 @@
  * "awaiting approval" without passing through submission is not the same
  * record, and tests against it prove nothing.
  *
- *   node api/src/scripts/seed-demo-workflow.mjs DOKUMA https://api.sourceline.co.zw
+ *   node api/src/scripts/seed-demo-workflow.mjs DOKUMA https://api.procureline.co.zw
  *   node api/src/scripts/seed-demo-workflow.mjs FOSSIL            (defaults to localhost:3001)
  */
 const SBU = (process.argv[2] || '').toUpperCase();

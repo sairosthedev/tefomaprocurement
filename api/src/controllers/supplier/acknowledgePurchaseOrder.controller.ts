@@ -3,11 +3,15 @@ import type { Request, Response } from 'express';
 import { PurchaseOrder, SupplierProfile, Delivery } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { createNotification, notifyUsersByRole } from '../../services/notification.service.js';
+import { validatePurchaseOrderAcknowledgement } from '@fossil/shared';
+import { refuseInvalid } from '../../lib/validation.js';
 
 const acknowledgePurchaseOrder = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
     const { deliveryNoteNumber, expectedDeliveryDate } = req.body;
+
+    if (refuseInvalid(res, validatePurchaseOrderAcknowledgement(req.body))) return;
 
     const profile = await SupplierProfile.findOne({ user: req.user!._id });
     if (!profile) {

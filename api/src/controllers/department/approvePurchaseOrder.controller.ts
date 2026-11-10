@@ -2,7 +2,8 @@ import type { Request, Response } from 'express';
 import { PurchaseOrder, PurchaseRequisition, User } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { notifyUsersByRole, createNotifications } from '../../services/notification.service.js';
-import { isProcurementDepartment, isProcurementHead } from '@fossil/shared';
+import { isProcurementDepartment, isProcurementHead, validatePurchaseOrderApproval } from '@fossil/shared';
+import { refuseInvalid } from '../../lib/validation.js';
 import procApprovePurchaseOrder from './procApprovePurchaseOrder.controller.js';
 
 // Normalize a populated department doc or a raw ObjectId to a hex id string.
@@ -22,6 +23,7 @@ const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> =
   try {
     const { id } = req.params;
     const { comments } = req.body;
+    if (refuseInvalid(res, validatePurchaseOrderApproval(req.body))) return;
 
     const po = await PurchaseOrder.findById(id);
     if (!po || po.isDeleted) {

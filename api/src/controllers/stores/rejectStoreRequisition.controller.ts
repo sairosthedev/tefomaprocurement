@@ -1,20 +1,17 @@
 import type { Request, Response } from 'express';
+import { validateStoreRequisitionRejection } from '@fossil/shared';
 
 import { StoreRequisition, Inventory } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { refuseInvalid } from '../../lib/validation.js';
 import { createNotification } from '../../services/notification.service.js';
 
 const rejectStoreRequisition = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
-    const { comments } = req.body;
+    const comments = String(req.body.comments ?? '').trim();
 
-    if (!comments || !comments.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Comments are required for rejection'
-      });
-    }
+    if (refuseInvalid(res, validateStoreRequisitionRejection(req.body))) return;
 
     const requisition = await StoreRequisition.findById(id);
     

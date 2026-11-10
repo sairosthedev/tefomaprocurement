@@ -4,22 +4,29 @@ import { authAPI } from '../lib/api';
 import { useToast } from '../components/Toast';
 import Logo from '../components/Logo';
 import { ArrowLeft, Loader2 } from 'lucide-react';
+import { TEXT_LIMITS, validateForgotPassword } from '@fossil/shared';
+import FieldError from '../components/FieldError';
+import { useFormValidation } from '../lib/useFormValidation';
 
 export default function ForgotPassword() {
   const { showToast } = useToast();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const validation = useFormValidation(validateForgotPassword, { email });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validation.check()) return;
     try {
       setLoading(true);
       const res = await authAPI.forgotPassword({ email: email.trim() });
       setSent(true);
       showToast(res.data.message || 'Check your email', 'success');
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Request failed', 'error');
+      if (!validation.fromServer(error)) {
+        showToast(error.response?.data?.message || 'Request failed', 'error');
+      }
     } finally {
       setLoading(false);
     }
@@ -46,16 +53,19 @@ export default function ForgotPassword() {
               If an account exists for <strong>{email}</strong>, a reset link has been sent. Check your inbox.
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            <form ref={validation.formRef} onSubmit={handleSubmit} noValidate className="mt-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input
                   type="email"
                   required
+                  maxLength={TEXT_LIMITS.email}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  {...validation.invalid('email')}
                 />
+                <FieldError message={validation.errors.email} />
               </div>
               <button
                 type="submit"

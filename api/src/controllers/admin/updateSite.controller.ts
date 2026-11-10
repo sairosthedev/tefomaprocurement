@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express';
 import { Site } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { validateSite } from '@fossil/shared';
+import { refuseInvalid } from '../../lib/validation.js';
 
 const updateSite = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -8,6 +10,7 @@ const updateSite = async (req: Request, res: Response): Promise<any> => {
     if (!site) {
       return res.status(404).json({ success: false, message: 'Site not found' });
     }
+    if (refuseInvalid(res, validateSite(req.body, { isNew: false }))) return;
 
     const fields = [
       'name',

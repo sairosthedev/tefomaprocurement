@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express';
 import { User } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { validateStaffUser } from '@fossil/shared';
+import { refuseInvalid } from '../../lib/validation.js';
 
 const updateUser = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -15,6 +17,8 @@ const updateUser = async (req: Request, res: Response): Promise<any> => {
         message: 'User not found'
       });
     }
+    // Only the fields sent are checked; the email cannot be changed here.
+    if (refuseInvalid(res, validateStaffUser(req.body ?? {}, { isNew: false, currentPhone: user.phone ?? '' }))) return;
 
     const previousData = {
       firstName: user.firstName,

@@ -1,32 +1,22 @@
 import type { Request, Response } from 'express';
 import { User } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { validateStaffUser } from '@fossil/shared';
+import { refuseInvalid } from '../../lib/validation.js';
 
 const createUser = async (req: Request, res: Response): Promise<any> => {
   try {
+    if (refuseInvalid(res, validateStaffUser(req.body ?? {}, { isNew: true }))) return;
+
     const { email, password, firstName, lastName, role, department, homeSite, phone, status } =
       req.body;
-
-    // Validate required fields
-    if (!email || !password || !firstName || !lastName || !role) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email, password, first name, last name, and role are required'
-      });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password must be at least 6 characters'
-      });
-    }
 
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: 'User with this email already exists'
+        message: 'User with this email already exists',
+        errors: { email: 'A user with this email already exists' }
       });
     }
 

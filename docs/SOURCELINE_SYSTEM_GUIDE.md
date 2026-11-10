@@ -4,7 +4,7 @@
 
 Sourceline is a procurement and stores system for a group of fifteen business units. It takes a purchase from the moment somebody asks for something to the moment the supplier is paid, and it refuses to let that happen out of order.
 
-Each business unit runs on its own address with its own separate database. A person signing in at `khayah.sourceline.co.zw` is in Khayah Cement and can see nothing belonging to any other unit.
+Each business unit runs on its own address with its own separate database. A person signing in at `khayah.procureline.co.zw` is in Khayah Cement and can see nothing belonging to any other unit.
 
 ## 1. What problem it solves
 
@@ -108,7 +108,7 @@ The system began as one database for one company. It now serves fifteen, and the
 
 **The registry.** A central database holds one record per business unit: its code, its database name, its domains, its branding. Nothing else is shared.
 
-**Resolution by hostname.** A request arriving at `dokuma.sourceline.co.zw` is matched against the registry, and everything that follows runs against Dokuma's database. The login page needs no chooser, because the address already said which unit.
+**Resolution by hostname.** A request arriving at `dokuma.procureline.co.zw` is matched against the registry, and everything that follows runs against Dokuma's database. The login page needs no chooser, because the address already said which unit.
 
 **Model resolvers.** Each data model is a proxy that resolves, per request, to the copy bound to the current unit's database connection. Existing code was untouched; `PurchaseOrder.find()` means something different depending on who is asking.
 

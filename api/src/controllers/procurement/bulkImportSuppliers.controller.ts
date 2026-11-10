@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import crypto from 'crypto';
 
-import { isValidCategoryCode, mapLegacyCategory } from '@fossil/shared';
+import { isValidCategoryCode, mapLegacyCategory, validateSupplierImportRow } from '@fossil/shared';
 import { User, SupplierProfile } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
 import { registrationConflict } from '../../services/supplierEligibility.service.js';
@@ -48,23 +48,18 @@ const bulkImportSuppliers = async (req: Request, res: Response): Promise<any> =>
           bankBranchCode
         } = supplier;
 
-        // Validate required fields. registrationNumber is required by the
-        // schema and by every other creation path, so it is required here too.
-        // `phone` is required by ContactPersonSchema — checking it here turns a
-        // raw Mongoose validation string into a reason the importer can act on.
-        const missing = [
-          !companyName && 'companyName',
-          !registrationNumber && 'registrationNumber',
-          !contactPerson && 'contactPerson',
-          !email && 'email',
-          !phone && 'phone'
-        ].filter(Boolean);
-
-        if (missing.length > 0) {
+        // The same row checks the import screen runs (see
+        // packages/shared/src/validation/suppliers.ts): companyName,
+        // registrationNumber, contactPerson, email and phone are required (the
+        // schema and ContactPersonSchema need them), and every value must be
+        // the right shape. A failed row says what to fix, field by field.
+        const rowErrors = validateSupplierImportRow(supplier);
+        if (Object.keys(rowErrors).length > 0) {
           results.failed.push({
             companyName: companyName || 'Unknown',
             email: email || 'Unknown',
-            reason: `Missing required field(s): ${missing.join(', ')}`
+            reason: Object.values(rowErrors).join('; '),
+            errors: rowErrors
           });
           continue;
         }

@@ -6,14 +6,38 @@ import { Plus, Package, Save } from 'lucide-react';
 import { formatCurrency } from '../lib/constants';
 import { getCurrentSbuCurrency } from '../lib/sbu';
 import Modal, { ConfirmModal } from './Modal';
-import RequisitionItemDrawer, { type RequisitionItem } from './RequisitionItemDrawer';
+import RequisitionItemDrawer, { linePayload, withoutFileData, type RequisitionItem } from './RequisitionItemDrawer';
 import { FormSteps, FormStepNav } from './FormSteps';
+import FieldError from './FieldError';
+import { TEXT_LIMITS, hasErrors, validateRequisition, type FieldErrors } from '@fossil/shared';
+import { serverFieldErrors, useFormValidation } from '../lib/useFormValidation';
 
 const STEPS = [
   { label: 'Details', description: 'What the request is for' },
   { label: 'Items', description: 'From the stores catalogue, or new' },
   { label: 'Review & submit', description: 'Check, then send for approval' }
 ];
+
+/** The step a field is on: the lines on Items, everything else on Details. */
+const stepOf = (field: string) => (field === 'items' || field.startsWith('items.') ? 1 : 0);
+
+/** The first step with a problem on it. */
+const firstStepWithError = (errors: FieldErrors) => Math.min(...Object.keys(errors).map(stepOf));
+
+/** What the API is sent, which is also what the shared validator checks. */
+const toPayload = (data: any) => ({
+  title: data.title,
+  workOrder: data.workOrder,
+  description: data.description,
+  justification: data.description,
+  urgency: data.urgency,
+  items: (data.items || [])
+    .filter((item: any) => item.description.trim())
+    .map((item: any) => ({
+      ...linePayload(item),
+      estimatedUnitPrice: Number(item.estimatedUnitPrice) || 0
+    }))
+});
 
 /** Whether a line is a catalogue item, with what stores holds, or a new one for stores to look into. */
 function StockNote({ item }: { item: RequisitionItem }) {
@@ -65,6 +89,22 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
   const [removingItem, setRemovingItem] = useState<number | null>(null);
   const [confirmClose, setConfirmClose] = useState(false);
 
+  // A draft needs a title and whole lines; submitting also needs an item.
+  const submitMode = useRef(true);
+  // Next checks only the step being left; saving checks every step.
+  const scope = useRef<number | null>(null);
+  const validation = useFormValidation(
+    () => {
+      const errors = validateRequisition(toPayload(formData), { submit: submitMode.current });
+      if (scope.current === null) return errors;
+      return Object.fromEntries(Object.entries(errors).filter(([field]) => stepOf(field) === scope.current));
+    },
+    // Watched for changes without the photos' contents, which are large.
+    { ...formData, items: formData.items.map(withoutFileData) }
+  );
+  const lineError = (index: number) =>
+    Object.entries(validation.errors).find(([field]) => field.startsWith(`items.${index}.`))?.[1];
+
   const dirty =
     !!(formData.title.trim() || formData.description.trim() || formData.workOrder.trim()) ||
     formData.urgency !== 'normal' ||
@@ -107,67 +147,38 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
 
   const goTo = (index: number) => {
     setStep(index);
+    validation.reset();
     // Scrolls whichever container holds the form, page or drawer.
     topRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   };
 
-  /** The checks handleSave runs on submit, run per step so problems show where they are. */
-  const stepIsComplete = (index: number) => {
-    if (index === 0 && !formData.title.trim()) {
-      showToast('Please enter a title', 'error');
-      return false;
-    }
-    if (index === 1) {
-      const validItems = formData.items.filter((item: any) => item.description.trim());
-      if (validItems.length === 0) {
-        showToast('Please add at least one item before submitting', 'error');
-        return false;
-      }
-    }
-    return true;
+  /** Checks the step being left, so problems show where they are. */
+  const goNext = () => {
+    submitMode.current = true;
+    scope.current = step;
+    if (!validation.check()) return;
+    goTo(Math.min(step + 1, STEPS.length - 1));
   };
 
-  const goNext = () => {
-    if (stepIsComplete(step)) goTo(Math.min(step + 1, STEPS.length - 1));
+  /** Checks every step, opening the first one with a problem. True when it may be sent. */
+  const checkAll = (submit: boolean) => {
+    submitMode.current = submit;
+    scope.current = null;
+    const errors = validateRequisition(toPayload(formData), { submit });
+    if (!hasErrors(errors)) return true;
+    const target = firstStepWithError(errors);
+    if (target !== step) goTo(target);
+    validation.check();
+    return false;
   };
 
   const handleSave = async (submit = false) => {
+    if (!checkAll(submit)) return;
     try {
       setLoading(true);
-      
-      // Validate
-      if (!formData.title.trim()) {
-        showToast('Please enter a title', 'error');
-        setLoading(false);
-        return;
-      }
-      
-      const validItems = formData.items.filter((item: any) => item.description.trim());
-      if (submit && validItems.length === 0) {
-        showToast('Please add at least one item before submitting', 'error');
-        setLoading(false);
-        return;
-      }
-
-      const itemsToSave = submit
-        ? validItems
-        : formData.items.filter((item: any) => item.description.trim());
 
       const response = await api.post('/department/requisitions', {
-        ...formData,
-        justification: formData.description,
-        items: itemsToSave.map((item: any) => ({
-          itemId: item.catalogItem?._id,
-          description: item.description,
-          category: item.category,
-          package: item.package,
-          quantity: item.quantity,
-          unit: item.unit,
-          estimatedUnitPrice: Number(item.estimatedUnitPrice) || 0,
-          specification: item.specification,
-          equipment: item.equipment,
-          attachments: item.attachments
-        })),
+        ...toPayload(formData),
         status: submit ? 'pending' : 'draft'
       });
 
@@ -179,7 +190,14 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
         onSaved(response.data.data?._id);
       }
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Failed to save requisition', 'error');
+      if (validation.fromServer(error)) {
+        // Show the refused field: close the prompt, if open, and open its step.
+        setConfirmClose(false);
+        const target = firstStepWithError(serverFieldErrors(error) || {});
+        if (target !== step) setStep(target);
+      } else {
+        showToast(error.response?.data?.message || 'Failed to save requisition', 'error');
+      }
     } finally {
       setLoading(false);
     }
@@ -187,12 +205,7 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
 
   /** "Save draft" from the close prompt. A draft still needs a title, so send the user to it. */
   const saveDraftAndClose = async () => {
-    if (!formData.title.trim()) {
-      setConfirmClose(false);
-      goTo(0);
-      showToast('Add a title to save this as a draft', 'error');
-      return;
-    }
+    if (hasErrors(validateRequisition(toPayload(formData)))) setConfirmClose(false);
     // On success onSaved closes the drawer; on failure the prompt stays for another try.
     await handleSave(false);
   };
@@ -208,6 +221,8 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
 
       {/* Form */}
       <form
+        ref={validation.formRef}
+        noValidate
         onSubmit={(e) => {
           e.preventDefault();
           if (step < STEPS.length - 1) goNext();
@@ -235,8 +250,11 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
               value={formData.title}
               onChange={(e: any) => setFormData({ ...formData, title: e.target.value })}
               placeholder="e.g., Office Supplies for Q1"
+              maxLength={TEXT_LIMITS.short}
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              {...validation.invalid('title')}
             />
+            <FieldError message={validation.errors.title} />
           </div>
           
           <div className="md:col-span-2">
@@ -246,8 +264,11 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
               onChange={(e: any) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Provide additional details..."
               rows={3}
+              maxLength={TEXT_LIMITS.long}
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
+              {...(validation.errors.description || validation.errors.justification ? { 'aria-invalid': true as const } : {})}
             />
+            <FieldError message={validation.errors.description || validation.errors.justification} />
           </div>
 
           <div>
@@ -257,8 +278,11 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
               value={formData.workOrder}
               onChange={(e: any) => setFormData({ ...formData, workOrder: e.target.value })}
               placeholder="Job / project reference"
+              maxLength={TEXT_LIMITS.name}
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              {...validation.invalid('workOrder')}
             />
+            <FieldError message={validation.errors.workOrder} />
           </div>
 
           <div>
@@ -267,10 +291,12 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
               value={formData.urgency}
               onChange={(e: any) => setFormData({ ...formData, urgency: e.target.value })}
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              {...validation.invalid('urgency')}
             >
               <option value="normal">Normal</option>
               <option value="high">High Priority</option>
             </select>
+            <FieldError message={validation.errors.urgency} />
           </div>
         </div>
         )}
@@ -291,9 +317,10 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
               Add Item
             </button>
           </div>
+          <FieldError message={validation.errors.items} className="-mt-2 mb-3" />
 
           {formData.items.length === 0 ? (
-            <div className="text-center py-10 border border-dashed border-gray-300 rounded-xl">
+            <div className={`text-center py-10 border border-dashed rounded-xl ${validation.errors.items ? 'border-red-300' : 'border-gray-300'}`}>
               <Package className="h-10 w-10 text-gray-300 mx-auto mb-3" />
               <p className="text-sm text-gray-500">No items yet.</p>
               <button
@@ -327,6 +354,7 @@ const RequisitionForm = forwardRef<RequisitionFormHandle, {
                         <td className="py-2 px-3 border-b border-gray-100 text-gray-900">
                           {item.description}
                           {item.specification && <span className="block text-xs text-gray-500">{item.specification}</span>}
+                          <FieldError message={lineError(index)} />
                         </td>
                         <td className="py-2 px-3 border-b border-gray-100"><StockNote item={item} /></td>
                         <td className="py-2 px-3 border-b border-gray-100 text-right tabular-nums whitespace-nowrap">{item.quantity} {item.unit}</td>

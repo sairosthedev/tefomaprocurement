@@ -69,7 +69,8 @@ export function CategorySelect({
   placeholder = 'Select category',
   className = '',
   clearable = false,
-  placement = 'auto'
+  placement = 'auto',
+  invalid = false
 }: {
   value: string;
   onChange: (code: string) => void;
@@ -78,6 +79,8 @@ export function CategorySelect({
   className?: string;
   clearable?: boolean;
   placement?: DropdownPlacement;
+  /** Marks the picker red when its form found a problem (see useFormValidation). */
+  invalid?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -123,6 +126,7 @@ export function CategorySelect({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
+        aria-invalid={invalid || undefined}
         className={
           className ||
           'w-full flex items-center justify-between px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white'
@@ -247,12 +251,15 @@ export function CategoryMultiSelect({
   value,
   onChange,
   placeholder = 'Select categories…',
-  placement = 'auto'
+  placement = 'auto',
+  invalid = false
 }: {
   value: string[];
   onChange: (codes: string[]) => void;
   placeholder?: string;
   placement?: DropdownPlacement;
+  /** Marks the picker red when its form found a problem (see useFormValidation). */
+  invalid?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -324,6 +331,7 @@ export function CategoryMultiSelect({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
+        aria-invalid={invalid || undefined}
         className="w-full flex items-center justify-between px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
       >
         <span className="text-gray-500">

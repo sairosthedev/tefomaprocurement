@@ -1,11 +1,19 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import { getCategoryName, isValidCategoryCode } from '@fossil/shared';
+import {
+  firstError,
+  getCategoryName,
+  isValidCategoryCode,
+  validateRequisitionLineCategory,
+  validateRequisitionStoresForward
+} from '@fossil/shared';
 import { storesAPI } from '../lib/api';
 import { useToast } from './Toast';
 import Drawer from './Drawer';
 import { CategorySelect } from './CategorySelect';
+import FieldError from './FieldError';
+import { serverFieldErrors, useFormValidation } from '../lib/useFormValidation';
 
 const th = 'text-left py-2 px-3 text-xs font-medium text-white uppercase tracking-wide bg-primary border-b border-primary whitespace-nowrap';
 const td = 'py-2 px-3 border-b border-gray-100 align-top';
@@ -48,12 +56,38 @@ export default function StoresReviewDrawer({
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [savingLine, setSavingLine] = useState<number | null>(null);
+  // A category a line's save was refused for, by line.
+  const [lineErrors, setLineErrors] = useState<Record<number, string>>({});
 
   const lines: any[] = requisition.items || [];
   const needCategory = linesNeedingCategory(requisition).length;
   const fullyIssued = allLinesIssued(requisition);
 
+  // Forwarding needs a category on every line still owed, as the API checks.
+  // The validator reads the lines; the hook watches just what it depends on.
+  const forward = useFormValidation(
+    () => validateRequisitionStoresForward({ items: lines }),
+    lines.map((line) => [line.quantity, line.quantityFulfilledFromStock, line.category])
+  );
+
+  // Another requisition opened here starts clean.
+  useEffect(() => {
+    forward.reset();
+    setLineErrors({});
+  }, [requisition._id]);
+
+  const setLineError = (lineIndex: number, message: string) =>
+    setLineErrors((current) => {
+      const next = { ...current };
+      if (message) next[lineIndex] = message;
+      else delete next[lineIndex];
+      return next;
+    });
+
   const setCategory = async (lineIndex: number, category: string) => {
+    const problem = firstError(validateRequisitionLineCategory({ lineIndex, category }));
+    setLineError(lineIndex, problem);
+    if (problem) return;
     try {
       setSavingLine(lineIndex);
       await storesAPI.setPurchaseRequisitionLineCategory(requisition._id, { lineIndex, category });
@@ -62,10 +96,17 @@ export default function StoresReviewDrawer({
         items: lines.map((line, i) => (i === lineIndex ? { ...line, category } : line))
       });
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Could not save the category', 'error');
+      const refused = serverFieldErrors(error)?.category;
+      if (refused) setLineError(lineIndex, refused);
+      else showToast(error.response?.data?.message || 'Could not save the category', 'error');
     } finally {
       setSavingLine(null);
     }
+  };
+
+  const forwardToProcurement = () => {
+    if (!forward.check()) return;
+    onAction('forward');
   };
 
   /** Open the inventory searched for this line, ready to issue it against the IR. */
@@ -117,8 +158,8 @@ export default function StoresReviewDrawer({
             </button>
             <button
               type="button"
-              disabled={!!acting || needCategory > 0}
-              onClick={() => onAction('forward')}
+              disabled={!!acting}
+              onClick={forwardToProcurement}
               title={needCategory > 0 ? 'Set a category on every line still owed first' : undefined}
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -140,7 +181,7 @@ export default function StoresReviewDrawer({
         </p>
       )}
 
-      <div className="overflow-x-auto">
+      <div ref={forward.formRef} className="overflow-x-auto">
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr>
@@ -158,6 +199,7 @@ export default function StoresReviewDrawer({
               const issued = line.quantityFulfilledFromStock || 0;
               const avail = line.storeAvailability;
               const category = isValidCategoryCode(line.category || '') ? line.category : '';
+              const categoryError = lineErrors[i] || forward.errors[`items.${i}.category`];
               return (
                 <tr key={line._id || i} className="odd:bg-white even:bg-primary/[0.035] hover:bg-primary/[0.07] transition-colors">
                   <td className={`${td} text-gray-500 tabular-nums`}>{i + 1}</td>
@@ -194,6 +236,7 @@ export default function StoresReviewDrawer({
                             value={category}
                             onChange={(code) => code && code !== category && setCategory(i, code)}
                             placeholder="Choose category"
+                            invalid={!!categoryError}
                           />
                         </div>
                         {savingLine === i && <Loader2 className="h-4 w-4 animate-spin text-gray-400 shrink-0" />}
@@ -202,6 +245,7 @@ export default function StoresReviewDrawer({
                       <span className="text-gray-600">{category ? getCategoryName(category) : '—'}</span>
                     )}
                     {/* Older catalogue items carry a free-text group, not a code: a hint for choosing. */}
+                    {remaining > 0 && <FieldError message={categoryError} />}
                     {remaining > 0 && !category && line.category && (
                       <p className="mt-1 text-xs text-gray-500">Catalogue: {line.category}</p>
                     )}

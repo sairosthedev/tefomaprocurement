@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express';
+import { validatePurchaseOrderApproval } from '@fossil/shared';
 import { PurchaseOrder } from '../../models/index.js';
 import { createAuditLog } from '../../middleware/index.js';
+import { refuseInvalid } from '../../lib/validation.js';
 import { notifyUsersByRole, notifySupplier } from '../../services/notification.service.js';
 import { emailApprovedPurchaseOrderToSupplier } from '../../services/purchaseOrderDocument.service.js';
 import { describeCooAssessment } from '../../services/poApprovalFlow.service.js';
@@ -9,6 +11,7 @@ const approvePurchaseOrder = async (req: Request, res: Response): Promise<any> =
   try {
     const { id } = req.params;
     const { comments } = req.body;
+    if (refuseInvalid(res, validatePurchaseOrderApproval(req.body))) return;
 
     const po = await PurchaseOrder.findById(id);
     if (!po || po.isDeleted) {

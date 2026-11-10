@@ -1,15 +1,19 @@
 import React, { useRef, useState } from 'react';
 import { Camera, X, Loader2 } from 'lucide-react';
 import {
-  MAX_ATTACHMENT_BYTES,
   MAX_ATTACHMENTS_PER_LINE,
-  ALLOWED_ATTACHMENT_MIME_TYPES
+  validateQuoteLinePhoto,
+  validateQuoteLinePhotos
 } from '@fossil/shared';
+import FieldError from './FieldError';
 
 interface Props {
   attachments: any[];
   onChange: (attachments: any[]) => void;
+  /** Also told about a file the picker turned away; the message shows here either way. */
   onError?: (message: string) => void;
+  /** The quotation's check on these photos, shown under them. */
+  error?: string;
 }
 
 /**
@@ -17,10 +21,18 @@ interface Props {
  * equivalent part: buyers need to see the data plate of what would actually
  * arrive before awarding.
  */
-export default function QuoteLinePhotos({ attachments, onChange, onError }: Props) {
+export default function QuoteLinePhotos({ attachments, onChange, onError, error }: Props) {
   const [reading, setReading] = useState(false);
+  // A file turned away when picked, until the next pick.
+  const [pickError, setPickError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const count = attachments?.length || 0;
+  const message = pickError || error;
+
+  const refuse = (problem: string) => {
+    setPickError(problem);
+    onError?.(problem);
+  };
 
   const readFile = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
@@ -30,12 +42,16 @@ export default function QuoteLinePhotos({ attachments, onChange, onError }: Prop
       reader.readAsDataURL(file);
     });
 
+  // The same checks the API makes, run on each file before it is read.
+  const describe = (file: File) => ({ fileName: file.name, mimeType: file.type, bytes: file.size });
+
   const handleFiles = async (event: any) => {
     const files: File[] = Array.from(event.target.files || []);
     if (!files.length) return;
+    setPickError('');
 
     if (count + files.length > MAX_ATTACHMENTS_PER_LINE) {
-      onError?.(`You can attach at most ${MAX_ATTACHMENTS_PER_LINE} photos per line`);
+      refuse(validateQuoteLinePhotos([...(attachments || []), ...files.map(describe)]));
       event.target.value = '';
       return;
     }
@@ -44,12 +60,9 @@ export default function QuoteLinePhotos({ attachments, onChange, onError }: Prop
       setReading(true);
       const added: any[] = [];
       for (const file of files) {
-        if (file.size > MAX_ATTACHMENT_BYTES) {
-          onError?.(`${file.name} is larger than 5MB`);
-          continue;
-        }
-        if (file.type && !ALLOWED_ATTACHMENT_MIME_TYPES.includes(file.type)) {
-          onError?.(`${file.name} is not a supported image type`);
+        const problem = validateQuoteLinePhoto(describe(file));
+        if (problem) {
+          refuse(problem);
           continue;
         }
         added.push({
@@ -62,7 +75,7 @@ export default function QuoteLinePhotos({ attachments, onChange, onError }: Prop
       }
       if (added.length) onChange([...(attachments || []), ...added]);
     } catch (error: any) {
-      onError?.(error.message || 'Could not read the selected file');
+      refuse(error.message || 'Could not read the selected file');
     } finally {
       setReading(false);
       event.target.value = '';
@@ -79,6 +92,7 @@ export default function QuoteLinePhotos({ attachments, onChange, onError }: Prop
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={reading || count >= MAX_ATTACHMENTS_PER_LINE}
+          aria-invalid={message ? true : undefined}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50"
         >
           {reading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
@@ -115,7 +129,10 @@ export default function QuoteLinePhotos({ attachments, onChange, onError }: Prop
               )}
               <button
                 type="button"
-                onClick={() => onChange(attachments.filter((_, idx) => idx !== i))}
+                onClick={() => {
+                  setPickError('');
+                  onChange(attachments.filter((_, idx) => idx !== i));
+                }}
                 className="absolute -top-1.5 -right-1.5 p-0.5 bg-white border border-gray-200 rounded-full text-gray-400 hover:text-red-500"
                 aria-label={`Remove ${att.fileName || 'photo'}`}
                 title="Remove photo"
@@ -126,6 +143,7 @@ export default function QuoteLinePhotos({ attachments, onChange, onError }: Prop
           ))}
         </div>
       )}
+      <FieldError message={message} />
     </div>
   );
 }

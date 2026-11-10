@@ -1,25 +1,23 @@
 import type { Request, Response } from 'express';
+import { validateInventoryImport } from '@fossil/shared';
 import { createAuditLog } from '../../middleware/index.js';
 import { resolveSiteId } from '../../lib/siteScope.js';
+import { refuseInvalid } from '../../lib/validation.js';
 import { processInventoryRow, type RowResult } from '../../services/inventoryImport.service.js';
-
-const MAX_ROWS = 2000;
 
 /**
  * Bulk import inventory from a parsed spreadsheet.
  * Body: { items: InventoryRowInput[], siteId?: string }
  * Each row upserts a catalog Item + site Inventory and an opening-balance entry.
+ * The rows are checked first (at most INVENTORY_IMPORT_MAX_ROWS, each with a
+ * name or code and numbers that are numbers); a sheet with a bad row is
+ * refused whole, naming each row's fields, so nothing half-imports.
  */
 const bulkImportInventory = async (req: Request, res: Response): Promise<any> => {
   try {
     const { items, siteId: bodySiteId } = req.body;
 
-    if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ success: false, message: 'No rows to import' });
-    }
-    if (items.length > MAX_ROWS) {
-      return res.status(400).json({ success: false, message: `Too many rows (max ${MAX_ROWS} per import)` });
-    }
+    if (refuseInvalid(res, validateInventoryImport(req.body))) return;
 
     const siteId = await resolveSiteId(req.user, bodySiteId);
 
