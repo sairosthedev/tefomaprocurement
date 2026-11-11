@@ -1,4 +1,4 @@
-const { qaTitle, runId, money, amountPattern, datetimeLocalInDays, INITIALS } = require('../utils/testData');
+const { qaTitle, runId, money, amountPattern, eitherAmountPattern, datetimeLocalInDays, INITIALS } = require('../utils/testData');
 const { COO_LIMIT_USD } = require('./units');
 
 /**
@@ -25,7 +25,12 @@ function buildRunThrough(unit, band) {
   ].map((q) => ({
     ...q,
     total: money(q.unitPrice * qty),
-    totalPattern: amountPattern(q.unitPrice * qty),
+    grossTotal: money(q.unitPrice * qty * (1 + unit.vatRate)),
+    // The quote form's Grand Total is before VAT; the API adds VAT to the
+    // quotation's total, which is what the ranking shows. Later screens are
+    // matched against either exact figure.
+    netTotalPattern: amountPattern(q.unitPrice * qty),
+    totalPattern: eitherAmountPattern(q.unitPrice * qty, q.unitPrice * qty * (1 + unit.vatRate)),
     unitPricePattern: amountPattern(q.unitPrice),
     notes: `${q.company} quote for ${id}: price held for ${q.validDays} days`
   }));

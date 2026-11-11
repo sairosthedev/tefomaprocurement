@@ -39,6 +39,11 @@ function amountPattern(n) {
   return new RegExp(`${grouped}[.,]${cents}`);
 }
 
+/** Matches either of two amounts, e.g. a total before or after VAT. */
+function eitherAmountPattern(a, b) {
+  return new RegExp(`(${amountPattern(a).source})|(${amountPattern(b).source})`);
+}
+
 /** The next Tuesday or Thursday on or after a date, as YYYY-MM-DD (payment runs). */
 function nextPaymentRunDate(from = new Date()) {
   const d = new Date(from);
@@ -60,6 +65,15 @@ function datetimeLocalInDays(days, hour = 16) {
   return `${toIsoDate(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+/**
+ * A document number such as PR-2026-00012. Some carry the unit's code in
+ * front (DOKUMA-QT-2026-00003), so that part is optional.
+ */
+function docNumberPattern(prefix, { anchored = false } = {}) {
+  const body = `(?:[A-Z]+-)?${prefix}-\\d{4}-\\d+`;
+  return new RegExp(anchored ? `^${body}$` : body);
+}
+
 function escapeRegExp(text) {
   return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -70,8 +84,10 @@ module.exports = {
   qaTitle,
   money,
   amountPattern,
+  eitherAmountPattern,
   nextPaymentRunDate,
   toIsoDate,
   datetimeLocalInDays,
-  escapeRegExp
+  escapeRegExp,
+  docNumberPattern
 };

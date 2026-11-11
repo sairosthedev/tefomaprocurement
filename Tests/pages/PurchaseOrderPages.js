@@ -36,10 +36,15 @@ class PurchaseOrdersPage extends BasePage {
     const option = drawer.locator('label').filter({ hasText: quotationNumber });
     await expect(option).toContainText(supplier);
     await option.locator('input[type="radio"]').check();
-    await drawer.getByRole('button', { name: /^Next/ }).click();
+    // Choosing a quotation loads its details; Next does nothing until they arrive.
+    await expect(drawer.getByText('Loading the quotation…')).toHaveCount(0, { timeout: 30_000 });
+    const expected = drawer.locator('input[type="date"]');
+    await expect(async () => {
+      if (!(await expected.isVisible())) await drawer.getByRole('button', { name: /^Next/ }).click();
+      await expect(expected).toBeVisible({ timeout: 3000 });
+    }).toPass({ timeout: 30_000 });
 
     // Delivery step: prefilled from the site; the expected date is required.
-    const expected = drawer.locator('input[type="date"]');
     await expect(expected).not.toHaveValue('');
     const deliveryDate = await expected.inputValue();
     await drawer.getByRole('button', { name: /^Next/ }).click();
@@ -59,7 +64,7 @@ class PurchaseOrdersPage extends BasePage {
     if (enteredTerms) await this.expectFact('Terms & Conditions', enteredTerms, drawer);
     const totalText = (await this.fact('Total Amount', drawer).innerText()).trim();
 
-    await drawer.getByRole('button', { name: 'Create Purchase Order' }).click();
+    await drawer.getByRole('button', { name: 'Create Purchase Order', exact: true }).click();
     await this.expectToast('success', 'Purchase Order created');
     await this.page.waitForURL(/\/app\/purchase-orders\/[a-f0-9]{24}/);
     return { deliveryDate, notes: enteredNotes, terms: enteredTerms, totalText };
@@ -90,8 +95,7 @@ class PurchaseOrderDetailPage extends BasePage {
   }
 
   async poNumber() {
-    const text = await this.page.getByText(/^#PO-/).first().innerText();
-    return text.replace(/^#/, '').trim();
+    return this.subtitleNumber('PO');
   }
 
   async expectStatus(label) {
@@ -108,7 +112,7 @@ class PurchaseOrderDetailPage extends BasePage {
   /** Approve from the PO page itself (changed 3 Nov): Approve, comment, Approve. */
   async approve(comment) {
     await this.approveButton.click();
-    const modal = this.page.getByRole('dialog', { name: /^Approve PO-/ });
+    const modal = this.page.getByRole('dialog', { name: /^Approve ([A-Z]+-)?PO-/ });
     await expect(modal).toBeVisible();
     if (comment) await modal.getByRole('textbox', { name: 'Comments' }).fill(comment);
     await modal.getByRole('button', { name: 'Approve', exact: true }).click();
@@ -117,7 +121,7 @@ class PurchaseOrderDetailPage extends BasePage {
 
   async reject(reason) {
     await this.rejectButton.click();
-    const modal = this.page.getByRole('dialog', { name: /^Reject PO-/ });
+    const modal = this.page.getByRole('dialog', { name: /^Reject ([A-Z]+-)?PO-/ });
     await modal.getByRole('textbox', { name: 'Reason for rejecting' }).fill(reason);
     await modal.getByRole('button', { name: 'Reject', exact: true }).click();
     await this.expectToast('success', 'Purchase order rejected');
@@ -148,13 +152,13 @@ class ApprovalsPage extends BasePage {
   }
 
   async rowFor(poNumber) {
-    const row = this.row(poNumber);
+    const row = await this.findRow(poNumber);
     await expect(row).toHaveCount(1);
     return row;
   }
 
   async expectNotQueued(poNumber) {
-    await expect(this.row(poNumber)).toHaveCount(0);
+    await expect(await this.findRow(poNumber)).toHaveCount(0);
   }
 
   /** Open the review modal and check the order matches what the buyer raised. */
@@ -191,7 +195,7 @@ class SupplierPurchaseOrdersPage extends BasePage {
   }
 
   async rowFor(poNumber) {
-    const row = this.row(poNumber);
+    const row = await this.findRow(poNumber);
     await expect(row).toHaveCount(1);
     return row;
   }
@@ -213,7 +217,7 @@ class SupplierPurchaseOrdersPage extends BasePage {
       await box.fill(deliveryNote);
       await expect(box).toHaveValue(deliveryNote);
     }
-    await modal.getByRole('button', { name: 'Confirm Acknowledgment' }).click();
+    await modal.getByRole('button', { name: 'Confirm Acknowledgment', exact: true }).click();
     await this.expectToast('success', 'Purchase order acknowledged');
     // The details modal reopens by itself; close it.
     const details = this.dialog('Purchase Order Details');

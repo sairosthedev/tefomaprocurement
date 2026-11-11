@@ -64,6 +64,27 @@ Tests/
   tests/                 the specs
 ```
 
+## Known app bugs these tests report (found 11 Nov 2026)
+
+Tests marked `test.fail()` pass while the bug is present; Playwright reports them once it is fixed, and the marker can be removed. The others fail until the bug is fixed.
+
+| Test | Bug | How it is marked |
+|---|---|---|
+| 01 · Signing out before the page finishes loading | A late `/auth/me` reply restores the session after logout (`AuthContext.initAuth`); the server never ends the session | `test.fail()` |
+| 02 · step 22 | GRV "Received by" shows "undefined undefined" | `test.fail()` |
+| 02 · step 23 | A saved evaluation shows the raw status `pending_hod`, though the page says there is no approval step | `test.fail()` |
+| 04 · A buyer can re-select a quote the Head of Procurement selected | Once the Head of Procurement selects a quote nobody can authorise it on screen; the award is stuck | `test.fail()` |
+| 03 · stores Needs attention: Items at or below reorder level | Dashboard counts only active catalogue items; Inventory counts all, so the numbers differ | Fails |
+| 04 · Two requisitions submitted at the same moment | Both get the same number; one fails with a raw database error naming the production database | Fails |
+
+## Running headed on Windows with Application Control
+
+If Windows blocks Playwright's own Chromium ("An Application Control policy has blocked this file"), run on Edge:
+
+```bash
+QA_BROWSER_CHANNEL=msedge npx playwright test --headed --workers=1
+```
+
 ## Notes
 
 - Specs run in order inside a file (`test.describe.serial`): each step needs the document the step before produced. If a step fails, the rest of that run is skipped. Document numbers are printed at the end of each run.

@@ -92,6 +92,12 @@ async function quote(signInAs, email, rfqNumber, details) {
   await supplier.supplierRfqs.open();
   const row = await supplier.supplierRfqs.rowFor(rfqNumber);
   await row.getByRole('button', { name: 'View' }).click();
+  // Open the quotation form from the RFQ's own address (?quote=1), so no
+  // other open RFQ's "Submit Quote" button can be clicked by mistake.
+  await supplier.page.waitForURL(/\/app\/my-rfqs\/[a-f0-9]{24}/);
+  const rfqPath = new URL(supplier.page.url()).pathname;
+  await supplier.page.goto(`${rfqPath}?quote=1`);
+  await expect(supplier.page.getByRole('dialog', { name: 'Submit quotation' })).toContainText(rfqNumber);
   const total = await supplier.supplierRfqs.submitQuotation(details);
   await supplier.context.close();
   return total;

@@ -14,6 +14,8 @@ async function discardRfq(buyer) {
 }
 
 test.describe('Other paths', () => {
+  // Each test walks a requisition through several roles on its own.
+  test.describe.configure({ timeout: 600_000 });
   test("A department head's own requisition skips head approval and goes to stores", async ({ signInAs, unit }) => {
     const req = requisitionFor(unit, 'head raises own requisition');
     const head = await signInAs('head');
@@ -35,7 +37,7 @@ test.describe('Other paths', () => {
     // Stores sees it straight away.
     const stores = await signInAs('stores');
     await stores.storesReview.open();
-    await expect(stores.storesReview.row(pr)).toContainText(req.title);
+    await expect(await stores.storesReview.findRow(pr)).toContainText(req.title);
   });
 
   test('A requisition for an item stores holds is issued from stock, with no procurement step', async ({ signInAs, unit }) => {
@@ -61,11 +63,34 @@ test.describe('Other paths', () => {
     await head.requisitions.open('team');
     await head.requisitions.approve(pr);
 
-    const stores = await signInAs('stores');
-    await stores.storesReview.open();
-    const drawer = await stores.storesReview.openReview(pr);
-    await expect(drawer.getByText('From the catalogue')).toBeVisible();
-    await stores.storesReview.autoProcess(drawer);
+    // When everything is on the shelf the app issues it on approval and the
+    // requisition is fulfilled at once; otherwise stores issues it on review.
+    const readBack = async () => {
+      const client = await ApiClient.fromPage(requester.page);
+      const list = await client.get(`department/requisitions?search=${encodeURIComponent(pr)}`);
+      const id = (list.body.data || []).find((r) => r.requisitionNumber === pr)?._id;
+      const detail = (await client.get(`department/requisitions/${id}`)).body.data || {};
+      await client.dispose();
+      return detail;
+    };
+    let stored = await readBack();
+    if (stored.status !== 'fulfilled') {
+      const stores = await signInAs('stores');
+      await stores.storesReview.open();
+      const drawer = await stores.storesReview.openReview(pr);
+      await expect(drawer.getByText('From the catalogue')).toBeVisible();
+      await stores.storesReview.autoProcess(drawer);
+      stored = await readBack();
+    }
+    expect(stored.status, 'requisition status').toBe('fulfilled');
+    const line = (stored.items || [])[0] || {};
+    expect(Number(line.quantityFulfilledFromStock ?? line.fulfilledFromStock), 'quantity issued from stock').toBe(1);
+
+    // The requester sees it done, with what they asked for.
+    await requester.requisitions.open();
+    await requester.requisitions.expectRow(pr, { title: req.title });
+    await requester.requisition.open(pr, requester.requisitions);
+    await requester.requisition.expectRequisition({ title: req.title, items: [{ description: stocked.name, quantity: 1 }] });
 
     // It never reaches procurement.
     const buyer = await signInAs('buyer');
@@ -113,7 +138,7 @@ test.describe('Other paths', () => {
     const pr = await raiseToProcurement(signInAs, req);
     const buyer = await acceptForSourcing(signInAs, pr);
     const [a, b] = unit.quotingSuppliers;
-    const rfq = await publishRfq(buyer, req, [a.company, b.company]);
+    const rfq = await publishRfq(buyer, req, [a, b]);
     await buyer.context.close();
 
     await quote(signInAs, a.email, rfq.number, { unitPrices: [100], currency: 'USD' });
@@ -136,6 +161,7 @@ test.describe('Other paths', () => {
 });
 
 test.describe('Needs attention items and sidebar badges match the lists', () => {
+  test.describe.configure({ timeout: 300_000 });
   for (const role of ['requester', 'head', 'stores', 'buyer', 'procHead', 'finance', 'coo']) {
     test(`${role}: each Needs attention item opens a list with the same count`, async ({ signInAs }) => {
       const user = await signInAs(role);

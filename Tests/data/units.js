@@ -16,6 +16,8 @@ const UNITS = {
     code: 'DOKUMA',
     baseURL: process.env.DOKUMA_URL || 'https://dokuma.sourceline.co.zw',
     currency: 'USD',
+    // The API adds VAT to a quote's total; the quote form shows the total before it.
+    vatRate: Number(process.env.QA_VAT_RATE || 0.15),
     accounts: {
       requester: 'requester@dokuma.test',
       requester2: 'requester2@dokuma.test',
@@ -31,7 +33,7 @@ const UNITS = {
     departments: { requester: 'ICT', requester2: 'Operations' },
     // The three suppliers the main run-through quotes as. The first one wins.
     quotingSuppliers: [
-      { company: 'TechZone Hardware', email: 'techzone@dokuma.test' },
+      { company: 'TechZone Hardware (Pvt) Ltd', email: 'techzone@dokuma.test' },
       { company: 'CodeBridge Solutions', email: 'codebridge@dokuma.test' },
       { company: 'ProFix Maintenance', email: 'profix@dokuma.test' }
     ],
@@ -57,6 +59,8 @@ const UNITS = {
     code: 'FOSSIL',
     baseURL: process.env.FOSSIL_URL || 'https://fossil.sourceline.co.zw',
     currency: 'USD',
+    // The API adds VAT to a quote's total; the quote form shows the total before it.
+    vatRate: Number(process.env.QA_VAT_RATE || 0.15),
     accounts: {
       requester: 'requester@fossil.test',
       requester2: 'requester2@fossil.test',

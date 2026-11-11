@@ -1,6 +1,6 @@
 const { expect } = require('@playwright/test');
 const { BasePage } = require('./BasePage');
-const { escapeRegExp } = require('../utils/testData');
+const { escapeRegExp, docNumberPattern } = require('../utils/testData');
 
 /** One requisition (/app/requisitions/:id), as each role sees it. */
 class RequisitionDetailPage extends BasePage {
@@ -43,7 +43,7 @@ class RequisitionDetailPage extends BasePage {
     await expect(panel).toContainText(/Ready to collect|available in stores/);
     await this.page.getByRole('button', { name: 'Request from Stores' }).click();
     await this.expectToast('success', 'sent to stores');
-    const sr = (await this.toast('success', 'sent to stores').innerText()).match(/SR-[A-Z0-9-]+/);
+    const sr = (await this.toast('success', 'sent to stores').innerText()).match(docNumberPattern('SR'));
     await expect(panel).toContainText('With stores');
     if (!sr) throw new Error('The toast did not name the store requisition');
     return sr[0];
@@ -58,7 +58,7 @@ class StoresPrReviewPage extends BasePage {
   }
 
   async openReview(prNumber) {
-    const row = this.row(prNumber);
+    const row = await this.findRow(prNumber);
     await expect(row).toHaveCount(1);
     await row.getByRole('button', { name: 'Review' }).click();
     const drawer = this.page.getByRole('dialog', { name: prNumber });
@@ -147,16 +147,16 @@ class RfqDrawer extends BasePage {
 
     // Suppliers arrive pre-selected from the line categories.
     await expect(d.getByRole('heading', { name: 'Invite Suppliers' })).toBeVisible();
-    for (const company of suppliers) await this.ensureInvited(company);
+    for (const supplier of suppliers) await this.ensureInvited(supplier);
     await d.getByRole('button', { name: /^Next/ }).click();
 
     // Review shows what was typed and who is invited.
     const finalTitle = title || (await this.reviewValue('Title'));
     await expect(d).toContainText(finalTitle);
     if (description) await expect(d).toContainText(description);
-    for (const company of suppliers) await expect(d).toContainText(company);
+    for (const supplier of suppliers) await expect(d).toContainText(supplier.company || supplier);
 
-    await d.getByRole('button', { name: 'Publish RFQ' }).click();
+    await d.getByRole('button', { name: 'Publish RFQ', exact: true }).click();
     await this.expectToast('success', 'RFQ created and sent to suppliers');
     await this.page.waitForURL(/\/app\/rfqs\/[a-f0-9]{24}/);
     return finalTitle;
@@ -170,13 +170,23 @@ class RfqDrawer extends BasePage {
     return this.drawer.getByTitle('Remove from this RFQ').filter({ hasText: company });
   }
 
-  async ensureInvited(company) {
-    if (await this.selectedChip(company).count()) return;
+  /**
+   * Make sure one supplier is ticked. The units hold duplicate records with
+   * the same company name (e.g. two "CodeBridge Solutions"), so a supplier is
+   * picked by name and by the email of the account that will sign in to quote,
+   * which each row shows under the name. Chips only show the name, so the
+   * row's own tick is what is checked.
+   */
+  async ensureInvited(supplier) {
+    const { company, email } = typeof supplier === 'string' ? { company: supplier } : supplier;
     const search = this.drawer.getByPlaceholder('Search suppliers...');
     await search.fill(company);
-    await this.drawer.locator('div.max-h-64').getByText(company, { exact: true }).click();
+    let row = this.drawer.locator('div.max-h-64 div.cursor-pointer').filter({ hasText: company });
+    if (email) row = row.filter({ hasText: email });
+    await expect(row, `${company}${email ? ` (${email})` : ''} in the supplier list`).toHaveCount(1);
+    if (!/bg-primary\/5/.test((await row.getAttribute('class')) || '')) await row.click();
+    await expect(row).toHaveClass(/bg-primary\/5/);
     await search.fill('');
-    await expect(this.selectedChip(company)).toHaveCount(1);
   }
 
   /** The suppliers ticked before anyone touched the list. */
@@ -188,8 +198,7 @@ class RfqDrawer extends BasePage {
 /** One RFQ as procurement sees it (/app/rfqs/:id). */
 class RfqDetailPage extends BasePage {
   async rfqNumber() {
-    const subtitle = await this.page.getByText(/^#RFQ-/).first().innerText();
-    return subtitle.replace(/^#/, '').trim();
+    return this.subtitleNumber('RFQ');
   }
 
   async expectStatus(status) {
@@ -237,7 +246,7 @@ class SupplierRfqsPage extends BasePage {
   }
 
   async rowFor(rfqNumber) {
-    const row = this.row(rfqNumber);
+    const row = await this.findRow(rfqNumber);
     await expect(row).toHaveCount(1);
     return row;
   }
@@ -264,12 +273,15 @@ class SupplierRfqsPage extends BasePage {
    * order. Returns the grand total shown on the review step.
    */
   async submitQuotation({ unitPrices, brand, currency, deliveryDays, paymentTerms, validDays, notes }) {
-    await this.page.getByRole('button', { name: /^Submit (Revised )?Quote$/ }).click();
     const d = this.page.getByRole('dialog', { name: 'Submit quotation' });
+    // The form may already be open (the RFQ page opened with ?quote=1).
+    if (!(await d.isVisible().catch(() => false))) {
+      await this.page.getByRole('button', { name: /^Submit (Revised )?Quote$/ }).click();
+    }
     await expect(d).toBeVisible();
 
     if (currency) {
-      const select = d.locator('label').filter({ hasText: /^s*Currency/ }).first().locator('xpath=following-sibling::select[1]');
+      const select = d.locator('label').filter({ hasText: /^\s*Currency/ }).first().locator('xpath=following-sibling::select[1]');
       await select.selectOption(currency);
       await expect(select).toHaveValue(currency);
     }
@@ -296,7 +308,7 @@ class SupplierRfqsPage extends BasePage {
     if (notes) await expect(d).toContainText(notes);
     const grandTotal = (await d.getByText('Grand Total:').locator('xpath=following-sibling::*[1]').innerText()).trim();
 
-    await d.getByRole('button', { name: 'Submit Quotation' }).click();
+    await d.getByRole('button', { name: 'Submit Quotation', exact: true }).click();
     await this.expectToast('success', 'Quotation submitted successfully');
     await expect(d).toBeHidden();
     return grandTotal;
@@ -309,7 +321,7 @@ class SupplierRfqsPage extends BasePage {
  */
 class QuotationDetailPage extends BasePage {
   async quotationNumber() {
-    return (await this.page.getByText(/^#QT-/).first().innerText()).replace(/^#/, '').trim();
+    return this.subtitleNumber('QT');
   }
 
   /** What the supplier entered is what procurement reads. */
@@ -349,8 +361,11 @@ class QuotationDetailPage extends BasePage {
   async approveWaiver(justification) {
     const panel = this.page.getByRole('heading', { name: 'Acceptance Authorization' }).locator('xpath=ancestor::div[2]');
     const type = panel.locator('select').filter({ has: this.page.locator('option', { hasText: 'Select waiver type' }) });
-    const options = await type.locator('option').allInnerTexts();
-    await type.selectOption({ label: options[1] });
+    // The waiver types arrive after the page; wait for them, then take the first real one.
+    await expect.poll(() => type.locator('option').count(), { message: 'waiver types loaded' }).toBeGreaterThan(1);
+    const firstType = await type.locator('option').nth(1).getAttribute('value');
+    await type.selectOption(firstType);
+    await expect(type).toHaveValue(firstType);
     await panel.getByPlaceholder('Justification for waiving the 3-quotation requirement...').fill(justification);
     await panel.getByRole('button', { name: 'Approve waiver' }).click();
     await this.expectToast('success', 'Quotation waiver approved');
@@ -383,7 +398,7 @@ class AuthorizationsPage extends BasePage {
 
   /** The selection shows the supplier, the quotation and the buyer's justification. */
   async expectAwaiting(rfqNumber, { company, quotationNumber, justification, totalPattern }) {
-    const row = this.row(rfqNumber);
+    const row = await this.findRow(rfqNumber);
     await expect(row).toHaveCount(1);
     if (company) await expect(row).toContainText(company);
     if (quotationNumber) await expect(row).toContainText(quotationNumber);
@@ -393,7 +408,7 @@ class AuthorizationsPage extends BasePage {
   }
 
   async openReview(rfqNumber) {
-    const row = this.row(rfqNumber);
+    const row = await this.findRow(rfqNumber);
     await row.getByRole('link', { name: 'Review' }).click();
     await this.page.waitForURL(/\/app\/(quotations|rfqs)\//);
   }
