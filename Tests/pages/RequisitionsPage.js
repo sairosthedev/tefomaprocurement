@@ -177,7 +177,7 @@ class RequisitionFormDrawer extends BasePage {
 
   /** "Submit for Approval", or "Send to Stores" for a department head's own. */
   async submit(asHead = false) {
-    await this.drawer.getByRole('button', { name: asHead ? 'Send to Stores' : 'Submit for Approval' }).click();
+    await this.drawer.getByRole('button', { name: asHead ? 'Send to Stores' : 'Submit for Approval', exact: true }).click();
     await this.expectToast('success');
     await expect(this.drawer).toBeHidden();
   }

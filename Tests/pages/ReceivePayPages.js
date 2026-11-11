@@ -1,6 +1,7 @@
 const { expect } = require('@playwright/test');
 const { BasePage } = require('./BasePage');
-const { escapeRegExp } = require('../utils/testData');
+const { escapeRegExp, docNumberPattern } = require('../utils/testData');
+const { ApiClient } = require('../utils/apiClient');
 
 const after = (scope, label, tag = 'input') =>
   scope
@@ -57,24 +58,40 @@ class DeliveriesPage extends BasePage {
     await expect(d).toContainText(deliveryNote);
     await expect(d).toContainText(deliveredBy);
     if (witnesses.mt) await expect(d).toContainText(`MT: ${witnesses.mt}`);
-    await d.getByRole('button', { name: 'Confirm Receipt' }).click();
+    await d.getByRole('button', { name: 'Confirm Receipt', exact: true }).click();
     await this.expectToast('success');
 
     // The GRV opens on its own: check it, then accept into stock.
     const grv = this.dialog('GRV Details');
     await expect(grv).toBeVisible();
     const grvNumber = (await this.fact('GRV Number', grv).innerText()).trim();
-    expect(grvNumber).toMatch(/^GRV-/);
+    expect(grvNumber).toMatch(docNumberPattern('GRV', { anchored: true }));
     await this.expectFact('PO Number', poNumber, grv);
     await this.expectFact('Delivery Note', deliveryNote, grv);
     await expect(grv).toContainText(deliveredBy);
     for (const line of lines) {
       await expect(grv.locator('tbody tr').filter({ hasText: line.description })).toContainText(`${line.quantity}`);
     }
-    await after(grv, 'Decision', 'select').selectOption('accepted');
-    if (acceptNotes) await grv.getByPlaceholder('Inspection notes...').fill(acceptNotes);
-    await grv.getByRole('button', { name: 'Confirm Acceptance' }).click();
-    await this.expectToast('success', 'Delivery accepted — stock updated');
+    if (vehicle) await expect(grv).toContainText(`Vehicle: ${vehicle}`);
+
+    // Who the GRV names as the receiving officer, checked at the end of the
+    // run so a wrong name does not stop the steps after it.
+    this.lastReceivedBy = (
+      await grv.getByText(/^Received by$/i).locator('xpath=following-sibling::*[1]').innerText().catch(() => '')
+    ).trim();
+
+    // Goods in good condition go straight into stock on receipt. Accept them
+    // here only when the GRV still asks for a decision.
+    const accept = grv.getByRole('heading', { name: 'Accept into stock' });
+    if (await accept.isVisible().catch(() => false)) {
+      await after(grv, 'Decision', 'select').selectOption('accepted');
+      if (acceptNotes) await grv.getByPlaceholder('Inspection notes...').fill(acceptNotes);
+      await grv.getByRole('button', { name: 'Confirm Acceptance', exact: true }).click();
+      await this.expectToast('success', 'Delivery accepted — stock updated');
+    } else {
+      await this.expectFact('Status', 'Accepted', grv);
+    }
+    await grv.getByRole('button', { name: 'Close' }).first().click().catch(() => {});
     return grvNumber;
   }
 
@@ -181,17 +198,17 @@ class SupplierInvoicesPage extends BasePage {
     await this.expectFact('Your invoice number', vendorInvoiceNumber, d);
     if (expectMatch) await expect(d.getByText('The invoice total matches the purchase order.')).toBeVisible();
     else await expect(d.getByText(/The invoice is .+ (more|less) than the purchase order/)).toBeVisible();
-    await d.getByRole('button', { name: 'Submit for three-way match' }).click();
+    await d.getByRole('button', { name: 'Submit for three-way match', exact: true }).click();
     await this.expectToast('success', 'Invoice submitted successfully');
     await expect(d).toBeHidden();
 
-    const row = this.row(poNumber).first();
+    const row = (await this.findRow(poNumber)).first();
     return this.documentNumberIn(row, 'INV');
   }
 
   /** The supplier sees its own invoice number and the current status. */
   async expectInvoice(invoiceNumber, { vendorInvoiceNumber, poNumber, status, totalPattern }) {
-    const row = this.row(invoiceNumber);
+    const row = await this.findRow(invoiceNumber);
     await expect(row).toHaveCount(1);
     if (status) await expect(row).toContainText(new RegExp(status, 'i'));
     await row.getByRole('button', { name: 'View' }).click();
@@ -289,13 +306,31 @@ class EvaluationsPage extends BasePage {
     }
   }
 
-  dueRow(company) {
-    return this.page.locator('tbody tr').filter({ has: this.page.locator('p.font-medium', { hasText: company }) });
+  /**
+   * A supplier's row on the Due tab. The units hold duplicate records with the
+   * same company name; rows show no email, but they show the registration
+   * number, so give one to pick the right record (see registrationNumberOf).
+   */
+  dueRow(company, registrationNumber) {
+    let row = this.page.locator('tbody tr').filter({ has: this.page.locator('p.font-medium', { hasText: company }) });
+    if (registrationNumber) row = row.filter({ hasText: registrationNumber });
+    return row;
+  }
+
+  /** The registration number of the supplier record a login belongs to. */
+  async registrationNumberOf(email) {
+    const api = await ApiClient.fromPage(this.page);
+    const res = await api.get('procurement/suppliers?limit=300');
+    await api.dispose();
+    const record = (res.body.data || []).find((s) => (s.user?.email || '').toLowerCase() === email.toLowerCase());
+    return record?.registrationNumber || null;
   }
 
   /** Step 21: score the supplier 1-5 on the seven criteria. Returns the average. */
-  async evaluate(company, { scores, type = 'Re-evaluation', recommendation = 'Approve', notes }) {
-    await this.dueRow(company).getByRole('button', { name: 'Evaluate' }).click();
+  async evaluate(company, { scores, type = 'Re-evaluation', recommendation = 'Approve', notes, registrationNumber }) {
+    const row = await this.findRow(this.dueRow(company, registrationNumber));
+    await expect(row, `${company} ${registrationNumber || ''} on the Due tab`).toHaveCount(1);
+    await row.getByRole('button', { name: 'Evaluate' }).click();
     const d = this.page.getByRole('dialog', { name: 'Evaluate supplier' });
     await expect(d).toContainText(company);
     for (let i = 0; i < EvaluationsPage.CRITERIA.length; i++) {
@@ -312,16 +347,18 @@ class EvaluationsPage extends BasePage {
     const average = Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10;
     await this.expectFact('Average score', new RegExp(`^${average}(\\.0+)?/5`), d);
     if (notes) await expect(d).toContainText(notes);
-    await d.getByRole('button', { name: 'Save evaluation' }).click();
+    await d.getByRole('button', { name: 'Save evaluation', exact: true }).click();
     await this.expectToast('success', 'Evaluation saved');
     return average;
   }
 
+  /** The saved evaluation is listed with its score and recommendation. Returns its status text. */
   async expectRecorded(company, { average, recommendation }) {
     const row = this.page.locator('tbody tr').filter({ hasText: company }).first();
     await expect(row).toContainText(new RegExp(`${average}(\\.\\d+)?/5`));
     await expect(row).toContainText(new RegExp(recommendation, 'i'));
-    await expect(row).toContainText('Recorded');
+    // Status is the 5th column: Supplier, Type, Score, Recommendation, Status.
+    return (await row.locator('td').nth(4).innerText()).trim();
   }
 }
 

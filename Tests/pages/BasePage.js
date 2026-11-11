@@ -1,5 +1,5 @@
 const { expect } = require('@playwright/test');
-const { escapeRegExp } = require('../utils/testData');
+const { escapeRegExp, docNumberPattern } = require('../utils/testData');
 
 const TOAST_CLASS = { success: '.bg-green-50', error: '.bg-red-50', warning: '.bg-amber-50' };
 
@@ -59,6 +59,34 @@ class BasePage {
   /** The table row that mentions a document number or title. */
   row(text) {
     return this.page.locator('tbody tr').filter({ hasText: text });
+  }
+
+  /**
+   * Find a row on a paged list that has no search box: show the most rows
+   * per page the pager offers, then page on until the row appears. Lists
+   * default to 5 rows, and records from other test runs push new ones off
+   * the first page.
+   */
+  async findRow(textOrRow) {
+    await this.waitForTableToSettle();
+    const pageSize = this.page.locator('select').filter({ has: this.page.locator('option', { hasText: /^5$/ }) }).first();
+    if (await pageSize.count()) {
+      const sizes = await pageSize.locator('option').allInnerTexts();
+      const largest = sizes[sizes.length - 1];
+      if ((await pageSize.inputValue()) !== largest) {
+        await pageSize.selectOption(largest);
+        await this.waitForTableToSettle();
+      }
+    }
+    const row = typeof textOrRow === 'string' || textOrRow instanceof RegExp ? this.row(textOrRow) : textOrRow;
+    const next = this.page.getByRole('button', { name: /^Next$/ }).last();
+    for (let i = 0; i < 20; i++) {
+      if (await row.count()) return row;
+      if (!(await next.isVisible().catch(() => false)) || !(await next.isEnabled())) break;
+      await next.click();
+      await this.waitForTableToSettle();
+    }
+    return row;
   }
 
   /**
@@ -125,6 +153,13 @@ class BasePage {
    */
   async listTotal() {
     await this.waitForTableToSettle();
+    // Deliveries lists what awaits receipt in a banner above the table of
+    // past GRVs ("1 Purchase Order awaiting delivery"); no banner means none.
+    if (new URL(this.page.url()).pathname === '/app/deliveries') {
+      const banner = this.page.getByText(/^\d+ Purchase Orders? awaiting delivery$/).first();
+      if (!(await banner.isVisible().catch(() => false))) return 0;
+      return Number((await banner.innerText()).match(/^(\d+)/)[1]);
+    }
     const pager = this.page.getByText(/^Page \d+ of \d+ · \d+/).first();
     if (await pager.isVisible().catch(() => false)) {
       return Number((await pager.innerText()).match(/· (\d+)/)[1]);
@@ -134,10 +169,16 @@ class BasePage {
     return rows.count();
   }
 
-  /** The document number in a row, e.g. PR-2026-00012. */
+  /** The number shown as "#NUMBER" under a detail page's heading. */
+  async subtitleNumber(prefix) {
+    const pattern = new RegExp(`^#${docNumberPattern(prefix).source}$`);
+    return (await this.page.getByText(pattern).first().innerText()).replace(/^#/, '').trim();
+  }
+
+  /** The document number in a row, e.g. PR-2026-00012 or DOKUMA-QT-2026-00003. */
   async documentNumberIn(row, prefix) {
     const text = await row.innerText();
-    const match = text.match(new RegExp(`\\b${prefix}-[A-Z0-9-]+`));
+    const match = text.match(docNumberPattern(prefix));
     if (!match) throw new Error(`No ${prefix} number in row: ${text}`);
     return match[0];
   }

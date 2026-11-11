@@ -23,6 +23,8 @@ function expectRefused(res, message) {
 }
 
 test.describe.serial('Must be refused', () => {
+  // Several checks sign in as three or four roles in turn.
+  test.describe.configure({ timeout: 600_000 });
   let unit;
   let req;
   let other;
@@ -100,7 +102,7 @@ test.describe.serial('Must be refused', () => {
   test('Bids are sealed until the RFQ closes', async ({ signInAs }) => {
     const buyer = await acceptForSourcing(signInAs, doc.pr);
     // Invite three, but only one will quote.
-    const rfq = await publishRfq(buyer, req, unit.quotingSuppliers.map((s) => s.company));
+    const rfq = await publishRfq(buyer, req, unit.quotingSuppliers);
     Object.assign(doc, { rfqUrl: rfq.url, rfq: rfq.number });
 
     const winner = unit.quotingSuppliers[0];
@@ -110,9 +112,10 @@ test.describe.serial('Must be refused', () => {
     await buyer.base.goto(doc.rfqUrl);
     await buyer.rfq.expectSealed();
     await buyer.base.goto('/app/quotations');
-    await buyer.base.search('Search quotations...', doc.rfq);
-    await expect(buyer.base.row(doc.rfq).first()).toContainText('Sealed bid');
-    await expect(buyer.base.row(doc.rfq).first()).not.toContainText(amountPattern(doc.unitPrice * 2));
+    // The search box does not match RFQ numbers, so page through the list.
+    const sealedRow = (await buyer.base.findRow(doc.rfq)).first();
+    await expect(sealedRow).toContainText('Sealed bid');
+    await expect(sealedRow).not.toContainText(amountPattern(doc.unitPrice * 2));
   });
 
   test('An award with fewer than three quotes and no waiver is refused', async ({ signInAs }) => {
@@ -152,17 +155,34 @@ test.describe.serial('Must be refused', () => {
     await api.dispose();
 
     await procHead.authorizations.open();
-    await expect(procHead.authorizations.row(doc.rfq)).toContainText('You selected this');
+    await expect(await procHead.authorizations.findRow(doc.rfq)).toContainText('You selected this');
+  });
+
+  // Known gap, found 11 Nov 2026: once the Head of Procurement has selected a
+  // quote, the selection box is gone for everyone, so a buyer cannot select
+  // again on screen; and the Head of Procurement may not authorise their own
+  // selection. The award is stuck unless someone re-selects through the API.
+  test('A buyer can re-select a quote the Head of Procurement selected', async ({ signInAs }) => {
+    test.fail(true, 'Known gap: no way on screen to change a selection made by the Head of Procurement');
+    const buyer = await signInAs('buyer');
+    await buyer.base.goto(doc.quotationUrl);
+    await expect(buyer.page.getByPlaceholder('Justification for selecting this quotation (required)')).toBeVisible({ timeout: 10_000 });
   });
 
   test('With a different selector, the award goes through', async ({ signInAs }) => {
+    const justification = `Only supplier able to deliver, run ${req.id}`;
+    // Re-select as the buyer through the API, which accepts it (see the gap above).
     const buyer = await signInAs('buyer');
-    await buyer.base.goto(doc.quotationUrl);
-    await buyer.quotation.select(`Only supplier able to deliver, run ${req.id}`);
+    const api = await ApiClient.fromPage(buyer.page);
+    const res = await api.put(`procurement/rfqs/${doc.rfqId}/select-quotation`, { quotationId: doc.quotationId, justification });
+    expect(res.ok, JSON.stringify(res.body)).toBe(true);
+    await api.dispose();
     await buyer.context.close();
 
+    // The Head of Procurement sees the buyer's reason and can now authorise.
     const procHead = await signInAs('procHead');
     await procHead.base.goto(doc.quotationUrl);
+    await expect(procHead.page.getByText(`Justification: ${justification}`)).toBeVisible();
     await procHead.quotation.authorize();
   });
 

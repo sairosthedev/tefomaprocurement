@@ -64,9 +64,12 @@ test.describe('The two units stay apart', () => {
     const api = await ApiClient.fromPage(buyer.page);
     const res = await api.get('procurement/suppliers?limit=200');
     expect(res.ok).toBe(true);
-    const names = (res.body.data || []).map((s) => s.companyName);
-    for (const s of unit.quotingSuppliers) expect(names).toContain(s.company);
-    for (const s of otherUnit(unit).quotingSuppliers) expect(names).not.toContain(s.company);
+    // Names repeat across records, so compare the accounts the suppliers sign in with.
+    const emails = (res.body.data || []).map((s) => (s.user?.email || '').toLowerCase());
+    for (const s of unit.quotingSuppliers) expect(emails, `${s.company} in ${unit.name}`).toContain(s.email);
+    for (const s of otherUnit(unit).quotingSuppliers) {
+      expect(emails, `${s.company} must not be in ${unit.name}`).not.toContain(s.email);
+    }
     await api.dispose();
   });
 });

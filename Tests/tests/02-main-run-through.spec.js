@@ -10,6 +10,7 @@
 const { test, expect } = require('../fixtures/test');
 const { unitFor } = require('../data/units');
 const { buildRunThrough } = require('../data/scenarios');
+const { docNumberPattern } = require('../utils/testData');
 
 for (const band of ['above', 'below']) {
   test.describe.serial(`Main run-through, order ${band} the COO limit`, () => {
@@ -34,7 +35,7 @@ for (const band of ['above', 'below']) {
       await expect(requester.requisitions.heading).toHaveText('My Requisitions');
 
       doc.pr = await requester.requisitions.raise(run.requisition);
-      expect(doc.pr).toMatch(/^PR-\d{4}-\d+/);
+      expect(doc.pr).toMatch(docNumberPattern('PR', { anchored: true }));
       await requester.requisitions.expectRow(doc.pr, { title: run.requisition.title, status: 'Pending HOD Approval' });
 
       // The stored requisition holds exactly what was typed.
@@ -86,13 +87,13 @@ for (const band of ['above', 'below']) {
         deadline: run.rfq.deadline,
         terms: run.rfq.terms,
         items: run.requisition.items,
-        suppliers: run.quotes.map((q) => q.company)
+        suppliers: run.quotes.map(({ company, email }) => ({ company, email }))
       });
       expect(run.rfq.title).toBe(`RFQ for ${run.requisition.title}`);
 
       doc.rfqUrl = buyer.page.url();
       doc.rfq = await buyer.rfq.rfqNumber();
-      expect(doc.rfq).toMatch(/^RFQ-/);
+      expect(doc.rfq).toMatch(docNumberPattern('RFQ', { anchored: true }));
       await buyer.rfq.expectStatus('Open');
       await expect(buyer.page.getByRole('heading', { level: 1 })).toHaveText(run.rfq.title);
       await expect(buyer.page.locator('h3', { hasText: 'Description' }).locator('xpath=following-sibling::*[1]')).toContainText(run.rfq.description);
@@ -117,7 +118,7 @@ for (const band of ['above', 'below']) {
             validDays: quote.validDays,
             notes: quote.notes
           });
-          expect(total).toMatch(quote.totalPattern);
+          expect(total).toMatch(quote.netTotalPattern);
 
           await supplier.supplierRfqs.open();
           await expect(await supplier.supplierRfqs.rowFor(doc.rfq)).toContainText('Submitted');
@@ -183,7 +184,7 @@ for (const band of ['above', 'below']) {
       expect(review.totalText).toMatch(run.winner.totalPattern);
       doc.poUrl = buyer.page.url();
       doc.po = await buyer.purchaseOrder.poNumber();
-      expect(doc.po).toMatch(/^PO-\d{4}-\d+/);
+      expect(doc.po).toMatch(docNumberPattern('PO', { anchored: true }));
 
       await buyer.purchaseOrder.expectStatus('Draft');
       await buyer.purchaseOrder.expectOrder({
@@ -260,6 +261,7 @@ for (const band of ['above', 'below']) {
 
       await stores.deliveries.open();
       doc.grv = await stores.deliveries.receiveAndAccept(doc.po, { ...run.delivery, lines: [run.line] });
+      doc.grvReceivedBy = stores.deliveries.lastReceivedBy;
       await stores.deliveries.expectGrvStatus(doc.grv, 'Accepted');
 
       await stores.inventory.open();
@@ -274,7 +276,7 @@ for (const band of ['above', 'below']) {
       await head.requisition.open(doc.pr, head.requisitions);
       await head.requisition.expectStage('Delivered to Stores');
       doc.sr = await head.requisition.requestFromStores();
-      expect(doc.sr).toMatch(/^SR-/);
+      expect(doc.sr).toMatch(docNumberPattern('SR', { anchored: true }));
     });
 
     test('17. Stores officer marks it ready, then hands it over', async ({ signInAs }) => {
@@ -299,7 +301,7 @@ for (const band of ['above', 'below']) {
       const supplier = await signInAs(run.winner.email);
       await supplier.supplierInvoices.open();
       doc.invoice = await supplier.supplierInvoices.submit(doc.po, run.invoice);
-      expect(doc.invoice).toMatch(/^INV-/);
+      expect(doc.invoice).toMatch(docNumberPattern('INV', { anchored: true }));
       await supplier.supplierInvoices.expectInvoice(doc.invoice, {
         vendorInvoiceNumber: run.invoice.vendorInvoiceNumber,
         poNumber: doc.po,
@@ -326,7 +328,11 @@ for (const band of ['above', 'below']) {
       await finance.invoices.open();
       await finance.invoices.openInvoice(doc.invoice);
       await finance.invoices.recordPayment();
-      await expect(finance.page.locator('span').filter({ hasText: /^Paid$/ }).first()).toBeVisible();
+      await expect(finance.page.getByRole('button', { name: 'Record payment' })).toHaveCount(0);
+      // The invoice page shows no status; the Invoices list does.
+      await finance.invoices.open();
+      await finance.invoices.search('Search invoice number...', doc.invoice);
+      await expect(finance.invoices.row(doc.invoice)).toContainText('Paid');
 
       await finance.payments.open();
       await finance.payments.expectPaymentRunBanner();
@@ -344,13 +350,37 @@ for (const band of ['above', 'below']) {
     test('21. Procurement officer evaluates the supplier', async ({ signInAs }) => {
       const buyer = await signInAs('buyer');
       await buyer.evaluations.open();
-      const due = buyer.evaluations.dueRow(run.winner.company);
+      // Pick the winner's own record: the unit has look-alike duplicates.
+      const registrationNumber = await buyer.evaluations.registrationNumberOf(run.winner.email);
+      const due = await buyer.evaluations.findRow(buyer.evaluations.dueRow(run.winner.company, registrationNumber));
       // A supplier evaluated recently is not due again until its tier's review date.
       test.skip((await due.count()) === 0, `${run.winner.company} is not due for evaluation yet`);
-      const average = await buyer.evaluations.evaluate(run.winner.company, run.evaluation);
+      const average = await buyer.evaluations.evaluate(run.winner.company, { ...run.evaluation, registrationNumber });
       expect(average).toBeGreaterThanOrEqual(1);
       expect(average).toBeLessThanOrEqual(5);
-      await buyer.evaluations.expectRecorded(run.winner.company, { average, recommendation: run.evaluation.recommendation });
+      doc.evaluationStatus = await buyer.evaluations.expectRecorded(run.winner.company, {
+        average,
+        recommendation: run.evaluation.recommendation
+      });
+    });
+
+    // Known bug, found 11 Nov 2026: the GRV's "Received by" reads
+    // "undefined undefined" instead of the stores officer's name. Checked here,
+    // after the run, so it does not stop the steps after receiving. Marked
+    // test.fail(): Playwright reports it once fixed, so the marker can go.
+    test('22. The GRV names the stores officer who received the goods', async () => {
+      test.fail(true, 'Known bug: GRV "Received by" shows "undefined undefined"');
+      expect(doc.grvReceivedBy, 'GRV "Received by"').toBeTruthy();
+      expect(doc.grvReceivedBy).not.toContain('undefined');
+    });
+
+    // Known bug, found 11 Nov 2026: a saved evaluation's status shows the raw
+    // code "pending_hod", although the Evaluations page says there is no
+    // approval step. Expected a readable status such as "Recorded".
+    test('23. A saved evaluation shows a readable status', async () => {
+      test.skip(!doc.evaluationStatus, 'No evaluation was saved in this run');
+      test.fail(true, 'Known bug: evaluation status shows the raw code "pending_hod"');
+      expect(doc.evaluationStatus).toBe('Recorded');
     });
   });
 }

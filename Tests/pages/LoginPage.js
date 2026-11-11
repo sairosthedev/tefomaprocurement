@@ -45,8 +45,15 @@ class LoginPage extends BasePage {
       .waitForResponse((r) => r.url().includes('/auth/me'), { timeout: 45_000 })
       .catch(() => null);
     await this.enterCredentials(email, password);
-    await expect(this.heading).toHaveText('Enter verification code');
-    await expect(this.page.getByText(`We sent a 6-digit code to ${email}`)).toBeVisible();
+    // The code step names the address it was sent to. The code fills itself in
+    // and signs in quickly, so the step may already be gone; then the session
+    // check at the end proves the right person signed in.
+    const sentTo = this.page.getByText(`We sent a 6-digit code to ${email}`);
+    const onApp = () => /\/app(\/|\?|$)/.test(new URL(this.page.url()).pathname);
+    await expect(async () => {
+      if (onApp()) return;
+      await expect(sentTo).toBeVisible({ timeout: 1000 });
+    }).toPass({ timeout: 15_000 });
     // The code fills itself in and is submitted automatically; press Verify
     // only if it is still waiting.
     await expect(this.otp).toHaveValue(/^\d{6}$/, { timeout: 15_000 }).catch(() => {});
