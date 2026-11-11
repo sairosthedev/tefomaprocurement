@@ -1,0 +1,19 @@
+{
+  "name": "procureline-e2e-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright end-to-end tests for Procureline, following the Project Scope Document and the QA Testing Guide (4 Nov 2026)",
+  "scripts": {
+    "test": "playwright test",
+    "test:dokuma": "playwright test --project=dokuma",
+    "test:fossil": "playwright test --project=fossil",
+    "test:smoke": "playwright test tests/01-sign-in.spec.js tests/05-unit-isolation.spec.js",
+    "test:flow": "playwright test tests/02-main-run-through.spec.js",
+    "test:headed": "playwright test --headed --workers=1",
+    "report": "playwright show-report",
+    "install:browsers": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0"
+  }
+}
